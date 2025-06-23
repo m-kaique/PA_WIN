@@ -40,10 +40,10 @@ private:
 public:
     // Construtor com configuração de médias móveis
                         TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles,
-                               SMovingAverageConfig ema9_cfg,
-                               SMovingAverageConfig ema21_cfg,
-                               SMovingAverageConfig ema50_cfg,
-                               SMovingAverageConfig sma200_cfg);
+                               SMovingAverageConfig &ema9_cfg,
+                               SMovingAverageConfig &ema21_cfg,
+                               SMovingAverageConfig &ema50_cfg,
+                               SMovingAverageConfig &sma200_cfg);
     
     // Destrutor
                        ~TF_CTX();
@@ -74,10 +74,10 @@ public:
 //| Construtor da classe TF_CTX                                     |
 //+------------------------------------------------------------------+
 TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles,
-               SMovingAverageConfig ema9_cfg,
-               SMovingAverageConfig ema21_cfg,
-               SMovingAverageConfig ema50_cfg,
-               SMovingAverageConfig sma200_cfg)
+               SMovingAverageConfig &ema9_cfg,
+               SMovingAverageConfig &ema21_cfg,
+               SMovingAverageConfig &ema50_cfg,
+               SMovingAverageConfig &sma200_cfg)
 {
     m_timeframe   = timeframe;
     m_num_candles = num_candles; // Usado apenas para referência
