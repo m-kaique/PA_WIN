@@ -8,12 +8,6 @@
 #property link "https://www.mql5.com"
 #property version "2.00"
 
-// Redefinir o macro DEBUG_PRINT_KEY para evitar warnings
-#ifdef DEBUG_PRINT_KEY
-#undef DEBUG_PRINT_KEY
-#endif
-#define DEBUG_PRINT_KEY(msg)
-
 #include "../utils/JAson.mqh"
 #include "tf_ctx.mqh"
 
