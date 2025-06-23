@@ -11,15 +11,11 @@
 
 #include "TF_CTX/config_manager.mqh"
 
-// Configuração hardcoded em JSON (CORRIGIDA - removida vírgula extra)
-const string HARDCODED_CONFIG ="";
-
 // Gerenciador de configuração
-CConfigManager* g_config_manager;
+CConfigManager *g_config_manager;
 
 // Parâmetros de entrada
-input bool UseHardcodedConfig = false; // Usar configuração hardcoded (ALTERADO PARA FALSE)
-input string JsonConfigFile = "config.json"; // Nome do arquivo JSON (se não usar hardcoded)
+input string JsonConfigFile = "config.json"; // Nome do arquivo JSON 
 
 // Variáveis para controle de novo candle
 datetime m_last_bar_time;     // Tempo do último candle processado
@@ -32,27 +28,19 @@ int OnInit()
 {
    // Criar gerenciador de configuração
    g_config_manager = new CConfigManager();
-   if(g_config_manager == NULL)
+   if (g_config_manager == NULL)
    {
       Print("ERRO: Falha ao criar ConfigManager");
       return INIT_FAILED;
    }
-   
+
    // Inicializar com configuração escolhida
    bool init_success = false;
-   
-   if(UseHardcodedConfig)
-   {
-      Print("Usando configuração hardcoded...");
-      init_success = g_config_manager.Init(HARDCODED_CONFIG);
-   }
-   else
-   {
-      Print("Tentando carregar arquivo JSON: ", JsonConfigFile);
-      init_success = g_config_manager.InitFromFile(JsonConfigFile);
-   }
-   
-   if(!init_success)
+
+   Print("Tentando carregar arquivo JSON: ", JsonConfigFile);
+   init_success = g_config_manager.InitFromFile(JsonConfigFile);
+
+   if (!init_success)
    {
       Print("ERRO: Falha ao inicializar ConfigManager");
       delete g_config_manager;
@@ -65,21 +53,15 @@ int OnInit()
    m_last_bar_time = 0; // Forçar execução no primeiro tick
 
    Print("ConfigManager inicializado com sucesso");
-   
+
    // Listar contextos criados
    string symbols[];
    g_config_manager.GetConfiguredSymbols(symbols);
-   for(int i = 0; i < ArraySize(symbols); i++)
+   for (int i = 0; i < ArraySize(symbols); i++)
    {
       Print("Símbolo configurado: ", symbols[i]);
-      
-      // Verificar contextos habilitados
-      if(g_config_manager.IsContextEnabled(symbols[i], PERIOD_D1))
-         Print("  - D1 habilitado");
-      if(g_config_manager.IsContextEnabled(symbols[i], PERIOD_H4))
-         Print("  - H4 habilitado");
    }
-   
+
    return INIT_SUCCEEDED;
 }
 
@@ -89,7 +71,7 @@ int OnInit()
 void OnDeinit(const int reason)
 {
    // Limpar gerenciador de configuração
-   if(g_config_manager != NULL)
+   if (g_config_manager != NULL)
    {
       delete g_config_manager;
       g_config_manager = NULL;
@@ -102,11 +84,11 @@ void OnDeinit(const int reason)
 void OnTick()
 {
    // Verificar se há um novo candle no período especificado
-   if(!IsNewBar(m_control_tf))
+   if (!IsNewBar(m_control_tf))
       return; // Sair se não for um novo candle
 
    // Verificar se o gerenciador está inicializado
-   if(g_config_manager == NULL || !g_config_manager.IsInitialized())
+   if (g_config_manager == NULL || !g_config_manager.IsInitialized())
    {
       Print("ERRO: ConfigManager não está inicializado");
       return;
@@ -124,7 +106,7 @@ bool IsNewBar(ENUM_TIMEFRAMES timeframe)
    datetime current_bar_time = iTime(Symbol(), timeframe, 0);
 
    // Se é a primeira execução ou se o tempo do candle atual é diferente do último
-   if(m_last_bar_time != current_bar_time)
+   if (m_last_bar_time != current_bar_time)
    {
       m_last_bar_time = current_bar_time;
       return true;
@@ -141,16 +123,16 @@ void ExecuteOnNewBar()
    Print("=== NOVO CANDLE ", EnumToString(m_control_tf), " ===");
    Print("Tempo do candle: ", TimeToString(m_last_bar_time, TIME_DATE | TIME_MINUTES));
 
-   string configured_symbol = "WIN$N";  // Usar símbolo fixo do JSON
-   
+   string configured_symbol = "WIN$N"; // Usar símbolo fixo do JSON
+
    // Obter contexto D1 se habilitado
-   TF_CTX* D1_ctx = g_config_manager.GetContext(configured_symbol, PERIOD_D1);
-   if(D1_ctx != NULL)
+   TF_CTX *D1_ctx = g_config_manager.GetContext(configured_symbol, PERIOD_D1);
+   if (D1_ctx != NULL)
    {
       D1_ctx.Update();
-      
+
       Print("=== Contexto D1 ===");
-      for(int i = 1; i < 5; i++)
+      for (int i = 1; i < 2; i++)
       {
          double ema9 = D1_ctx.get_ema9(i);
          double ema21 = D1_ctx.get_ema21(i);
@@ -162,7 +144,6 @@ void ExecuteOnNewBar()
    {
       Print("AVISO: Contexto D1 não encontrado para símbolo: ", configured_symbol);
    }
-   
 }
 
 //+------------------------------------------------------------------+
@@ -180,24 +161,18 @@ void SetControlTimeframe(ENUM_TIMEFRAMES new_timeframe)
 //+------------------------------------------------------------------+
 bool ReloadConfig()
 {
-   if(g_config_manager == NULL)
+   if (g_config_manager == NULL)
       return false;
-      
+
    // Limpar configuração atual
    g_config_manager.Cleanup();
-   
+
    // Recarregar
    bool success = false;
-   if(UseHardcodedConfig)
-   {
-      success = g_config_manager.Init(HARDCODED_CONFIG);
-   }
-   else
-   {
-      success = g_config_manager.InitFromFile(JsonConfigFile);
-   }
-   
-   if(success)
+
+   success = g_config_manager.InitFromFile(JsonConfigFile);
+
+   if (success)
    {
       Print("Configuração recarregada com sucesso");
    }
@@ -205,7 +180,7 @@ bool ReloadConfig()
    {
       Print("ERRO: Falha ao recarregar configuração");
    }
-   
+
    return success;
 }
 
