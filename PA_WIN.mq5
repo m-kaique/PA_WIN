@@ -74,7 +74,9 @@ const string HARDCODED_CONFIG =
 CConfigManager* g_config_manager;
 
 // Parâmetros de entrada
-input bool UseHardcodedConfig = true; // Usar configuração hardcoded
+// Quando 'false', o EA tenta carregar as configurações do arquivo JSON
+// localizado na pasta MQL5/Files (ou Common\Files quando FILE_COMMON é usado)
+input bool UseHardcodedConfig = false; // Usar configuração hardcoded
 input string JsonConfigFile = "config.json"; // Nome do arquivo JSON (se não usar hardcoded)
 
 // Variáveis para controle de novo candle
