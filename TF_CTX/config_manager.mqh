@@ -1,8 +1,8 @@
 //+------------------------------------------------------------------+
-//|                                           config_manager.mqh |
+//|                                           config_manager.mqh     |
 //|                                  Copyright 2025, MetaQuotes Ltd. |
 //|                                             https://www.mql5.com |
-//| Versão simplificada para configuração hardcoded                 |
+//|                                                                  |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, MetaQuotes Ltd."
 #property link "https://www.mql5.com"
@@ -33,7 +33,6 @@ private:
     ENUM_MA_METHOD StringToMAMethod(string method_str);
     STimeframeConfig ParseTimeframeConfig(CJAVal *tf_config);
     string CreateContextKey(string symbol, ENUM_TIMEFRAMES tf);
-    bool CreateHardcodedConfig();
     bool TestJSONParsing();
     
 public:
@@ -73,33 +72,6 @@ CConfigManager::~CConfigManager()
 }
 
 //+------------------------------------------------------------------+
-//| Inicialização com string JSON                                   |
-//+------------------------------------------------------------------+
-bool CConfigManager::Init(string json_content)
-{
-    Print("Inicializando ConfigManager com JSON hardcoded...");
-    
-    if (!LoadConfig(json_content))
-    {
-        Print("ERRO: Falha ao carregar configuração JSON");
-        Print("FALLBACK: Tentando configuração hardcoded...");
-        return CreateHardcodedConfig();
-    }
-
-    if (!CreateContexts())
-    {
-        Print("ERRO: Falha ao criar contextos do JSON");
-        Print("FALLBACK: Tentando configuração hardcoded...");
-        return CreateHardcodedConfig();
-    }
-
-    m_initialized = true;
-    Print("ConfigManager inicializado com sucesso. Símbolos carregados: ", ArraySize(m_symbols));
-    Print("Contextos criados: ", ArraySize(m_contexts));
-    return true;
-}
-
-//+------------------------------------------------------------------+
 //| Inicialização do gerenciador com arquivo                        |
 //+------------------------------------------------------------------+
 bool CConfigManager::InitFromFile(string file_path)
@@ -109,15 +81,13 @@ bool CConfigManager::InitFromFile(string file_path)
     if (!LoadConfigFromFile(file_path))
     {
         Print("ERRO: Falha ao carregar configuração do arquivo: ", file_path);
-        Print("FALLBACK: Usando configuração hardcoded...");
-        return CreateHardcodedConfig();
+        return false;
     }
 
     if (!CreateContexts())
     {
         Print("ERRO: Falha ao criar contextos");
-        Print("FALLBACK: Usando configuração hardcoded...");
-        return CreateHardcodedConfig();
+        return false;
     }
 
     m_initialized = true;
@@ -297,70 +267,6 @@ bool CConfigManager::LoadConfigFromFile(string file_path)
     }
 
     return LoadConfig(json_content);
-}
-
-//+------------------------------------------------------------------+
-//| Criar configuração hardcoded como fallback                       |
-//+------------------------------------------------------------------+
-bool CConfigManager::CreateHardcodedConfig()
-{
-    Print("Criando configuração hardcoded...");
-    
-    // Limpar arrays
-    ArrayResize(m_symbols, 0);
-    ArrayResize(m_contexts, 0);
-    ArrayResize(m_context_keys, 0);
-    
-    // Adicionar símbolos hardcoded
-    string hardcoded_symbols[] = {"WIN$N"};
-    
-    for(int s = 0; s < ArraySize(hardcoded_symbols); s++)
-    {
-        string symbol = hardcoded_symbols[s];
-        
-        // Adicionar símbolo
-        ArrayResize(m_symbols, ArraySize(m_symbols) + 1);
-        m_symbols[ArraySize(m_symbols) - 1] = symbol;
-        Print("Símbolo hardcoded adicionado: ", symbol);
-        
-        // Criar configuração padrão de médias
-        SMovingAverageConfig def_ema9   = {9,  MODE_EMA,  true};
-        SMovingAverageConfig def_ema21  = {21, MODE_EMA,  true};
-        SMovingAverageConfig def_ema50  = {50, MODE_EMA,  true};
-        SMovingAverageConfig def_sma200 = {200, MODE_SMA, true};
-
-        // Criar contexto D1
-        TF_CTX* ctx_d1 = new TF_CTX(PERIOD_D1, 9, def_ema9, def_ema21, def_ema50, def_sma200);
-        if(ctx_d1 != NULL && ctx_d1.Init())
-        {
-            string key_d1 = CreateContextKey(symbol, PERIOD_D1);
-            ArrayResize(m_contexts, ArraySize(m_contexts) + 1);
-            ArrayResize(m_context_keys, ArraySize(m_context_keys) + 1);
-            
-            m_contexts[ArraySize(m_contexts) - 1] = ctx_d1;
-            m_context_keys[ArraySize(m_context_keys) - 1] = key_d1;
-            
-            Print("Contexto hardcoded criado: ", key_d1);
-        }
-        
-        // Criar contexto H4
-        TF_CTX* ctx_h4 = new TF_CTX(PERIOD_H4, 18, def_ema9, def_ema21, def_ema50, def_sma200);
-        if(ctx_h4 != NULL && ctx_h4.Init())
-        {
-            string key_h4 = CreateContextKey(symbol, PERIOD_H4);
-            ArrayResize(m_contexts, ArraySize(m_contexts) + 1);
-            ArrayResize(m_context_keys, ArraySize(m_context_keys) + 1);
-            
-            m_contexts[ArraySize(m_contexts) - 1] = ctx_h4;
-            m_context_keys[ArraySize(m_context_keys) - 1] = key_h4;
-            
-            Print("Contexto hardcoded criado: ", key_h4);
-        }
-    }
-    
-    Print("Total de contextos hardcoded criados: ", ArraySize(m_contexts));
-    m_initialized = true;
-    return ArraySize(m_contexts) > 0;
 }
 
 //+------------------------------------------------------------------+
