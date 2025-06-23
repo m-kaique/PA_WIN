@@ -25,6 +25,14 @@ string TrimString(string value)
     return value;
 }
 
+// Remove UTF-8 BOM if present
+string RemoveBOM(string value)
+{
+    if(StringLen(value) > 0 && StringGetCharacter(value,0) == 0xFEFF)
+        return StringSubstr(value,1);
+    return value;
+}
+
 //+------------------------------------------------------------------+
 //| Estrutura para configuração de média móvel                      |
 //+------------------------------------------------------------------+
@@ -168,6 +176,7 @@ bool CConfigManager::InitFromFile(string file_path)
 bool CConfigManager::LoadConfig(string json_content)
 {
     Print("Tentando fazer parse do JSON...");
+    json_content = RemoveBOM(TrimString(json_content));
     Print("Tamanho do JSON: ", StringLen(json_content), " caracteres");
     
     // Testar parsing básico primeiro
@@ -177,7 +186,7 @@ bool CConfigManager::LoadConfig(string json_content)
         return false;
     }
     
-    if (!m_config.Deserialize(json_content))
+    if (!m_config.Deserialize(json_content, CP_UTF8))
     {
         Print("ERRO: Falha ao fazer parse do JSON");
         return false;
@@ -237,7 +246,7 @@ bool CConfigManager::LoadConfigFromFile(string file_path)
 
     FileClose(file_handle);
 
-    json_content = TrimString(json_content);
+    json_content = RemoveBOM(TrimString(json_content));
     Print("Arquivo carregado com ", StringLen(json_content), " caracteres");
 
     return LoadConfig(json_content);
