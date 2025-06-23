@@ -926,7 +926,7 @@ O arquivo `config.json` é o coração da flexibilidade do PA_WIN. Abaixo está 
 **Explicação da Estrutura:**
 
 -   **Chave de Nível Superior (`"WIN$N"`):** Representa o símbolo do ativo a ser monitorado. Você pode adicionar múltiplos símbolos como chaves separadas.
--   **Chave de Timeframe (`"D1"`):** Dentro de cada símbolo, você define os timeframes que deseja monitorar. Os nomes devem corresponder às strings esperadas pelo `CConfigManager` (M1, M5, M15, M30, H1, H4, D1).
+-   **Chave de Timeframe (`"D1"`):** Dentro de cada símbolo, você define os timeframes que deseja monitorar. Os nomes são lidos diretamente do arquivo `config.json`, permitindo incluir novos timeframes sem ajustes no código-fonte.
     -   `"enabled"`: Booleano que indica se este timeframe específico para o símbolo está ativo (`true`) ou desativado (`false`).
     -   `"num_candles"`: Inteiro que especifica o número de candles a serem considerados para análise. Embora presente, seu uso direto na lógica atual pode variar e deve ser verificado no código.
     -   `"moving_averages"`: Objeto que contém as configurações para as médias móveis associadas a este timeframe.
