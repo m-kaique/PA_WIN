@@ -323,12 +323,8 @@ bool CConfigManager::CreateContexts()
                 continue;
             }
 
-            // Criar novo contexto com configuração de médias móveis
-            TF_CTX *ctx = new TF_CTX(tf, config.num_candles,
-                                    config.ema9,
-                                    config.ema21,
-                                    config.ema50,
-                                    config.sma200);
+            // Criar novo contexto com lista de indicadores
+            TF_CTX *ctx = new TF_CTX(tf, config.num_candles, config.indicators);
             if (ctx == NULL)
             {
                 Print("ERRO: Falha ao criar contexto para ", symbol, " ", tf_str);
@@ -505,56 +501,34 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
 
     Print("Parseando timeframe - Enabled: ", config.enabled, " NumCandles: ", config.num_candles);
 
-    // Configurações de médias móveis
-    CJAVal *ma_config = tf_config["moving_averages"];
-    
-    if (ma_config != NULL)
+    // Lista de indicadores
+    CJAVal *ind_array = tf_config["indicators"];
+    ArrayResize(config.indicators,0);
+
+    if(ind_array != NULL)
     {
-        Print("Configurações de médias móveis encontradas");
-        
-        // EMA9
-        CJAVal *ema9 = ma_config["ema9"];
-        if (ema9 != NULL)
+        for(int i=0;i<ind_array.Size();i++)
         {
-            config.ema9.period = (int)ema9["period"].ToInt();
-            config.ema9.method = StringToMAMethod(ema9["method"].ToStr());
-            config.ema9.enabled = ema9["enabled"].ToBool();
-            Print("EMA9 - Period: ", config.ema9.period, " Method: ", ema9["method"].ToStr(), " Enabled: ", config.ema9.enabled);
-        }
+            CJAVal *ind = (*ind_array)[i];
+            if(ind==NULL) continue;
 
-        // EMA21
-        CJAVal *ema21 = ma_config["ema21"];
-        if (ema21 != NULL)
-        {
-            config.ema21.period = (int)ema21["period"].ToInt();
-            config.ema21.method = StringToMAMethod(ema21["method"].ToStr());
-            config.ema21.enabled = ema21["enabled"].ToBool();
-            Print("EMA21 - Period: ", config.ema21.period, " Method: ", ema21["method"].ToStr(), " Enabled: ", config.ema21.enabled);
-        }
+            SIndicatorConfig icfg;
+            icfg.name    = ind["name"].ToStr();
+            icfg.type    = ind["type"].ToStr();
+            icfg.period  = (int)ind["period"].ToInt();
+            icfg.method  = StringToMAMethod(ind["method"].ToStr());
+            icfg.enabled = ind["enabled"].ToBool();
 
-        // EMA50
-        CJAVal *ema50 = ma_config["ema50"];
-        if (ema50 != NULL)
-        {
-            config.ema50.period = (int)ema50["period"].ToInt();
-            config.ema50.method = StringToMAMethod(ema50["method"].ToStr());
-            config.ema50.enabled = ema50["enabled"].ToBool();
-            Print("EMA50 - Period: ", config.ema50.period, " Method: ", ema50["method"].ToStr(), " Enabled: ", config.ema50.enabled);
-        }
+            int pos = ArraySize(config.indicators);
+            ArrayResize(config.indicators,pos+1);
+            config.indicators[pos]=icfg;
 
-        // SMA200
-        CJAVal *sma200 = ma_config["sma200"];
-        if (sma200 != NULL)
-        {
-            config.sma200.period = (int)sma200["period"].ToInt();
-            config.sma200.method = StringToMAMethod(sma200["method"].ToStr());
-            config.sma200.enabled = sma200["enabled"].ToBool();
-            Print("SMA200 - Period: ", config.sma200.period, " Method: ", sma200["method"].ToStr(), " Enabled: ", config.sma200.enabled);
+            Print("Indicador lido: ", icfg.name, " Tipo: ", icfg.type, " Period: ", icfg.period, " Enabled: ", icfg.enabled);
         }
     }
     else
     {
-        Print("AVISO: Configurações de médias móveis não encontradas");
+        Print("AVISO: Nenhum indicador configurado");
     }
 
     return config;

@@ -134,8 +134,8 @@ void ExecuteOnNewBar()
       Print("=== Contexto D1 ===");
       for (int i = 1; i < 2; i++)
       {
-         double ema9 = D1_ctx.get_ema9(i);
-         double ema21 = D1_ctx.get_ema21(i);
+         double ema9  = D1_ctx.GetIndicatorValue("ema9", i);
+         double ema21 = D1_ctx.GetIndicatorValue("ema21", i);
          Print("EMA9 D1 Shift: ", i, " = ", ema9);
          Print("EMA21 D1 Shift: ", i, " = ", ema21);
       }

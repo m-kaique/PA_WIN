@@ -5,12 +5,13 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, MetaQuotes Ltd."
 #property link      "https://www.mql5.com"
-#property version   "1.00"
+#property version   "1.01"
+#include "indicator_base.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe para cálculo de médias móveis                            |
 //+------------------------------------------------------------------+
-class CMovingAverages
+class CMovingAverages : public CIndicatorBase
 {
 private:
     string          m_symbol;        // Símbolo
