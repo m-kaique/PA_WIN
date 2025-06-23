@@ -11,7 +11,7 @@
 
 #include "TF_CTX/config_manager.mqh"
 
-// Configuração hardcoded em JSON
+// Configuração hardcoded em JSON (CORRIGIDA - removida vírgula extra)
 const string HARDCODED_CONFIG = 
 "{"
 "   \"WIN$N\": {"
@@ -67,14 +67,14 @@ const string HARDCODED_CONFIG =
 "            }"
 "         }"
 "      }"
-"   },"
+"   }"
 "}";
 
 // Gerenciador de configuração
 CConfigManager* g_config_manager;
 
 // Parâmetros de entrada
-input bool UseHardcodedConfig = true; // Usar configuração hardcoded
+input bool UseHardcodedConfig = false; // Usar configuração hardcoded (ALTERADO PARA FALSE)
 input string JsonConfigFile = "config.json"; // Nome do arquivo JSON (se não usar hardcoded)
 
 // Variáveis para controle de novo candle
@@ -197,10 +197,10 @@ void ExecuteOnNewBar()
    Print("=== NOVO CANDLE ", EnumToString(m_control_tf), " ===");
    Print("Tempo do candle: ", TimeToString(m_last_bar_time, TIME_DATE | TIME_MINUTES));
 
-   string current_symbol = Symbol();
+   string configured_symbol = "WIN$N";  // Usar símbolo fixo do JSON
    
    // Obter contexto D1 se habilitado
-   TF_CTX* D1_ctx = g_config_manager.GetContext(current_symbol, PERIOD_D1);
+   TF_CTX* D1_ctx = g_config_manager.GetContext(configured_symbol, PERIOD_D1);
    if(D1_ctx != NULL)
    {
       D1_ctx.Update();
@@ -216,11 +216,11 @@ void ExecuteOnNewBar()
    }
    else
    {
-      Print("AVISO: Contexto D1 não encontrado para símbolo: ", current_symbol);
+      Print("AVISO: Contexto D1 não encontrado para símbolo: ", configured_symbol);
    }
    
    // Obter contexto H4 se habilitado
-   TF_CTX* H4_ctx = g_config_manager.GetContext(current_symbol, PERIOD_H4);
+   TF_CTX* H4_ctx = g_config_manager.GetContext(configured_symbol, PERIOD_H4);
    if(H4_ctx != NULL)
    {
       H4_ctx.Update();
@@ -236,7 +236,7 @@ void ExecuteOnNewBar()
    }
    else
    {
-      Print("AVISO: Contexto H4 não encontrado para símbolo: ", current_symbol);
+      Print("AVISO: Contexto H4 não encontrado para símbolo: ", configured_symbol);
    }
 }
 

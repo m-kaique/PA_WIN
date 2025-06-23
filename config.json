@@ -1,0 +1,56 @@
+{
+   "WIN$N": {
+      "D1": {
+         "enabled": true,
+         "num_candles": 9,
+         "moving_averages": {
+            "ema9": {
+               "period": 9,
+               "method": "EMA",
+               "enabled": true
+            },
+            "ema21": {
+               "period": 21,
+               "method": "EMA",
+               "enabled": true
+            },
+            "ema50": {
+               "period": 50,
+               "method": "EMA",
+               "enabled": false
+            },
+            "sma200": {
+               "period": 200,
+               "method": "SMA",
+               "enabled": false
+            }
+         }
+      },
+      "H4": {
+         "enabled": true,
+         "num_candles": 18,
+         "moving_averages": {
+            "ema9": {
+               "period": 9,
+               "method": "SMA",
+               "enabled": true
+            },
+            "ema21": {
+               "period": 21,
+               "method": "EMA",
+               "enabled": false
+            },
+            "ema50": {
+               "period": 50,
+               "method": "EMA",
+               "enabled": false
+            },
+            "sma200": {
+               "period": 200,
+               "method": "SMA",
+               "enabled": true
+            }
+         }
+      }
+   }
+}

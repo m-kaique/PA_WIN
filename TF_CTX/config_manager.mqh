@@ -12,7 +12,7 @@
 #ifdef DEBUG_PRINT_KEY
 #undef DEBUG_PRINT_KEY
 #endif
-#define DEBUG_PRINT_KEY()
+#define DEBUG_PRINT_KEY(msg)
 
 #include "../utils/JAson.mqh"
 #include "tf_ctx.mqh"
@@ -162,6 +162,9 @@ bool CConfigManager::LoadConfig(string json_content)
     Print("Tentando fazer parse do JSON...");
     Print("Tamanho do JSON: ", StringLen(json_content), " caracteres");
     
+    // Limpar configuração anterior
+    m_config.Clear();
+    
     // Testar parsing básico primeiro
     if(!TestJSONParsing())
     {
@@ -169,9 +172,12 @@ bool CConfigManager::LoadConfig(string json_content)
         return false;
     }
     
+    // Fazer parse do JSON principal
     if (!m_config.Deserialize(json_content))
     {
-        Print("ERRO: Falha ao fazer parse do JSON");
+        Print("ERRO: Falha ao fazer parse do JSON principal");
+        Print("Primeiros 200 caracteres do JSON:");
+        Print(StringSubstr(json_content, 0, 200));
         return false;
     }
 
@@ -187,7 +193,7 @@ bool CConfigManager::LoadConfig(string json_content)
         {
             ArrayResize(m_symbols, ArraySize(m_symbols) + 1);
             m_symbols[ArraySize(m_symbols) - 1] = symbol;
-            Print("Símbolo encontrado: ", symbol);
+            Print("Símbolo encontrado no JSON: ", symbol);
         }
     }
 
@@ -200,41 +206,123 @@ bool CConfigManager::LoadConfig(string json_content)
 //+------------------------------------------------------------------+
 bool CConfigManager::LoadConfigFromFile(string file_path)
 {
-    int file_handle = FileOpen(file_path, FILE_READ | FILE_TXT);
+    Print("Tentando abrir arquivo: ", file_path);
+    
+    // Primeiro tentar na pasta local do EA com encoding ANSI
+    int file_handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_ANSI);
     
     if (file_handle == INVALID_HANDLE)
     {
-        // Tentar com FILE_COMMON
-        file_handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_COMMON);
+        Print("Arquivo não encontrado na pasta local, tentando pasta Common...");
+        // Tentar com FILE_COMMON e ANSI
+        file_handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_COMMON | FILE_ANSI);
         if (file_handle == INVALID_HANDLE)
         {
-            Print("ERRO: Arquivo não encontrado: ", file_path);
-            return false;
+            // Última tentativa com UTF-8
+            Print("Tentando com UTF-8...");
+            file_handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_COMMON);
+            if (file_handle == INVALID_HANDLE)
+            {
+                Print("ERRO: Arquivo não encontrado: ", file_path);
+                Print("Verificar se arquivo existe em:");
+                Print("1. Terminal_Data_Folder\\MQL5\\Files\\", file_path);
+                Print("2. Common_Data_Folder\\Files\\", file_path);
+                return false;
+            }
+            else
+            {
+                Print("Arquivo encontrado na pasta Common (UTF-8)");
+            }
         }
         else
         {
-            Print("Arquivo encontrado na pasta Common");
+            Print("Arquivo encontrado na pasta Common (ANSI)");
         }
     }
     else
     {
-        Print("Arquivo encontrado na pasta local");
+        Print("Arquivo encontrado na pasta local do EA (ANSI)");
     }
 
-    // Ler o arquivo
+    // Obter tamanho do arquivo
+    ulong file_size = FileSize(file_handle);
+    Print("Tamanho do arquivo: ", file_size, " bytes");
+    
+    // Resetar posição do arquivo
+    FileSeek(file_handle, 0, SEEK_SET);
+    
+    // Ler arquivo linha por linha (método mais confiável)
     string json_content = "";
+    int lines_read = 0;
+    
+    Print("Lendo arquivo linha por linha...");
     while (!FileIsEnding(file_handle))
     {
         string line = FileReadString(file_handle);
-        if (StringLen(line) > 0)
+        if(StringLen(line) > 0)
         {
             json_content += line;
+            Print("Linha ", lines_read + 1, " (", StringLen(line), " chars): ", StringSubstr(line, 0, MathMin(60, StringLen(line))));
+        }
+        lines_read++;
+        
+        // Segurança para evitar loop infinito
+        if(lines_read > 1000)
+        {
+            Print("AVISO: Muitas linhas lidas, interrompendo");
+            break;
         }
     }
+    Print("Total de linhas lidas: ", lines_read);
 
     FileClose(file_handle);
     
-    Print("Arquivo carregado com ", StringLen(json_content), " caracteres");
+    Print("Arquivo JSON carregado:");
+    Print("- Caracteres totais: ", StringLen(json_content));
+    
+    if(StringLen(json_content) == 0)
+    {
+        Print("ERRO: Nenhum conteúdo lido do arquivo");
+        return false;
+    }
+    
+    // Verificar se temos caracteres válidos
+    string first_chars = StringSubstr(json_content, 0, MathMin(100, StringLen(json_content)));
+    Print("- Primeiros 100 caracteres: '", first_chars, "'");
+    
+    // Mostrar os últimos caracteres também
+    if(StringLen(json_content) > 100)
+    {
+        string last_chars = StringSubstr(json_content, StringLen(json_content) - 50);
+        Print("- Últimos 50 caracteres: '", last_chars, "'");
+    }
+    
+    // Verificar se começa com { (JSON válido)
+    if(StringLen(json_content) > 0)
+    {
+        ushort first_char = StringGetCharacter(json_content, 0);
+        ushort last_char = StringGetCharacter(json_content, StringLen(json_content) - 1);
+        Print("- Primeiro caractere (código): ", first_char, " '", CharToString((char)first_char), "'");
+        Print("- Último caractere (código): ", last_char, " '", CharToString((char)last_char), "'");
+        
+        if(first_char == '{' || first_char == 123)
+        {
+            Print("- Arquivo parece ser JSON válido");
+        }
+        else
+        {
+            Print("- AVISO: Arquivo não parece começar com '{' - possível problema de encoding");
+            
+            // Tentar encontrar o primeiro '{'
+            int brace_pos = StringFind(json_content, "{");
+            if(brace_pos >= 0)
+            {
+                json_content = StringSubstr(json_content, brace_pos);
+                Print("- JSON ajustado, novo tamanho: ", StringLen(json_content));
+                Print("- Novos primeiros 50 caracteres: '", StringSubstr(json_content, 0, 50), "'");
+            }
+        }
+    }
 
     return LoadConfig(json_content);
 }
@@ -317,23 +405,37 @@ bool CConfigManager::CreateContexts()
             Print("ERRO: Configuração não encontrada para símbolo: ", symbol);
             continue;
         }
+        
+        Print("Configuração encontrada para símbolo: ", symbol, " com ", symbol_config.Size(), " timeframes");
 
         for (int t = 0; t < ArraySize(timeframes); t++)
         {
             string tf_str = timeframes[t];
+            Print("Verificando timeframe: ", tf_str);
+            
             CJAVal *tf_config = symbol_config[tf_str];
 
             if (tf_config == NULL)
+            {
+                Print("Timeframe ", tf_str, " não encontrado para ", symbol);
                 continue;
+            }
 
             STimeframeConfig config = ParseTimeframeConfig(tf_config);
+            Print("TimeFrame ", tf_str, " - Enabled: ", config.enabled, " NumCandles: ", config.num_candles);
 
             if (!config.enabled)
+            {
+                Print("TimeFrame ", tf_str, " está desabilitado");
                 continue;
+            }
 
             ENUM_TIMEFRAMES tf = StringToTimeframe(tf_str);
             if (tf == PERIOD_CURRENT)
+            {
+                Print("ERRO: TimeFrame inválido: ", tf_str);
                 continue;
+            }
 
             // Criar novo contexto
             TF_CTX *ctx = new TF_CTX(tf, config.num_candles);
@@ -358,7 +460,7 @@ bool CConfigManager::CreateContexts()
             m_contexts[ArraySize(m_contexts) - 1] = ctx;
             m_context_keys[ArraySize(m_context_keys) - 1] = key;
 
-            Print("Contexto criado: ", key);
+            Print("Contexto criado com sucesso: ", key);
         }
     }
 
@@ -421,6 +523,7 @@ void CConfigManager::Cleanup()
     ArrayResize(m_contexts, 0);
     ArrayResize(m_context_keys, 0);
     ArrayResize(m_symbols, 0);
+    m_config.Clear();
     m_initialized = false;
 }
 
@@ -436,6 +539,7 @@ bool CConfigManager::TestJSONParsing()
     if(result)
     {
         Print("Teste básico de JSON: SUCESSO");
+        Print("Valor teste: ", test_config["test"].ToStr());
     }
     else
     {
@@ -499,6 +603,7 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
     
     if (tf_config == NULL)
     {
+        Print("ERRO: tf_config é NULL");
         config.enabled = false;
         config.num_candles = 0;
         return config;
@@ -508,11 +613,15 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
     config.enabled = tf_config["enabled"].ToBool();
     config.num_candles = (int)tf_config["num_candles"].ToInt();
 
+    Print("Parseando timeframe - Enabled: ", config.enabled, " NumCandles: ", config.num_candles);
+
     // Configurações de médias móveis
     CJAVal *ma_config = tf_config["moving_averages"];
     
     if (ma_config != NULL)
     {
+        Print("Configurações de médias móveis encontradas");
+        
         // EMA9
         CJAVal *ema9 = ma_config["ema9"];
         if (ema9 != NULL)
@@ -520,6 +629,7 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
             config.ema9.period = (int)ema9["period"].ToInt();
             config.ema9.method = StringToMAMethod(ema9["method"].ToStr());
             config.ema9.enabled = ema9["enabled"].ToBool();
+            Print("EMA9 - Period: ", config.ema9.period, " Method: ", ema9["method"].ToStr(), " Enabled: ", config.ema9.enabled);
         }
 
         // EMA21
@@ -529,6 +639,7 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
             config.ema21.period = (int)ema21["period"].ToInt();
             config.ema21.method = StringToMAMethod(ema21["method"].ToStr());
             config.ema21.enabled = ema21["enabled"].ToBool();
+            Print("EMA21 - Period: ", config.ema21.period, " Method: ", ema21["method"].ToStr(), " Enabled: ", config.ema21.enabled);
         }
 
         // EMA50
@@ -538,6 +649,7 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
             config.ema50.period = (int)ema50["period"].ToInt();
             config.ema50.method = StringToMAMethod(ema50["method"].ToStr());
             config.ema50.enabled = ema50["enabled"].ToBool();
+            Print("EMA50 - Period: ", config.ema50.period, " Method: ", ema50["method"].ToStr(), " Enabled: ", config.ema50.enabled);
         }
 
         // SMA200
@@ -547,7 +659,12 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
             config.sma200.period = (int)sma200["period"].ToInt();
             config.sma200.method = StringToMAMethod(sma200["method"].ToStr());
             config.sma200.enabled = sma200["enabled"].ToBool();
+            Print("SMA200 - Period: ", config.sma200.period, " Method: ", sma200["method"].ToStr(), " Enabled: ", config.sma200.enabled);
         }
+    }
+    else
+    {
+        Print("AVISO: Configurações de médias móveis não encontradas");
     }
 
     return config;
