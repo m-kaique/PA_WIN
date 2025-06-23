@@ -1,26 +1,25 @@
 //+------------------------------------------------------------------+
 //|                                               config_types.mqh   |
-//|  Structures for timeframe and moving average configuration       |
+//|  Structures for timeframe and indicator configuration            |
 //+------------------------------------------------------------------+
 
 #ifndef __CONFIG_TYPES_MQH__
 #define __CONFIG_TYPES_MQH__
 
-struct SMovingAverageConfig
+struct SIndicatorConfig
 {
-    int period;
+    string name;
+    string type;
+    int    period;
     ENUM_MA_METHOD method;
-    bool enabled;
+    bool   enabled;
 };
 
 struct STimeframeConfig
 {
     bool enabled;
-    int num_candles;
-    SMovingAverageConfig ema9;
-    SMovingAverageConfig ema21;
-    SMovingAverageConfig ema50;
-    SMovingAverageConfig sma200;
+    int  num_candles;
+    SIndicatorConfig indicators[];
 };
 
 #endif // __CONFIG_TYPES_MQH__
