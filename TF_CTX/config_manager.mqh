@@ -41,7 +41,6 @@ public:
     ~CConfigManager();
 
     // Inicialização
-    bool Init(string json_content);
     bool InitFromFile(string file_path);
 
     // Métodos públicos
