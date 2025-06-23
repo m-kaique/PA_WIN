@@ -239,10 +239,12 @@ bool CConfigManager::LoadConfigFromFile(string file_path)
         Print("Arquivo encontrado na pasta local");
     }
 
-    // Ler o conteúdo inteiro do arquivo
+    // Ler o conteúdo inteiro do arquivo respeitando CP_UTF8
     int file_size = (int)FileSize(file_handle);
     FileSeek(file_handle, 0, SEEK_SET);
-    string json_content = FileReadString(file_handle, file_size);
+    uchar data[];
+    int read = FileReadArray(file_handle, data, 0, file_size);
+    string json_content = CharArrayToString(data, 0, read, CP_UTF8);
 
     FileClose(file_handle);
 
