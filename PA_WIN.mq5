@@ -12,63 +12,7 @@
 #include "TF_CTX/config_manager.mqh"
 
 // Configuração hardcoded em JSON (CORRIGIDA - removida vírgula extra)
-const string HARDCODED_CONFIG = 
-"{"
-"   \"WIN$N\": {"
-"      \"D1\": {"
-"         \"enabled\": true,"
-"         \"num_candles\": 9,"
-"         \"moving_averages\": {"
-"            \"ema9\": {"
-"               \"period\": 9,"
-"               \"method\": \"EMA\","
-"               \"enabled\": true"
-"            },"
-"            \"ema21\": {"
-"               \"period\": 21,"
-"               \"method\": \"EMA\","
-"               \"enabled\": true"
-"            },"
-"            \"ema50\": {"
-"               \"period\": 50,"
-"               \"method\": \"EMA\","
-"               \"enabled\": false"
-"            },"
-"            \"sma200\": {"
-"               \"period\": 200,"
-"               \"method\": \"SMA\","
-"               \"enabled\": false"
-"            }"
-"         }"
-"      },"
-"      \"H4\": {"
-"         \"enabled\": true,"
-"         \"num_candles\": 18,"
-"         \"moving_averages\": {"
-"            \"ema9\": {"
-"               \"period\": 9,"
-"               \"method\": \"SMA\","
-"               \"enabled\": true"
-"            },"
-"            \"ema21\": {"
-"               \"period\": 21,"
-"               \"method\": \"EMA\","
-"               \"enabled\": false"
-"            },"
-"            \"ema50\": {"
-"               \"period\": 50,"
-"               \"method\": \"EMA\","
-"               \"enabled\": false"
-"            },"
-"            \"sma200\": {"
-"               \"period\": 200,"
-"               \"method\": \"SMA\","
-"               \"enabled\": true"
-"            }"
-"         }"
-"      }"
-"   }"
-"}";
+const string HARDCODED_CONFIG ="";
 
 // Gerenciador de configuração
 CConfigManager* g_config_manager;
@@ -219,25 +163,6 @@ void ExecuteOnNewBar()
       Print("AVISO: Contexto D1 não encontrado para símbolo: ", configured_symbol);
    }
    
-   // Obter contexto H4 se habilitado
-   TF_CTX* H4_ctx = g_config_manager.GetContext(configured_symbol, PERIOD_H4);
-   if(H4_ctx != NULL)
-   {
-      H4_ctx.Update();
-      
-      Print("=== Contexto H4 ===");
-      for(int i = 1; i < 3; i++)
-      {
-         double ema9 = H4_ctx.get_ema9(i);
-         double sma200 = H4_ctx.get_sma_200(i);
-         Print("EMA9 H4 Shift: ", i, " = ", ema9);
-         Print("SMA200 H4 Shift: ", i, " = ", sma200);
-      }
-   }
-   else
-   {
-      Print("AVISO: Contexto H4 não encontrado para símbolo: ", configured_symbol);
-   }
 }
 
 //+------------------------------------------------------------------+
