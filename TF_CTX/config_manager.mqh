@@ -274,8 +274,11 @@ bool CConfigManager::LoadConfigFromFile(string file_path)
 bool CConfigManager::CreateContexts()
 {
     Print("Criando contextos a partir da configuração JSON...");
-    
-    string timeframes[] = {"D1", "H4", "H1", "M30", "M15", "M5", "M1"};
+
+    // Itera todos os símbolos configurados e, para cada um,
+    // percorre dinamicamente as chaves de timeframe existentes
+    // no nó do JSON. Isso permite adicionar novos timeframes ao
+    // arquivo de configuração sem modificar o código fonte.
 
     for (int s = 0; s < ArraySize(m_symbols); s++)
     {
@@ -291,11 +294,11 @@ bool CConfigManager::CreateContexts()
         
         Print("Configuração encontrada para símbolo: ", symbol, " com ", symbol_config.Size(), " timeframes");
 
-        for (int t = 0; t < ArraySize(timeframes); t++)
+        for (int t = 0; t < symbol_config.Size(); t++)
         {
-            string tf_str = timeframes[t];
-            Print("Verificando timeframe: ", tf_str);
-            
+            string tf_str = symbol_config.children[t].key;
+            Print("Processando timeframe: ", tf_str);
+
             CJAVal *tf_config = symbol_config[tf_str];
 
             if (tf_config == NULL)
