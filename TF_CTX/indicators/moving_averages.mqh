@@ -38,6 +38,9 @@ public:
     
     // Método para obter valor da média móvel
     double          GetValue(int shift = 0);
+
+    // Obter múltiplos valores da média móvel
+    bool            CopyValues(int shift, int count, double &buffer[]);
     
     // Verificar se os indicadores estão prontos
     bool            IsReady();
@@ -138,6 +141,29 @@ double CMovingAverages::GetIndicatorValue(int handle, int shift = 0)
 double CMovingAverages::GetValue(int shift = 0)
 {
     return GetIndicatorValue(m_handle, shift);
+}
+
+//+------------------------------------------------------------------+
+//| Copiar múltiplos valores da média móvel                        |
+//+------------------------------------------------------------------+
+bool CMovingAverages::CopyValues(int shift, int count, double &buffer[])
+{
+    if(m_handle == INVALID_HANDLE)
+    {
+        Print("ERRO: Handle do indicador inválido");
+        return false;
+    }
+
+    ArrayResize(buffer, count);
+    ArraySetAsSeries(buffer, true);
+
+    if(CopyBuffer(m_handle, 0, shift, count, buffer) <= 0)
+    {
+        Print("ERRO: Falha ao copiar dados do indicador");
+        return false;
+    }
+
+    return true;
 }
 
 //+------------------------------------------------------------------+

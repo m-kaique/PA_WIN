@@ -8,6 +8,7 @@
 #property version   "1.01"
 
 #include "indicators/moving_averages.mqh"
+#include "config_types.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe principal para contexto de TimeFrame                     |
@@ -19,6 +20,12 @@ private:
     int                 m_num_candles;      // Número de velas para análise (não usado para período das médias)
     string              m_symbol;           // Símbolo atual
     bool                m_initialized;      // Flag de inicialização
+
+    // Configuração das médias móveis
+    SMovingAverageConfig m_ema9_cfg;
+    SMovingAverageConfig m_ema21_cfg;
+    SMovingAverageConfig m_ema50_cfg;
+    SMovingAverageConfig m_sma200_cfg;
     
     // Instâncias dos submódulos de médias móveis (cada uma com seu período específico)
     CMovingAverages*    m_ema9;     // EMA com período 9
@@ -31,8 +38,12 @@ private:
     void                CleanUp();
 
 public:
-    // Construtor
-                        TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles = 0);
+    // Construtor com configuração de médias móveis
+                        TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles,
+                               SMovingAverageConfig ema9_cfg,
+                               SMovingAverageConfig ema21_cfg,
+                               SMovingAverageConfig ema50_cfg,
+                               SMovingAverageConfig sma200_cfg);
     
     // Destrutor
                        ~TF_CTX();
@@ -45,6 +56,9 @@ public:
     double              get_ema21(int shift = 0);
     double              get_ema50(int shift = 0);
     double              get_sma_200(int shift = 0);
+
+    // Obter array com os últimos m_num_candles valores de cada média
+    bool                get_recent_values(double &ema9[], double &ema21[], double &ema50[], double &sma200[]);
     
     // Métodos auxiliares
     bool                IsInitialized() const { return m_initialized; }
@@ -59,15 +73,25 @@ public:
 //+------------------------------------------------------------------+
 //| Construtor da classe TF_CTX                                     |
 //+------------------------------------------------------------------+
-TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles = 0)
+TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles,
+               SMovingAverageConfig ema9_cfg,
+               SMovingAverageConfig ema21_cfg,
+               SMovingAverageConfig ema50_cfg,
+               SMovingAverageConfig sma200_cfg)
 {
-    m_timeframe = timeframe;
-    m_num_candles = num_candles; // Usado apenas para referência, não para período das médias
-    m_symbol = Symbol();
+    m_timeframe   = timeframe;
+    m_num_candles = num_candles; // Usado apenas para referência
+    m_symbol      = Symbol();
     m_initialized = false;
-    m_ema9 = NULL;
-    m_ema21 = NULL;
-    m_ema50 = NULL;
+
+    m_ema9_cfg    = ema9_cfg;
+    m_ema21_cfg   = ema21_cfg;
+    m_ema50_cfg   = ema50_cfg;
+    m_sma200_cfg  = sma200_cfg;
+
+    m_ema9   = NULL;
+    m_ema21  = NULL;
+    m_ema50  = NULL;
     m_sma200 = NULL;
 }
 
@@ -90,33 +114,61 @@ bool TF_CTX::Init()
         return false;
     }
     
-    // Criar instâncias dos submódulos de médias móveis
-    m_ema9 = new CMovingAverages();
-    m_ema21 = new CMovingAverages();
-    m_ema50 = new CMovingAverages();
-    m_sma200 = new CMovingAverages();
-    
-    if(m_ema9 == NULL || m_ema21 == NULL || m_ema50 == NULL || m_sma200 == NULL)
+    // Criar e inicializar médias móveis conforme configuração
+    if(m_ema9_cfg.enabled)
     {
-        Print("ERRO: Falha ao criar instâncias dos submódulos de médias móveis");
-        CleanUp();
-        return false;
+        m_ema9 = new CMovingAverages();
+        if(m_ema9 == NULL || !m_ema9.Init(m_symbol, m_timeframe, m_ema9_cfg.period, m_ema9_cfg.method))
+        {
+            Print("ERRO: Falha ao inicializar EMA9");
+            CleanUp();
+            return false;
+        }
     }
-    
-    // CORREÇÃO: Inicializar cada submódulo com SEU PERÍODO ESPECÍFICO
-    if(!m_ema9.Init(m_symbol, m_timeframe, 9, MODE_EMA) ||      // EMA com período 9
-       !m_ema21.Init(m_symbol, m_timeframe, 21, MODE_EMA) ||    // EMA com período 21
-       !m_ema50.Init(m_symbol, m_timeframe, 50, MODE_EMA) ||    // EMA com período 50
-       !m_sma200.Init(m_symbol, m_timeframe, 200, MODE_SMA))    // SMA com período 200
+
+    if(m_ema21_cfg.enabled)
     {
-        Print("ERRO: Falha ao inicializar submódulos de médias móveis");
-        CleanUp();
-        return false;
+        m_ema21 = new CMovingAverages();
+        if(m_ema21 == NULL || !m_ema21.Init(m_symbol, m_timeframe, m_ema21_cfg.period, m_ema21_cfg.method))
+        {
+            Print("ERRO: Falha ao inicializar EMA21");
+            CleanUp();
+            return false;
+        }
+    }
+
+    if(m_ema50_cfg.enabled)
+    {
+        m_ema50 = new CMovingAverages();
+        if(m_ema50 == NULL || !m_ema50.Init(m_symbol, m_timeframe, m_ema50_cfg.period, m_ema50_cfg.method))
+        {
+            Print("ERRO: Falha ao inicializar EMA50");
+            CleanUp();
+            return false;
+        }
+    }
+
+    if(m_sma200_cfg.enabled)
+    {
+        m_sma200 = new CMovingAverages();
+        if(m_sma200 == NULL || !m_sma200.Init(m_symbol, m_timeframe, m_sma200_cfg.period, m_sma200_cfg.method))
+        {
+            Print("ERRO: Falha ao inicializar SMA200");
+            CleanUp();
+            return false;
+        }
     }
     
     m_initialized = true;
     Print("TF_CTX inicializado com sucesso: ", m_symbol, " - ", EnumToString(m_timeframe));
-    Print("Médias configuradas: EMA9, EMA21, EMA50, SMA200");
+
+    string ma_list = "";
+    if(m_ema9 != NULL)   ma_list += "EMA9 ";
+    if(m_ema21 != NULL)  ma_list += "EMA21 ";
+    if(m_ema50 != NULL)  ma_list += "EMA50 ";
+    if(m_sma200 != NULL) ma_list += "SMA200 ";
+
+    Print("Médias configuradas: ", ma_list);
     
     return true;
 }
@@ -182,10 +234,10 @@ double TF_CTX::get_ema9(int shift = 0)
 {
     if(!m_initialized || m_ema9 == NULL)
     {
-        Print("ERRO: TF_CTX não inicializado");
+        Print("AVISO: EMA9 não habilitada ou contexto não inicializado");
         return 0.0;
     }
-    
+
     return m_ema9.GetValue(shift);
 }
 
@@ -196,10 +248,10 @@ double TF_CTX::get_ema21(int shift = 0)
 {
     if(!m_initialized || m_ema21 == NULL)
     {
-        Print("ERRO: TF_CTX não inicializado");
+        Print("AVISO: EMA21 não habilitada ou contexto não inicializado");
         return 0.0;
     }
-    
+
     return m_ema21.GetValue(shift);
 }
 
@@ -210,10 +262,10 @@ double TF_CTX::get_ema50(int shift = 0)
 {
     if(!m_initialized || m_ema50 == NULL)
     {
-        Print("ERRO: TF_CTX não inicializado");
+        Print("AVISO: EMA50 não habilitada ou contexto não inicializado");
         return 0.0;
     }
-    
+
     return m_ema50.GetValue(shift);
 }
 
@@ -224,10 +276,10 @@ double TF_CTX::get_sma_200(int shift = 0)
 {
     if(!m_initialized || m_sma200 == NULL)
     {
-        Print("ERRO: TF_CTX não inicializado");
+        Print("AVISO: SMA200 não habilitada ou contexto não inicializado");
         return 0.0;
     }
-    
+
     return m_sma200.GetValue(shift);
 }
 
@@ -236,11 +288,37 @@ double TF_CTX::get_sma_200(int shift = 0)
 //+------------------------------------------------------------------+
 bool TF_CTX::Update()
 {
-    if(!m_initialized || m_ema9 == NULL || m_ema21 == NULL || m_ema50 == NULL || m_sma200 == NULL)
+    if(!m_initialized)
     {
         Print("ERRO: TF_CTX não inicializado para atualização");
         return false;
     }
-    
-    return (m_ema9.IsReady() && m_ema21.IsReady() && m_ema50.IsReady() && m_sma200.IsReady());
+
+    bool ready = true;
+    if(m_ema9 != NULL)   ready &= m_ema9.IsReady();
+    if(m_ema21 != NULL)  ready &= m_ema21.IsReady();
+    if(m_ema50 != NULL)  ready &= m_ema50.IsReady();
+    if(m_sma200 != NULL) ready &= m_sma200.IsReady();
+
+    return ready;
+}
+
+//+------------------------------------------------------------------+
+//| Copiar últimos valores das médias                               |
+//+------------------------------------------------------------------+
+bool TF_CTX::get_recent_values(double &ema9[], double &ema21[], double &ema50[], double &sma200[])
+{
+    if(!m_initialized)
+    {
+        Print("ERRO: TF_CTX não inicializado");
+        return false;
+    }
+
+    bool ok = true;
+    if(m_ema9 != NULL)   ok &= m_ema9.CopyValues(0, m_num_candles, ema9);
+    if(m_ema21 != NULL)  ok &= m_ema21.CopyValues(0, m_num_candles, ema21);
+    if(m_ema50 != NULL)  ok &= m_ema50.CopyValues(0, m_num_candles, ema50);
+    if(m_sma200 != NULL) ok &= m_sma200.CopyValues(0, m_num_candles, sma200);
+
+    return ok;
 }

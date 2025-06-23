@@ -10,29 +10,7 @@
 
 #include "../utils/JAson.mqh"
 #include "tf_ctx.mqh"
-
-//+------------------------------------------------------------------+
-//| Estrutura para configuração de média móvel                      |
-//+------------------------------------------------------------------+
-struct SMovingAverageConfig
-{
-    int period;
-    ENUM_MA_METHOD method;
-    bool enabled;
-};
-
-//+------------------------------------------------------------------+
-//| Estrutura para configuração de timeframe                        |
-//+------------------------------------------------------------------+
-struct STimeframeConfig
-{
-    bool enabled;
-    int num_candles;
-    SMovingAverageConfig ema9;
-    SMovingAverageConfig ema21;
-    SMovingAverageConfig ema50;
-    SMovingAverageConfig sma200;
-};
+#include "config_types.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe para gerenciar configurações e contextos                 |
@@ -345,8 +323,14 @@ bool CConfigManager::CreateHardcodedConfig()
         m_symbols[ArraySize(m_symbols) - 1] = symbol;
         Print("Símbolo hardcoded adicionado: ", symbol);
         
+        // Criar configuração padrão de médias
+        SMovingAverageConfig def_ema9   = {9,  MODE_EMA,  true};
+        SMovingAverageConfig def_ema21  = {21, MODE_EMA,  true};
+        SMovingAverageConfig def_ema50  = {50, MODE_EMA,  true};
+        SMovingAverageConfig def_sma200 = {200, MODE_SMA, true};
+
         // Criar contexto D1
-        TF_CTX* ctx_d1 = new TF_CTX(PERIOD_D1, 9);
+        TF_CTX* ctx_d1 = new TF_CTX(PERIOD_D1, 9, def_ema9, def_ema21, def_ema50, def_sma200);
         if(ctx_d1 != NULL && ctx_d1.Init())
         {
             string key_d1 = CreateContextKey(symbol, PERIOD_D1);
@@ -360,7 +344,7 @@ bool CConfigManager::CreateHardcodedConfig()
         }
         
         // Criar contexto H4
-        TF_CTX* ctx_h4 = new TF_CTX(PERIOD_H4, 18);
+        TF_CTX* ctx_h4 = new TF_CTX(PERIOD_H4, 18, def_ema9, def_ema21, def_ema50, def_sma200);
         if(ctx_h4 != NULL && ctx_h4.Init())
         {
             string key_h4 = CreateContextKey(symbol, PERIOD_H4);
@@ -431,8 +415,12 @@ bool CConfigManager::CreateContexts()
                 continue;
             }
 
-            // Criar novo contexto
-            TF_CTX *ctx = new TF_CTX(tf, config.num_candles);
+            // Criar novo contexto com configuração de médias móveis
+            TF_CTX *ctx = new TF_CTX(tf, config.num_candles,
+                                    config.ema9,
+                                    config.ema21,
+                                    config.ema50,
+                                    config.sma200);
             if (ctx == NULL)
             {
                 Print("ERRO: Falha ao criar contexto para ", symbol, " ", tf_str);
