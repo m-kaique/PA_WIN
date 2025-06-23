@@ -200,12 +200,13 @@ bool CConfigManager::LoadConfig(string json_content)
 //+------------------------------------------------------------------+
 bool CConfigManager::LoadConfigFromFile(string file_path)
 {
-    int file_handle = FileOpen(file_path, FILE_READ | FILE_TXT);
+    // Abrir o arquivo como texto em UTF-8
+    int file_handle = FileOpen(file_path, FILE_READ | FILE_TXT, '\n', CP_UTF8);
     
     if (file_handle == INVALID_HANDLE)
     {
-        // Tentar com FILE_COMMON
-        file_handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_COMMON);
+        // Tentar no diretório comum de arquivos
+        file_handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_COMMON, '\n', CP_UTF8);
         if (file_handle == INVALID_HANDLE)
         {
             Print("ERRO: Arquivo não encontrado: ", file_path);
@@ -233,7 +234,8 @@ bool CConfigManager::LoadConfigFromFile(string file_path)
     }
 
     FileClose(file_handle);
-    
+
+    json_content = StringTrim(json_content);
     Print("Arquivo carregado com ", StringLen(json_content), " caracteres");
 
     return LoadConfig(json_content);
