@@ -17,6 +17,14 @@
 #include "../utils/JAson.mqh"
 #include "tf_ctx.mqh"
 
+// Função auxiliar para remover espaços em branco de uma string
+string TrimString(string value)
+{
+    StringTrimLeft(value);
+    StringTrimRight(value);
+    return value;
+}
+
 //+------------------------------------------------------------------+
 //| Estrutura para configuração de média móvel                      |
 //+------------------------------------------------------------------+
@@ -235,7 +243,7 @@ bool CConfigManager::LoadConfigFromFile(string file_path)
 
     FileClose(file_handle);
 
-    json_content = StringTrim(json_content);
+    json_content = TrimString(json_content);
     Print("Arquivo carregado com ", StringLen(json_content), " caracteres");
 
     return LoadConfig(json_content);
