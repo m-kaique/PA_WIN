@@ -420,7 +420,7 @@ void CConfigManager::Cleanup()
 //+------------------------------------------------------------------+
 bool CConfigManager::TestJSONParsing()
 {
-    string test_json = "{\"test\":\"value\"}";
+    string test_json = "{\"key\":\"value\"}";
     CJAVal test_config;
     
     bool result = test_config.Deserialize(test_json);
