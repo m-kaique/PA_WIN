@@ -230,16 +230,10 @@ bool CConfigManager::LoadConfigFromFile(string file_path)
         Print("Arquivo encontrado na pasta local");
     }
 
-    // Ler o arquivo
-    string json_content = "";
-    while (!FileIsEnding(file_handle))
-    {
-        string line = FileReadString(file_handle);
-        if (StringLen(line) > 0)
-        {
-            json_content += line;
-        }
-    }
+    // Ler o conteúdo inteiro do arquivo
+    int file_size = (int)FileSize(file_handle);
+    FileSeek(file_handle, 0, SEEK_SET);
+    string json_content = FileReadString(file_handle, file_size);
 
     FileClose(file_handle);
 
