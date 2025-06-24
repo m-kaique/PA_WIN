@@ -92,6 +92,7 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
 - **`moving_averages.mqh`**: Implementa a classe `CMovingAverages`, derivada de `CIndicatorBase`, responsável por criar e gerenciar indicadores de média móvel.
 - **`stochastic.mqh`**: Implementa a classe `CStochastic`, derivada de `CIndicatorBase`, responsável pelo cálculo do indicador Estocástico.
 - **`volume.mqh`**: Implementa a classe `CVolume`, derivada de `CIndicatorBase`, responsável por acessar valores de volume.
+- **`fibonacci.mqh`**: Implementa o indicador `CFibonacci`, capaz de desenhar níveis de retração e extensões de Fibonacci com total customização via JSON.
 
 
 
@@ -665,6 +666,13 @@ Esta seção detalha as principais funções e classes encontradas no código do
     - `shift` (`int`): Deslocamento base para indicadores que utilizam série de preços (ex: Volume).
     - `price_field` (`ENUM_STO_PRICE`): Campo de preço utilizado.
     - `enabled` (`bool`): Indica se o indicador está habilitado.
+    - `level_1` a `level_6` (`double`): Valores dos níveis de retração de Fibonacci.
+    - `levels_color`, `levels_style`, `levels_width`: Aparência das linhas de retração.
+    - `ext_1` a `ext_3` (`double`): Valores das extensões (ex.: 127, 161.8).
+    - `extensions_color`, `extensions_style`, `extensions_width`: Aparência das extensões.
+    - `parallel_color`, `parallel_style`, `parallel_width`: Linha principal do objeto.
+    - `show_labels` (`bool`): Habilita rótulos de preço/percentual.
+    - `labels_color`, `labels_font_size`, `labels_font`: Aparência dos textos.
 
 - **`STimeframeConfig`**
   - **Descrição simplificada**: Configuração para um timeframe específico contendo uma lista de indicadores.
@@ -836,7 +844,19 @@ O arquivo `config.json` é o coração da flexibilidade do PA_WIN. Abaixo está 
         -   Exemplo de indicador:
             -   `"period"`: Inteiro que define o período do indicador (ex: 9 para EMA9, 21 para EMA21).
             -   `"method"`: String que especifica o método do indicador (ex: "EMA" para Média Móvel Exponencial, "SMA" para Média Móvel Simples). Deve corresponder aos métodos suportados pelo MQL5.
-            -   `"enabled"`: Booleano que indica se este indicador específica está habilitada (`true`) ou desativada (`false`) para este timeframe.
+         -   `"enabled"`: Booleano que indica se este indicador específica está habilitada (`true`) ou desativada (`false`) para este timeframe.
+
+### Paleta de Cores Disponível
+
+Os campos `LevelsColor`, `ExtensionsColor`, `ParallelColor` e `LabelsColor` utilizam nomes de cores em formato de string. As cores reconhecidas atualmente são:
+
+- `Red`
+- `Blue`
+- `Yellow`
+- `Green`
+- `Orange`
+- `White`
+- `Black`
 
 ### Cenários Típicos de Uso
 
@@ -916,3 +936,8 @@ Esta seção registra as principais alterações e versões dos componentes do E
 ### volume.mqh
 
 -   **Versao 1.00**: Implementa o indicador de Volume derivado de `CIndicatorBase`.
+
+### fibonacci.mqh
+
+-   **Versao 1.00**: Implementa o indicador de retração de Fibonacci derivado de `CIndicatorBase`.
+-   **Versao 2.00**: Suporte a extensões, estilos configuráveis e rótulos personalizados via JSON.

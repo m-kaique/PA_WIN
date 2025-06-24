@@ -33,6 +33,8 @@ private:
     ENUM_MA_METHOD StringToMAMethod(string method_str);
     ENUM_STO_PRICE StringToPriceField(string field_str);
     ENUM_APPLIED_PRICE StringToAppliedPrice(string price_str);
+    ENUM_LINE_STYLE StringToLineStyle(string style_str);
+    color StringToColor(string color_str);
     STimeframeConfig ParseTimeframeConfig(CJAVal *tf_config);
     string CreateContextKey(string symbol, ENUM_TIMEFRAMES tf);
     bool TestJSONParsing();
@@ -507,6 +509,36 @@ ENUM_APPLIED_PRICE CConfigManager::StringToAppliedPrice(string price_str)
 }
 
 //+------------------------------------------------------------------+
+//| Converter string para estilo de linha                            |
+//+------------------------------------------------------------------+
+ENUM_LINE_STYLE CConfigManager::StringToLineStyle(string style_str)
+{
+    if(style_str=="SOLID") return STYLE_SOLID;
+    if(style_str=="DASH")  return STYLE_DASH;
+    if(style_str=="DOT")   return STYLE_DOT;
+    if(style_str=="DASHDOT") return STYLE_DASHDOT;
+    if(style_str=="DASHDOTDOT") return STYLE_DASHDOTDOT;
+    return STYLE_SOLID;
+}
+
+//+------------------------------------------------------------------+
+//| Converter string para cor                                        |
+//+------------------------------------------------------------------+
+color CConfigManager::StringToColor(string color_str)
+{
+    if(color_str=="Red")    return clrRed;
+    if(color_str=="Blue")   return clrBlue;
+    if(color_str=="Yellow") return clrYellow;
+    if(color_str=="Green")  return clrGreen;
+    if(color_str=="Orange") return clrOrange;
+    if(color_str=="White")  return clrWhite;
+    if(color_str=="Black")  return clrBlack;
+    if(StringLen(color_str)>0)
+       return (color)StringToInteger(color_str);
+    return clrNONE;
+}
+
+//+------------------------------------------------------------------+
 //| Fazer parse da configuração do timeframe                        |
 //+------------------------------------------------------------------+
 STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
@@ -538,7 +570,7 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
             CJAVal *ind = (*ind_array)[i];
             if(ind==NULL) continue;
 
-            SIndicatorConfig icfg;
+            SIndicatorConfig icfg; icfg.InitDefaults();
             icfg.name    = ind["name"].ToStr();
             icfg.type    = ind["type"].ToStr();
             icfg.period  = (int)ind["period"].ToInt();
@@ -550,6 +582,33 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
             icfg.deviation = ind["deviation"].ToDbl();
             icfg.applied_price = StringToAppliedPrice(ind["applied_price"].ToStr());
             icfg.enabled = ind["enabled"].ToBool();
+            icfg.level_1 = ind["Level_1"].ToDbl();
+            icfg.level_2 = ind["Level_2"].ToDbl();
+            icfg.level_3 = ind["Level_3"].ToDbl();
+            icfg.level_4 = ind["Level_4"].ToDbl();
+            icfg.level_5 = ind["Level_5"].ToDbl();
+            icfg.level_6 = ind["Level_6"].ToDbl();
+            string col=ind["LevelsColor"].ToStr();
+            icfg.levels_color = StringToColor(col);
+            icfg.levels_style = StringToLineStyle(ind["LevelsStyle"].ToStr());
+            icfg.levels_width = (int)ind["LevelsWidth"].ToInt();
+            icfg.ext_1 = ind["Ext_1"].ToDbl();
+            icfg.ext_2 = ind["Ext_2"].ToDbl();
+            icfg.ext_3 = ind["Ext_3"].ToDbl();
+            col=ind["ExtensionsColor"].ToStr();
+            icfg.extensions_color = StringToColor(col);
+            icfg.extensions_style = StringToLineStyle(ind["ExtensionsStyle"].ToStr());
+            icfg.extensions_width = (int)ind["ExtensionsWidth"].ToInt();
+            col=ind["ParallelColor"].ToStr();
+            icfg.parallel_color = StringToColor(col);
+            icfg.parallel_style = StringToLineStyle(ind["ParallelStyle"].ToStr());
+            icfg.parallel_width = (int)ind["ParallelWidth"].ToInt();
+            icfg.show_labels = ind["ShowLabels"].ToBool();
+            col=ind["LabelsColor"].ToStr();
+            icfg.labels_color = StringToColor(col);
+            icfg.labels_font_size = (int)ind["LabelsFontSize"].ToInt();
+            string font=ind["LabelsFont"].ToStr();
+            if(StringLen(font)>0) icfg.labels_font=font;
 
             int pos = ArraySize(config.indicators);
             ArrayResize(config.indicators,pos+1);

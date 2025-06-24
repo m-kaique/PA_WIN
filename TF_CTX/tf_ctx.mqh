@@ -10,6 +10,7 @@
 #include "indicators/stochastic.mqh"
 #include "indicators/volume.mqh"
 #include "indicators/bollinger.mqh"
+#include "indicators/fibonacci.mqh"
 #include "config_types.mqh"
 
 //+------------------------------------------------------------------+
@@ -136,6 +137,17 @@ bool TF_CTX::Init()
             return false;
            }
         }
+      else if(m_cfg[i].type=="FIBO")
+        {
+         ind = new CFibonacci();
+         if(ind==NULL || !((CFibonacci*)ind).Init(m_symbol, m_timeframe, m_cfg[i]))
+           {
+            Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+            delete ind;
+            CleanUp();
+            return false;
+           }
+        }
       else
         {
          Print("Tipo de indicador nao suportado: ", m_cfg[i].type);
@@ -219,11 +231,11 @@ bool TF_CTX::Update()
    if(!m_initialized)
      return false;
 
-   bool ready=true;
-   for(int i=0;i<ArraySize(m_indicators);i++)
-      if(m_indicators[i]!=NULL)
-         ready &= m_indicators[i].IsReady();
-   return ready;
+  bool ready=true;
+  for(int i=0;i<ArraySize(m_indicators);i++)
+     if(m_indicators[i]!=NULL)
+        ready &= m_indicators[i].Update();
+  return ready;
   }
 
 //+------------------------------------------------------------------+
