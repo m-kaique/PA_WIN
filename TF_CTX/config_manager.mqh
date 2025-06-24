@@ -31,6 +31,7 @@ private:
     string TimeframeToString(ENUM_TIMEFRAMES tf);
     ENUM_TIMEFRAMES StringToTimeframe(string tf_str);
     ENUM_MA_METHOD StringToMAMethod(string method_str);
+    ENUM_STO_PRICE StringToPriceField(string field_str);
     STimeframeConfig ParseTimeframeConfig(CJAVal *tf_config);
     string CreateContextKey(string symbol, ENUM_TIMEFRAMES tf);
     bool TestJSONParsing();
@@ -481,6 +482,16 @@ ENUM_MA_METHOD CConfigManager::StringToMAMethod(string method_str)
 }
 
 //+------------------------------------------------------------------+
+//| Converter string para price field do Estocástico                 |
+//+------------------------------------------------------------------+
+ENUM_STO_PRICE CConfigManager::StringToPriceField(string field_str)
+{
+    if(field_str == "CLOSECLOSE" || field_str == "CLOSE_CLOSE")
+        return STO_CLOSECLOSE;
+    return STO_LOWHIGH;
+}
+
+//+------------------------------------------------------------------+
 //| Fazer parse da configuração do timeframe                        |
 //+------------------------------------------------------------------+
 STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
@@ -517,6 +528,9 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
             icfg.type    = ind["type"].ToStr();
             icfg.period  = (int)ind["period"].ToInt();
             icfg.method  = StringToMAMethod(ind["method"].ToStr());
+            icfg.dperiod = (int)ind["dperiod"].ToInt();
+            icfg.slowing = (int)ind["slowing"].ToInt();
+            icfg.price_field = StringToPriceField(ind["price_field"].ToStr());
             icfg.enabled = ind["enabled"].ToBool();
 
             int pos = ArraySize(config.indicators);

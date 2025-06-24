@@ -12,6 +12,9 @@ struct SIndicatorConfig
     string type;
     int    period;
     ENUM_MA_METHOD method;
+    int    dperiod;
+    int    slowing;
+    ENUM_STO_PRICE price_field;
     bool   enabled;
 };
 

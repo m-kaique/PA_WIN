@@ -90,6 +90,7 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
 - **`indicator_base.mqh`**: Declara a classe abstrata `CIndicatorBase`, utilizada como interface para os diversos tipos de indicadores.
 
 - **`moving_averages.mqh`**: Implementa a classe `CMovingAverages`, derivada de `CIndicatorBase`, responsável por criar e gerenciar indicadores de média móvel.
+- **`stochastic.mqh`**: Implementa a classe `CStochastic`, derivada de `CIndicatorBase`, responsável pelo cálculo do indicador Estocástico.
 
 
 
@@ -656,8 +657,11 @@ Esta seção detalha as principais funções e classes encontradas no código do
   - **Membros**:
     - `name` (`string`): Nome do indicador.
     - `type` (`string`): Tipo do indicador (ex: `MA`).
-    - `period` (`int`): Período utilizado.
-    - `method` (`ENUM_MA_METHOD`): Método aplicado (quando aplicável).
+    - `period` (`int`): Período principal (por exemplo, %K no Estocástico).
+    - `method` (`ENUM_MA_METHOD`): Método aplicado (para médias ou suavização).
+    - `dperiod` (`int`): Período da linha %D (apenas para Estocástico).
+    - `slowing` (`int`): Valor de `slowing` (apenas para Estocástico).
+    - `price_field` (`ENUM_STO_PRICE`): Campo de preço utilizado.
     - `enabled` (`bool`): Indica se o indicador está habilitado.
 
 - **`STimeframeConfig`**
@@ -902,3 +906,7 @@ Esta seção registra as principais alterações e versões dos componentes do E
 
 
 
+
+### stochastic.mqh
+
+-   **Versao 1.00**: Implementa o indicador Estocastico derivado de `CIndicatorBase`.

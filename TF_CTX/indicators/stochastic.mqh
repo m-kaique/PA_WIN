@@ -1,0 +1,226 @@
+//+------------------------------------------------------------------+
+//|                                 indicators/stochastic.mqh        |
+//|  Implementation of Stochastic indicator derived from CIndicatorBase |
+//+------------------------------------------------------------------+
+#property copyright "Copyright 2025, MetaQuotes Ltd."
+#property link      "https://www.mql5.com"
+#property version   "1.00"
+
+#include "indicator_base.mqh"
+
+//+------------------------------------------------------------------+
+//| Classe para cálculo do Estocástico                               |
+//+------------------------------------------------------------------+
+class CStochastic : public CIndicatorBase
+  {
+private:
+   string          m_symbol;       // Símbolo
+   ENUM_TIMEFRAMES m_timeframe;    // TimeFrame
+   int             m_kperiod;      // Período %K
+   int             m_dperiod;      // Período %D
+   int             m_slowing;      // Slowing
+   ENUM_MA_METHOD  m_ma_method;    // Método de média
+   ENUM_STO_PRICE  m_price_field;  // Campo de preço
+
+   // Handle do indicador
+   int             m_handle;
+
+   bool            CreateIndicatorHandle();
+   void            ReleaseIndicatorHandle();
+   double          GetBufferValue(int buffer_index, int shift=0);
+
+public:
+                     CStochastic();
+                    ~CStochastic();
+
+   // Inicialização específica com todos os parâmetros
+   bool            Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                        int kperiod, int dperiod, int slowing,
+                        ENUM_MA_METHOD ma_method, ENUM_STO_PRICE price_field);
+
+   // Implementação da interface base (usa valores padrão para dperiod/slowing)
+   virtual bool    Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                        int period, ENUM_MA_METHOD method);
+
+   virtual double  GetValue(int shift=0);      // %K por padrão
+   double          GetSignalValue(int shift=0); // %D
+
+   virtual bool    CopyValues(int shift, int count, double &buffer[]);      // %K
+   bool            CopySignalValues(int shift, int count, double &buffer[]); // %D
+
+   virtual bool    IsReady();
+  };
+
+//+------------------------------------------------------------------+
+//| Construtor                                                       |
+//+------------------------------------------------------------------+
+CStochastic::CStochastic()
+  {
+   m_symbol  = "";
+   m_timeframe = PERIOD_CURRENT;
+   m_kperiod = 0;
+   m_dperiod = 0;
+   m_slowing = 0;
+   m_ma_method = MODE_SMA;
+   m_price_field = STO_LOWHIGH;
+   m_handle = INVALID_HANDLE;
+  }
+
+//+------------------------------------------------------------------+
+//| Destrutor                                                        |
+//+------------------------------------------------------------------+
+CStochastic::~CStochastic()
+  {
+   ReleaseIndicatorHandle();
+  }
+
+//+------------------------------------------------------------------+
+//| Inicialização completa                                           |
+//+------------------------------------------------------------------+
+bool CStochastic::Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                       int kperiod, int dperiod, int slowing,
+                       ENUM_MA_METHOD ma_method, ENUM_STO_PRICE price_field)
+  {
+   m_symbol      = symbol;
+   m_timeframe   = timeframe;
+   m_kperiod     = kperiod;
+   m_dperiod     = dperiod;
+   m_slowing     = slowing;
+   m_ma_method   = ma_method;
+   m_price_field = price_field;
+
+   ReleaseIndicatorHandle();
+   return CreateIndicatorHandle();
+  }
+
+//+------------------------------------------------------------------+
+//| Implementação compatível com a interface base                    |
+//+------------------------------------------------------------------+
+bool CStochastic::Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                       int period, ENUM_MA_METHOD method)
+  {
+   // Usa valores padrões de 3 para dperiod e slowing e campo Low/High
+   return Init(symbol, timeframe, period, 3, 3, method, STO_LOWHIGH);
+  }
+
+//+------------------------------------------------------------------+
+//| Criar handle do indicador                                        |
+//+------------------------------------------------------------------+
+bool CStochastic::CreateIndicatorHandle()
+  {
+   m_handle = iStochastic(m_symbol, m_timeframe, m_kperiod, m_dperiod,
+                          m_slowing, m_ma_method, m_price_field);
+   if(m_handle == INVALID_HANDLE)
+     {
+      Print("ERRO: Falha ao criar handle Stochastic para ", m_symbol);
+      return false;
+     }
+
+   Print("Indicador Stochastic inicializado para ", m_symbol,
+         " - ", EnumToString(m_timeframe),
+         " - K:", m_kperiod,
+         " D:", m_dperiod,
+         " Slowing:", m_slowing);
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| Liberar handle                                                   |
+//+------------------------------------------------------------------+
+void CStochastic::ReleaseIndicatorHandle()
+  {
+   if(m_handle != INVALID_HANDLE)
+     {
+      IndicatorRelease(m_handle);
+      m_handle = INVALID_HANDLE;
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| Obter valor de buffer                                            |
+//+------------------------------------------------------------------+
+double CStochastic::GetBufferValue(int buffer_index, int shift)
+  {
+   if(m_handle == INVALID_HANDLE)
+     {
+      Print("ERRO: Handle do Stochastic inválido");
+      return 0.0;
+     }
+
+   double buffer[];
+   ArraySetAsSeries(buffer, true);
+
+   if(CopyBuffer(m_handle, buffer_index, shift, 1, buffer) <= 0)
+     {
+      Print("ERRO: Falha ao copiar dados do Stochastic");
+      return 0.0;
+     }
+
+   return buffer[0];
+  }
+
+//+------------------------------------------------------------------+
+//| Valor %K                                                         |
+//+------------------------------------------------------------------+
+double CStochastic::GetValue(int shift)
+  {
+   return GetBufferValue(0, shift);
+  }
+
+//+------------------------------------------------------------------+
+//| Valor %D                                                         |
+//+------------------------------------------------------------------+
+double CStochastic::GetSignalValue(int shift)
+  {
+   return GetBufferValue(1, shift);
+  }
+
+//+------------------------------------------------------------------+
+//| Copiar valores %K                                                |
+//+------------------------------------------------------------------+
+bool CStochastic::CopyValues(int shift, int count, double &buffer[])
+  {
+   if(m_handle == INVALID_HANDLE)
+     {
+      Print("ERRO: Handle do Stochastic inválido");
+      return false;
+     }
+   ArrayResize(buffer, count);
+   ArraySetAsSeries(buffer, true);
+   if(CopyBuffer(m_handle, 0, shift, count, buffer) <= 0)
+     {
+      Print("ERRO: Falha ao copiar dados do Stochastic");
+      return false;
+     }
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| Copiar valores %D                                                |
+//+------------------------------------------------------------------+
+bool CStochastic::CopySignalValues(int shift, int count, double &buffer[])
+  {
+   if(m_handle == INVALID_HANDLE)
+     {
+      Print("ERRO: Handle do Stochastic inválido");
+      return false;
+     }
+   ArrayResize(buffer, count);
+   ArraySetAsSeries(buffer, true);
+   if(CopyBuffer(m_handle, 1, shift, count, buffer) <= 0)
+     {
+      Print("ERRO: Falha ao copiar dados do Stochastic");
+      return false;
+     }
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| Verificar se indicador está pronto                               |
+//+------------------------------------------------------------------+
+bool CStochastic::IsReady()
+  {
+   return (BarsCalculated(m_handle) > 0);
+  }
+
+//+------------------------------------------------------------------+
