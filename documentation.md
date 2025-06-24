@@ -844,7 +844,19 @@ O arquivo `config.json` é o coração da flexibilidade do PA_WIN. Abaixo está 
         -   Exemplo de indicador:
             -   `"period"`: Inteiro que define o período do indicador (ex: 9 para EMA9, 21 para EMA21).
             -   `"method"`: String que especifica o método do indicador (ex: "EMA" para Média Móvel Exponencial, "SMA" para Média Móvel Simples). Deve corresponder aos métodos suportados pelo MQL5.
-            -   `"enabled"`: Booleano que indica se este indicador específica está habilitada (`true`) ou desativada (`false`) para este timeframe.
+         -   `"enabled"`: Booleano que indica se este indicador específica está habilitada (`true`) ou desativada (`false`) para este timeframe.
+
+### Paleta de Cores Disponível
+
+Os campos `LevelsColor`, `ExtensionsColor`, `ParallelColor` e `LabelsColor` utilizam nomes de cores em formato de string. As cores reconhecidas atualmente são:
+
+- `Red`
+- `Blue`
+- `Yellow`
+- `Green`
+- `Orange`
+- `White`
+- `Black`
 
 ### Cenários Típicos de Uso
 
