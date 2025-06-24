@@ -78,17 +78,18 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
 
 - **`PA_WIN.mq5`**: Este é o arquivo principal do Expert Advisor. Ele contém as funções de inicialização (`OnInit`), desinicialização (`OnDeinit`) e processamento de ticks (`OnTick`), além da lógica central para detecção de novos candles e execução da estratégia de negociação. É o ponto de entrada para o EA.
 
-- **`config.json`**: Um arquivo de configuração no formato JSON que define os parâmetros para os símbolos e timeframes a serem monitorados, incluindo as configurações específicas para as médias móveis (período, método, habilitação). Este arquivo permite uma configuração flexível do EA sem a necessidade de recompilação do código MQL5.
+- **`config.json`**: Arquivo de configuração em JSON que define os parâmetros para os símbolos e timeframes monitorados. A partir da versão 2.0, os indicadores são declarados em uma lista genérica (`indicators`), permitindo adicionar ou remover indicadores sem alterar o código MQL5.
 
 - **`JAson.mqh` (ou `JAson_utf8.mqh`)**: Uma biblioteca MQL5 para manipulação de dados JSON. Ela fornece funcionalidades para serializar e desserializar strings JSON em objetos MQL5 (`CJAVal`), permitindo que o EA leia e interprete o arquivo `config.json`.
 
 - **`config_manager.mqh`**: Este arquivo define a classe `CConfigManager`, responsável por carregar, parsear e gerenciar a configuração do EA a partir do arquivo `config.json`. Ele cria e mantém os contextos de timeframe (`TF_CTX`) para cada símbolo e timeframe configurado, atuando como a camada de abstração entre a configuração JSON e a lógica de negociação.
 
-- **`config_types.mqh`**: Contém as definições das estruturas de dados (`struct`) utilizadas para tipificar a configuração lida do JSON. Inclui `SMovingAverageConfig` (para parâmetros de médias móveis) e `STimeframeConfig` (para parâmetros de timeframe, que engloba as configurações das médias móveis).
+- **`config_types.mqh`**: Define as estruturas de dados utilizadas para tipificar a configuração lida do JSON. Nesta versão são utilizadas `SIndicatorConfig` (configuração de um indicador genérico) e `STimeframeConfig`, que possui um array de `SIndicatorConfig` para cada timeframe.
 
-- **`tf_ctx.mqh`**: Define a classe `TF_CTX` (TimeFrame Context). Uma instância desta classe representa um contexto de dados para um símbolo e timeframe específicos. Ela inicializa e gerencia as instâncias de `CMovingAverages` para as médias móveis configuradas, fornecendo métodos para acessar os valores dessas médias e atualizar os dados.
+- **`tf_ctx.mqh`**: Define a classe `TF_CTX` (TimeFrame Context). Cada instância mantém uma lista de indicadores derivados de `CIndicatorBase`, criados dinamicamente conforme a configuração. Fornece métodos genéricos para acessar valores e atualizar o contexto.
+- **`indicator_base.mqh`**: Declara a classe abstrata `CIndicatorBase`, utilizada como interface para os diversos tipos de indicadores.
 
-- **`moving_averages.mqh`**: Este arquivo define a classe `CMovingAverages`, que é responsável por criar e gerenciar os handles dos indicadores de médias móveis no MetaTrader 5. Ela fornece métodos para inicializar o indicador com base no símbolo, timeframe, período e método, além de obter os valores calculados da média móvel.
+- **`moving_averages.mqh`**: Implementa a classe `CMovingAverages`, derivada de `CIndicatorBase`, responsável por criar e gerenciar indicadores de média móvel.
 
 
 
@@ -650,135 +651,47 @@ Esta seção detalha as principais funções e classes encontradas no código do
 
 #### Estruturas
 
-- **`SMovingAverageConfig`**
-  - **Descrição simplificada**: Estrutura que define a configuração para uma única média móvel.
+- **`SIndicatorConfig`**
+  - **Descrição simplificada**: Estrutura que define a configuração de um indicador genérico.
   - **Membros**:
-    - `period` (`int`): O período da média móvel (ex: 9, 21, 50, 200).
-    - `method` (`ENUM_MA_METHOD`): O método da média móvel (ex: `MODE_EMA`, `MODE_SMA`).
-    - `enabled` (`bool`): Indica se esta média móvel específica está habilitada.
+    - `name` (`string`): Nome do indicador.
+    - `type` (`string`): Tipo do indicador (ex: `MA`).
+    - `period` (`int`): Período utilizado.
+    - `method` (`ENUM_MA_METHOD`): Método aplicado (quando aplicável).
+    - `enabled` (`bool`): Indica se o indicador está habilitado.
 
 - **`STimeframeConfig`**
-  - **Descrição simplificada**: Estrutura que define a configuração completa para um timeframe específico, incluindo as configurações de várias médias móveis associadas a ele.
+  - **Descrição simplificada**: Configuração para um timeframe específico contendo uma lista de indicadores.
   - **Membros**:
-    - `enabled` (`bool`): Indica se este timeframe está habilitado para análise.
-    - `num_candles` (`int`): O número de candles a serem considerados para análise (não usado para período das médias).
-    - `ema9` (`SMovingAverageConfig`): Configuração para a EMA de período 9.
-    - `ema21` (`SMovingAverageConfig`): Configuração para a EMA de período 21.
-    - `ema50` (`SMovingAverageConfig`): Configuração para a EMA de período 50.
-    - `sma200` (`SMovingAverageConfig`): Configuração para a SMA de período 200.
+    - `enabled` (`bool`): Indica se este timeframe está habilitado.
+    - `num_candles` (`int`): Número de candles a considerar.
+    - `indicators[]` (`SIndicatorConfig[]`): Array de configurações de indicadores.
 
 ### tf_ctx.mqh
 
 #### Classes
 
 - **`TF_CTX`**
-  - **Descrição simplificada**: Classe que representa um contexto de dados para um símbolo e timeframe específicos. Ela gerencia as instâncias de `CMovingAverages` e fornece métodos para acessar os valores das médias móveis.
+  - **Descrição simplificada**: Classe que representa um contexto para um símbolo e timeframe, mantendo uma lista de indicadores.
   - **Membros Privados**:
-    - `m_timeframe` (`ENUM_TIMEFRAMES`): O timeframe associado a este contexto.
-    - `m_num_candles` (`int`): O número de velas para análise (não usado para período das médias).
-    - `m_symbol` (`string`): O símbolo do ativo associado a este contexto.
-    - `m_initialized` (`bool`): Flag que indica se o contexto foi inicializado com sucesso.
-    - `m_ema9_cfg` (`SMovingAverageConfig`): Configuração da EMA de período 9.
-    - `m_ema21_cfg` (`SMovingAverageConfig`): Configuração da EMA de período 21.
-    - `m_ema50_cfg` (`SMovingAverageConfig`): Configuração da EMA de período 50.
-    - `m_sma200_cfg` (`SMovingAverageConfig`): Configuração da SMA de período 200.
-    - `m_ema9` (`CMovingAverages*`): Ponteiro para a instância da classe `CMovingAverages` para a EMA de período 9.
-    - `m_ema21` (`CMovingAverages*`): Ponteiro para a instância da classe `CMovingAverages` para a EMA de período 21.
-    - `m_ema50` (`CMovingAverages*`): Ponteiro para a instância da classe `CMovingAverages` para a EMA de período 50.
-    - `m_sma200` (`CMovingAverages*`): Ponteiro para a instância da classe `CMovingAverages` para a SMA de período 200.
+    - `m_timeframe` (`ENUM_TIMEFRAMES`): Timeframe analisado.
+    - `m_num_candles` (`int`): Número de candles considerados.
+    - `m_symbol` (`string`): Símbolo associado.
+    - `m_initialized` (`bool`): Indica se o contexto foi inicializado.
+    - `m_cfg[]` (`SIndicatorConfig[]`): Configurações dos indicadores.
+    - `m_indicators[]` (`CIndicatorBase*[]`): Instâncias dos indicadores.
   - **Métodos Privados**:
-    - **`ValidateParameters()`**
-      - **Assinatura**: `bool ValidateParameters()`
-      - **Descrição simplificada**: Valida os parâmetros de entrada do construtor, como o timeframe e o símbolo.
-      - **Parâmetros**: Nenhum.
-      - **Valor de retorno**: `bool` - `true` se os parâmetros forem válidos, `false` caso contrário.
-    - **`CleanUp()`**
-      - **Assinatura**: `void CleanUp()`
-      - **Descrição simplificada**: Libera os recursos alocados pelas instâncias de `CMovingAverages` e redefine o status de inicialização.
-      - **Parâmetros**: Nenhum.
-      - **Valor de retorno**: Nenhum.
+    - **`ValidateParameters()`**: Valida os parâmetros de construção.
+    - **`CleanUp()`**: Libera recursos.
   - **Construtor e Destrutor**:
-    - **`TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, SMovingAverageConfig &ema9_cfg, SMovingAverageConfig &ema21_cfg, SMovingAverageConfig &ema50_cfg, SMovingAverageConfig &sma200_cfg)`**
-      - **Assinatura**: `TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, SMovingAverageConfig &ema9_cfg, SMovingAverageConfig &ema21_cfg, SMovingAverageConfig &ema50_cfg, SMovingAverageConfig &sma200_cfg)`
-      - **Descrição simplificada**: Construtor que inicializa um contexto de timeframe com as configurações de médias móveis fornecidas.
-      - **Parâmetros**:
-        - `timeframe` (`ENUM_TIMEFRAMES`): O timeframe para este contexto.
-        - `num_candles` (`int`): O número de candles para análise.
-        - `ema9_cfg` (`SMovingAverageConfig &`): Configuração da EMA de período 9.
-        - `ema21_cfg` (`SMovingAverageConfig &`): Configuração da EMA de período 21.
-        - `ema50_cfg` (`SMovingAverageConfig &`): Configuração da EMA de período 50.
-        - `sma200_cfg` (`SMovingAverageConfig &`): Configuração da SMA de período 200.
-      - **Valor de retorno**: Objeto `TF_CTX`.
-    - **`~TF_CTX()`**
-      - **Assinatura**: `~TF_CTX()`
-      - **Descrição simplificada**: Destrutor. Chama `CleanUp()` para liberar os recursos.
-      - **Parâmetros**: Nenhum.
-      - **Valor de retorno**: Nenhum.
+    - **`TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, SIndicatorConfig &cfg[])`**: Cria o contexto usando a lista de indicadores.
+    - **`~TF_CTX()`**: Libera recursos.
   - **Métodos Públicos**:
-    - **`Init()`**
-      - **Assinatura**: `bool Init()`
-      - **Descrição simplificada**: Inicializa o contexto de timeframe, criando e inicializando as instâncias de `CMovingAverages` com base nas configurações fornecidas.
-      - **Parâmetros**: Nenhum.
-      - **Valor de retorno**: `bool` - `true` se a inicialização for bem-sucedida, `false` caso contrário.
-    - **`get_ema9(int shift = 0)`**
-      - **Assinatura**: `double get_ema9(int shift = 0)`
-      - **Descrição simplificada**: Retorna o valor da EMA de período 9 para o candle especificado pelo `shift`.
-      - **Parâmetros**:
-        - `shift` (`int`, opcional, padrão: 0): O deslocamento do candle (0 para o candle atual, 1 para o anterior, etc.).
-      - **Valor de retorno**: `double` - O valor da EMA9.
-    - **`get_ema21(int shift = 0)`**
-      - **Assinatura**: `double get_ema21(int shift = 0)`
-      - **Descrição simplificada**: Retorna o valor da EMA de período 21 para o candle especificado pelo `shift`.
-      - **Parâmetros**:
-        - `shift` (`int`, opcional, padrão: 0): O deslocamento do candle.
-      - **Valor de retorno**: `double` - O valor da EMA21.
-    - **`get_ema50(int shift = 0)`**
-      - **Assinatura**: `double get_ema50(int shift = 0)`
-      - **Descrição simplificada**: Retorna o valor da EMA de período 50 para o candle especificado pelo `shift`.
-      - **Parâmetros**:
-        - `shift` (`int`, opcional, padrão: 0): O deslocamento do candle.
-      - **Valor de retorno**: `double` - O valor da EMA50.
-    - **`get_sma_200(int shift = 0)`**
-      - **Assinatura**: `double get_sma_200(int shift = 0)`
-      - **Descrição simplificada**: Retorna o valor da SMA de período 200 para o candle especificado pelo `shift`.
-      - **Parâmetros**:
-        - `shift` (`int`, opcional, padrão: 0): O deslocamento do candle.
-      - **Valor de retorno**: `double` - O valor da SMA200.
-    - **`get_recent_values(double &ema9[], double &ema21[], double &ema50[], double &sma200[])`**
-      - **Assinatura**: `bool get_recent_values(double &ema9[], double &ema21[], double &ema50[], double &sma200[])`
-      - **Descrição simplificada**: Copia os valores recentes das médias móveis para os arrays fornecidos.
-      - **Parâmetros**:
-        - `ema9[]` (`double &`): Array para receber os valores da EMA9.
-        - `ema21[]` (`double &`): Array para receber os valores da EMA21.
-        - `ema50[]` (`double &`): Array para receber os valores da EMA50.
-        - `sma200[]` (`double &`): Array para receber os valores da SMA200.
-      - **Valor de retorno**: `bool` - `true` se a cópia foi bem-sucedida, `false` caso contrário.
-    - **`IsInitialized() const`**
-      - **Assinatura**: `bool IsInitialized() const`
-      - **Descrição simplificada**: Retorna o status de inicialização do contexto de timeframe.
-      - **Parâmetros**: Nenhum.
-      - **Valor de retorno**: `bool` - `true` se o contexto foi inicializado, `false` caso contrário.
-    - **`GetTimeframe() const`**
-      - **Assinatura**: `ENUM_TIMEFRAMES GetTimeframe() const`
-      - **Descrição simplificada**: Retorna o timeframe associado a este contexto.
-      - **Parâmetros**: Nenhum.
-      - **Valor de retorno**: `ENUM_TIMEFRAMES` - O timeframe.
-    - **`GetNumCandles() const`**
-      - **Assinatura**: `int GetNumCandles() const`
-      - **Descrição simplificada**: Retorna o número de candles configurado para análise neste contexto.
-      - **Parâmetros**: Nenhum.
-      - **Valor de retorno**: `int` - O número de candles.
-    - **`GetSymbol() const`**
-      - **Assinatura**: `string GetSymbol() const`
-      - **Descrição simplificada**: Retorna o símbolo do ativo associado a este contexto.
-      - **Parâmetros**: Nenhum.
-      - **Valor de retorno**: `string` - O símbolo.
-    - **`Update()`**
-      - **Assinatura**: `bool Update()`
-      - **Descrição simplificada**: Atualiza os dados das médias móveis no contexto, verificando se os indicadores estão prontos.
-      - **Parâmetros**: Nenhum.
-      - **Valor de retorno**: `bool` - `true` se a atualização foi bem-sucedida e os indicadores estão prontos, `false` caso contrário.
-
+    - **`Init()`**: Inicializa o contexto criando os indicadores.
+    - **`Update()`**: Atualiza os dados dos indicadores.
+    - **`GetIndicatorValue(string name, int shift = 0)`**: Obtém o valor de um indicador pelo nome.
+    - **`CopyIndicatorValues(string name, int shift, int count, double &buffer[])`**: Copia múltiplos valores.
+    - **`IsInitialized() const`**, **`GetTimeframe() const`**, **`GetNumCandles() const`**, **`GetSymbol() const`**: Acessores.
 ### moving_averages.mqh
 
 #### Classes
@@ -896,28 +809,12 @@ O arquivo `config.json` é o coração da flexibilidade do PA_WIN. Abaixo está 
       "D1": {
          "enabled": true,
          "num_candles": 4,
-         "moving_averages": {
-            "ema9": {
-               "period": 9,
-               "method": "EMA",
-               "enabled": true
-            },
-            "ema21": {
-               "period": 21,
-               "method": "EMA",
-               "enabled": true
-            },
-            "ema50": {
-               "period": 50,
-               "method": "EMA",
-               "enabled": false
-            },
-            "sma200": {
-               "period": 200,
-               "method": "SMA",
-               "enabled": false
-            }
-         }
+           "indicators": [
+            {"name":"ema9","type":"MA","period":9,"method":"EMA","enabled":true},
+            {"name":"ema21","type":"MA","period":21,"method":"EMA","enabled":true},
+            {"name":"ema50","type":"MA","period":50,"method":"EMA","enabled":false},
+            {"name":"sma200","type":"MA","period":200,"method":"SMA","enabled":false}
+           ]
       }
    }
 }
@@ -928,12 +825,12 @@ O arquivo `config.json` é o coração da flexibilidade do PA_WIN. Abaixo está 
 -   **Chave de Nível Superior (`"WIN$N"`):** Representa o símbolo do ativo a ser monitorado. Você pode adicionar múltiplos símbolos como chaves separadas.
 -   **Chave de Timeframe (`"D1"`):** Dentro de cada símbolo, você define os timeframes que deseja monitorar. Os nomes são lidos diretamente do arquivo `config.json`, permitindo incluir novos timeframes sem ajustes no código-fonte.
     -   `"enabled"`: Booleano que indica se este timeframe específico para o símbolo está ativo (`true`) ou desativado (`false`).
-    -   `"num_candles"`: Inteiro que especifica o número de candles a serem considerados para análise. Embora presente, seu uso direto na lógica atual pode variar e deve ser verificado no código.
-    -   `"moving_averages"`: Objeto que contém as configurações para as médias móveis associadas a este timeframe.
-        -   **Chaves de Médias Móveis (`"ema9"`, `"ema21"`, etc.):** Cada chave representa uma média móvel específica.
-            -   `"period"`: Inteiro que define o período da média móvel (ex: 9 para EMA9, 21 para EMA21).
-            -   `"method"`: String que especifica o método da média móvel (ex: "EMA" para Média Móvel Exponencial, "SMA" para Média Móvel Simples). Deve corresponder aos métodos suportados pelo MQL5.
-            -   `"enabled"`: Booleano que indica se esta média móvel específica está habilitada (`true`) ou desativada (`false`) para este timeframe.
+    -   `"indicators"`: Lista com a configuração dos indicadores associados a este timeframe.
+        -   Cada objeto possui os campos `name`, `type`, `period`, `method` e `enabled`.
+        -   Exemplo de indicador:
+            -   `"period"`: Inteiro que define o período do indicador (ex: 9 para EMA9, 21 para EMA21).
+            -   `"method"`: String que especifica o método do indicador (ex: "EMA" para Média Móvel Exponencial, "SMA" para Média Móvel Simples). Deve corresponder aos métodos suportados pelo MQL5.
+            -   `"enabled"`: Booleano que indica se este indicador específica está habilitada (`true`) ou desativada (`false`) para este timeframe.
 
 ### Cenários Típicos de Uso
 
@@ -946,7 +843,7 @@ O arquivo `config.json` é o coração da flexibilidade do PA_WIN. Abaixo está 
           "D1": {
              "enabled": true,
              "num_candles": 4,
-             "moving_averages": {
+             "indicators": {
                 "ema9": {"period": 9, "method": "EMA", "enabled": true},
                 "ema21": {"period": 21, "method": "EMA", "enabled": true}
              }
@@ -956,15 +853,15 @@ O arquivo `config.json` é o coração da flexibilidade do PA_WIN. Abaixo está 
           "H4": {
              "enabled": true,
              "num_candles": 10,
-             "moving_averages": {
-                "sma200": {"period": 200, "method": "SMA", "enabled": true}
-             }
+               "indicators": [
+                  {"name":"sma200","type":"MA","period":200,"method":"SMA","enabled":true}
+               ]
           }
        }
     }
     ```
 
-2.  **Habilitando/Desabilitando Médias Móveis:**
+2.  **Habilitando/Desabilitando Indicadores:**
     Se você quiser desabilitar a EMA9 para `WIN$N` no `D1` e habilitar a EMA50, basta alterar o valor de `"enabled"` para `false` na `ema9` e para `true` na `ema50` no `config.json`.
 
 3.  **Recarregando a Configuração em Tempo de Execução (Apenas para Desenvolvimento/Testes):**
@@ -993,11 +890,15 @@ Esta seção registra as principais alterações e versões dos componentes do E
 
 ### tf_ctx.mqh
 
--   **Versão 1.01**: Versão do módulo de contexto de timeframe, que gerencia as médias móveis para um símbolo e timeframe específicos.
+-   **Versão 2.00**: Suporte a lista dinâmica de indicadores baseada em `CIndicatorBase`.
+
+### indicator_base.mqh
+
+-   **Versão 1.00**: Interface abstrata para criação de novos tipos de indicadores.
 
 ### moving_averages.mqh
 
--   **Versão 1.00**: Versão inicial do módulo de médias móveis, responsável por criar e obter valores de indicadores de médias móveis.
+-   **Versão 1.01**: Implementa indicadores de média móvel derivados de `CIndicatorBase`.
 
 
 
