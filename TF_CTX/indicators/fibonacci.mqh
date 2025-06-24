@@ -27,6 +27,10 @@ private:
    string          m_obj_name;
    bool            m_ready;
    bool            m_show_labels;
+   color           m_labels_color;
+   int             m_labels_font_size;
+   string          m_labels_font;
+   string          m_label_names[];
 
    void            DeleteObject();
    string          FormatLabel(double percent,double hi,double lo);
@@ -49,7 +53,9 @@ public:
                           double ext1,double ext2,double ext3,
                           color ext_color,ENUM_LINE_STYLE ext_style,int ext_width,
                           color parallel_color,ENUM_LINE_STYLE parallel_style,int parallel_width,
-                          bool show_labels);
+                          bool show_labels,
+                          color labels_color,int labels_font_size,string labels_font);
+  bool             Init(string symbol, ENUM_TIMEFRAMES timeframe, SIndicatorConfig &config);
    // Interface base (chama Init com níveis padrão)
   virtual bool     Init(string symbol, ENUM_TIMEFRAMES timeframe,
                           int period, ENUM_MA_METHOD method);
@@ -81,6 +87,10 @@ CFibonacci::CFibonacci()
    m_obj_name="";
    m_ready=false;
    m_show_labels=true;
+   m_labels_color=clrWhite;
+   m_labels_font_size=8;
+   m_labels_font="Arial";
+   ArrayResize(m_label_names,0);
   }
 
 //+------------------------------------------------------------------+
@@ -98,6 +108,9 @@ void CFibonacci::DeleteObject()
   {
    if(StringLen(m_obj_name)>0)
      ObjectDelete(0,m_obj_name);
+   for(int i=0;i<ArraySize(m_label_names);i++)
+      ObjectDelete(0,m_label_names[i]);
+   ArrayResize(m_label_names,0);
   }
 
 //+------------------------------------------------------------------+
@@ -124,7 +137,8 @@ bool CFibonacci::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                levels_color,STYLE_SOLID,1,
                127.0,161.8,261.8,
                clrOrange,STYLE_DASH,1,
-               clrYellow,STYLE_SOLID,1,true);
+               clrYellow,STYLE_SOLID,1,true,
+               clrWhite,8,"Arial");
   }
 
 //+------------------------------------------------------------------+
@@ -139,7 +153,8 @@ bool CFibonacci::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                       double ext1,double ext2,double ext3,
                       color ext_color,ENUM_LINE_STYLE ext_style,int ext_width,
                       color parallel_color,ENUM_LINE_STYLE parallel_style,int parallel_width,
-                      bool show_labels)
+                      bool show_labels,
+                      color labels_color,int labels_font_size,string labels_font)
   {
    m_symbol=symbol;
    m_timeframe=timeframe;
@@ -163,11 +178,30 @@ bool CFibonacci::Init(string symbol, ENUM_TIMEFRAMES timeframe,
    m_parallel_style=parallel_style;
    m_parallel_width=parallel_width;
    m_show_labels=show_labels;
+   m_labels_color=labels_color;
+   m_labels_font_size=labels_font_size;
+   m_labels_font=labels_font;
 
    if(StringLen(m_obj_name)==0)
       m_obj_name="Fibo_"+IntegerToString(GetTickCount());
 
-   return Update();
+  return Update();
+ }
+
+//+------------------------------------------------------------------+
+//| Init from configuration structure                                |
+//+------------------------------------------------------------------+
+bool CFibonacci::Init(string symbol, ENUM_TIMEFRAMES timeframe, SIndicatorConfig &config)
+  {
+   return Init(symbol,timeframe,config.period,
+               config.level_1,config.level_2,config.level_3,
+               config.level_4,config.level_5,config.level_6,
+               config.levels_color,config.levels_style,config.levels_width,
+               config.ext_1,config.ext_2,config.ext_3,
+               config.extensions_color,config.extensions_style,config.extensions_width,
+               config.parallel_color,config.parallel_style,config.parallel_width,
+               config.show_labels,
+               config.labels_color,config.labels_font_size,config.labels_font);
   }
 
 //+------------------------------------------------------------------+
@@ -183,7 +217,8 @@ bool CFibonacci::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                clrOrange,STYLE_SOLID,1,
                127.0,161.8,261.8,
                clrOrange,STYLE_DASH,1,
-               clrYellow,STYLE_SOLID,1,true);
+               clrYellow,STYLE_SOLID,1,true,
+               clrWhite,8,"Arial");
   }
 
 //+------------------------------------------------------------------+
@@ -232,12 +267,17 @@ bool CFibonacci::Update()
 
    if(StringLen(m_obj_name)==0)
       m_obj_name="Fibo_"+IntegerToString(GetTickCount());
-   if(!ObjectCreate(0,m_obj_name,OBJ_FIBO,0,hi_time,hi,lo_time,lo))
+  if(!ObjectCreate(0,m_obj_name,OBJ_FIBO,0,hi_time,hi,lo_time,lo))
       return false;
 
-   ObjectSetInteger(0,m_obj_name,OBJPROP_COLOR,m_parallel_color);
-   ObjectSetInteger(0,m_obj_name,OBJPROP_STYLE,m_parallel_style);
-   ObjectSetInteger(0,m_obj_name,OBJPROP_WIDTH,m_parallel_width);
+  ObjectSetInteger(0,m_obj_name,OBJPROP_COLOR,m_parallel_color);
+  ObjectSetInteger(0,m_obj_name,OBJPROP_STYLE,m_parallel_style);
+  ObjectSetInteger(0,m_obj_name,OBJPROP_WIDTH,m_parallel_width);
+  if(m_show_labels)
+    {
+     ObjectSetInteger(0,m_obj_name,OBJPROP_FONTSIZE,m_labels_font_size);
+     ObjectSetString(0,m_obj_name,OBJPROP_FONT,m_labels_font);
+    }
 
    double vals[9]; color cols[9]; int styles[9]; int widths[9]; string texts[9];
    int cnt=0;
@@ -272,7 +312,22 @@ bool CFibonacci::Update()
       ObjectSetInteger(0,m_obj_name,OBJPROP_LEVELWIDTH,i,widths[i]);
       if(m_show_labels)
          ObjectSetString(0,m_obj_name,OBJPROP_LEVELTEXT,i,texts[i]);
-     }
+    }
+
+  if(m_show_labels)
+    {
+     ArrayResize(m_label_names,cnt);
+     datetime t = (hi_time>lo_time?hi_time:lo_time);
+     for(int i=0;i<cnt;i++)
+       {
+        m_label_names[i]=m_obj_name+"_lbl_"+IntegerToString(i);
+        ObjectCreate(0,m_label_names[i],OBJ_TEXT,0,t,hi-(hi-lo)*vals[i]/100.0);
+        ObjectSetString(0,m_label_names[i],OBJPROP_TEXT,texts[i]);
+        ObjectSetInteger(0,m_label_names[i],OBJPROP_COLOR,m_labels_color);
+        ObjectSetInteger(0,m_label_names[i],OBJPROP_FONTSIZE,m_labels_font_size);
+        ObjectSetString(0,m_label_names[i],OBJPROP_FONT,m_labels_font);
+       }
+    }
 
    m_ready=true;
    return true;

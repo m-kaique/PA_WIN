@@ -140,15 +140,7 @@ bool TF_CTX::Init()
       else if(m_cfg[i].type=="FIBO")
         {
          ind = new CFibonacci();
-         if(ind==NULL || !((CFibonacci*)ind).Init(m_symbol, m_timeframe,
-                                                m_cfg[i].period,
-                                                m_cfg[i].level_1,
-                                                m_cfg[i].level_2,
-                                                m_cfg[i].level_3,
-                                                m_cfg[i].level_4,
-                                                m_cfg[i].level_5,
-                                                m_cfg[i].level_6,
-                                                m_cfg[i].levels_color))
+         if(ind==NULL || !((CFibonacci*)ind).Init(m_symbol, m_timeframe, m_cfg[i]))
            {
             Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
             delete ind;

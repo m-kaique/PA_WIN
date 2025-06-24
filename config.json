@@ -11,11 +11,24 @@
             {"name":"sto14","type":"STO","period":14,"dperiod":3,"slowing":3,"method":"SMA","price_field":"LOWHIGH","enabled":true},
             {"name":"vol0","type":"VOL","shift":0,"enabled":true},
             {"name":"boll20","type":"BOLL","period":20,"shift":0,"deviation":2.0,"applied_price":"CLOSE","enabled":true},
-            {"name":"fibo","type":"FIBO","period":30,
+            {"name":"fibo_complete","type":"FIBO","period":30,
              "Level_1":23.6,"Level_2":38.2,"Level_3":50.0,
              "Level_4":61.8,"Level_5":78.6,"Level_6":100.0,
-             "LevelsColor":16711680,
-             "enabled":true}
+             "Ext_1":127.0,"Ext_2":161.8,"Ext_3":261.8,
+             "LevelsColor":16711680,"LevelsStyle":"SOLID","LevelsWidth":1,
+             "ExtensionsColor":16711680,"ExtensionsStyle":"DASH","ExtensionsWidth":1,
+             "ParallelColorStr":"Yellow","ParallelStyle":"SOLID","ParallelWidth":1,
+             "ShowLabels":true,"LabelsColorStr":"White","LabelsFontSize":10,"LabelsFont":"Arial",
+             "enabled":true},
+            {"name":"fibo_simple","type":"FIBO","period":30,
+             "Level_1":23.6,"Level_2":38.2,"Level_3":50.0,
+             "Level_4":61.8,"Level_5":78.6,"Level_6":100.0,
+             "enabled":false},
+            {"name":"fibo_forex","type":"FIBO","period":50,
+             "Level_1":38.2,"Level_2":50.0,"Level_3":61.8,
+             "Level_4":78.6,"Level_5":100.0,"Level_6":0,
+             "ParallelColorStr":"Blue",
+             "enabled":false}
          ]
       },
       "H4": {
