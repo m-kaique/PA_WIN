@@ -12,6 +12,10 @@ public:
    virtual double GetValue(int shift = 0) = 0;
    virtual bool   CopyValues(int shift, int count, double &buffer[]) = 0;
    virtual bool   IsReady() = 0;
+   // Default update simply checks readiness. Indicators can override
+   // this method when they need to refresh internal state (e.g. redraw
+   // objects on the chart).
+   virtual bool   Update() { return IsReady(); }
    virtual        ~CIndicatorBase() {}
   };
 

@@ -92,6 +92,7 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
 - **`moving_averages.mqh`**: Implementa a classe `CMovingAverages`, derivada de `CIndicatorBase`, responsável por criar e gerenciar indicadores de média móvel.
 - **`stochastic.mqh`**: Implementa a classe `CStochastic`, derivada de `CIndicatorBase`, responsável pelo cálculo do indicador Estocástico.
 - **`volume.mqh`**: Implementa a classe `CVolume`, derivada de `CIndicatorBase`, responsável por acessar valores de volume.
+- **`fibonacci.mqh`**: Implementa o indicador `CFibonacci`, que desenha automaticamente níveis de retração configurados via JSON.
 
 
 
@@ -665,6 +666,8 @@ Esta seção detalha as principais funções e classes encontradas no código do
     - `shift` (`int`): Deslocamento base para indicadores que utilizam série de preços (ex: Volume).
     - `price_field` (`ENUM_STO_PRICE`): Campo de preço utilizado.
     - `enabled` (`bool`): Indica se o indicador está habilitado.
+    - `level_1` a `level_6` (`double`): Valores dos níveis de Fibonacci exibidos (apenas para o indicador `FIBO`).
+    - `levels_color` (`color`): Cor aplicada às linhas de Fibonacci.
 
 - **`STimeframeConfig`**
   - **Descrição simplificada**: Configuração para um timeframe específico contendo uma lista de indicadores.
@@ -916,3 +919,7 @@ Esta seção registra as principais alterações e versões dos componentes do E
 ### volume.mqh
 
 -   **Versao 1.00**: Implementa o indicador de Volume derivado de `CIndicatorBase`.
+
+### fibonacci.mqh
+
+-   **Versao 1.00**: Implementa o indicador de retração de Fibonacci derivado de `CIndicatorBase`, responsável por desenhar automaticamente os níveis configurados no gráfico.

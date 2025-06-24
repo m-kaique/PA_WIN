@@ -550,6 +550,13 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
             icfg.deviation = ind["deviation"].ToDbl();
             icfg.applied_price = StringToAppliedPrice(ind["applied_price"].ToStr());
             icfg.enabled = ind["enabled"].ToBool();
+            icfg.level_1 = ind["Level_1"].ToDbl();
+            icfg.level_2 = ind["Level_2"].ToDbl();
+            icfg.level_3 = ind["Level_3"].ToDbl();
+            icfg.level_4 = ind["Level_4"].ToDbl();
+            icfg.level_5 = ind["Level_5"].ToDbl();
+            icfg.level_6 = ind["Level_6"].ToDbl();
+            icfg.levels_color = (color)ind["LevelsColor"].ToInt();
 
             int pos = ArraySize(config.indicators);
             ArrayResize(config.indicators,pos+1);

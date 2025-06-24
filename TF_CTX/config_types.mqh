@@ -19,6 +19,13 @@ struct SIndicatorConfig
     double deviation;
     ENUM_APPLIED_PRICE applied_price;
     bool   enabled;
+    double level_1;
+    double level_2;
+    double level_3;
+    double level_4;
+    double level_5;
+    double level_6;
+    color  levels_color;
 };
 
 struct STimeframeConfig
