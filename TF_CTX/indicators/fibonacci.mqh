@@ -263,13 +263,29 @@ bool CFibonacci::Update()
    ArraySetAsSeries(highs,true); ArraySetAsSeries(lows,true);
    int hi_index=ArrayMaximum(highs); int lo_index=ArrayMinimum(lows);
    double hi=highs[hi_index]; double lo=lows[lo_index];
-   datetime hi_time=iTime(m_symbol,m_timeframe,hi_index);
-   datetime lo_time=iTime(m_symbol,m_timeframe,lo_index);
+  datetime hi_time=iTime(m_symbol,m_timeframe,hi_index);
+  datetime lo_time=iTime(m_symbol,m_timeframe,lo_index);
+
+  double price1,price2;
+  datetime time1,time2;
+  if(lo_time<hi_time)
+    {
+     price1=lo;   time1=lo_time;
+     price2=hi;   time2=hi_time;
+    }
+  else
+    {
+     price1=hi;   time1=hi_time;
+     price2=lo;   time2=lo_time;
+    }
+  double delta=price2-price1;
 
    if(StringLen(m_obj_name)==0)
       m_obj_name="Fibo_"+IntegerToString(GetTickCount());
-  if(!ObjectCreate(0,m_obj_name,OBJ_FIBO,0,hi_time,hi,lo_time,lo))
+  if(!ObjectCreate(0,m_obj_name,OBJ_FIBO,0,time1,price1,time2,price2))
       return false;
+  ObjectSetInteger(0,m_obj_name,OBJPROP_RAY_RIGHT,true);
+  ObjectSetInteger(0,m_obj_name,OBJPROP_RAY_LEFT,false);
 
   ObjectSetInteger(0,m_obj_name,OBJPROP_COLOR,m_parallel_color);
   ObjectSetInteger(0,m_obj_name,OBJPROP_STYLE,m_parallel_style);
@@ -318,11 +334,12 @@ bool CFibonacci::Update()
   if(m_show_labels)
     {
      ArrayResize(m_label_names,cnt);
-     datetime t = (hi_time>lo_time?hi_time:lo_time);
+     datetime t = (time1>time2?time1:time2);
      for(int i=0;i<cnt;i++)
        {
         m_label_names[i]=m_obj_name+"_lbl_"+IntegerToString(i);
-        ObjectCreate(0,m_label_names[i],OBJ_TEXT,0,t,hi-(hi-lo)*vals[i]/100.0);
+        double y=price1+delta*(vals[i]/100.0);
+        ObjectCreate(0,m_label_names[i],OBJ_TEXT,0,t,y);
         ObjectSetString(0,m_label_names[i],OBJPROP_TEXT,texts[i]);
         ObjectSetInteger(0,m_label_names[i],OBJPROP_COLOR,m_labels_color);
         ObjectSetInteger(0,m_label_names[i],OBJPROP_FONTSIZE,m_labels_font_size);
