@@ -265,7 +265,8 @@ bool CFibonacci::Update()
    ObjectSetInteger(0,m_obj_name,OBJPROP_LEVELS,cnt);
    for(int i=0;i<cnt;i++)
      {
-      ObjectSetDouble(0,m_obj_name,OBJPROP_LEVELVALUE,i,vals[i]);
+      // OBJPROP_LEVELVALUE expects the fraction (0.382 for 38.2%)
+      ObjectSetDouble(0,m_obj_name,OBJPROP_LEVELVALUE,i,vals[i]/100.0);
       ObjectSetInteger(0,m_obj_name,OBJPROP_LEVELCOLOR,i,cols[i]);
       ObjectSetInteger(0,m_obj_name,OBJPROP_LEVELSTYLE,i,styles[i]);
       ObjectSetInteger(0,m_obj_name,OBJPROP_LEVELWIDTH,i,widths[i]);
