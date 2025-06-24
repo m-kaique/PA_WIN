@@ -14,7 +14,8 @@ private:
    ENUM_TIMEFRAMES m_timeframe;
    int             m_bars;
    double          m_levels[6];
-   color           m_color;
+   color           m_levels_color;
+   color           m_parallel_color;
    string          m_obj_name;
    bool            m_ready;
 
@@ -47,7 +48,8 @@ CFibonacci::CFibonacci()
    m_timeframe=PERIOD_CURRENT;
    m_bars=0;
    ArrayInitialize(m_levels,0.0);
-   m_color=clrGold;
+   m_levels_color=clrOrange;
+   m_parallel_color=clrYellow;
    m_obj_name="";
    m_ready=false;
   }
@@ -87,7 +89,7 @@ bool CFibonacci::Init(string symbol, ENUM_TIMEFRAMES timeframe,
    m_levels[3]=level4;
    m_levels[4]=level5;
    m_levels[5]=level6;
-  m_color=levels_color;
+   m_levels_color=levels_color;
   // keep existing name for updates
   if(StringLen(m_obj_name)==0)
      m_obj_name="Fibo_"+IntegerToString(GetTickCount());
@@ -105,7 +107,7 @@ bool CFibonacci::Init(string symbol, ENUM_TIMEFRAMES timeframe,
    return Init(symbol,timeframe,period,
                defaults[0],defaults[1],defaults[2],
                defaults[3],defaults[4],defaults[5],
-               clrGold);
+               clrOrange);
   }
 
 //+------------------------------------------------------------------+
@@ -162,10 +164,13 @@ bool CFibonacci::Update()
      if(m_levels[i]!=0.0)
         vals[cnt++]=m_levels[i];
 
+   ObjectSetInteger(0,m_obj_name,OBJPROP_COLOR,m_parallel_color);
    ObjectSetInteger(0,m_obj_name,OBJPROP_LEVELS,cnt);
    for(int i=0;i<cnt;i++)
+     {
       ObjectSetDouble(0,m_obj_name,OBJPROP_LEVELVALUE,i,vals[i]);
-   ObjectSetInteger(0,m_obj_name,OBJPROP_LEVELCOLOR,m_color);
+      ObjectSetInteger(0,m_obj_name,OBJPROP_LEVELCOLOR,i,m_levels_color);
+     }
 
    m_ready=true;
    return true;

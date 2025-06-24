@@ -667,7 +667,7 @@ Esta seção detalha as principais funções e classes encontradas no código do
     - `price_field` (`ENUM_STO_PRICE`): Campo de preço utilizado.
     - `enabled` (`bool`): Indica se o indicador está habilitado.
     - `level_1` a `level_6` (`double`): Valores dos níveis de Fibonacci exibidos (apenas para o indicador `FIBO`).
-    - `levels_color` (`color`): Cor aplicada às linhas de Fibonacci.
+    - `levels_color` (`color`): Cor aplicada às linhas de Fibonacci. Caso não especificado, é usado `orange`. A linha paralela é sempre desenhada em `yellow`.
 
 - **`STimeframeConfig`**
   - **Descrição simplificada**: Configuração para um timeframe específico contendo uma lista de indicadores.
@@ -922,4 +922,4 @@ Esta seção registra as principais alterações e versões dos componentes do E
 
 ### fibonacci.mqh
 
--   **Versao 1.00**: Implementa o indicador de retração de Fibonacci derivado de `CIndicatorBase`, responsável por desenhar automaticamente os níveis configurados no gráfico.
+-   **Versao 1.00**: Implementa o indicador de retração de Fibonacci derivado de `CIndicatorBase`, responsável por desenhar automaticamente os níveis configurados no gráfico. A linha principal é exibida em `yellow` e as linhas de nível usam a cor configurada (padrão `orange`).
