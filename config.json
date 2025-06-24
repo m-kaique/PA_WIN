@@ -9,7 +9,8 @@
             {"name":"ema50","type":"MA","period":50,"method":"EMA","enabled":false},
             {"name":"sma200","type":"MA","period":200,"method":"SMA","enabled":false},
             {"name":"sto14","type":"STO","period":14,"dperiod":3,"slowing":3,"method":"SMA","price_field":"LOWHIGH","enabled":true},
-            {"name":"vol0","type":"VOL","shift":0,"enabled":true}
+            {"name":"vol0","type":"VOL","shift":0,"enabled":true},
+            {"name":"boll20","type":"BOLL","period":20,"shift":0,"deviation":2.0,"applied_price":"CLOSE","enabled":true}
          ]
       },
       "H4": {
@@ -20,7 +21,8 @@
             {"name":"ema21","type":"MA","period":21,"method":"EMA","enabled":false},
             {"name":"ema50","type":"MA","period":50,"method":"EMA","enabled":false},
             {"name":"sma200","type":"MA","period":200,"method":"SMA","enabled":true},
-            {"name":"vol0","type":"VOL","shift":0,"enabled":false}
+            {"name":"vol0","type":"VOL","shift":0,"enabled":false},
+            {"name":"boll20","type":"BOLL","period":20,"shift":0,"deviation":2.0,"applied_price":"CLOSE","enabled":false}
          ]
       }
    }

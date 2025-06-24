@@ -9,6 +9,7 @@
 #include "indicators/moving_averages.mqh"
 #include "indicators/stochastic.mqh"
 #include "indicators/volume.mqh"
+#include "indicators/bollinger.mqh"
 #include "config_types.mqh"
 
 //+------------------------------------------------------------------+
@@ -113,6 +114,21 @@ bool TF_CTX::Init()
         {
          ind = new CVolume();
          if(ind==NULL || !ind.Init(m_symbol, m_timeframe, m_cfg[i].shift, m_cfg[i].method))
+           {
+            Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+            delete ind;
+            CleanUp();
+            return false;
+           }
+        }
+      else if(m_cfg[i].type=="BOLL")
+        {
+         ind = new CBollinger();
+         if(ind==NULL || !((CBollinger*)ind).Init(m_symbol, m_timeframe,
+                                                 m_cfg[i].period,
+                                                 m_cfg[i].shift,
+                                                 m_cfg[i].deviation,
+                                                 m_cfg[i].applied_price))
            {
             Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
             delete ind;

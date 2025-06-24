@@ -16,6 +16,8 @@ struct SIndicatorConfig
     int    slowing;
     int    shift;
     ENUM_STO_PRICE price_field;
+    double deviation;
+    ENUM_APPLIED_PRICE applied_price;
     bool   enabled;
 };
 
