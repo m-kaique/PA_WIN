@@ -530,6 +530,7 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
             icfg.method  = StringToMAMethod(ind["method"].ToStr());
             icfg.dperiod = (int)ind["dperiod"].ToInt();
             icfg.slowing = (int)ind["slowing"].ToInt();
+            icfg.shift   = (int)ind["shift"].ToInt();
             icfg.price_field = StringToPriceField(ind["price_field"].ToStr());
             icfg.enabled = ind["enabled"].ToBool();
 
