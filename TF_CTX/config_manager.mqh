@@ -32,6 +32,7 @@ private:
     ENUM_TIMEFRAMES StringToTimeframe(string tf_str);
     ENUM_MA_METHOD StringToMAMethod(string method_str);
     ENUM_STO_PRICE StringToPriceField(string field_str);
+    ENUM_APPLIED_PRICE StringToAppliedPrice(string price_str);
     STimeframeConfig ParseTimeframeConfig(CJAVal *tf_config);
     string CreateContextKey(string symbol, ENUM_TIMEFRAMES tf);
     bool TestJSONParsing();
@@ -492,6 +493,20 @@ ENUM_STO_PRICE CConfigManager::StringToPriceField(string field_str)
 }
 
 //+------------------------------------------------------------------+
+//| Converter string para applied price das Bandas de Bollinger      |
+//+------------------------------------------------------------------+
+ENUM_APPLIED_PRICE CConfigManager::StringToAppliedPrice(string price_str)
+{
+    if(price_str=="OPEN") return PRICE_OPEN;
+    if(price_str=="HIGH") return PRICE_HIGH;
+    if(price_str=="LOW")  return PRICE_LOW;
+    if(price_str=="MEDIAN") return PRICE_MEDIAN;
+    if(price_str=="TYPICAL") return PRICE_TYPICAL;
+    if(price_str=="WEIGHTED") return PRICE_WEIGHTED;
+    return PRICE_CLOSE;
+}
+
+//+------------------------------------------------------------------+
 //| Fazer parse da configuração do timeframe                        |
 //+------------------------------------------------------------------+
 STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
@@ -532,6 +547,8 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
             icfg.slowing = (int)ind["slowing"].ToInt();
             icfg.shift   = (int)ind["shift"].ToInt();
             icfg.price_field = StringToPriceField(ind["price_field"].ToStr());
+            icfg.deviation = ind["deviation"].ToDbl();
+            icfg.applied_price = StringToAppliedPrice(ind["applied_price"].ToStr());
             icfg.enabled = ind["enabled"].ToBool();
 
             int pos = ArraySize(config.indicators);
