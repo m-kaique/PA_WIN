@@ -7,6 +7,7 @@
 #property version   "2.00"
 
 #include "indicators/moving_averages.mqh"
+#include "indicators/stochastic.mqh"
 #include "config_types.mqh"
 
 //+------------------------------------------------------------------+
@@ -84,6 +85,22 @@ bool TF_CTX::Init()
         {
          ind = new CMovingAverages();
          if(ind==NULL || !ind.Init(m_symbol, m_timeframe, m_cfg[i].period, m_cfg[i].method))
+           {
+            Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+            delete ind;
+            CleanUp();
+            return false;
+           }
+        }
+      else if(m_cfg[i].type=="STO")
+        {
+         ind = new CStochastic();
+         if(ind==NULL || !((CStochastic*)ind).Init(m_symbol, m_timeframe,
+                                                  m_cfg[i].period,
+                                                  m_cfg[i].dperiod,
+                                                  m_cfg[i].slowing,
+                                                  m_cfg[i].method,
+                                                  m_cfg[i].price_field))
            {
             Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
             delete ind;
