@@ -8,6 +8,7 @@
 
 #include "indicators/moving_averages.mqh"
 #include "indicators/stochastic.mqh"
+#include "indicators/volume.mqh"
 #include "config_types.mqh"
 
 //+------------------------------------------------------------------+
@@ -101,6 +102,17 @@ bool TF_CTX::Init()
                                                   m_cfg[i].slowing,
                                                   m_cfg[i].method,
                                                   m_cfg[i].price_field))
+           {
+            Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+            delete ind;
+            CleanUp();
+            return false;
+           }
+        }
+      else if(m_cfg[i].type=="VOL")
+        {
+         ind = new CVolume();
+         if(ind==NULL || !ind.Init(m_symbol, m_timeframe, m_cfg[i].shift, m_cfg[i].method))
            {
             Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
             delete ind;
