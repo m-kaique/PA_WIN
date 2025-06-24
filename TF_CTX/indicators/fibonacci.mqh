@@ -197,12 +197,12 @@ bool CFibonacci::Init(string symbol, ENUM_TIMEFRAMES timeframe, SIndicatorConfig
    return Init(symbol,timeframe,config.period,
                config.level_1,config.level_2,config.level_3,
                config.level_4,config.level_5,config.level_6,
-               config.levels_color,config.levels_style,config.levels_width,
+               (color)config.levels_color,(ENUM_LINE_STYLE)config.levels_style,config.levels_width,
                config.ext_1,config.ext_2,config.ext_3,
-               config.extensions_color,config.extensions_style,config.extensions_width,
-               config.parallel_color,config.parallel_style,config.parallel_width,
+               (color)config.extensions_color,(ENUM_LINE_STYLE)config.extensions_style,config.extensions_width,
+               (color)config.parallel_color,(ENUM_LINE_STYLE)config.parallel_style,config.parallel_width,
                config.show_labels,
-               config.labels_color,config.labels_font_size,config.labels_font);
+               (color)config.labels_color,config.labels_font_size,config.labels_font);
   }
 
 //+------------------------------------------------------------------+
