@@ -250,71 +250,93 @@ bool CFibonacci::IsReady()
 //+------------------------------------------------------------------+
 //| Recalculate and redraw Fibonacci levels                          |
 //+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//| Recalculate and redraw Fibonacci levels                          |
+//+------------------------------------------------------------------+
 bool CFibonacci::Update()
   {
+   // Apaga qualquer objeto Fibonacci existente
    DeleteObject();
 
-   double highs[]; double lows[];
+   double highs[];
+   double lows[];
+
+   // Tratar arrays como séries antes de copiar valores
+   ArraySetAsSeries(highs,true);
+   ArraySetAsSeries(lows,true);
+
+   // Copia os dados High/Low
    if(CopyHigh(m_symbol,m_timeframe,0,m_bars,highs)<=0)
-      return false;
+      return(false);
    if(CopyLow(m_symbol,m_timeframe,0,m_bars,lows)<=0)
-      return false;
+      return(false);
 
-   ArraySetAsSeries(highs,true); ArraySetAsSeries(lows,true);
-   int hi_index=ArrayMaximum(highs); int lo_index=ArrayMinimum(lows);
-   double hi=highs[hi_index]; double lo=lows[lo_index];
-  datetime hi_time=iTime(m_symbol,m_timeframe,hi_index);
-  datetime lo_time=iTime(m_symbol,m_timeframe,lo_index);
+   // Encontra índices de máximo e mínimo
+   int hi_index=ArrayMaximum(highs);
+   int lo_index=ArrayMinimum(lows);
 
-  double price1,price2;
-  datetime time1,time2;
-  if(lo_time<hi_time)
-    {
-     price1=lo;   time1=lo_time;
-     price2=hi;   time2=hi_time;
-    }
-  else
-    {
-     price1=hi;   time1=hi_time;
-     price2=lo;   time2=lo_time;
-    }
-  double delta=price2-price1;
+   double hi=highs[hi_index];
+   double lo=lows[lo_index];
+   datetime hi_time=iTime(m_symbol,m_timeframe,hi_index);
+   datetime lo_time=iTime(m_symbol,m_timeframe,lo_index);
 
+   // Define ordem cronológica dos pontos
+   double price1,price2;
+   datetime time1,time2;
+   if(lo_time<hi_time)
+     {
+      price1=lo;   time1=lo_time;
+      price2=hi;   time2=hi_time;
+     }
+   else
+     {
+      price1=hi;   time1=hi_time;
+      price2=lo;   time2=lo_time;
+     }
+
+   double delta=price2-price1;
+   // Se não houver variação, não desenha
+   if(MathAbs(delta)<_Point)
+      return(false);
+
+   // Garante nome único do objeto
    if(StringLen(m_obj_name)==0)
       m_obj_name="Fibo_"+IntegerToString(GetTickCount());
-  if(!ObjectCreate(0,m_obj_name,OBJ_FIBO,0,time1,price1,time2,price2))
-      return false;
-  ObjectSetInteger(0,m_obj_name,OBJPROP_RAY_RIGHT,true);
-  ObjectSetInteger(0,m_obj_name,OBJPROP_RAY_LEFT,false);
 
-  ObjectSetInteger(0,m_obj_name,OBJPROP_COLOR,m_parallel_color);
-  ObjectSetInteger(0,m_obj_name,OBJPROP_STYLE,m_parallel_style);
-  ObjectSetInteger(0,m_obj_name,OBJPROP_WIDTH,m_parallel_width);
-  if(m_show_labels)
-    {
-     ObjectSetInteger(0,m_obj_name,OBJPROP_FONTSIZE,m_labels_font_size);
-     ObjectSetString(0,m_obj_name,OBJPROP_FONT,m_labels_font);
-    }
+   // Cria o objeto Fibonacci e o torna selecionável
+   if(!ObjectCreate(0,m_obj_name,OBJ_FIBO,0,time1,price1,time2,price2))
+      return(false);
+   ObjectSetInteger(0,m_obj_name,OBJPROP_SELECTABLE,true);
+   ObjectSetInteger(0,m_obj_name,OBJPROP_SELECTED,true);
 
+   // Propriedades de estilo e paralelismo
+   ObjectSetInteger(0,m_obj_name,OBJPROP_RAY_RIGHT,true);
+   ObjectSetInteger(0,m_obj_name,OBJPROP_RAY_LEFT,false);
+   ObjectSetInteger(0,m_obj_name,OBJPROP_COLOR,m_parallel_color);
+   ObjectSetInteger(0,m_obj_name,OBJPROP_STYLE,m_parallel_style);
+   ObjectSetInteger(0,m_obj_name,OBJPROP_WIDTH,m_parallel_width);
+   if(m_show_labels)
+     {
+      ObjectSetInteger(0,m_obj_name,OBJPROP_FONTSIZE,m_labels_font_size);
+      ObjectSetString(0,m_obj_name,OBJPROP_FONT,m_labels_font);
+     }
+
+   // Monta níveis e extensões
    double vals[9]; color cols[9]; int styles[9]; int widths[9]; string texts[9];
    int cnt=0;
    for(int i=0;i<6;i++)
      if(m_levels[i]!=0.0)
        {
-        vals[cnt]=m_levels[i];
-        cols[cnt]=m_levels_color;
-        styles[cnt]=m_levels_style;
-        widths[cnt]=m_levels_width;
+        vals[cnt]=m_levels[i]; cols[cnt]=m_levels_color;
+        styles[cnt]=m_levels_style; widths[cnt]=m_levels_width;
         texts[cnt]=m_show_labels?FormatLabel(m_levels[i],hi,lo):"";
         cnt++;
        }
    for(int i=0;i<3;i++)
      if(m_extensions[i]!=0.0)
        {
-        vals[cnt]=m_extensions[i];
-        cols[cnt]=m_extensions_color;
-        styles[cnt]=m_extensions_style;
-        widths[cnt]=m_extensions_width;
+        vals[cnt]=m_extensions[i]; cols[cnt]=m_extensions_color;
+        styles[cnt]=m_extensions_style; widths[cnt]=m_extensions_width;
         texts[cnt]=m_show_labels?FormatLabel(m_extensions[i],hi,lo):"";
         cnt++;
        }
@@ -322,33 +344,33 @@ bool CFibonacci::Update()
    ObjectSetInteger(0,m_obj_name,OBJPROP_LEVELS,cnt);
    for(int i=0;i<cnt;i++)
      {
-      // OBJPROP_LEVELVALUE expects the fraction (0.382 for 38.2%)
       ObjectSetDouble(0,m_obj_name,OBJPROP_LEVELVALUE,i,vals[i]/100.0);
       ObjectSetInteger(0,m_obj_name,OBJPROP_LEVELCOLOR,i,cols[i]);
       ObjectSetInteger(0,m_obj_name,OBJPROP_LEVELSTYLE,i,styles[i]);
       ObjectSetInteger(0,m_obj_name,OBJPROP_LEVELWIDTH,i,widths[i]);
       if(m_show_labels)
          ObjectSetString(0,m_obj_name,OBJPROP_LEVELTEXT,i,texts[i]);
-    }
+     }
 
-  if(m_show_labels)
-    {
-     ArrayResize(m_label_names,cnt);
-     datetime t = (time1>time2?time1:time2);
-     for(int i=0;i<cnt;i++)
-       {
-        m_label_names[i]=m_obj_name+"_lbl_"+IntegerToString(i);
-        double y=price1+delta*(vals[i]/100.0);
-        ObjectCreate(0,m_label_names[i],OBJ_TEXT,0,t,y);
-        ObjectSetString(0,m_label_names[i],OBJPROP_TEXT,texts[i]);
-        ObjectSetInteger(0,m_label_names[i],OBJPROP_COLOR,m_labels_color);
-        ObjectSetInteger(0,m_label_names[i],OBJPROP_FONTSIZE,m_labels_font_size);
-        ObjectSetString(0,m_label_names[i],OBJPROP_FONT,m_labels_font);
-       }
-    }
+   // Cria rótulos de texto
+   if(m_show_labels)
+     {
+      ArrayResize(m_label_names,cnt);
+      datetime t=(time1>time2?time1:time2);
+      for(int i=0;i<cnt;i++)
+        {
+         m_label_names[i]=m_obj_name+"_lbl_"+IntegerToString(i);
+         double y=price1+delta*(vals[i]/100.0);
+         ObjectCreate(0,m_label_names[i],OBJ_TEXT,0,t,y);
+         ObjectSetString(0,m_label_names[i],OBJPROP_TEXT,texts[i]);
+         ObjectSetInteger(0,m_label_names[i],OBJPROP_COLOR,m_labels_color);
+         ObjectSetInteger(0,m_label_names[i],OBJPROP_FONTSIZE,m_labels_font_size);
+         ObjectSetString(0,m_label_names[i],OBJPROP_FONT,m_labels_font);
+        }
+     }
 
    m_ready=true;
-   return true;
+   return(true);
   }
 
 #endif // __FIBONACCI_MQH__
