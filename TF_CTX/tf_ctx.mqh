@@ -9,6 +9,7 @@
 #include "indicators/moving_averages.mqh"
 #include "indicators/stochastic.mqh"
 #include "indicators/volume.mqh"
+#include "indicators/vwap.mqh"
 #include "indicators/bollinger.mqh"
 #include "indicators/fibonacci.mqh"
 #include "config_types.mqh"
@@ -18,6 +19,7 @@ enum ENUM_INDICATOR_TYPE
   INDICATOR_TYPE_MA,
   INDICATOR_TYPE_STO,
   INDICATOR_TYPE_VOL,
+  INDICATOR_TYPE_VWAP,
   INDICATOR_TYPE_BOLL,
   INDICATOR_TYPE_FIBO,
   INDICATOR_TYPE_UNKNOWN
@@ -31,6 +33,8 @@ ENUM_INDICATOR_TYPE StringToIndicatorType(string type)
     return INDICATOR_TYPE_STO;
   if (type == "VOL")
     return INDICATOR_TYPE_VOL;
+  if (type == "VWAP")
+    return INDICATOR_TYPE_VWAP;
   if (type == "BOLL")
     return INDICATOR_TYPE_BOLL;
   if (type == "FIBO")
@@ -135,6 +139,17 @@ bool TF_CTX::Init()
     case INDICATOR_TYPE_VOL:
       ind = new CVolume();
       if (ind == NULL || !ind.Init(m_symbol, m_timeframe, m_cfg[i].shift, m_cfg[i].method))
+      {
+        Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+        delete ind;
+        CleanUp();
+        return false;
+      }
+      break;
+
+    case INDICATOR_TYPE_VWAP:
+      ind = new CVWAP();
+      if (ind == NULL || !ind.Init(m_symbol, m_timeframe, m_cfg[i].period, m_cfg[i].method))
       {
         Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
         delete ind;

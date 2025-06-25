@@ -92,6 +92,7 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
 - **`moving_averages.mqh`**: Implementa a classe `CMovingAverages`, derivada de `CIndicatorBase`, responsável por criar e gerenciar indicadores de média móvel.
 - **`stochastic.mqh`**: Implementa a classe `CStochastic`, derivada de `CIndicatorBase`, responsável pelo cálculo do indicador Estocástico.
 - **`volume.mqh`**: Implementa a classe `CVolume`, derivada de `CIndicatorBase`, responsável por acessar valores de volume.
+- **`vwap.mqh`**: Implementa a classe `CVWAP`, derivada de `CIndicatorBase`, responsável pelo cálculo do Volume Weighted Average Price.
 - **`fibonacci.mqh`**: Implementa o indicador `CFibonacci`, capaz de desenhar níveis de retração e extensões de Fibonacci com total customização via JSON.
 
 
@@ -936,6 +937,10 @@ Esta seção registra as principais alterações e versões dos componentes do E
 ### volume.mqh
 
 -   **Versao 1.00**: Implementa o indicador de Volume derivado de `CIndicatorBase`.
+
+### vwap.mqh
+
+-   **Versao 1.00**: Implementa o indicador VWAP (Volume Weighted Average Price) derivado de `CIndicatorBase`.
 
 ### fibonacci.mqh
 
