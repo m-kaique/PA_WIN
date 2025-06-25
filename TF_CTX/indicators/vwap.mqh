@@ -142,15 +142,18 @@ bool CVWAP::Update()
    if(StringLen(m_obj_prefix)==0)
       m_obj_prefix="VWAP_"+IntegerToString(GetTickCount());
 
-   // allocate buffer for vwap values
-   double vals[]; ArrayResize(vals,m_period); ArraySetAsSeries(vals,true);
+   int bars=Bars(m_symbol,m_timeframe);
+   int points=MathMin(m_period,bars-m_period+1);
+   if(points<2)
+      return(false);
 
-   for(int i=0;i<m_period;i++)
+   double vals[]; ArrayResize(vals,points); ArraySetAsSeries(vals,true);
+
+   for(int i=0;i<points;i++)
       vals[i]=CalcVWAP(i);
 
-   // create line segments between consecutive values
-   ArrayResize(m_line_names,m_period-1);
-   for(int i=m_period-1;i>0;i--)
+   ArrayResize(m_line_names,points-1);
+   for(int i=points-1;i>0;i--)
      {
       string name=m_obj_prefix+"_"+IntegerToString(i);
       datetime t1=iTime(m_symbol,m_timeframe,i);
@@ -160,9 +163,10 @@ bool CVWAP::Update()
       ObjectSetInteger(0,name,OBJPROP_COLOR,m_color);
       ObjectSetInteger(0,name,OBJPROP_STYLE,m_style);
       ObjectSetInteger(0,name,OBJPROP_WIDTH,m_width);
-      m_line_names[m_period-1-i]=name;
+      m_line_names[points-1-i]=name;
      }
 
+   ChartRedraw();
    return(true);
   }
 
