@@ -13,6 +13,13 @@ private:
    string          m_symbol;
    ENUM_TIMEFRAMES m_timeframe;
    int             m_period;
+   color           m_color;
+   int             m_style;
+   int             m_width;
+   string          m_obj_prefix;
+   string          m_line_names[];
+
+   void            DeleteObjects();
 
    double          CalcVWAP(int shift);
 public:
@@ -24,6 +31,7 @@ public:
    virtual double   GetValue(int shift=0);
    virtual bool     CopyValues(int shift,int count,double &buffer[]);
    virtual bool     IsReady();
+   virtual bool     Update();
   };
 
 //+------------------------------------------------------------------+
@@ -34,6 +42,11 @@ CVWAP::CVWAP()
    m_symbol="";
    m_timeframe=PERIOD_CURRENT;
    m_period=1;
+   m_color=clrAqua;
+   m_style=STYLE_SOLID;
+   m_width=1;
+   m_obj_prefix="";
+   ArrayResize(m_line_names,0);
   }
 
 //+------------------------------------------------------------------+
@@ -41,6 +54,7 @@ CVWAP::CVWAP()
 //+------------------------------------------------------------------+
 CVWAP::~CVWAP()
   {
+   DeleteObjects();
   }
 
 //+------------------------------------------------------------------+
@@ -102,7 +116,54 @@ bool CVWAP::CopyValues(int shift,int count,double &buffer[])
 //+------------------------------------------------------------------+
 bool CVWAP::IsReady()
   {
-   return (Bars(m_symbol,m_timeframe) > m_period);
+  return (Bars(m_symbol,m_timeframe) > m_period);
+  }
+
+//+------------------------------------------------------------------+
+//| Delete previously drawn objects                                  |
+//+------------------------------------------------------------------+
+void CVWAP::DeleteObjects()
+  {
+   for(int i=0;i<ArraySize(m_line_names);i++)
+      ObjectDelete(0,m_line_names[i]);
+   ArrayResize(m_line_names,0);
+  }
+
+//+------------------------------------------------------------------+
+//| Recalculate and redraw VWAP line                                 |
+//+------------------------------------------------------------------+
+bool CVWAP::Update()
+  {
+   if(!IsReady())
+      return(false);
+
+   DeleteObjects();
+
+   if(StringLen(m_obj_prefix)==0)
+      m_obj_prefix="VWAP_"+IntegerToString(GetTickCount());
+
+   // allocate buffer for vwap values
+   double vals[]; ArrayResize(vals,m_period); ArraySetAsSeries(vals,true);
+
+   for(int i=0;i<m_period;i++)
+      vals[i]=CalcVWAP(i);
+
+   // create line segments between consecutive values
+   ArrayResize(m_line_names,m_period-1);
+   for(int i=m_period-1;i>0;i--)
+     {
+      string name=m_obj_prefix+"_"+IntegerToString(i);
+      datetime t1=iTime(m_symbol,m_timeframe,i);
+      datetime t2=iTime(m_symbol,m_timeframe,i-1);
+      if(!ObjectCreate(0,name,OBJ_TREND,0,t1,vals[i],t2,vals[i-1]))
+         continue;
+      ObjectSetInteger(0,name,OBJPROP_COLOR,m_color);
+      ObjectSetInteger(0,name,OBJPROP_STYLE,m_style);
+      ObjectSetInteger(0,name,OBJPROP_WIDTH,m_width);
+      m_line_names[m_period-1-i]=name;
+     }
+
+   return(true);
   }
 
 #endif // __VWAP_MQH__
