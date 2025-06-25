@@ -23,7 +23,7 @@ enum ENUM_INDICATOR_TYPE
    INDICATOR_TYPE_UNKNOWN
   };
 
-static ENUM_INDICATOR_TYPE StringToIndicatorType(string type)
+ENUM_INDICATOR_TYPE StringToIndicatorType(string type)
   {
    if(type=="MA")   return INDICATOR_TYPE_MA;
    if(type=="STO")  return INDICATOR_TYPE_STO;
