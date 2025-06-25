@@ -42,7 +42,7 @@ O Expert Advisor PA_WIN opera com uma arquitetura modular, centrada em um `CConf
 3.  **Lógica em Novo Candle (`ExecuteOnNewBar`):**
     *   Esta função é o coração da lógica de execução do EA em cada novo candle.
     *   Atualmente, ela obtém o contexto `TF_CTX` para o símbolo fixo "WIN$N" no timeframe D1.
-    *   Chama o método `Update()` no contexto D1 para garantir que os dados das médias móveis estejam atualizados.
+     *   Chama o método `Update()` no contexto D1, o qual percorre todos os indicadores e executa `Update()` em cada um (herdado de `CIndicatorBase` ou sobrescrito), garantindo que fiquem sincronizados.
     *   Exibe os valores das EMAs 9 e 21 para o candle atual (shift 1) e o anterior (shift 0) para fins de depuração.
     *   A lógica de negociação real seria implementada aqui, utilizando os dados fornecidos pelos objetos `TF_CTX`.
 
@@ -86,8 +86,8 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
 
 - **`config_types.mqh`**: Define as estruturas de dados utilizadas para tipificar a configuração lida do JSON. Nesta versão são utilizadas `SIndicatorConfig` (configuração de um indicador genérico) e `STimeframeConfig`, que possui um array de `SIndicatorConfig` para cada timeframe.
 
-- **`tf_ctx.mqh`**: Define a classe `TF_CTX` (TimeFrame Context). Cada instância mantém uma lista de indicadores derivados de `CIndicatorBase`, criados dinamicamente conforme a configuração. Fornece métodos genéricos para acessar valores e atualizar o contexto.
-- **`indicator_base.mqh`**: Declara a classe abstrata `CIndicatorBase`, utilizada como interface para os diversos tipos de indicadores.
+- **`tf_ctx.mqh`**: Define a classe `TF_CTX` (TimeFrame Context). Cada instância mantém uma lista de indicadores derivados de `CIndicatorBase`, criados dinamicamente conforme a configuração. Fornece métodos genéricos para acessar valores e atualizar o contexto. Seu método `Update()` percorre essa lista e chama `Update()` em cada indicador, mantendo todos sincronizados.
+- **`indicator_base.mqh`**: Declara a classe abstrata `CIndicatorBase`, utilizada como interface para os diversos tipos de indicadores. Nela está definido o método virtual `Update()`, que por padrão apenas verifica `IsReady()`. Indicadores mais complexos podem sobrescrever esse método para recalcular seus dados.
 
 - **`moving_averages.mqh`**: Implementa a classe `CMovingAverages`, derivada de `CIndicatorBase`, responsável por criar e gerenciar indicadores de média móvel.
 - **`stochastic.mqh`**: Implementa a classe `CStochastic`, derivada de `CIndicatorBase`, responsável pelo cálculo do indicador Estocástico.
@@ -702,7 +702,7 @@ Esta seção detalha as principais funções e classes encontradas no código do
     - **`~TF_CTX()`**: Libera recursos.
   - **Métodos Públicos**:
     - **`Init()`**: Inicializa o contexto criando os indicadores.
-    - **`Update()`**: Atualiza os dados dos indicadores.
+    - **`Update()`**: Percorre a lista `m_indicators` e chama `Update()` em cada objeto. Essa chamada utiliza o método da classe base `CIndicatorBase`, que por padrão apenas verifica `IsReady()`, mas pode ser sobrescrito por indicadores específicos (ex.: `CFibonacci`). Retorna `true` se todos estiverem prontos.
     - **`GetIndicatorValue(string name, int shift = 0)`**: Obtém o valor de um indicador pelo nome.
     - **`CopyIndicatorValues(string name, int shift, int count, double &buffer[])`**: Copia múltiplos valores.
     - **`IsInitialized() const`**, **`GetTimeframe() const`**, **`GetNumCandles() const`**, **`GetSymbol() const`**: Acessores.
