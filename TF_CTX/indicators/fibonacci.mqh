@@ -258,40 +258,68 @@ bool CFibonacci::Update()
    // Apaga qualquer objeto Fibonacci existente
    DeleteObject();
 
-   double highs[];
-   double lows[];
-
-   // Tratar arrays como séries antes de copiar valores
-   ArraySetAsSeries(highs,true);
-   ArraySetAsSeries(lows,true);
-
-   // Copia os dados High/Low
-   if(CopyHigh(m_symbol,m_timeframe,0,m_bars,highs)<=0)
-      return(false);
-   if(CopyLow(m_symbol,m_timeframe,0,m_bars,lows)<=0)
-      return(false);
-
-   // Encontra índices de máximo e mínimo
-   int hi_index=ArrayMaximum(highs);
-   int lo_index=ArrayMinimum(lows);
-
-   double hi=highs[hi_index];
-   double lo=lows[lo_index];
-   datetime hi_time=iTime(m_symbol,m_timeframe,hi_index);
-   datetime lo_time=iTime(m_symbol,m_timeframe,lo_index);
-
-   // Define ordem cronológica dos pontos
    double price1,price2;
    datetime time1,time2;
-   if(lo_time<hi_time)
+   double hi,lo;
+
+   if(m_bars>0)
      {
-      price1=lo;   time1=lo_time;
-      price2=hi;   time2=hi_time;
+      double highs[];
+      double lows[];
+
+      // Tratar arrays como séries antes de copiar valores
+      ArraySetAsSeries(highs,true);
+      ArraySetAsSeries(lows,true);
+
+      // Copia os dados High/Low
+      if(CopyHigh(m_symbol,m_timeframe,0,m_bars,highs)<=0)
+         return(false);
+      if(CopyLow(m_symbol,m_timeframe,0,m_bars,lows)<=0)
+         return(false);
+
+      // Encontra índices de máximo e mínimo
+      int hi_index=ArrayMaximum(highs);
+      int lo_index=ArrayMinimum(lows);
+
+      hi=highs[hi_index];
+      lo=lows[lo_index];
+      datetime hi_time=iTime(m_symbol,m_timeframe,hi_index);
+      datetime lo_time=iTime(m_symbol,m_timeframe,lo_index);
+
+      if(lo_time<hi_time)
+        {
+         price1=lo;   time1=lo_time;
+         price2=hi;   time2=hi_time;
+        }
+      else
+        {
+         price1=hi;   time1=hi_time;
+         price2=lo;   time2=lo_time;
+        }
      }
    else
      {
-      price1=hi;   time1=hi_time;
-      price2=lo;   time2=lo_time;
+      datetime day_start=iTime(m_symbol,PERIOD_D1,1);
+      datetime day_end=iTime(m_symbol,PERIOD_D1,0);
+      if(day_start==0 || day_end==0)
+         return(false);
+
+      double open=iOpen(m_symbol,PERIOD_D1,1);
+      double close=iClose(m_symbol,PERIOD_D1,1);
+      hi=iHigh(m_symbol,PERIOD_D1,1);
+      lo=iLow(m_symbol,PERIOD_D1,1);
+
+      bool bullish=(close>=open);
+      time1=day_start;
+      time2=day_end;
+      if(bullish)
+        {
+         price1=lo; price2=hi;
+        }
+      else
+        {
+         price1=hi; price2=lo;
+        }
      }
 
    double delta=price2-price1;
