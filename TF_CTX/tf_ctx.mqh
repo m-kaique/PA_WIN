@@ -13,6 +13,26 @@
 #include "indicators/fibonacci.mqh"
 #include "config_types.mqh"
 
+enum ENUM_INDICATOR_TYPE
+  {
+   INDICATOR_TYPE_MA,
+   INDICATOR_TYPE_STO,
+   INDICATOR_TYPE_VOL,
+   INDICATOR_TYPE_BOLL,
+   INDICATOR_TYPE_FIBO,
+   INDICATOR_TYPE_UNKNOWN
+  };
+
+static ENUM_INDICATOR_TYPE StringToIndicatorType(string type)
+  {
+   if(type=="MA")   return INDICATOR_TYPE_MA;
+   if(type=="STO")  return INDICATOR_TYPE_STO;
+   if(type=="VOL")  return INDICATOR_TYPE_VOL;
+   if(type=="BOLL") return INDICATOR_TYPE_BOLL;
+   if(type=="FIBO") return INDICATOR_TYPE_FIBO;
+   return INDICATOR_TYPE_UNKNOWN;
+  }
+
 //+------------------------------------------------------------------+
 //| Classe principal para contexto de TimeFrame                     |
 //+------------------------------------------------------------------+
@@ -83,75 +103,75 @@ bool TF_CTX::Init()
          continue;
 
       CIndicatorBase *ind=NULL;
+      switch(StringToIndicatorType(m_cfg[i].type))
+        {
+         case INDICATOR_TYPE_MA:
+           ind = new CMovingAverages();
+           if(ind==NULL || !ind.Init(m_symbol, m_timeframe, m_cfg[i].period, m_cfg[i].method))
+             {
+              Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+              delete ind;
+              CleanUp();
+              return false;
+             }
+           break;
 
-      if(m_cfg[i].type=="MA")
-        {
-         ind = new CMovingAverages();
-         if(ind==NULL || !ind.Init(m_symbol, m_timeframe, m_cfg[i].period, m_cfg[i].method))
-           {
-            Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-            delete ind;
-            CleanUp();
-            return false;
-           }
-        }
-      else if(m_cfg[i].type=="STO")
-        {
-         ind = new CStochastic();
-         if(ind==NULL || !((CStochastic*)ind).Init(m_symbol, m_timeframe,
-                                                  m_cfg[i].period,
-                                                  m_cfg[i].dperiod,
-                                                  m_cfg[i].slowing,
-                                                  m_cfg[i].method,
-                                                  m_cfg[i].price_field))
-           {
-            Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-            delete ind;
-            CleanUp();
-            return false;
-           }
-        }
-      else if(m_cfg[i].type=="VOL")
-        {
-         ind = new CVolume();
-         if(ind==NULL || !ind.Init(m_symbol, m_timeframe, m_cfg[i].shift, m_cfg[i].method))
-           {
-            Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-            delete ind;
-            CleanUp();
-            return false;
-           }
-        }
-      else if(m_cfg[i].type=="BOLL")
-        {
-         ind = new CBollinger();
-         if(ind==NULL || !((CBollinger*)ind).Init(m_symbol, m_timeframe,
-                                                 m_cfg[i].period,
-                                                 m_cfg[i].shift,
-                                                 m_cfg[i].deviation,
-                                                 m_cfg[i].applied_price))
-           {
-            Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-            delete ind;
-            CleanUp();
-            return false;
-           }
-        }
-      else if(m_cfg[i].type=="FIBO")
-        {
-         ind = new CFibonacci();
-         if(ind==NULL || !((CFibonacci*)ind).Init(m_symbol, m_timeframe, m_cfg[i]))
-           {
-            Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-            delete ind;
-            CleanUp();
-            return false;
-           }
-        }
-      else
-        {
-         Print("Tipo de indicador nao suportado: ", m_cfg[i].type);
-         continue;
+         case INDICATOR_TYPE_STO:
+           ind = new CStochastic();
+           if(ind==NULL || !((CStochastic*)ind).Init(m_symbol, m_timeframe,
+                                                    m_cfg[i].period,
+                                                    m_cfg[i].dperiod,
+                                                    m_cfg[i].slowing,
+                                                    m_cfg[i].method,
+                                                    m_cfg[i].price_field))
+             {
+              Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+              delete ind;
+              CleanUp();
+              return false;
+             }
+           break;
+
+         case INDICATOR_TYPE_VOL:
+           ind = new CVolume();
+           if(ind==NULL || !ind.Init(m_symbol, m_timeframe, m_cfg[i].shift, m_cfg[i].method))
+             {
+              Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+              delete ind;
+              CleanUp();
+              return false;
+             }
+           break;
+
+         case INDICATOR_TYPE_BOLL:
+           ind = new CBollinger();
+           if(ind==NULL || !((CBollinger*)ind).Init(m_symbol, m_timeframe,
+                                                   m_cfg[i].period,
+                                                   m_cfg[i].shift,
+                                                   m_cfg[i].deviation,
+                                                   m_cfg[i].applied_price))
+             {
+              Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+              delete ind;
+              CleanUp();
+              return false;
+             }
+           break;
+
+         case INDICATOR_TYPE_FIBO:
+           ind = new CFibonacci();
+           if(ind==NULL || !((CFibonacci*)ind).Init(m_symbol, m_timeframe, m_cfg[i]))
+             {
+              Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+              delete ind;
+              CleanUp();
+              return false;
+             }
+           break;
+
+         default:
+           Print("Tipo de indicador nao suportado: ", m_cfg[i].type);
+           continue;
         }
 
       int pos=ArraySize(m_indicators);
