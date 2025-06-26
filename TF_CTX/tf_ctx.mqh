@@ -149,17 +149,13 @@ bool TF_CTX::Init()
 
     case INDICATOR_TYPE_VWAP:
       ind = new CVWAP();
-      if (ind == NULL || !ind.Init(m_symbol, m_timeframe, m_cfg[i].period, m_cfg[i].method))
+      if (ind == NULL || !((CVWAP*)ind).Init(m_symbol, m_timeframe, m_cfg[i]))
       {
         Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
         delete ind;
         CleanUp();
         return false;
       }
-      ((CVWAP*)ind).SetCalcMode(m_cfg[i].calc_mode);
-      ((CVWAP*)ind).SetPriceType(m_cfg[i].price_type);
-      ((CVWAP*)ind).SetSessionTimeframe(m_cfg[i].session_tf);
-      ((CVWAP*)ind).SetStartTime(m_cfg[i].start_time);
       break;
 
     case INDICATOR_TYPE_BOLL:

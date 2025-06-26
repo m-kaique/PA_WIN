@@ -7,6 +7,9 @@
 
 #include "indicator_base.mqh"
 
+// Forward declaration to avoid include dependency
+struct SIndicatorConfig;
+
 enum ENUM_VWAP_CALC_MODE
   {
    VWAP_CALC_BAR=0,
@@ -53,12 +56,19 @@ private:
    void            ComputeAll();
    void            DrawAll();
 
-   double          CalcVWAP(int shift);
+  double          CalcVWAP(int shift);
 public:
                      CVWAP();
                     ~CVWAP();
 
-   virtual bool     Init(string symbol, ENUM_TIMEFRAMES timeframe,
+  bool             Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                        int period, ENUM_VWAP_CALC_MODE mode,
+                        ENUM_VWAP_PRICE_TYPE price_type,
+                        ENUM_TIMEFRAMES session_tf,
+                        datetime start_time);
+  bool             Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                        SIndicatorConfig &config);
+  virtual bool     Init(string symbol, ENUM_TIMEFRAMES timeframe,
                          int period, ENUM_MA_METHOD method);
    virtual double   GetValue(int shift=0);
    virtual bool     CopyValues(int shift,int count,double &buffer[]);
@@ -102,22 +112,47 @@ CVWAP::~CVWAP()
   }
 
 //+------------------------------------------------------------------+
+//| Init with all VWAP parameters                                    |
+//+------------------------------------------------------------------+
+bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                 int period, ENUM_VWAP_CALC_MODE mode,
+                 ENUM_VWAP_PRICE_TYPE price_type,
+                 ENUM_TIMEFRAMES session_tf,
+                 datetime start_time)
+  {
+   m_symbol=symbol;
+   m_timeframe=timeframe;
+   m_obj_prefix=symbol+"_"+EnumToString(timeframe)+"_";
+   m_period=(period>0?period:1);
+   m_calc_mode=mode;
+   m_price_type=price_type;
+   m_session_tf=session_tf;
+   m_start_time=start_time;
+   m_last_calculated_time=0;
+   ArrayResize(m_vwap_buffer,0);
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| Init from configuration structure                                |
+//+------------------------------------------------------------------+
+bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                 SIndicatorConfig &config)
+  {
+   return Init(symbol,timeframe,config.period,
+               config.calc_mode,config.price_type,
+               config.session_tf,config.start_time);
+  }
+
+//+------------------------------------------------------------------+
 //| Initialization                                                   |
 //+------------------------------------------------------------------+
 bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                  int period, ENUM_MA_METHOD method)
   {
-  m_symbol=symbol;
-  m_timeframe=timeframe;
-  m_obj_prefix=symbol+"_"+EnumToString(timeframe)+"_";
-  if(period>0) m_period=period; else m_period=1;
-   m_calc_mode=VWAP_CALC_BAR;
-   m_price_type=VWAP_PRICE_FINANCIAL_AVERAGE;
-   m_session_tf=PERIOD_D1;
-   m_start_time=0;
-   m_last_calculated_time=0;
-   ArrayResize(m_vwap_buffer,0);
-   return true;
+   return Init(symbol,timeframe,period,
+               VWAP_CALC_BAR,VWAP_PRICE_FINANCIAL_AVERAGE,
+               PERIOD_D1,0);
   }
 
 //+------------------------------------------------------------------+
