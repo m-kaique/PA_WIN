@@ -6,6 +6,8 @@
 #ifndef __CONFIG_TYPES_MQH__
 #define __CONFIG_TYPES_MQH__
 
+#include "indicators/vwap.mqh"
+
 struct SIndicatorConfig
 {
     string name;
@@ -18,6 +20,10 @@ struct SIndicatorConfig
     ENUM_STO_PRICE price_field;
     double deviation;
     ENUM_APPLIED_PRICE applied_price;
+    ENUM_VWAP_CALC_MODE vwap_calc_mode;
+    ENUM_TIMEFRAMES     vwap_session_tf;
+    ENUM_VWAP_PRICE_TYPE vwap_price_type;
+    datetime            vwap_start_time;
     bool   enabled;
     double level_1;
     double level_2;
@@ -55,6 +61,10 @@ struct SIndicatorConfig
        price_field=STO_LOWHIGH;
        deviation=2.0;
        applied_price=PRICE_CLOSE;
+       vwap_calc_mode=VWAP_CALC_BAR;
+       vwap_session_tf=PERIOD_D1;
+       vwap_price_type=VWAP_PRICE_FINANCIAL_AVERAGE;
+       vwap_start_time=0;
        enabled=true;
        level_1=23.6; level_2=38.2; level_3=50.0;
        level_4=61.8; level_5=78.6; level_6=100.0;

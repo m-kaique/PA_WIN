@@ -57,8 +57,14 @@ public:
                      CVWAP();
                     ~CVWAP();
 
-   virtual bool     Init(string symbol, ENUM_TIMEFRAMES timeframe,
-                         int period, ENUM_MA_METHOD method);
+  bool             Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                        int period, ENUM_MA_METHOD method,
+                        ENUM_VWAP_CALC_MODE calc_mode,
+                        ENUM_TIMEFRAMES session_tf,
+                        ENUM_VWAP_PRICE_TYPE price_type,
+                        datetime start_time);
+  virtual bool     Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                        int period, ENUM_MA_METHOD method);
    virtual double   GetValue(int shift=0);
    virtual bool     CopyValues(int shift,int count,double &buffer[]);
    virtual bool     IsReady();
@@ -101,21 +107,36 @@ CVWAP::~CVWAP()
   }
 
 //+------------------------------------------------------------------+
+//| Initialization with full parameters                              |
+//+------------------------------------------------------------------+
+bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                 int period, ENUM_MA_METHOD method,
+                 ENUM_VWAP_CALC_MODE calc_mode,
+                 ENUM_TIMEFRAMES session_tf,
+                 ENUM_VWAP_PRICE_TYPE price_type,
+                 datetime start_time)
+  {
+   m_symbol=symbol;
+   m_timeframe=timeframe;
+   if(period>0) m_period=period; else m_period=1;
+   m_calc_mode=calc_mode;
+   m_price_type=price_type;
+   m_session_tf=session_tf;
+   m_start_time=start_time;
+   m_last_calculated_time=0;
+   ArrayResize(m_vwap_buffer,0);
+   return true;
+  }
+
+//+------------------------------------------------------------------+
 //| Initialization                                                   |
 //+------------------------------------------------------------------+
 bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                  int period, ENUM_MA_METHOD method)
   {
-   m_symbol=symbol;
-   m_timeframe=timeframe;
-   if(period>0) m_period=period; else m_period=1;
-   m_calc_mode=VWAP_CALC_BAR;
-   m_price_type=VWAP_PRICE_FINANCIAL_AVERAGE;
-   m_session_tf=PERIOD_D1;
-   m_start_time=0;
-   m_last_calculated_time=0;
-   ArrayResize(m_vwap_buffer,0);
-   return true;
+   return Init(symbol,timeframe,period,method,
+               VWAP_CALC_BAR,PERIOD_D1,
+               VWAP_PRICE_FINANCIAL_AVERAGE,0);
   }
 
 //+------------------------------------------------------------------+
