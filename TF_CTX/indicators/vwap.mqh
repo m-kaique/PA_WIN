@@ -6,9 +6,7 @@
 #define __VWAP_MQH__
 
 #include "indicator_base.mqh"
-
-// Forward declaration to avoid include dependency
-struct SIndicatorConfig;
+#include "../config_types.mqh"
 
 enum ENUM_VWAP_CALC_MODE
   {
