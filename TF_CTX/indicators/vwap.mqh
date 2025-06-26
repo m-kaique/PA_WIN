@@ -259,10 +259,10 @@ void CVWAP::DrawLines(bool full_redraw)
       datetime time2=iTime(m_symbol,m_timeframe,i);
       string name=m_line_names[i];
 
-      ObjectSetInteger(0,name,OBJPROP_TIME1,time1);
-      ObjectSetDouble(0,name,OBJPROP_PRICE1,val1);
-      ObjectSetInteger(0,name,OBJPROP_TIME2,time2);
-      ObjectSetDouble(0,name,OBJPROP_PRICE2,val2);
+      ObjectSetInteger(0,name,OBJPROP_TIME,0,time1);
+      ObjectSetDouble(0,name,OBJPROP_PRICE,0,val1);
+      ObjectSetInteger(0,name,OBJPROP_TIME,1,time2);
+      ObjectSetDouble(0,name,OBJPROP_PRICE,1,val2);
       ObjectSetInteger(0,name,OBJPROP_COLOR,m_color);
       ObjectSetInteger(0,name,OBJPROP_STYLE,m_style);
       ObjectSetInteger(0,name,OBJPROP_WIDTH,m_width);
@@ -338,7 +338,7 @@ void CVWAP::ComputeAll()
             double p=TypicalPrice(j);
             long v=iVolume(m_symbol,m_timeframe,j);
             sum_pv+=p*v;
-            sum_vol+=v;
+            sum_vol+=(double)v;
            }
          m_vwap_buffer[i]=(sum_vol!=0)?sum_pv/sum_vol:EMPTY_VALUE;
          continue;
@@ -352,7 +352,7 @@ void CVWAP::ComputeAll()
       else
         {
          cum_pv+=price*volume;
-         cum_vol+=volume;
+         cum_vol+=(double)volume;
         }
 
       m_vwap_buffer[i]=(cum_vol!=0)?cum_pv/cum_vol:EMPTY_VALUE;
@@ -409,7 +409,7 @@ void CVWAP::UpdateCurrentBar()
          double p=TypicalPrice(j);
          long v=iVolume(m_symbol,m_timeframe,j);
          sum_pv+=p*v;
-         sum_vol+=v;
+         sum_vol+=(double)v;
         }
       m_vwap_buffer[0]=(sum_vol!=0)?sum_pv/sum_vol:EMPTY_VALUE;
       return;
@@ -437,7 +437,7 @@ void CVWAP::UpdateCurrentBar()
      double p=TypicalPrice(j);
      long v=iVolume(m_symbol,m_timeframe,j);
      cum_pv+=p*v;
-     cum_vol+=v;
+       cum_vol+=(double)v;
     }
 
   m_vwap_buffer[0]=(cum_vol!=0)?cum_pv/cum_vol:EMPTY_VALUE;
