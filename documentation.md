@@ -894,6 +894,26 @@ Os campos `LevelsColor`, `ExtensionsColor`, `ParallelColor` e `LabelsColor` util
 3.  **Recarregando a Configuração em Tempo de Execução (Apenas para Desenvolvimento/Testes):**
     Durante o desenvolvimento, se você fizer alterações no `config.json`, pode chamar a função `ReloadConfig()` (se exposta no EA, como é o caso do PA_WIN) para que o EA recarregue a nova configuração sem precisar ser removido e adicionado novamente ao gráfico. Isso é feito internamente pelo EA chamando `g_config_manager.Cleanup()` e `g_config_manager.InitFromFile(JsonConfigFile)`.
 
+4.  **Configuração Completa da VWAP:**
+    O trecho abaixo demonstra como incluir o indicador VWAP com todos os parâmetros disponíveis:
+
+    ```json
+    {
+       "name": "vwap_session",
+       "type": "VWAP",
+       "period": 14,
+       "calc_mode": "PERIODIC",
+       "session_tf": "D1",
+       "price_type": "HLC3",
+       "start_time": "2025-01-01 09:00:00",
+       "enabled": true
+    }
+    ```
+    - `calc_mode`: define se o cálculo será por um número fixo de barras (`BAR`), reiniciado a cada sessão (`PERIODIC`) ou a partir de uma data específica (`FROM_DATE`).
+    - `session_tf`: timeframe utilizado para detectar o início das sessões (por exemplo, `D1` ou `W1`).
+    - `price_type`: forma de cálculo do preço típico, como `OPEN`, `CLOSE`, `HL2`, `HLC3` ou `OHLC4`.
+    - `start_time`: usado apenas no modo `FROM_DATE` para indicar a data/hora inicial.
+
 **Observação Importante:** Para que o EA leia o `config.json`, o arquivo deve ser salvo na pasta `MQL5/Files` ou `Common/Files` do seu terminal MetaTrader 5. O parâmetro de entrada `JsonConfigFile` no EA deve corresponder ao nome do arquivo (ex: `config.json`).
 
 
