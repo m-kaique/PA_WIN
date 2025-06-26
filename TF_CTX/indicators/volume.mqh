@@ -7,6 +7,7 @@
 #property version   "1.00"
 
 #include "indicator_base.mqh"
+#include "../config_types.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe para acesso ao volume                                     |

@@ -7,6 +7,7 @@
 #property link      "https://www.mql5.com"
 #property version   "1.01"
 #include "indicator_base.mqh"
+#include "../config_types.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe para cálculo de médias móveis                            |

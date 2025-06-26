@@ -6,6 +6,7 @@
 #define __BOLLINGER_MQH__
 
 #include "indicator_base.mqh"
+#include "../config_types.mqh"
 
 class CBollinger : public CIndicatorBase
   {
