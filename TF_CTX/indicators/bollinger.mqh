@@ -26,9 +26,12 @@ public:
                      CBollinger();
                     ~CBollinger();
 
-   bool              Init(string symbol, ENUM_TIMEFRAMES timeframe,
-                          int period, int shift, double deviation,
-                          ENUM_APPLIED_PRICE price);
+  bool              Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                         int period, int shift, double deviation,
+                         ENUM_APPLIED_PRICE price);
+
+  bool              Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                          CBollingerConfig &config);
 
    // Compatibilidade com interface base
    virtual bool      Init(string symbol, ENUM_TIMEFRAMES timeframe,
@@ -92,7 +95,14 @@ bool CBollinger::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                       int period, ENUM_MA_METHOD method)
   {
    // method parameter not used; default shift 0, deviation 2, PRICE_CLOSE
-   return Init(symbol,timeframe,period,0,2.0,PRICE_CLOSE);
+  return Init(symbol,timeframe,period,0,2.0,PRICE_CLOSE);
+  }
+
+bool CBollinger::Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                      CBollingerConfig &config)
+  {
+   return Init(symbol, timeframe, config.period, config.shift,
+               config.deviation, config.applied_price);
   }
 
 //+------------------------------------------------------------------+

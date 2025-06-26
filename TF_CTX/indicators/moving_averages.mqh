@@ -36,6 +36,7 @@ public:
     
     // Inicialização
     bool            Init(string symbol, ENUM_TIMEFRAMES timeframe, int period, ENUM_MA_METHOD method);
+    bool            Init(string symbol, ENUM_TIMEFRAMES timeframe, CMAConfig &config);
     
     // Método para obter valor da média móvel
     double          GetValue(int shift = 0);
@@ -82,6 +83,11 @@ bool CMovingAverages::Init(string symbol, ENUM_TIMEFRAMES timeframe, int period,
     ReleaseIndicatorHandles(); // Limpar handles anteriores se existirem
     
     return CreateIndicatorHandles();
+}
+
+bool CMovingAverages::Init(string symbol, ENUM_TIMEFRAMES timeframe, CMAConfig &config)
+{
+    return Init(symbol, timeframe, config.period, config.method);
 }
 
 //+------------------------------------------------------------------+

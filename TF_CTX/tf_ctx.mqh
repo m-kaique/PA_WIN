@@ -54,7 +54,7 @@ private:
   bool m_initialized;          // Flag de inicialização
 
   // Configurações e instâncias dos indicadores
-  SIndicatorConfig m_cfg[];
+  CIndicatorConfig *m_cfg[];
   CIndicatorBase *m_indicators[];
   string m_names[];
 
@@ -62,7 +62,7 @@ private:
   void CleanUp();
 
 public:
-  TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, SIndicatorConfig &cfg[]);
+  TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, CIndicatorConfig *cfg[]);
   ~TF_CTX();
 
   bool Init();
@@ -74,7 +74,7 @@ public:
 //+------------------------------------------------------------------+
 //| Construtor                                                       |
 //+------------------------------------------------------------------+
-TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, SIndicatorConfig &cfg[])
+TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, CIndicatorConfig *cfg[])
 {
   m_timeframe = timeframe;
   m_num_candles = num_candles;
@@ -108,7 +108,7 @@ bool TF_CTX::Init()
 
   for (int i = 0; i < ArraySize(m_cfg); i++)
   {
-    if (!m_cfg[i].enabled)
+    if (m_cfg[i]==NULL || !m_cfg[i].enabled)
       continue;
 
     CIndicatorBase *ind = NULL;
@@ -116,7 +116,8 @@ bool TF_CTX::Init()
     {
     case INDICATOR_TYPE_MA:
       ind = new CMovingAverages();
-      if (ind == NULL || !ind.Init(m_symbol, m_timeframe, m_cfg[i].period, m_cfg[i].method))
+      CMAConfig *ma_cfg=(CMAConfig*)m_cfg[i];
+      if (ind == NULL || !((CMovingAverages*)ind).Init(m_symbol, m_timeframe, ma_cfg.period, ma_cfg.method))
       {
         Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
         delete ind;
@@ -127,7 +128,10 @@ bool TF_CTX::Init()
 
     case INDICATOR_TYPE_STO:
       ind = new CStochastic();
-      if (ind == NULL || !((CStochastic *)ind).Init(m_symbol, m_timeframe, m_cfg[i].period, m_cfg[i].dperiod, m_cfg[i].slowing, m_cfg[i].method, m_cfg[i].price_field))
+      CStochasticConfig *sto_cfg=(CStochasticConfig*)m_cfg[i];
+      if (ind == NULL || !((CStochastic *)ind).Init(m_symbol, m_timeframe,
+                                           sto_cfg.period, sto_cfg.dperiod, sto_cfg.slowing,
+                                           sto_cfg.method, sto_cfg.price_field))
       {
         Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
         delete ind;
@@ -138,7 +142,8 @@ bool TF_CTX::Init()
 
     case INDICATOR_TYPE_VOL:
       ind = new CVolume();
-      if (ind == NULL || !ind.Init(m_symbol, m_timeframe, m_cfg[i].shift, m_cfg[i].method))
+      CVolumeConfig *vol_cfg=(CVolumeConfig*)m_cfg[i];
+      if (ind == NULL || !((CVolume*)ind).Init(m_symbol, m_timeframe, vol_cfg.shift, MODE_SMA))
       {
         Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
         delete ind;
@@ -149,12 +154,12 @@ bool TF_CTX::Init()
 
     case INDICATOR_TYPE_VWAP:
       ind = new CVWAP();
-      if (ind == NULL || !((CVWAP*)ind).Init(m_symbol, m_timeframe, m_cfg[i].period,
-                                           m_cfg[i].method, m_cfg[i].vwap_calc_mode,
-                                           m_cfg[i].vwap_session_tf, m_cfg[i].vwap_price_type,
-                                           m_cfg[i].vwap_start_time, m_cfg[i].vwap_color,
-                                           (ENUM_LINE_STYLE)m_cfg[i].vwap_style,
-                                           m_cfg[i].vwap_width))
+      CVWAPConfig *vwap_cfg=(CVWAPConfig*)m_cfg[i];
+      if (ind == NULL || !((CVWAP*)ind).Init(m_symbol, m_timeframe,
+                                           vwap_cfg.period, vwap_cfg.method, vwap_cfg.calc_mode,
+                                           vwap_cfg.session_tf, vwap_cfg.price_type,
+                                           vwap_cfg.start_time, vwap_cfg.line_color,
+                                           vwap_cfg.line_style, vwap_cfg.line_width))
       {
         Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
         delete ind;
@@ -165,7 +170,10 @@ bool TF_CTX::Init()
 
     case INDICATOR_TYPE_BOLL:
       ind = new CBollinger();
-      if (ind == NULL || !((CBollinger *)ind).Init(m_symbol, m_timeframe, m_cfg[i].period, m_cfg[i].shift, m_cfg[i].deviation, m_cfg[i].applied_price))
+      CBollingerConfig *boll_cfg=(CBollingerConfig*)m_cfg[i];
+      if (ind == NULL || !((CBollinger *)ind).Init(m_symbol, m_timeframe,
+                                           boll_cfg.period, boll_cfg.shift,
+                                           boll_cfg.deviation, boll_cfg.applied_price))
       {
         Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
         delete ind;
@@ -176,7 +184,8 @@ bool TF_CTX::Init()
 
     case INDICATOR_TYPE_FIBO:
       ind = new CFibonacci();
-      if (ind == NULL || !((CFibonacci *)ind).Init(m_symbol, m_timeframe, m_cfg[i]))
+      CFiboConfig *fibo_cfg=(CFiboConfig*)m_cfg[i];
+      if (ind == NULL || !((CFibonacci *)ind).Init(m_symbol, m_timeframe, *fibo_cfg))
       {
         Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
         delete ind;
@@ -228,6 +237,11 @@ void TF_CTX::CleanUp()
   {
     if (m_indicators[i] != NULL)
       delete m_indicators[i];
+  }
+  for (int i = 0; i < ArraySize(m_cfg); i++)
+  {
+    if (m_cfg[i] != NULL)
+      delete m_cfg[i];
   }
   ArrayResize(m_indicators, 0);
   ArrayResize(m_names, 0);
