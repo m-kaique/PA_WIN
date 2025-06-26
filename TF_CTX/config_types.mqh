@@ -6,24 +6,7 @@
 #ifndef __CONFIG_TYPES_MQH__
 #define __CONFIG_TYPES_MQH__
 
-enum ENUM_VWAP_CALC_MODE
-  {
-   VWAP_CALC_BAR=0,
-   VWAP_CALC_PERIODIC,
-   VWAP_CALC_FROM_DATE
-  };
-
-enum ENUM_VWAP_PRICE_TYPE
-  {
-   VWAP_PRICE_FINANCIAL_AVERAGE=0,
-   VWAP_PRICE_OPEN,
-   VWAP_PRICE_HIGH,
-   VWAP_PRICE_LOW,
-   VWAP_PRICE_CLOSE,
-   VWAP_PRICE_HL2,
-   VWAP_PRICE_HLC3,
-   VWAP_PRICE_OHLC4
-  };
+#include "indicators/vwap.mqh"
 
 struct SIndicatorConfig
 {
