@@ -5,9 +5,9 @@
 #ifndef __BOLLINGER_MQH__
 #define __BOLLINGER_MQH__
 
-#include "indicator_base.mqh"
-#include "../config_types.mqh"
-#include "../bollinger_defs.mqh"
+#include "../indicator_base.mqh"
+#include "../../config_types.mqh"
+#include "bollinger_defs.mqh"
 
 class CBollinger : public CIndicatorBase
   {
