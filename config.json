@@ -4,49 +4,183 @@
          "enabled": true,
          "num_candles": 9,
          "indicators": [
-            {"name":"ema9","type":"MA","period":9,"method":"EMA","enabled":true},
-            {"name":"ema21","type":"MA","period":21,"method":"EMA","enabled":true},
-            {"name":"ema50","type":"MA","period":50,"method":"EMA","enabled":false},
-            {"name":"sma200","type":"MA","period":200,"method":"SMA","enabled":false},
-            {"name":"sto14","type":"STO","period":14,"dperiod":3,"slowing":3,"method":"SMA","price_field":"LOWHIGH","enabled":true},
-            {"name":"vol0","type":"VOL","shift":0,"enabled":true},
-            {"name":"vwap14","type":"VWAP","period":14,"enabled":true},
-            {"name":"boll20","type":"BOLL","period":20,"shift":0,"deviation":2.0,"applied_price":"CLOSE","enabled":true},
-            {"name":"fibo_complete","type":"FIBO","period":30,
-             "Level_1":23.6,"Level_2":38.2,"Level_3":50.0,
-             "Level_4":61.8,"Level_5":78.6,"Level_6":100.0,
-             "Ext_1":127.0,"Ext_2":161.8,"Ext_3":261.8,
-             "LevelsColor":"Orange","LevelsStyle":"SOLID","LevelsWidth":1,
-             "ExtensionsColor":"Orange","ExtensionsStyle":"DASH","ExtensionsWidth":1,
-             "ParallelColor":"Yellow","ParallelStyle":"SOLID","ParallelWidth":1,
-             "ShowLabels":true,"LabelsColor":"White","LabelsFontSize":10,"LabelsFont":"Arial",
-             "enabled":true},
-            {"name":"fibo_simple","type":"FIBO","period":30,
-             "Level_1":23.6,"Level_2":38.2,"Level_3":50.0,
-             "Level_4":61.8,"Level_5":78.6,"Level_6":100.0,
-             "enabled":false},
-            {"name":"fibo_forex","type":"FIBO","period":50,
-             "Level_1":38.2,"Level_2":50.0,"Level_3":61.8,
-             "Level_4":78.6,"Level_5":100.0,"Level_6":0,
-             "ParallelColor":"Blue",
-             "enabled":false}
+            {
+               "name": "ema9",
+               "type": "MA",
+               "period": 9,
+               "method": "EMA",
+               "enabled": true
+            },
+            {
+               "name": "ema21",
+               "type": "MA",
+               "period": 21,
+               "method": "EMA",
+               "enabled": true
+            },
+            {
+               "name": "ema50",
+               "type": "MA",
+               "period": 50,
+               "method": "EMA",
+               "enabled": false
+            },
+            {
+               "name": "sma200",
+               "type": "MA",
+               "period": 200,
+               "method": "SMA",
+               "enabled": false
+            },
+            {
+               "name": "sto14",
+               "type": "STO",
+               "period": 14,
+               "dperiod": 3,
+               "slowing": 3,
+               "method": "SMA",
+               "price_field": "LOWHIGH",
+               "enabled": true
+            },
+            {
+               "name": "vol0",
+               "type": "VOL",
+               "shift": 0,
+               "enabled": true
+            },
+            {
+               "name": "vwap_diario_fin",
+               "type": "VWAP",
+               "period": 14,
+               "calc_mode": "PERIODIC",
+               "session_tf": "D1",
+               "price_type": "FINANCIAL_AVERAGE",
+               "enabled": true
+            },
+            {
+               "name": "boll20",
+               "type": "BOLL",
+               "period": 20,
+               "shift": 0,
+               "deviation": 2.0,
+               "applied_price": "CLOSE",
+               "enabled": true
+            },
+            {
+               "name": "fibo_complete",
+               "type": "FIBO",
+               "period": 30,
+               "Level_1": 23.6,
+               "Level_2": 38.2,
+               "Level_3": 50.0,
+               "Level_4": 61.8,
+               "Level_5": 78.6,
+               "Level_6": 100.0,
+               "Ext_1": 127.0,
+               "Ext_2": 161.8,
+               "Ext_3": 261.8,
+               "LevelsColor": "Orange",
+               "LevelsStyle": "SOLID",
+               "LevelsWidth": 1,
+               "ExtensionsColor": "Orange",
+               "ExtensionsStyle": "DASH",
+               "ExtensionsWidth": 1,
+               "ParallelColor": "Yellow",
+               "ParallelStyle": "SOLID",
+               "ParallelWidth": 1,
+               "ShowLabels": true,
+               "LabelsColor": "White",
+               "LabelsFontSize": 10,
+               "LabelsFont": "Arial",
+               "enabled": true
+            },
+            {
+               "name": "fibo_simple",
+               "type": "FIBO",
+               "period": 30,
+               "Level_1": 23.6,
+               "Level_2": 38.2,
+               "Level_3": 50.0,
+               "Level_4": 61.8,
+               "Level_5": 78.6,
+               "Level_6": 100.0,
+               "enabled": false
+            },
+            {
+               "name": "fibo_forex",
+               "type": "FIBO",
+               "period": 50,
+               "Level_1": 38.2,
+               "Level_2": 50.0,
+               "Level_3": 61.8,
+               "Level_4": 78.6,
+               "Level_5": 100.0,
+               "Level_6": 0,
+               "ParallelColor": "Blue",
+               "enabled": false
+            }
          ]
       },
       "H4": {
          "enabled": true,
          "num_candles": 18,
          "indicators": [
-            {"name":"ema9","type":"MA","period":9,"method":"SMA","enabled":true},
-            {"name":"ema21","type":"MA","period":21,"method":"EMA","enabled":false},
-            {"name":"ema50","type":"MA","period":50,"method":"EMA","enabled":false},
-            {"name":"sma200","type":"MA","period":200,"method":"SMA","enabled":true},
-            {"name":"vol0","type":"VOL","shift":0,"enabled":false},
-            {"name":"boll20","type":"BOLL","period":20,"shift":0,"deviation":2.0,"applied_price":"CLOSE","enabled":false},
-            {"name":"fibo","type":"FIBO","period":30,
-             "Level_1":23.6,"Level_2":38.2,"Level_3":50.0,
-             "Level_4":61.8,"Level_5":78.6,"Level_6":100.0,
-             "LevelsColor":"Blue",
-             "enabled":false}
+            {
+               "name": "ema9",
+               "type": "MA",
+               "period": 9,
+               "method": "SMA",
+               "enabled": true
+            },
+            {
+               "name": "ema21",
+               "type": "MA",
+               "period": 21,
+               "method": "EMA",
+               "enabled": false
+            },
+            {
+               "name": "ema50",
+               "type": "MA",
+               "period": 50,
+               "method": "EMA",
+               "enabled": false
+            },
+            {
+               "name": "sma200",
+               "type": "MA",
+               "period": 200,
+               "method": "SMA",
+               "enabled": true
+            },
+            {
+               "name": "vol0",
+               "type": "VOL",
+               "shift": 0,
+               "enabled": false
+            },
+            {
+               "name": "boll20",
+               "type": "BOLL",
+               "period": 20,
+               "shift": 0,
+               "deviation": 2.0,
+               "applied_price": "CLOSE",
+               "enabled": false
+            },
+            {
+               "name": "fibo",
+               "type": "FIBO",
+               "period": 30,
+               "Level_1": 23.6,
+               "Level_2": 38.2,
+               "Level_3": 50.0,
+               "Level_4": 61.8,
+               "Level_5": 78.6,
+               "Level_6": 100.0,
+               "LevelsColor": "Blue",
+               "enabled": false
+            }
          ]
       }
    }

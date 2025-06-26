@@ -92,7 +92,7 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
 - **`moving_averages.mqh`**: Implementa a classe `CMovingAverages`, derivada de `CIndicatorBase`, responsável por criar e gerenciar indicadores de média móvel.
 - **`stochastic.mqh`**: Implementa a classe `CStochastic`, derivada de `CIndicatorBase`, responsável pelo cálculo do indicador Estocástico.
 - **`volume.mqh`**: Implementa a classe `CVolume`, derivada de `CIndicatorBase`, responsável por acessar valores de volume.
-- **`vwap.mqh`**: Implementa a classe `CVWAP`, derivada de `CIndicatorBase`, responsável pelo cálculo e pela exibição gráfica do Volume Weighted Average Price.
+ - **`vwap.mqh`**: Implementa a classe `CVWAP`, derivada de `CIndicatorBase`, com cálculo acumulado de VWAP por sessão, opções de preço e detecção avançada de sessões.
 - **`fibonacci.mqh`**: Implementa o indicador `CFibonacci`, capaz de desenhar níveis de retração e extensões de Fibonacci com total customização via JSON.
 
 
@@ -894,6 +894,41 @@ Os campos `LevelsColor`, `ExtensionsColor`, `ParallelColor` e `LabelsColor` util
 3.  **Recarregando a Configuração em Tempo de Execução (Apenas para Desenvolvimento/Testes):**
     Durante o desenvolvimento, se você fizer alterações no `config.json`, pode chamar a função `ReloadConfig()` (se exposta no EA, como é o caso do PA_WIN) para que o EA recarregue a nova configuração sem precisar ser removido e adicionado novamente ao gráfico. Isso é feito internamente pelo EA chamando `g_config_manager.Cleanup()` e `g_config_manager.InitFromFile(JsonConfigFile)`.
 
+4.  **Configuração Completa da VWAP:**
+    O trecho abaixo demonstra como incluir o indicador VWAP com todos os parâmetros disponíveis:
+
+    ```json
+    {
+       "name": "vwap_session",
+       "type": "VWAP",
+       "period": 14,
+       "calc_mode": "PERIODIC",
+       "session_tf": "D1",
+       "price_type": "HLC3",
+       "start_time": "2025-01-01 09:00:00",
+       "enabled": true
+    }
+    ```
+    - `calc_mode`: define se o cálculo será por um número fixo de barras (`BAR`), reiniciado a cada sessão (`PERIODIC`) ou a partir de uma data específica (`FROM_DATE`).
+    - `session_tf`: timeframe utilizado para detectar o início das sessões (por exemplo, `D1` ou `W1`).
+    - `price_type`: forma de cálculo do preço típico, como `OPEN`, `CLOSE`, `HL2`, `HLC3` ou `OHLC4`.
+    - `start_time`: usado apenas no modo `FROM_DATE` para indicar a data/hora inicial.
+
+    Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preço
+    de **média financeira**:
+
+    ```json
+    {
+       "name": "vwap_diario_fin",
+       "type": "VWAP",
+       "period": 14,
+       "calc_mode": "PERIODIC",
+       "session_tf": "D1",
+       "price_type": "FINANCIAL_AVERAGE",
+       "enabled": true
+    }
+    ```
+
 **Observação Importante:** Para que o EA leia o `config.json`, o arquivo deve ser salvo na pasta `MQL5/Files` ou `Common/Files` do seu terminal MetaTrader 5. O parâmetro de entrada `JsonConfigFile` no EA deve corresponder ao nome do arquivo (ex: `config.json`).
 
 
@@ -942,6 +977,9 @@ Esta seção registra as principais alterações e versões dos componentes do E
 
 -   **Versao 1.00**: Implementa o indicador VWAP (Volume Weighted Average Price) derivado de `CIndicatorBase`.
 -   **Versao 2.00**: Adiciona desenho da linha de VWAP no gráfico.
+-   **Versao 3.00**: Reescrita completa com cálculo acumulado por sessão, modos de cálculo e suporte a diferentes tipos de preço.
+-   **Versao 4.00**: Corrige o cálculo por barras, inclui métodos de configuração e atualização incremental.
+-   **Versao 5.00**: Melhora a detecção de sessões e o cálculo da barra atual.
 
 ### fibonacci.mqh
 
