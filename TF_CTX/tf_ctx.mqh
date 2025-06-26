@@ -12,6 +12,7 @@
 #include "indicators/vwap/vwap.mqh"
 #include "indicators/bollinger/bollinger.mqh"
 #include "indicators/fibonacci/fibonacci.mqh"
+
 #include "config_types.mqh"
 
 enum ENUM_INDICATOR_TYPE
