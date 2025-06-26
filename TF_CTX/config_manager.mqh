@@ -33,6 +33,8 @@ private:
     ENUM_MA_METHOD StringToMAMethod(string method_str);
     ENUM_STO_PRICE StringToPriceField(string field_str);
     ENUM_APPLIED_PRICE StringToAppliedPrice(string price_str);
+    ENUM_VWAP_CALC_MODE StringToVWAPCalcMode(string mode_str);
+    ENUM_VWAP_PRICE_TYPE StringToVWAPPriceType(string type_str);
     ENUM_LINE_STYLE StringToLineStyle(string style_str);
     color StringToColor(string color_str);
     STimeframeConfig ParseTimeframeConfig(CJAVal *tf_config);
@@ -509,6 +511,31 @@ ENUM_APPLIED_PRICE CConfigManager::StringToAppliedPrice(string price_str)
 }
 
 //+------------------------------------------------------------------+
+//| Converter string para modo de cálculo da VWAP                     |
+//+------------------------------------------------------------------+
+ENUM_VWAP_CALC_MODE CConfigManager::StringToVWAPCalcMode(string mode_str)
+{
+    if(mode_str=="PERIODIC")  return VWAP_CALC_PERIODIC;
+    if(mode_str=="FROM_DATE") return VWAP_CALC_FROM_DATE;
+    return VWAP_CALC_BAR;
+}
+
+//+------------------------------------------------------------------+
+//| Converter string para tipo de preço da VWAP                       |
+//+------------------------------------------------------------------+
+ENUM_VWAP_PRICE_TYPE CConfigManager::StringToVWAPPriceType(string type_str)
+{
+    if(type_str=="OPEN")  return VWAP_PRICE_OPEN;
+    if(type_str=="HIGH")  return VWAP_PRICE_HIGH;
+    if(type_str=="LOW")   return VWAP_PRICE_LOW;
+    if(type_str=="CLOSE") return VWAP_PRICE_CLOSE;
+    if(type_str=="HL2")   return VWAP_PRICE_HL2;
+    if(type_str=="HLC3")  return VWAP_PRICE_HLC3;
+    if(type_str=="OHLC4") return VWAP_PRICE_OHLC4;
+    return VWAP_PRICE_FINANCIAL_AVERAGE;
+}
+
+//+------------------------------------------------------------------+
 //| Converter string para estilo de linha                            |
 //+------------------------------------------------------------------+
 ENUM_LINE_STYLE CConfigManager::StringToLineStyle(string style_str)
@@ -581,6 +608,11 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
             icfg.price_field = StringToPriceField(ind["price_field"].ToStr());
             icfg.deviation = ind["deviation"].ToDbl();
             icfg.applied_price = StringToAppliedPrice(ind["applied_price"].ToStr());
+            icfg.vwap_calc_mode = StringToVWAPCalcMode(ind["calc_mode"].ToStr());
+            icfg.vwap_session_tf = StringToTimeframe(ind["session_tf"].ToStr());
+            icfg.vwap_price_type = StringToVWAPPriceType(ind["price_type"].ToStr());
+            string start_str = ind["start_time"].ToStr();
+            if(StringLen(start_str)>0) icfg.vwap_start_time = StringToTime(start_str);
             icfg.enabled = ind["enabled"].ToBool();
             icfg.level_1 = ind["Level_1"].ToDbl();
             icfg.level_2 = ind["Level_2"].ToDbl();
