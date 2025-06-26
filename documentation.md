@@ -92,10 +92,11 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
 - **`moving_averages.mqh`**: Implementa a classe `CMovingAverages`, derivada de `CIndicatorBase`, responsável por criar e gerenciar indicadores de média móvel.
 - **`stochastic.mqh`**: Implementa a classe `CStochastic`, derivada de `CIndicatorBase`, responsável pelo cálculo do indicador Estocástico.
 - **`volume.mqh`**: Implementa a classe `CVolume`, derivada de `CIndicatorBase`, responsável por acessar valores de volume.
+- **`bollinger.mqh`**: Implementa a classe `CBollinger`, derivada de `CIndicatorBase`, responsável pelo cálculo das Bandas de Bollinger.
  - **`vwap.mqh`**: Implementa a classe `CVWAP`, derivada de `CIndicatorBase`, com cálculo acumulado de VWAP por sessão, opções de preço e detecção avançada de sessões.
 - **`fibonacci.mqh`**: Implementa o indicador `CFibonacci`, capaz de desenhar níveis de retração e extensões de Fibonacci com total customização via JSON.
 - **Arquivos `*_defs.mqh`**: Cada indicador possui agora um arquivo de definições
-  específico (ex.: `ma_defs.mqh`, `stochastic_defs.mqh`) contendo as
+  específico (ex.: `ma_defs.mqh`, `stochastic_defs.mqh`, `bollinger_defs.mqh`) contendo as
   enumerações relacionadas a suas opções, padronizando a organização das
   constantes assim como já ocorria com `vwap_defs.mqh`.
 
@@ -925,7 +926,7 @@ Os campos `LevelsColor`, `ExtensionsColor`, `ParallelColor`, `LabelsColor` e `Co
     - `Style`: estilo de linha (ex. `SOLID`, `DASH`).
     - `Width`: espessura da linha em pixels.
 
-    Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preço
+Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preço
     de **média financeira**:
 
     ```json
@@ -940,6 +941,25 @@ Os campos `LevelsColor`, `ExtensionsColor`, `ParallelColor`, `LabelsColor` e `Co
        "enabled": true
     }
     ```
+
+5.  **Exemplo de Bandas de Bollinger:**
+    Inclusão das Bandas de Bollinger com parâmetros básicos:
+
+    ```json
+    {
+       "name": "boll20",
+       "type": "BOLL",
+       "period": 20,
+       "shift": 0,
+       "deviation": 2.0,
+       "applied_price": "CLOSE",
+       "enabled": true
+    }
+    ```
+    - `period`: período utilizado para a média central.
+    - `shift`: deslocamento das bandas.
+    - `deviation`: multiplicador de desvio padrão.
+    - `applied_price`: preço base (ex.: `CLOSE`, `OPEN`, `HIGH`, `LOW`, `MEDIAN`, `TYPICAL`, `WEIGHTED`).
 
 **Observação Importante:** Para que o EA leia o `config.json`, o arquivo deve ser salvo na pasta `MQL5/Files` ou `Common/Files` do seu terminal MetaTrader 5. O parâmetro de entrada `JsonConfigFile` no EA deve corresponder ao nome do arquivo (ex: `config.json`).
 
@@ -984,6 +1004,10 @@ Esta seção registra as principais alterações e versões dos componentes do E
 ### volume.mqh
 
 -   **Versao 1.00**: Implementa o indicador de Volume derivado de `CIndicatorBase`.
+
+### bollinger.mqh
+
+-   **Versao 1.00**: Implementa o indicador de Bandas de Bollinger derivado de `CIndicatorBase`.
 
 ### vwap.mqh
 
