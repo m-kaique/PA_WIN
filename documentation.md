@@ -914,6 +914,21 @@ Os campos `LevelsColor`, `ExtensionsColor`, `ParallelColor` e `LabelsColor` util
     - `price_type`: forma de cálculo do preço típico, como `OPEN`, `CLOSE`, `HL2`, `HLC3` ou `OHLC4`.
     - `start_time`: usado apenas no modo `FROM_DATE` para indicar a data/hora inicial.
 
+    Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preço
+    de **média financeira**:
+
+    ```json
+    {
+       "name": "vwap_diario_fin",
+       "type": "VWAP",
+       "period": 14,
+       "calc_mode": "PERIODIC",
+       "session_tf": "D1",
+       "price_type": "FINANCIAL_AVERAGE",
+       "enabled": true
+    }
+    ```
+
 **Observação Importante:** Para que o EA leia o `config.json`, o arquivo deve ser salvo na pasta `MQL5/Files` ou `Common/Files` do seu terminal MetaTrader 5. O parâmetro de entrada `JsonConfigFile` no EA deve corresponder ao nome do arquivo (ex: `config.json`).
 
 
