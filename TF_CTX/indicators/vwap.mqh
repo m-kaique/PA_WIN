@@ -51,6 +51,7 @@ private:
 
    double          TypicalPrice(int index);
    void            ComputeAll();
+   void            DrawAll();
 
    double          CalcVWAP(int shift);
 public:
@@ -106,9 +107,10 @@ CVWAP::~CVWAP()
 bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                  int period, ENUM_MA_METHOD method)
   {
-   m_symbol=symbol;
-   m_timeframe=timeframe;
-   if(period>0) m_period=period; else m_period=1;
+  m_symbol=symbol;
+  m_timeframe=timeframe;
+  m_obj_prefix=symbol+"_"+EnumToString(timeframe)+"_";
+  if(period>0) m_period=period; else m_period=1;
    m_calc_mode=VWAP_CALC_BAR;
    m_price_type=VWAP_PRICE_FINANCIAL_AVERAGE;
    m_session_tf=PERIOD_D1;
@@ -200,6 +202,7 @@ double CVWAP::TypicalPrice(int index)
 //+------------------------------------------------------------------+
 void CVWAP::ComputeAll()
   {
+   Print("VWAP::ComputeAll() Mode=", (int)m_calc_mode);
    int bars=Bars(m_symbol,m_timeframe);
    ArrayResize(m_vwap_buffer,bars);
    ArraySetAsSeries(m_vwap_buffer,true);
@@ -207,8 +210,8 @@ void CVWAP::ComputeAll()
    double cum_pv=0.0;
    double cum_vol=0.0;
 
-   for(int i=bars-1;i>=0;i--)
-     {
+  for(int i=bars-1;i>=0;i--)
+    {
       datetime bar_time=iTime(m_symbol,m_timeframe,i);
       double price=TypicalPrice(i);
       long volume=iVolume(m_symbol,m_timeframe,i);
@@ -257,8 +260,10 @@ void CVWAP::ComputeAll()
         }
 
       m_vwap_buffer[i]=(cum_vol!=0)?cum_pv/cum_vol:EMPTY_VALUE;
-     }
-  }
+    }
+
+  DrawAll();
+ }
 
 //+------------------------------------------------------------------+
 //| Check if bar starts a new session                                 |
@@ -342,13 +347,45 @@ void CVWAP::UpdateCurrentBar()
     }
 
   m_vwap_buffer[0]=(cum_vol!=0)?cum_pv/cum_vol:EMPTY_VALUE;
+
+  DrawAll();
  }
+
+//+------------------------------------------------------------------+
+//| Draw VWAP line on chart                                          |
+//+------------------------------------------------------------------+
+void CVWAP::DrawAll()
+  {
+   Print("VWAP::DrawAll() - bars=",ArraySize(m_vwap_buffer));
+   DeleteObjects();
+   int bars=ArraySize(m_vwap_buffer);
+   if(bars<2)
+      return;
+   ArrayResize(m_line_names,bars-1);
+   for(int i=0;i<bars-1;i++)
+     {
+      if(m_vwap_buffer[i]==EMPTY_VALUE || m_vwap_buffer[i+1]==EMPTY_VALUE)
+         continue;
+      string name=m_obj_prefix+"VWAP_"+IntegerToString(i);
+      m_line_names[i]=name;
+      datetime t1=iTime(m_symbol,m_timeframe,i+1);
+      datetime t2=iTime(m_symbol,m_timeframe,i);
+      if(!ObjectCreate(0,name,OBJ_TREND,0,t1,m_vwap_buffer[i+1],t2,m_vwap_buffer[i]))
+         continue;
+      ObjectSetInteger(0,name,OBJPROP_COLOR,m_color);
+      ObjectSetInteger(0,name,OBJPROP_STYLE,m_style);
+      ObjectSetInteger(0,name,OBJPROP_WIDTH,m_width);
+      ObjectSetInteger(0,name,OBJPROP_RAY_RIGHT,false);
+      ObjectSetInteger(0,name,OBJPROP_RAY_LEFT,false);
+     }
+  }
 
 //+------------------------------------------------------------------+
 //| Recalculate and redraw VWAP line                                 |
 //+------------------------------------------------------------------+
 bool CVWAP::Update()
   {
+   Print("VWAP::Update");
    if(!IsReady())
       return(false);
 

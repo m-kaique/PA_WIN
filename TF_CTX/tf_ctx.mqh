@@ -156,6 +156,10 @@ bool TF_CTX::Init()
         CleanUp();
         return false;
       }
+      ((CVWAP*)ind).SetCalcMode(m_cfg[i].calc_mode);
+      ((CVWAP*)ind).SetPriceType(m_cfg[i].price_type);
+      ((CVWAP*)ind).SetSessionTimeframe(m_cfg[i].session_tf);
+      ((CVWAP*)ind).SetStartTime(m_cfg[i].start_time);
       break;
 
     case INDICATOR_TYPE_BOLL:
