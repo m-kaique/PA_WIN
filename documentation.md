@@ -666,6 +666,7 @@ Esta seção detalha as principais funções e classes encontradas no código do
     - `slowing` (`int`): Valor de `slowing` (apenas para Estocástico).
     - `shift` (`int`): Deslocamento base para indicadores que utilizam série de preços (ex: Volume).
     - `price_field` (`ENUM_STO_PRICE`): Campo de preço utilizado.
+    - `vwap_calc_mode`, `vwap_session_tf`, `vwap_price_type`, `vwap_start_time`, `vwap_color`: Parâmetros específicos do indicador VWAP.
     - `enabled` (`bool`): Indica se o indicador está habilitado.
     - `level_1` a `level_6` (`double`): Valores dos níveis de retração de Fibonacci.
     - `levels_color`, `levels_style`, `levels_width`: Aparência das linhas de retração.
@@ -849,7 +850,7 @@ O arquivo `config.json` é o coração da flexibilidade do PA_WIN. Abaixo está 
 
 ### Paleta de Cores Disponível
 
-Os campos `LevelsColor`, `ExtensionsColor`, `ParallelColor` e `LabelsColor` utilizam nomes de cores em formato de string. As cores reconhecidas atualmente são:
+Os campos `LevelsColor`, `ExtensionsColor`, `ParallelColor`, `LabelsColor` e `Color` utilizam nomes de cores em formato de string. As cores reconhecidas atualmente são:
 
 - `Red`
 - `Blue`
@@ -906,6 +907,7 @@ Os campos `LevelsColor`, `ExtensionsColor`, `ParallelColor` e `LabelsColor` util
        "session_tf": "D1",
        "price_type": "HLC3",
        "start_time": "2025-01-01 09:00:00",
+       "Color": "Blue",
        "enabled": true
     }
     ```
@@ -913,6 +915,7 @@ Os campos `LevelsColor`, `ExtensionsColor`, `ParallelColor` e `LabelsColor` util
     - `session_tf`: timeframe utilizado para detectar o início das sessões (por exemplo, `D1` ou `W1`).
     - `price_type`: forma de cálculo do preço típico, como `OPEN`, `CLOSE`, `HL2`, `HLC3` ou `OHLC4`.
     - `start_time`: usado apenas no modo `FROM_DATE` para indicar a data/hora inicial.
+    - `Color`: define a cor da linha de VWAP.
 
     Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preço
     de **média financeira**:
@@ -925,6 +928,7 @@ Os campos `LevelsColor`, `ExtensionsColor`, `ParallelColor` e `LabelsColor` util
        "calc_mode": "PERIODIC",
        "session_tf": "D1",
        "price_type": "FINANCIAL_AVERAGE",
+       "Color": "Blue",
        "enabled": true
     }
     ```
@@ -980,6 +984,7 @@ Esta seção registra as principais alterações e versões dos componentes do E
 -   **Versao 3.00**: Reescrita completa com cálculo acumulado por sessão, modos de cálculo e suporte a diferentes tipos de preço.
 -   **Versao 4.00**: Corrige o cálculo por barras, inclui métodos de configuração e atualização incremental.
 -   **Versao 5.00**: Melhora a detecção de sessões e o cálculo da barra atual.
+-   **Versao 6.00**: Permite definir a cor da linha VWAP via JSON.
 
 ### fibonacci.mqh
 

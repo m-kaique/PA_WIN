@@ -64,7 +64,8 @@ public:
                         ENUM_VWAP_CALC_MODE calc_mode,
                         ENUM_TIMEFRAMES session_tf,
                         ENUM_VWAP_PRICE_TYPE price_type,
-                        datetime start_time);
+                        datetime start_time,
+                        color line_color);
   virtual bool     Init(string symbol, ENUM_TIMEFRAMES timeframe,
                         int period, ENUM_MA_METHOD method);
    virtual double   GetValue(int shift=0);
@@ -116,7 +117,8 @@ bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                  ENUM_VWAP_CALC_MODE calc_mode,
                  ENUM_TIMEFRAMES session_tf,
                  ENUM_VWAP_PRICE_TYPE price_type,
-                 datetime start_time)
+                 datetime start_time,
+                 color line_color)
   {
    m_symbol=symbol;
    m_timeframe=timeframe;
@@ -125,6 +127,7 @@ bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
    m_price_type=price_type;
    m_session_tf=session_tf;
    m_start_time=start_time;
+   m_color=line_color;
    m_last_calculated_time=0;
    ArrayResize(m_vwap_buffer,0);
    return true;
@@ -138,7 +141,7 @@ bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
   {
    return Init(symbol,timeframe,period,method,
                VWAP_CALC_BAR,PERIOD_D1,
-               VWAP_PRICE_FINANCIAL_AVERAGE,0);
+               VWAP_PRICE_FINANCIAL_AVERAGE,0,clrAqua);
   }
 
 //+------------------------------------------------------------------+
