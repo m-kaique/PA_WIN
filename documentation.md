@@ -94,6 +94,10 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
 - **`volume.mqh`**: Implementa a classe `CVolume`, derivada de `CIndicatorBase`, responsável por acessar valores de volume.
  - **`vwap.mqh`**: Implementa a classe `CVWAP`, derivada de `CIndicatorBase`, com cálculo acumulado de VWAP por sessão, opções de preço e detecção avançada de sessões.
 - **`fibonacci.mqh`**: Implementa o indicador `CFibonacci`, capaz de desenhar níveis de retração e extensões de Fibonacci com total customização via JSON.
+- **Arquivos `*_defs.mqh`**: Cada indicador possui agora um arquivo de definições
+  específico (ex.: `ma_defs.mqh`, `stochastic_defs.mqh`) contendo as
+  enumerações relacionadas a suas opções, padronizando a organização das
+  constantes assim como já ocorria com `vwap_defs.mqh`.
 
 
 

@@ -1,0 +1,12 @@
+#ifndef __STOCHASTIC_DEFS_MQH__
+#define __STOCHASTIC_DEFS_MQH__
+
+// Enumerations for Stochastic indicator
+
+enum ENUM_STOCHASTIC_PRICE_TYPE
+  {
+   STOCHASTIC_PRICE_CLOSECLOSE = STO_CLOSECLOSE,
+   STOCHASTIC_PRICE_LOWHIGH    = STO_LOWHIGH
+  };
+
+#endif // __STOCHASTIC_DEFS_MQH__
