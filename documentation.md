@@ -908,6 +908,8 @@ Os campos `LevelsColor`, `ExtensionsColor`, `ParallelColor`, `LabelsColor` e `Co
        "price_type": "HLC3",
        "start_time": "2025-01-01 09:00:00",
        "Color": "Blue",
+       "Style": "SOLID",
+       "Width": 2,
        "enabled": true
     }
     ```
@@ -916,6 +918,8 @@ Os campos `LevelsColor`, `ExtensionsColor`, `ParallelColor`, `LabelsColor` e `Co
     - `price_type`: forma de cálculo do preço típico, como `OPEN`, `CLOSE`, `HL2`, `HLC3` ou `OHLC4`.
     - `start_time`: usado apenas no modo `FROM_DATE` para indicar a data/hora inicial.
     - `Color`: define a cor da linha de VWAP.
+    - `Style`: estilo de linha (ex. `SOLID`, `DASH`).
+    - `Width`: espessura da linha em pixels.
 
     Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preço
     de **média financeira**:
@@ -985,6 +989,7 @@ Esta seção registra as principais alterações e versões dos componentes do E
 -   **Versao 4.00**: Corrige o cálculo por barras, inclui métodos de configuração e atualização incremental.
 -   **Versao 5.00**: Melhora a detecção de sessões e o cálculo da barra atual.
 -   **Versao 6.00**: Permite definir a cor da linha VWAP via JSON.
+-   **Versao 7.00**: Suporte a estilo e largura de linha configuráveis via JSON.
 
 ### fibonacci.mqh
 
