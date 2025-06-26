@@ -62,7 +62,7 @@ private:
   void CleanUp();
 
 public:
-  TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, CIndicatorConfig *cfg[]);
+  TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, CIndicatorConfig *&cfg[]);
   ~TF_CTX();
 
   bool Init();
@@ -74,7 +74,7 @@ public:
 //+------------------------------------------------------------------+
 //| Construtor                                                       |
 //+------------------------------------------------------------------+
-TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, CIndicatorConfig *cfg[])
+TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, CIndicatorConfig *&cfg[])
 {
   m_timeframe = timeframe;
   m_num_candles = num_candles;
@@ -115,82 +115,96 @@ bool TF_CTX::Init()
     switch (StringToIndicatorType(m_cfg[i].type))
     {
     case INDICATOR_TYPE_MA:
-      ind = new CMovingAverages();
-      CMAConfig *ma_cfg=(CMAConfig*)m_cfg[i];
-      if (ind == NULL || !((CMovingAverages*)ind).Init(m_symbol, m_timeframe, ma_cfg.period, ma_cfg.method))
       {
-        Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-        delete ind;
-        CleanUp();
-        return false;
+        ind = new CMovingAverages();
+        CMAConfig *ma_cfg=(CMAConfig*)m_cfg[i];
+        if (ind == NULL || !((CMovingAverages*)ind).Init(m_symbol, m_timeframe,
+                                           ma_cfg.period, ma_cfg.method))
+        {
+          Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+          delete ind;
+          CleanUp();
+          return false;
+        }
       }
       break;
 
     case INDICATOR_TYPE_STO:
-      ind = new CStochastic();
-      CStochasticConfig *sto_cfg=(CStochasticConfig*)m_cfg[i];
-      if (ind == NULL || !((CStochastic *)ind).Init(m_symbol, m_timeframe,
+      {
+        ind = new CStochastic();
+        CStochasticConfig *sto_cfg=(CStochasticConfig*)m_cfg[i];
+        if (ind == NULL || !((CStochastic *)ind).Init(m_symbol, m_timeframe,
                                            sto_cfg.period, sto_cfg.dperiod, sto_cfg.slowing,
                                            sto_cfg.method, sto_cfg.price_field))
-      {
-        Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-        delete ind;
-        CleanUp();
-        return false;
+        {
+          Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+          delete ind;
+          CleanUp();
+          return false;
+        }
       }
       break;
 
     case INDICATOR_TYPE_VOL:
-      ind = new CVolume();
-      CVolumeConfig *vol_cfg=(CVolumeConfig*)m_cfg[i];
-      if (ind == NULL || !((CVolume*)ind).Init(m_symbol, m_timeframe, vol_cfg.shift, MODE_SMA))
       {
-        Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-        delete ind;
-        CleanUp();
-        return false;
+        ind = new CVolume();
+        CVolumeConfig *vol_cfg=(CVolumeConfig*)m_cfg[i];
+        if (ind == NULL || !((CVolume*)ind).Init(m_symbol, m_timeframe,
+                                           vol_cfg.shift, MODE_SMA))
+        {
+          Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+          delete ind;
+          CleanUp();
+          return false;
+        }
       }
       break;
 
     case INDICATOR_TYPE_VWAP:
-      ind = new CVWAP();
-      CVWAPConfig *vwap_cfg=(CVWAPConfig*)m_cfg[i];
-      if (ind == NULL || !((CVWAP*)ind).Init(m_symbol, m_timeframe,
+      {
+        ind = new CVWAP();
+        CVWAPConfig *vwap_cfg=(CVWAPConfig*)m_cfg[i];
+        if (ind == NULL || !((CVWAP*)ind).Init(m_symbol, m_timeframe,
                                            vwap_cfg.period, vwap_cfg.method, vwap_cfg.calc_mode,
                                            vwap_cfg.session_tf, vwap_cfg.price_type,
                                            vwap_cfg.start_time, vwap_cfg.line_color,
                                            vwap_cfg.line_style, vwap_cfg.line_width))
-      {
-        Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-        delete ind;
-        CleanUp();
-        return false;
+        {
+          Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+          delete ind;
+          CleanUp();
+          return false;
+        }
       }
       break;
 
     case INDICATOR_TYPE_BOLL:
-      ind = new CBollinger();
-      CBollingerConfig *boll_cfg=(CBollingerConfig*)m_cfg[i];
-      if (ind == NULL || !((CBollinger *)ind).Init(m_symbol, m_timeframe,
+      {
+        ind = new CBollinger();
+        CBollingerConfig *boll_cfg=(CBollingerConfig*)m_cfg[i];
+        if (ind == NULL || !((CBollinger *)ind).Init(m_symbol, m_timeframe,
                                            boll_cfg.period, boll_cfg.shift,
                                            boll_cfg.deviation, boll_cfg.applied_price))
-      {
-        Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-        delete ind;
-        CleanUp();
-        return false;
+        {
+          Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+          delete ind;
+          CleanUp();
+          return false;
+        }
       }
       break;
 
     case INDICATOR_TYPE_FIBO:
-      ind = new CFibonacci();
-      CFiboConfig *fibo_cfg=(CFiboConfig*)m_cfg[i];
-      if (ind == NULL || !((CFibonacci *)ind).Init(m_symbol, m_timeframe, *fibo_cfg))
       {
-        Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-        delete ind;
-        CleanUp();
-        return false;
+        ind = new CFibonacci();
+        CFiboConfig *fibo_cfg=(CFiboConfig*)m_cfg[i];
+        if (ind == NULL || !((CFibonacci *)ind).Init(m_symbol, m_timeframe, *fibo_cfg))
+        {
+          Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+          delete ind;
+          CleanUp();
+          return false;
+        }
       }
       break;
 
