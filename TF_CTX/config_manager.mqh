@@ -704,7 +704,7 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
             ArrayResize(config.indicators,pos+1);
             config.indicators[pos]=icfg;
 
-            Print("Indicador lido: ", icfg->name, " Tipo: ", icfg->type, " Enabled: ", icfg->enabled);
+            Print("Indicador lido: ", icfg.name, " Tipo: ", icfg.type, " Enabled: ", icfg.enabled);
         }
     }
     else
