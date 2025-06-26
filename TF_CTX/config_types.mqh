@@ -6,7 +6,6 @@
 #ifndef __CONFIG_TYPES_MQH__
 #define __CONFIG_TYPES_MQH__
 
-#include "indicators/vwap.mqh"
 
 struct SIndicatorConfig
 {
