@@ -32,8 +32,9 @@ private:
    string          m_symbol;
    ENUM_TIMEFRAMES m_timeframe;
    int             m_period;
+   ENUM_MA_METHOD  m_method;
    color           m_color;
-   int             m_style;
+   ENUM_LINE_STYLE m_style;
    int             m_width;
    string          m_obj_prefix;
    string          m_line_names[];
@@ -49,7 +50,7 @@ private:
 
    void            DeleteObjects();
 
-   void            DrawLines();
+   void            DrawLines(bool full_redraw);
 
    double          TypicalPrice(int index);
    void            ComputeAll();
@@ -65,13 +66,16 @@ public:
                         ENUM_TIMEFRAMES session_tf,
                         ENUM_VWAP_PRICE_TYPE price_type,
                         datetime start_time,
-                        color line_color);
+                        color line_color,
+                        ENUM_LINE_STYLE line_style=STYLE_SOLID,
+                        int line_width=1,
+                        string obj_prefix="");
   virtual bool     Init(string symbol, ENUM_TIMEFRAMES timeframe,
-                        int period, ENUM_MA_METHOD method);
-   virtual double   GetValue(int shift=0);
-   virtual bool     CopyValues(int shift,int count,double &buffer[]);
-   virtual bool     IsReady();
-   virtual bool     Update();
+                        int period, ENUM_MA_METHOD method) override;
+   virtual double   GetValue(int shift=0) override;
+   virtual bool     CopyValues(int shift,int count,double &buffer[]) override;
+   virtual bool     IsReady() override;
+   virtual bool     Update() override;
 
    bool SetCalcMode(ENUM_VWAP_CALC_MODE mode){ m_calc_mode=mode; return true; }
    bool SetPriceType(ENUM_VWAP_PRICE_TYPE type){ m_price_type=type; return true; }
@@ -87,10 +91,11 @@ CVWAP::CVWAP()
    m_symbol="";
    m_timeframe=PERIOD_CURRENT;
    m_period=1;
+   m_method=MODE_SMA;
    m_color=clrAqua;
-  m_style=STYLE_SOLID;
-  m_width=1;
-  m_obj_prefix="";
+   m_style=STYLE_SOLID;
+   m_width=1;
+   m_obj_prefix="";
    ArrayResize(m_line_names,0);
    m_calc_mode=VWAP_CALC_BAR;
    m_price_type=VWAP_PRICE_FINANCIAL_AVERAGE;
@@ -107,6 +112,8 @@ CVWAP::~CVWAP()
   {
    DeleteObjects();
    ArrayResize(m_vwap_buffer,0);
+   ArrayFree(m_vwap_buffer);
+   ArrayResize(m_line_names,0);
   }
 
 //+------------------------------------------------------------------+
@@ -118,18 +125,28 @@ bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                  ENUM_TIMEFRAMES session_tf,
                  ENUM_VWAP_PRICE_TYPE price_type,
                  datetime start_time,
-                 color line_color)
+                 color line_color,
+                 ENUM_LINE_STYLE line_style,
+                 int line_width,
+                 string obj_prefix)
   {
+   if(StringLen(symbol)==0)
+      return false;
    m_symbol=symbol;
    m_timeframe=timeframe;
-   if(period>0) m_period=period; else m_period=1;
+   m_method=method;
+   m_period=MathMax(1,period);
    m_calc_mode=calc_mode;
    m_price_type=price_type;
    m_session_tf=session_tf;
    m_start_time=start_time;
    m_color=line_color;
+   m_style=line_style;
+   m_width=line_width;
+   m_obj_prefix=obj_prefix;
    m_last_calculated_time=0;
    ArrayResize(m_vwap_buffer,0);
+   ArrayResize(m_line_names,0);
    return true;
   }
 
@@ -141,7 +158,8 @@ bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
   {
    return Init(symbol,timeframe,period,method,
                VWAP_CALC_BAR,PERIOD_D1,
-               VWAP_PRICE_FINANCIAL_AVERAGE,0,clrAqua);
+               VWAP_PRICE_FINANCIAL_AVERAGE,0,clrAqua,
+               STYLE_SOLID,1,"");
   }
 
 //+------------------------------------------------------------------+
@@ -194,48 +212,61 @@ bool CVWAP::IsReady()
 void CVWAP::DeleteObjects()
   {
    for(int i=0;i<ArraySize(m_line_names);i++)
-      ObjectDelete(0,m_line_names[i]);
+      if(ObjectFind(0,m_line_names[i])>=0)
+         ObjectDelete(0,m_line_names[i]);
    ArrayResize(m_line_names,0);
   }
 
 //+------------------------------------------------------------------+
 //| Draw VWAP lines on the chart                                      |
 //+------------------------------------------------------------------+
-void CVWAP::DrawLines()
+void CVWAP::DrawLines(bool full_redraw)
   {
-   DeleteObjects();
-
    int bars=ArraySize(m_vwap_buffer);
    if(bars<2)
+     {
+      DeleteObjects();
       return;
+     }
 
-   int cnt=0;
-   for(int i=bars-2;i>=0;i--)
+   int needed=bars-1;
+   if(full_redraw)
+     {
+      DeleteObjects();
+      ArrayResize(m_line_names,needed);
+      for(int i=0;i<needed;i++)
+        {
+         string name=(StringLen(m_obj_prefix)>0?m_obj_prefix:"VWAP_")+IntegerToString(i);
+         if(ObjectCreate(0,name,OBJ_TREND,0,0,0,0,0))
+           {
+            ObjectSetInteger(0,name,OBJPROP_RAY_RIGHT,false);
+            ObjectSetInteger(0,name,OBJPROP_RAY_LEFT,false);
+           }
+         m_line_names[i]=name;
+        }
+     }
+   else if(ArraySize(m_line_names)!=needed)
+     {
+      DrawLines(true);
+      return;
+     }
+
+   for(int i=0;i<needed;i++)
      {
       double val1=m_vwap_buffer[i+1];
       double val2=m_vwap_buffer[i];
-      if(val1==EMPTY_VALUE || val2==EMPTY_VALUE)
-         continue;
-
       datetime time1=iTime(m_symbol,m_timeframe,i+1);
       datetime time2=iTime(m_symbol,m_timeframe,i);
+      string name=m_line_names[i];
 
-      string name=(StringLen(m_obj_prefix)>0?m_obj_prefix:"VWAP_")+IntegerToString(cnt);
-      if(ObjectCreate(0,name,OBJ_TREND,0,time1,val1,time2,val2))
-        {
-         ObjectSetInteger(0,name,OBJPROP_COLOR,m_color);
-         ObjectSetInteger(0,name,OBJPROP_STYLE,m_style);
-         ObjectSetInteger(0,name,OBJPROP_WIDTH,m_width);
-         ObjectSetInteger(0,name,OBJPROP_RAY_RIGHT,false);
-         ObjectSetInteger(0,name,OBJPROP_RAY_LEFT,false);
-
-         ArrayResize(m_line_names,cnt+1);
-         m_line_names[cnt]=name;
-         cnt++;
-        }
+      ObjectSetInteger(0,name,OBJPROP_TIME,0,time1);
+      ObjectSetDouble(0,name,OBJPROP_PRICE,0,val1);
+      ObjectSetInteger(0,name,OBJPROP_TIME,1,time2);
+      ObjectSetDouble(0,name,OBJPROP_PRICE,1,val2);
+      ObjectSetInteger(0,name,OBJPROP_COLOR,m_color);
+      ObjectSetInteger(0,name,OBJPROP_STYLE,m_style);
+      ObjectSetInteger(0,name,OBJPROP_WIDTH,m_width);
      }
-
-   ArrayResize(m_line_names,cnt);
   }
 
 //+------------------------------------------------------------------+
@@ -267,6 +298,8 @@ double CVWAP::TypicalPrice(int index)
 void CVWAP::ComputeAll()
   {
    int bars=Bars(m_symbol,m_timeframe);
+   if(bars<=0)
+      return;
    ArrayResize(m_vwap_buffer,bars);
    ArraySetAsSeries(m_vwap_buffer,true);
 
@@ -305,7 +338,7 @@ void CVWAP::ComputeAll()
             double p=TypicalPrice(j);
             long v=iVolume(m_symbol,m_timeframe,j);
             sum_pv+=p*v;
-            sum_vol+=v;
+            sum_vol+=(double)v;
            }
          m_vwap_buffer[i]=(sum_vol!=0)?sum_pv/sum_vol:EMPTY_VALUE;
          continue;
@@ -319,7 +352,7 @@ void CVWAP::ComputeAll()
       else
         {
          cum_pv+=price*volume;
-         cum_vol+=volume;
+         cum_vol+=(double)volume;
         }
 
       m_vwap_buffer[i]=(cum_vol!=0)?cum_pv/cum_vol:EMPTY_VALUE;
@@ -359,8 +392,8 @@ bool CVWAP::IsNewSession(int bar_index)
 //+------------------------------------------------------------------+
 void CVWAP::UpdateCurrentBar()
   {
-   int bars=Bars(m_symbol,m_timeframe);
-   if(bars==0)
+  int bars=Bars(m_symbol,m_timeframe);
+  if(bars<=0)
       return;
 
    ArrayResize(m_vwap_buffer,bars);
@@ -376,7 +409,7 @@ void CVWAP::UpdateCurrentBar()
          double p=TypicalPrice(j);
          long v=iVolume(m_symbol,m_timeframe,j);
          sum_pv+=p*v;
-         sum_vol+=v;
+         sum_vol+=(double)v;
         }
       m_vwap_buffer[0]=(sum_vol!=0)?sum_pv/sum_vol:EMPTY_VALUE;
       return;
@@ -404,7 +437,7 @@ void CVWAP::UpdateCurrentBar()
      double p=TypicalPrice(j);
      long v=iVolume(m_symbol,m_timeframe,j);
      cum_pv+=p*v;
-     cum_vol+=v;
+       cum_vol+=(double)v;
     }
 
   m_vwap_buffer[0]=(cum_vol!=0)?cum_pv/cum_vol:EMPTY_VALUE;
@@ -423,13 +456,13 @@ bool CVWAP::Update()
 
   if(bars<=current_size && current_size>0)
     {
-     UpdateCurrentBar();
-     DrawLines();
+    UpdateCurrentBar();
+    DrawLines(false);
      return(true);
     }
 
   ComputeAll();
-  DrawLines();
+  DrawLines(true);
   return(true);
   }
 

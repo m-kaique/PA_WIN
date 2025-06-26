@@ -25,6 +25,8 @@ struct SIndicatorConfig
     ENUM_VWAP_PRICE_TYPE vwap_price_type;
     datetime            vwap_start_time;
     color  vwap_color;
+    ENUM_LINE_STYLE vwap_style;
+    int    vwap_width;
     bool   enabled;
     double level_1;
     double level_2;
@@ -67,6 +69,8 @@ struct SIndicatorConfig
        vwap_price_type=VWAP_PRICE_FINANCIAL_AVERAGE;
        vwap_start_time=0;
        vwap_color=clrAqua;
+       vwap_style=STYLE_SOLID;
+       vwap_width=1;
        enabled=true;
        level_1=23.6; level_2=38.2; level_3=50.0;
        level_4=61.8; level_5=78.6; level_6=100.0;

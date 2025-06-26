@@ -616,6 +616,8 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
            if(StringLen(start_str)>0) icfg.vwap_start_time = StringToTime(start_str);
            col=ind["Color"].ToStr();
            icfg.vwap_color = StringToColor(col);
+           icfg.vwap_style = StringToLineStyle(ind["Style"].ToStr());
+           icfg.vwap_width = (int)ind["Width"].ToInt();
            icfg.enabled = ind["enabled"].ToBool();
             icfg.level_1 = ind["Level_1"].ToDbl();
             icfg.level_2 = ind["Level_2"].ToDbl();

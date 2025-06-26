@@ -56,6 +56,8 @@
                "session_tf": "D1",
                "price_type": "FINANCIAL_AVERAGE",
                "Color": "Blue",
+               "Style": "SOLID",
+               "Width": 1,
                "enabled": true
             },
             {
