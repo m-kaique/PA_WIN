@@ -597,61 +597,114 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
            CJAVal *ind = (*ind_array)[i];
            if(ind==NULL) continue;
 
-           SIndicatorConfig icfg; icfg.InitDefaults();
+           CIndicatorConfig *icfg=NULL;
            string col="";
-           icfg.name    = ind["name"].ToStr();
-            icfg.type    = ind["type"].ToStr();
-            icfg.period  = (int)ind["period"].ToInt();
-            icfg.method  = StringToMAMethod(ind["method"].ToStr());
-            icfg.dperiod = (int)ind["dperiod"].ToInt();
-            icfg.slowing = (int)ind["slowing"].ToInt();
-            icfg.shift   = (int)ind["shift"].ToInt();
-            icfg.price_field = StringToPriceField(ind["price_field"].ToStr());
-            icfg.deviation = ind["deviation"].ToDbl();
-            icfg.applied_price = StringToAppliedPrice(ind["applied_price"].ToStr());
-            icfg.vwap_calc_mode = StringToVWAPCalcMode(ind["calc_mode"].ToStr());
-            icfg.vwap_session_tf = StringToTimeframe(ind["session_tf"].ToStr());
-            icfg.vwap_price_type = StringToVWAPPriceType(ind["price_type"].ToStr());
-           string start_str = ind["start_time"].ToStr();
-           if(StringLen(start_str)>0) icfg.vwap_start_time = StringToTime(start_str);
-           col=ind["Color"].ToStr();
-           icfg.vwap_color = StringToColor(col);
-           icfg.vwap_style = StringToLineStyle(ind["Style"].ToStr());
-           icfg.vwap_width = (int)ind["Width"].ToInt();
-           icfg.enabled = ind["enabled"].ToBool();
-            icfg.level_1 = ind["Level_1"].ToDbl();
-            icfg.level_2 = ind["Level_2"].ToDbl();
-            icfg.level_3 = ind["Level_3"].ToDbl();
-            icfg.level_4 = ind["Level_4"].ToDbl();
-            icfg.level_5 = ind["Level_5"].ToDbl();
-            icfg.level_6 = ind["Level_6"].ToDbl();
-           col=ind["LevelsColor"].ToStr();
-            icfg.levels_color = StringToColor(col);
-            icfg.levels_style = StringToLineStyle(ind["LevelsStyle"].ToStr());
-            icfg.levels_width = (int)ind["LevelsWidth"].ToInt();
-            icfg.ext_1 = ind["Ext_1"].ToDbl();
-            icfg.ext_2 = ind["Ext_2"].ToDbl();
-            icfg.ext_3 = ind["Ext_3"].ToDbl();
-            col=ind["ExtensionsColor"].ToStr();
-            icfg.extensions_color = StringToColor(col);
-            icfg.extensions_style = StringToLineStyle(ind["ExtensionsStyle"].ToStr());
-            icfg.extensions_width = (int)ind["ExtensionsWidth"].ToInt();
-            col=ind["ParallelColor"].ToStr();
-            icfg.parallel_color = StringToColor(col);
-            icfg.parallel_style = StringToLineStyle(ind["ParallelStyle"].ToStr());
-            icfg.parallel_width = (int)ind["ParallelWidth"].ToInt();
-            icfg.show_labels = ind["ShowLabels"].ToBool();
-            col=ind["LabelsColor"].ToStr();
-            icfg.labels_color = StringToColor(col);
-            icfg.labels_font_size = (int)ind["LabelsFontSize"].ToInt();
-            string font=ind["LabelsFont"].ToStr();
-            if(StringLen(font)>0) icfg.labels_font=font;
+           string type=ind["type"].ToStr();
+           if(type=="MA")
+             {
+              CMAConfig *p=new CMAConfig();
+              p.name=ind["name"].ToStr();
+              p.type=type;
+              p.enabled=ind["enabled"].ToBool();
+              p.period=(int)ind["period"].ToInt();
+              p.method=StringToMAMethod(ind["method"].ToStr());
+              icfg=p;
+             }
+           else if(type=="STO")
+             {
+              CStochasticConfig *p=new CStochasticConfig();
+              p.name=ind["name"].ToStr();
+              p.type=type;
+              p.enabled=ind["enabled"].ToBool();
+              p.period=(int)ind["period"].ToInt();
+              p.dperiod=(int)ind["dperiod"].ToInt();
+              p.slowing=(int)ind["slowing"].ToInt();
+              p.method=StringToMAMethod(ind["method"].ToStr());
+              p.price_field=StringToPriceField(ind["price_field"].ToStr());
+              icfg=p;
+             }
+           else if(type=="VOL")
+             {
+              CVolumeConfig *p=new CVolumeConfig();
+              p.name=ind["name"].ToStr();
+              p.type=type;
+              p.enabled=ind["enabled"].ToBool();
+              p.shift=(int)ind["shift"].ToInt();
+              icfg=p;
+             }
+           else if(type=="VWAP")
+             {
+              CVWAPConfig *p=new CVWAPConfig();
+              p.name=ind["name"].ToStr();
+              p.type=type;
+              p.enabled=ind["enabled"].ToBool();
+              p.period=(int)ind["period"].ToInt();
+              p.method=StringToMAMethod(ind["method"].ToStr());
+              p.calc_mode=StringToVWAPCalcMode(ind["calc_mode"].ToStr());
+              p.session_tf=StringToTimeframe(ind["session_tf"].ToStr());
+              p.price_type=StringToVWAPPriceType(ind["price_type"].ToStr());
+              string start_str=ind["start_time"].ToStr();
+              if(StringLen(start_str)>0) p.start_time=StringToTime(start_str);
+              col=ind["Color"].ToStr();
+              p.line_color=StringToColor(col);
+              p.line_style=StringToLineStyle(ind["Style"].ToStr());
+              p.line_width=(int)ind["Width"].ToInt();
+              icfg=p;
+             }
+           else if(type=="BOLL")
+             {
+              CBollingerConfig *p=new CBollingerConfig();
+              p.name=ind["name"].ToStr();
+              p.type=type;
+              p.enabled=ind["enabled"].ToBool();
+              p.period=(int)ind["period"].ToInt();
+              p.shift=(int)ind["shift"].ToInt();
+              p.deviation=ind["deviation"].ToDbl();
+              p.applied_price=StringToAppliedPrice(ind["applied_price"].ToStr());
+              icfg=p;
+             }
+           else if(type=="FIBO")
+             {
+              CFiboConfig *p=new CFiboConfig();
+              p.name=ind["name"].ToStr();
+              p.type=type;
+              p.enabled=ind["enabled"].ToBool();
+              p.period=(int)ind["period"].ToInt();
+              p.level_1=ind["Level_1"].ToDbl();
+              p.level_2=ind["Level_2"].ToDbl();
+              p.level_3=ind["Level_3"].ToDbl();
+              p.level_4=ind["Level_4"].ToDbl();
+              p.level_5=ind["Level_5"].ToDbl();
+              p.level_6=ind["Level_6"].ToDbl();
+              col=ind["LevelsColor"].ToStr();
+              p.levels_color=StringToColor(col);
+              p.levels_style=StringToLineStyle(ind["LevelsStyle"].ToStr());
+              p.levels_width=(int)ind["LevelsWidth"].ToInt();
+              p.ext_1=ind["Ext_1"].ToDbl();
+              p.ext_2=ind["Ext_2"].ToDbl();
+              p.ext_3=ind["Ext_3"].ToDbl();
+              col=ind["ExtensionsColor"].ToStr();
+              p.extensions_color=StringToColor(col);
+              p.extensions_style=StringToLineStyle(ind["ExtensionsStyle"].ToStr());
+              p.extensions_width=(int)ind["ExtensionsWidth"].ToInt();
+              col=ind["ParallelColor"].ToStr();
+              p.parallel_color=StringToColor(col);
+              p.parallel_style=StringToLineStyle(ind["ParallelStyle"].ToStr());
+              p.parallel_width=(int)ind["ParallelWidth"].ToInt();
+              p.show_labels=ind["ShowLabels"].ToBool();
+              col=ind["LabelsColor"].ToStr();
+              p.labels_color=StringToColor(col);
+              p.labels_font_size=(int)ind["LabelsFontSize"].ToInt();
+              string font=ind["LabelsFont"].ToStr();
+              if(StringLen(font)>0) p.labels_font=font;
+              icfg=p;
+             }
 
             int pos = ArraySize(config.indicators);
             ArrayResize(config.indicators,pos+1);
             config.indicators[pos]=icfg;
 
-            Print("Indicador lido: ", icfg.name, " Tipo: ", icfg.type, " Period: ", icfg.period, " Enabled: ", icfg.enabled);
+            Print("Indicador lido: ", icfg.name, " Tipo: ", icfg.type, " Enabled: ", icfg.enabled);
         }
     }
     else

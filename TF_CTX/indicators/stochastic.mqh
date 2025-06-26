@@ -7,6 +7,7 @@
 #property version   "1.00"
 
 #include "indicator_base.mqh"
+#include "../config_types.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe para cálculo do Estocástico                               |
@@ -34,9 +35,12 @@ public:
                     ~CStochastic();
 
    // Inicialização específica com todos os parâmetros
-   bool            Init(string symbol, ENUM_TIMEFRAMES timeframe,
-                        int kperiod, int dperiod, int slowing,
-                        ENUM_MA_METHOD ma_method, ENUM_STO_PRICE price_field);
+  bool            Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                       int kperiod, int dperiod, int slowing,
+                       ENUM_MA_METHOD ma_method, ENUM_STO_PRICE price_field);
+
+  bool            Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                       CStochasticConfig &config);
 
    // Implementação da interface base (usa valores padrão para dperiod/slowing)
    virtual bool    Init(string symbol, ENUM_TIMEFRAMES timeframe,
@@ -91,6 +95,13 @@ bool CStochastic::Init(string symbol, ENUM_TIMEFRAMES timeframe,
 
    ReleaseIndicatorHandle();
    return CreateIndicatorHandle();
+}
+
+bool CStochastic::Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                       CStochasticConfig &config)
+  {
+   return Init(symbol, timeframe, config.period, config.dperiod,
+               config.slowing, config.method, config.price_field);
   }
 
 //+------------------------------------------------------------------+

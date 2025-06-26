@@ -56,7 +56,7 @@ public:
                           color parallel_color,ENUM_LINE_STYLE parallel_style,int parallel_width,
                           bool show_labels,
                           color labels_color,int labels_font_size,string labels_font);
-  bool             Init(string symbol, ENUM_TIMEFRAMES timeframe, SIndicatorConfig &config);
+  bool             Init(string symbol, ENUM_TIMEFRAMES timeframe, CFiboConfig &config);
    // Interface base (chama Init com níveis padrão)
   virtual bool     Init(string symbol, ENUM_TIMEFRAMES timeframe,
                           int period, ENUM_MA_METHOD method);
@@ -192,7 +192,7 @@ bool CFibonacci::Init(string symbol, ENUM_TIMEFRAMES timeframe,
 //+------------------------------------------------------------------+
 //| Init from configuration structure                                |
 //+------------------------------------------------------------------+
-bool CFibonacci::Init(string symbol, ENUM_TIMEFRAMES timeframe, SIndicatorConfig &config)
+bool CFibonacci::Init(string symbol, ENUM_TIMEFRAMES timeframe, CFiboConfig &config)
   {
    return Init(symbol,timeframe,config.period,
                config.level_1,config.level_2,config.level_3,

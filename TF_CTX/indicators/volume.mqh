@@ -7,6 +7,7 @@
 #property version   "1.00"
 
 #include "indicator_base.mqh"
+#include "../config_types.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe para acesso ao volume                                     |
@@ -22,8 +23,10 @@ public:
                      CVolume();
                     ~CVolume();
 
-   bool             Init(string symbol, ENUM_TIMEFRAMES timeframe,
-                         int base_shift, ENUM_MA_METHOD method);
+  bool             Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                        int base_shift, ENUM_MA_METHOD method);
+  bool             Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                        CVolumeConfig &config);
 
    virtual double   GetValue(int shift=0);
    virtual bool     CopyValues(int shift, int count, double &buffer[]);
@@ -57,6 +60,12 @@ bool CVolume::Init(string symbol, ENUM_TIMEFRAMES timeframe,
    m_timeframe   = timeframe;
    m_base_shift  = base_shift;
    return true; // nenhuma inicialização necessária
+  }
+
+bool CVolume::Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                   CVolumeConfig &config)
+  {
+   return Init(symbol, timeframe, config.shift, MODE_SMA);
   }
 
 //+------------------------------------------------------------------+

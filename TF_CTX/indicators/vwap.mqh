@@ -6,25 +6,8 @@
 #define __VWAP_MQH__
 
 #include "indicator_base.mqh"
-
-enum ENUM_VWAP_CALC_MODE
-  {
-   VWAP_CALC_BAR=0,
-   VWAP_CALC_PERIODIC,
-   VWAP_CALC_FROM_DATE
-  };
-
-enum ENUM_VWAP_PRICE_TYPE
-  {
-   VWAP_PRICE_FINANCIAL_AVERAGE=0,
-   VWAP_PRICE_OPEN,
-   VWAP_PRICE_HIGH,
-   VWAP_PRICE_LOW,
-   VWAP_PRICE_CLOSE,
-   VWAP_PRICE_HL2,
-   VWAP_PRICE_HLC3,
-   VWAP_PRICE_OHLC4
-  };
+#include "../vwap_defs.mqh"
+#include "../config_types.mqh"
 
 class CVWAP : public CIndicatorBase
   {
@@ -70,6 +53,8 @@ public:
                         ENUM_LINE_STYLE line_style=STYLE_SOLID,
                         int line_width=1,
                         string obj_prefix="");
+  bool             Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                        CVWAPConfig &config);
   virtual bool     Init(string symbol, ENUM_TIMEFRAMES timeframe,
                         int period, ENUM_MA_METHOD method) override;
    virtual double   GetValue(int shift=0) override;
@@ -156,10 +141,19 @@ bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
 bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                  int period, ENUM_MA_METHOD method)
   {
-   return Init(symbol,timeframe,period,method,
-               VWAP_CALC_BAR,PERIOD_D1,
-               VWAP_PRICE_FINANCIAL_AVERAGE,0,clrAqua,
-               STYLE_SOLID,1,"");
+  return Init(symbol,timeframe,period,method,
+              VWAP_CALC_BAR,PERIOD_D1,
+              VWAP_PRICE_FINANCIAL_AVERAGE,0,clrAqua,
+              STYLE_SOLID,1,"");
+  }
+
+bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                 CVWAPConfig &config)
+  {
+   return Init(symbol, timeframe, config.period, config.method,
+               config.calc_mode, config.session_tf, config.price_type,
+               config.start_time, config.line_color,
+               config.line_style, config.line_width, "");
   }
 
 //+------------------------------------------------------------------+
