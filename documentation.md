@@ -92,7 +92,7 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
 - **`moving_averages.mqh`**: Implementa a classe `CMovingAverages`, derivada de `CIndicatorBase`, responsável por criar e gerenciar indicadores de média móvel.
 - **`stochastic.mqh`**: Implementa a classe `CStochastic`, derivada de `CIndicatorBase`, responsável pelo cálculo do indicador Estocástico.
 - **`volume.mqh`**: Implementa a classe `CVolume`, derivada de `CIndicatorBase`, responsável por acessar valores de volume.
-- **`vwap.mqh`**: Implementa a classe `CVWAP`, derivada de `CIndicatorBase`, agora com cálculo acumulado de VWAP por sessão e suporte a vários tipos de preço.
+ - **`vwap.mqh`**: Implementa a classe `CVWAP`, derivada de `CIndicatorBase`, com cálculo acumulado de VWAP por sessão, opções de preço e detecção avançada de sessões.
 - **`fibonacci.mqh`**: Implementa o indicador `CFibonacci`, capaz de desenhar níveis de retração e extensões de Fibonacci com total customização via JSON.
 
 
@@ -944,6 +944,7 @@ Esta seção registra as principais alterações e versões dos componentes do E
 -   **Versao 2.00**: Adiciona desenho da linha de VWAP no gráfico.
 -   **Versao 3.00**: Reescrita completa com cálculo acumulado por sessão, modos de cálculo e suporte a diferentes tipos de preço.
 -   **Versao 4.00**: Corrige o cálculo por barras, inclui métodos de configuração e atualização incremental.
+-   **Versao 5.00**: Melhora a detecção de sessões e o cálculo da barra atual.
 
 ### fibonacci.mqh
 

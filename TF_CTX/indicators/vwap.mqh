@@ -124,7 +124,7 @@ bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
 double CVWAP::CalcVWAP(int shift)
   {
    if(ArraySize(m_vwap_buffer)<=shift)
-      return 0.0;
+      return EMPTY_VALUE;
    return m_vwap_buffer[shift];
   }
 
@@ -134,7 +134,7 @@ double CVWAP::CalcVWAP(int shift)
 double CVWAP::GetValue(int shift)
   {
    if(ArraySize(m_vwap_buffer)<=shift)
-      return 0.0;
+      return EMPTY_VALUE;
    return m_vwap_buffer[shift];
   }
 
@@ -241,7 +241,7 @@ void CVWAP::ComputeAll()
             sum_pv+=p*v;
             sum_vol+=v;
            }
-         m_vwap_buffer[i]=(sum_vol!=0)?sum_pv/sum_vol:0.0;
+         m_vwap_buffer[i]=(sum_vol!=0)?sum_pv/sum_vol:EMPTY_VALUE;
          continue;
         }
 
@@ -256,7 +256,7 @@ void CVWAP::ComputeAll()
          cum_vol+=volume;
         }
 
-      m_vwap_buffer[i]=(cum_vol!=0)?cum_pv/cum_vol:0.0;
+      m_vwap_buffer[i]=(cum_vol!=0)?cum_pv/cum_vol:EMPTY_VALUE;
      }
   }
 
@@ -271,11 +271,21 @@ bool CVWAP::IsNewSession(int bar_index)
    datetime current_time=iTime(m_symbol,m_timeframe,bar_index);
    datetime previous_time=iTime(m_symbol,m_timeframe,bar_index+1);
 
-   MqlDateTime cur_dt,prev_dt;
-   TimeToStruct(current_time,cur_dt);
-   TimeToStruct(previous_time,prev_dt);
+   if(m_session_tf==PERIOD_D1)
+     {
+      MqlDateTime cur_dt,prev_dt;
+      TimeToStruct(current_time,cur_dt);
+      TimeToStruct(previous_time,prev_dt);
+      return(cur_dt.day!=prev_dt.day);
+     }
+   else if(m_session_tf==PERIOD_W1)
+     {
+      int cur_week=(int)(current_time/(7*24*3600));
+      int prev_week=(int)(previous_time/(7*24*3600));
+      return(cur_week!=prev_week);
+     }
 
-   return(cur_dt.day!=prev_dt.day);
+   return false;
   }
 
 //+------------------------------------------------------------------+
@@ -290,8 +300,8 @@ void CVWAP::UpdateCurrentBar()
    ArrayResize(m_vwap_buffer,bars);
    ArraySetAsSeries(m_vwap_buffer,true);
 
-   if(m_calc_mode==VWAP_CALC_BAR)
-     {
+  if(m_calc_mode==VWAP_CALC_BAR)
+    {
       double sum_pv=0.0;
       double sum_vol=0.0;
       int start_bar=MathMin(m_period-1,bars-1);
@@ -302,30 +312,37 @@ void CVWAP::UpdateCurrentBar()
          sum_pv+=p*v;
          sum_vol+=v;
         }
-      m_vwap_buffer[0]=(sum_vol!=0)?sum_pv/sum_vol:0.0;
+      m_vwap_buffer[0]=(sum_vol!=0)?sum_pv/sum_vol:EMPTY_VALUE;
       return;
-     }
+    }
 
-   double cum_pv=0.0;
-   double cum_vol=0.0;
-   for(int j=0;j<bars;j++)
-     {
-      datetime t=iTime(m_symbol,m_timeframe,j);
+  int session_start=0;
+  for(int j=1;j<bars;j++)
+    {
+     if(m_calc_mode==VWAP_CALC_PERIODIC && IsNewSession(j-1))
+       {
+        session_start=j-1;
+        break;
+       }
+     if(m_calc_mode==VWAP_CALC_FROM_DATE && iTime(m_symbol,m_timeframe,j)<m_start_time)
+       {
+        session_start=j-1;
+        break;
+       }
+    }
 
-      if(m_calc_mode==VWAP_CALC_FROM_DATE && t<m_start_time)
-         break;
+  double cum_pv=0.0;
+  double cum_vol=0.0;
+  for(int j=session_start;j>=0;j--)
+    {
+     double p=TypicalPrice(j);
+     long v=iVolume(m_symbol,m_timeframe,j);
+     cum_pv+=p*v;
+     cum_vol+=v;
+    }
 
-      if(j>0 && m_calc_mode==VWAP_CALC_PERIODIC && IsNewSession(j-1))
-         break;
-
-      double p=TypicalPrice(j);
-      long v=iVolume(m_symbol,m_timeframe,j);
-      cum_pv+=p*v;
-      cum_vol+=v;
-     }
-
-   m_vwap_buffer[0]=(cum_vol!=0)?cum_pv/cum_vol:EMPTY_VALUE;
-  }
+  m_vwap_buffer[0]=(cum_vol!=0)?cum_pv/cum_vol:EMPTY_VALUE;
+ }
 
 //+------------------------------------------------------------------+
 //| Recalculate and redraw VWAP line                                 |
