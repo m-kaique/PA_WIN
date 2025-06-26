@@ -594,11 +594,12 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
     {
         for(int i=0;i<ind_array.Size();i++)
         {
-            CJAVal *ind = (*ind_array)[i];
-            if(ind==NULL) continue;
+           CJAVal *ind = (*ind_array)[i];
+           if(ind==NULL) continue;
 
-            SIndicatorConfig icfg; icfg.InitDefaults();
-            icfg.name    = ind["name"].ToStr();
+           SIndicatorConfig icfg; icfg.InitDefaults();
+           string col="";
+           icfg.name    = ind["name"].ToStr();
             icfg.type    = ind["type"].ToStr();
             icfg.period  = (int)ind["period"].ToInt();
             icfg.method  = StringToMAMethod(ind["method"].ToStr());
@@ -611,16 +612,18 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
             icfg.vwap_calc_mode = StringToVWAPCalcMode(ind["calc_mode"].ToStr());
             icfg.vwap_session_tf = StringToTimeframe(ind["session_tf"].ToStr());
             icfg.vwap_price_type = StringToVWAPPriceType(ind["price_type"].ToStr());
-            string start_str = ind["start_time"].ToStr();
-            if(StringLen(start_str)>0) icfg.vwap_start_time = StringToTime(start_str);
-            icfg.enabled = ind["enabled"].ToBool();
+           string start_str = ind["start_time"].ToStr();
+           if(StringLen(start_str)>0) icfg.vwap_start_time = StringToTime(start_str);
+           col=ind["Color"].ToStr();
+           icfg.vwap_color = StringToColor(col);
+           icfg.enabled = ind["enabled"].ToBool();
             icfg.level_1 = ind["Level_1"].ToDbl();
             icfg.level_2 = ind["Level_2"].ToDbl();
             icfg.level_3 = ind["Level_3"].ToDbl();
             icfg.level_4 = ind["Level_4"].ToDbl();
             icfg.level_5 = ind["Level_5"].ToDbl();
             icfg.level_6 = ind["Level_6"].ToDbl();
-            string col=ind["LevelsColor"].ToStr();
+           col=ind["LevelsColor"].ToStr();
             icfg.levels_color = StringToColor(col);
             icfg.levels_style = StringToLineStyle(ind["LevelsStyle"].ToStr());
             icfg.levels_width = (int)ind["LevelsWidth"].ToInt();

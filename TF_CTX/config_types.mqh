@@ -24,6 +24,7 @@ struct SIndicatorConfig
     ENUM_TIMEFRAMES     vwap_session_tf;
     ENUM_VWAP_PRICE_TYPE vwap_price_type;
     datetime            vwap_start_time;
+    color  vwap_color;
     bool   enabled;
     double level_1;
     double level_2;
@@ -65,6 +66,7 @@ struct SIndicatorConfig
        vwap_session_tf=PERIOD_D1;
        vwap_price_type=VWAP_PRICE_FINANCIAL_AVERAGE;
        vwap_start_time=0;
+       vwap_color=clrAqua;
        enabled=true;
        level_1=23.6; level_2=38.2; level_3=50.0;
        level_4=61.8; level_5=78.6; level_6=100.0;

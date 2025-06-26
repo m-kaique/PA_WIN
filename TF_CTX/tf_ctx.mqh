@@ -152,7 +152,7 @@ bool TF_CTX::Init()
       if (ind == NULL || !((CVWAP*)ind).Init(m_symbol, m_timeframe, m_cfg[i].period,
                                            m_cfg[i].method, m_cfg[i].vwap_calc_mode,
                                            m_cfg[i].vwap_session_tf, m_cfg[i].vwap_price_type,
-                                           m_cfg[i].vwap_start_time))
+                                           m_cfg[i].vwap_start_time, m_cfg[i].vwap_color))
       {
         Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
         delete ind;
