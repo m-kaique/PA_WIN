@@ -8,6 +8,7 @@
 
 #include "indicator_base.mqh"
 #include "../config_types.mqh"
+#include "../stochastic_defs.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe para cálculo do Estocástico                               |

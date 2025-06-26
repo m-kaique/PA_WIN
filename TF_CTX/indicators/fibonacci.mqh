@@ -7,6 +7,7 @@
 
 #include "indicator_base.mqh"
 #include "../config_types.mqh"
+#include "../fibonacci_defs.mqh"
 
 class CFibonacci : public CIndicatorBase
   {

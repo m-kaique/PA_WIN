@@ -8,6 +8,7 @@
 
 #include "indicator_base.mqh"
 #include "../config_types.mqh"
+#include "../volume_defs.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe para acesso ao volume                                     |
