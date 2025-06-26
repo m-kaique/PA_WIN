@@ -6,12 +6,12 @@
 #ifndef __CONFIG_TYPES_MQH__
 #define __CONFIG_TYPES_MQH__
 
-#include "vwap_defs.mqh"
-#include "ma_defs.mqh"
-#include "stochastic_defs.mqh"
-#include "volume_defs.mqh"
-#include "bollinger_defs.mqh"
-#include "fibonacci_defs.mqh"
+#include "indicators/vwap/vwap_defs.mqh"
+#include "indicators/ma/ma_defs.mqh"
+#include "indicators/stochastic/stochastic_defs.mqh"
+#include "indicators/volume/volume_defs.mqh"
+#include "indicators/bollinger/bollinger_defs.mqh"
+#include "indicators/fibonacci/fibonacci_defs.mqh"
 
 //--- Base configuration
 class CIndicatorConfig

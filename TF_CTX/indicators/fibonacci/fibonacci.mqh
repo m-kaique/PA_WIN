@@ -5,9 +5,9 @@
 #ifndef __FIBONACCI_MQH__
 #define __FIBONACCI_MQH__
 
-#include "indicator_base.mqh"
-#include "../config_types.mqh"
-#include "../fibonacci_defs.mqh"
+#include "../indicator_base.mqh"
+#include "../../config_types.mqh"
+#include "fibonacci_defs.mqh"
 
 class CFibonacci : public CIndicatorBase
   {

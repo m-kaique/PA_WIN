@@ -6,12 +6,12 @@
 #property link "https://www.mql5.com"
 #property version "2.00"
 
-#include "indicators/moving_averages.mqh"
-#include "indicators/stochastic.mqh"
-#include "indicators/volume.mqh"
-#include "indicators/vwap.mqh"
-#include "indicators/bollinger.mqh"
-#include "indicators/fibonacci.mqh"
+#include "indicators/ma/moving_averages.mqh"
+#include "indicators/stochastic/stochastic.mqh"
+#include "indicators/volume/volume.mqh"
+#include "indicators/vwap/vwap.mqh"
+#include "indicators/bollinger/bollinger.mqh"
+#include "indicators/fibonacci/fibonacci.mqh"
 #include "config_types.mqh"
 
 enum ENUM_INDICATOR_TYPE

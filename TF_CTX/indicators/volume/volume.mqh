@@ -6,9 +6,9 @@
 #property link      "https://www.mql5.com"
 #property version   "1.00"
 
-#include "indicator_base.mqh"
-#include "../config_types.mqh"
-#include "../volume_defs.mqh"
+#include "../indicator_base.mqh"
+#include "../../config_types.mqh"
+#include "volume_defs.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe para acesso ao volume                                     |

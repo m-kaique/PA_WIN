@@ -6,9 +6,9 @@
 #property link      "https://www.mql5.com"
 #property version   "1.00"
 
-#include "indicator_base.mqh"
-#include "../config_types.mqh"
-#include "../stochastic_defs.mqh"
+#include "../indicator_base.mqh"
+#include "../../config_types.mqh"
+#include "stochastic_defs.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe para cálculo do Estocástico                               |
