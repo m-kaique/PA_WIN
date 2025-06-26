@@ -6,7 +6,7 @@
 #ifndef __CONFIG_TYPES_MQH__
 #define __CONFIG_TYPES_MQH__
 
-#include "indicators/vwap.mqh"
+#include "vwap_defs.mqh"
 
 //--- Base configuration
 class CIndicatorConfig
