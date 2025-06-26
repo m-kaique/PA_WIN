@@ -43,6 +43,9 @@ private:
    datetime            m_start_time;
    datetime            m_last_calculated_time;
    double              m_vwap_buffer[];
+   
+   bool            IsNewSession(int bar_index);
+   void            UpdateCurrentBar();
 
    void            DeleteObjects();
 
@@ -60,6 +63,11 @@ public:
    virtual bool     CopyValues(int shift,int count,double &buffer[]);
    virtual bool     IsReady();
    virtual bool     Update();
+
+   bool SetCalcMode(ENUM_VWAP_CALC_MODE mode){ m_calc_mode=mode; return true; }
+   bool SetPriceType(ENUM_VWAP_PRICE_TYPE type){ m_price_type=type; return true; }
+   bool SetSessionTimeframe(ENUM_TIMEFRAMES tf){ m_session_tf=tf; return true; }
+   bool SetStartTime(datetime start){ m_start_time=start; return true; }
   };
 
 //+------------------------------------------------------------------+
@@ -208,18 +216,8 @@ void CVWAP::ComputeAll()
       bool reset=false;
       if(m_calc_mode==VWAP_CALC_PERIODIC)
         {
-         datetime cur_session=iTime(m_symbol,m_session_tf,
-                                    iBarShift(m_symbol,m_session_tf,bar_time));
-         if(i==bars-1)
+         if(IsNewSession(i))
             reset=true;
-         else
-           {
-            datetime prev_time=iTime(m_symbol,m_timeframe,i+1);
-            datetime prev_session=iTime(m_symbol,m_session_tf,
-                                        iBarShift(m_symbol,m_session_tf,prev_time));
-            if(cur_session!=prev_session)
-               reset=true;
-           }
         }
       else if(m_calc_mode==VWAP_CALC_FROM_DATE)
         {
@@ -235,10 +233,11 @@ void CVWAP::ComputeAll()
         {
          double sum_pv=0.0;
          double sum_vol=0.0;
-         for(int j=0;j<m_period && (i+j)<bars;j++)
+         int start_bar=MathMin(i + m_period - 1, bars - 1);
+         for(int j=start_bar;j>=i;j--)
            {
-            double p=TypicalPrice(i+j);
-            long v=iVolume(m_symbol,m_timeframe,i+j);
+            double p=TypicalPrice(j);
+            long v=iVolume(m_symbol,m_timeframe,j);
             sum_pv+=p*v;
             sum_vol+=v;
            }
@@ -262,6 +261,73 @@ void CVWAP::ComputeAll()
   }
 
 //+------------------------------------------------------------------+
+//| Check if bar starts a new session                                 |
+//+------------------------------------------------------------------+
+bool CVWAP::IsNewSession(int bar_index)
+  {
+   if(bar_index>=Bars(m_symbol,m_timeframe)-1)
+      return true;
+
+   datetime current_time=iTime(m_symbol,m_timeframe,bar_index);
+   datetime previous_time=iTime(m_symbol,m_timeframe,bar_index+1);
+
+   MqlDateTime cur_dt,prev_dt;
+   TimeToStruct(current_time,cur_dt);
+   TimeToStruct(previous_time,prev_dt);
+
+   return(cur_dt.day!=prev_dt.day);
+  }
+
+//+------------------------------------------------------------------+
+//| Update only the current bar                                       |
+//+------------------------------------------------------------------+
+void CVWAP::UpdateCurrentBar()
+  {
+   int bars=Bars(m_symbol,m_timeframe);
+   if(bars==0)
+      return;
+
+   ArrayResize(m_vwap_buffer,bars);
+   ArraySetAsSeries(m_vwap_buffer,true);
+
+   if(m_calc_mode==VWAP_CALC_BAR)
+     {
+      double sum_pv=0.0;
+      double sum_vol=0.0;
+      int start_bar=MathMin(m_period-1,bars-1);
+      for(int j=start_bar;j>=0;j--)
+        {
+         double p=TypicalPrice(j);
+         long v=iVolume(m_symbol,m_timeframe,j);
+         sum_pv+=p*v;
+         sum_vol+=v;
+        }
+      m_vwap_buffer[0]=(sum_vol!=0)?sum_pv/sum_vol:0.0;
+      return;
+     }
+
+   double cum_pv=0.0;
+   double cum_vol=0.0;
+   for(int j=0;j<bars;j++)
+     {
+      datetime t=iTime(m_symbol,m_timeframe,j);
+
+      if(m_calc_mode==VWAP_CALC_FROM_DATE && t<m_start_time)
+         break;
+
+      if(j>0 && m_calc_mode==VWAP_CALC_PERIODIC && IsNewSession(j-1))
+         break;
+
+      double p=TypicalPrice(j);
+      long v=iVolume(m_symbol,m_timeframe,j);
+      cum_pv+=p*v;
+      cum_vol+=v;
+     }
+
+   m_vwap_buffer[0]=(cum_vol!=0)?cum_pv/cum_vol:EMPTY_VALUE;
+  }
+
+//+------------------------------------------------------------------+
 //| Recalculate and redraw VWAP line                                 |
 //+------------------------------------------------------------------+
 bool CVWAP::Update()
@@ -269,11 +335,15 @@ bool CVWAP::Update()
    if(!IsReady())
       return(false);
 
-   datetime cur_time=iTime(m_symbol,m_timeframe,0);
-   if(cur_time==m_last_calculated_time && ArraySize(m_vwap_buffer)>0)
-      return(true);
+   int bars=Bars(m_symbol,m_timeframe);
+   int current_size=ArraySize(m_vwap_buffer);
 
-   m_last_calculated_time=cur_time;
+   if(bars<=current_size && current_size>0)
+     {
+      UpdateCurrentBar();
+      return(true);
+     }
+
    ComputeAll();
    return(true);
   }

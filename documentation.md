@@ -943,6 +943,7 @@ Esta seção registra as principais alterações e versões dos componentes do E
 -   **Versao 1.00**: Implementa o indicador VWAP (Volume Weighted Average Price) derivado de `CIndicatorBase`.
 -   **Versao 2.00**: Adiciona desenho da linha de VWAP no gráfico.
 -   **Versao 3.00**: Reescrita completa com cálculo acumulado por sessão, modos de cálculo e suporte a diferentes tipos de preço.
+-   **Versao 4.00**: Corrige o cálculo por barras, inclui métodos de configuração e atualização incremental.
 
 ### fibonacci.mqh
 
