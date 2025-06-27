@@ -447,17 +447,17 @@ void CTrendLine::FindTrendLines()
       {
          for(int j = i + 1; j < ArraySize(lows_all); j++)
          {
-            if(!IsValidLTA(lows_all[j], lows_all[i]))
+            if(!IsValidLTA(lows_all[i], lows_all[j]))
                continue;
             if((lows_all[j].bar_index - lows_all[i].bar_index) < m_min_distance)
                continue;
 
-            double score = ScorePair(lows_all[j], lows_all[i]);
+            double score = ScorePair(lows_all[i], lows_all[j]);
             if(score > best_score)
             {
                best_score = score;
-               best_p1 = lows_all[j];
-               best_p2 = lows_all[i];
+               best_p1 = lows_all[i];
+               best_p2 = lows_all[j];
             }
          }
       }
@@ -493,17 +493,17 @@ void CTrendLine::FindTrendLines()
       {
          for(int j = i + 1; j < ArraySize(highs_all); j++)
          {
-            if(!IsValidLTB(highs_all[j], highs_all[i]))
+            if(!IsValidLTB(highs_all[i], highs_all[j]))
                continue;
             if((highs_all[j].bar_index - highs_all[i].bar_index) < m_min_distance)
                continue;
 
-            double score = ScorePair(highs_all[j], highs_all[i]);
+            double score = ScorePair(highs_all[i], highs_all[j]);
             if(score > best_score)
             {
                best_score = score;
-               best_p1 = highs_all[j];
-               best_p2 = highs_all[i];
+               best_p1 = highs_all[i];
+               best_p2 = highs_all[j];
             }
          }
       }
@@ -534,8 +534,10 @@ bool CTrendLine::IsValidLTA(SFractalPoint &p_old, SFractalPoint &p_recent)
 {
    // p_old   : ponto mais antigo (índice maior)
    // p_recent: ponto mais recente (índice menor)
-   // Para LTA: o preço mais recente deve ser maior que o antigo
-   return (p_old.bar_index > p_recent.bar_index && p_recent.price > p_old.price);
+   // Para LTA: o preço mais recente (p_recent) deve ser maior que o antigo
+   if(p_old.bar_index <= p_recent.bar_index)
+      return false;
+   return (p_recent.price > p_old.price);
 }
 
 //+------------------------------------------------------------------+
@@ -545,8 +547,10 @@ bool CTrendLine::IsValidLTB(SFractalPoint &p_old, SFractalPoint &p_recent)
 {
    // p_old   : ponto mais antigo (índice maior)
    // p_recent: ponto mais recente (índice menor)
-   // Para LTB: o preço mais recente deve ser menor que o antigo
-   return (p_old.bar_index > p_recent.bar_index && p_recent.price < p_old.price);
+   // Para LTB: o preço mais recente (p_recent) deve ser menor que o antigo
+   if(p_old.bar_index <= p_recent.bar_index)
+      return false;
+   return (p_recent.price < p_old.price);
 }
 
 //+------------------------------------------------------------------+
