@@ -823,7 +823,7 @@ double CTrendLine::ComputeVolatilityContext(SFractalPoint &p1, SFractalPoint &p2
    int dist=p1.bar_index-p2.bar_index;
    if(dist<=0) return 0.0;
    double slope=MathAbs((p2.price-p1.price)/dist);
-   double atr=iATR(m_symbol,m_timeframe,14,0);
+   double atr=iATR(m_symbol,m_timeframe,14);
    if(atr<=0) return 50.0;
    double rel=slope/atr;
    return MathMin(rel*50.0,100.0);
