@@ -38,7 +38,8 @@ enum ENUM_PRICE_ACTION_TYPE
 
 ENUM_PRICE_ACTION_TYPE StringToPriceActionType(string type)
 {
-  if (type == "TRENDLINE")
+  string t = StringUpper(type);
+  if(t=="TRENDLINE" || t=="TRENDLINES")
     return PA_TREND_LINE;
   return PA_TYPE_UNKNOWN;
 }
