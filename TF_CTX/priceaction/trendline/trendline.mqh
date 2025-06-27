@@ -447,17 +447,18 @@ void CTrendLine::FindTrendLines()
       {
          for(int j = i + 1; j < ArraySize(lows_all); j++)
          {
-            if(!IsValidLTA(lows_all[i], lows_all[j]))
+            // lows_all[j] é o ponto mais antigo; lows_all[i], o mais recente
+            if(!IsValidLTA(lows_all[j], lows_all[i]))
                continue;
             if((lows_all[j].bar_index - lows_all[i].bar_index) < m_min_distance)
                continue;
 
-            double score = ScorePair(lows_all[i], lows_all[j]);
+            double score = ScorePair(lows_all[j], lows_all[i]);
             if(score > best_score)
             {
                best_score = score;
-               best_p1 = lows_all[i];
-               best_p2 = lows_all[j];
+               best_p1 = lows_all[j];
+               best_p2 = lows_all[i];
             }
          }
       }
@@ -493,17 +494,18 @@ void CTrendLine::FindTrendLines()
       {
          for(int j = i + 1; j < ArraySize(highs_all); j++)
          {
-            if(!IsValidLTB(highs_all[i], highs_all[j]))
+            // highs_all[j] é o ponto mais antigo; highs_all[i], o mais recente
+            if(!IsValidLTB(highs_all[j], highs_all[i]))
                continue;
             if((highs_all[j].bar_index - highs_all[i].bar_index) < m_min_distance)
                continue;
 
-            double score = ScorePair(highs_all[i], highs_all[j]);
+            double score = ScorePair(highs_all[j], highs_all[i]);
             if(score > best_score)
             {
                best_score = score;
-               best_p1 = highs_all[i];
-               best_p2 = highs_all[j];
+               best_p1 = highs_all[j];
+               best_p2 = highs_all[i];
             }
          }
       }
