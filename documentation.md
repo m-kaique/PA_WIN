@@ -96,7 +96,7 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
  - **`vwap.mqh`**: Implementa a classe `CVWAP`, derivada de `CIndicatorBase`, com cálculo acumulado de VWAP por sessão, opções de preço e detecção avançada de sessões.
 - **`fibonacci.mqh`**: Implementa o indicador `CFibonacci`, capaz de desenhar níveis de retração e extensões de Fibonacci com total customização via JSON.
 - **`price_action_base.mqh`**: Define a classe abstrata `CPriceActionBase`, usada como interface para módulos de Price Action.
-- **`trend_lines.mqh`**: Implementa `CTrendLines`, responsável por detectar linhas de tendência de alta (LTA) e baixa (LTB).
+- **`trend_lines.mqh`**: Implementa `CTrendLines`, responsável por detectar linhas de tendência de alta (LTA) e baixa (LTB) usando pivôs configuráveis (`left` e `right`, padrão 3).
 - **Arquivos `*_defs.mqh`**: Cada indicador possui agora um arquivo de definições
   específico (ex.: `ma_defs.mqh`, `stochastic_defs.mqh`, `bollinger_defs.mqh`) contendo as
   enumerações relacionadas a suas opções, padronizando a organização das

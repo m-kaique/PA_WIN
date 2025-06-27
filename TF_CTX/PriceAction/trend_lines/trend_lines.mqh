@@ -108,6 +108,8 @@ public:
                       }
   bool            Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLinesConfig &config)
                       {
+                       m_left = config.left;
+                       m_right = config.right;
                        return Init(symbol,timeframe,config.period);
                       }
   bool            Update()

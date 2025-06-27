@@ -17,8 +17,10 @@ public:
 class CTrendLinesConfig : public CPriceActionConfig
   {
 public:
-   int period;
-   CTrendLinesConfig(){ period=0; }
+   int  period;
+   int  left;
+   int  right;
+   CTrendLinesConfig(){ period=0; left=3; right=3; }
   };
 
 #endif // __PRICE_ACTION_CONFIG_TYPES_MQH__

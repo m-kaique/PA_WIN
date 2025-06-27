@@ -128,6 +128,8 @@
                "name": "LTA_LTB",
                "type": "TrendLines",
                "period": 21,
+               "left": 3,
+               "right": 3,
                "enabled": true
             }
          ]
