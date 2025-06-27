@@ -5,6 +5,8 @@
 #ifndef __PRICE_ACTION_BASE_MQH__
 #define __PRICE_ACTION_BASE_MQH__
 
+#include "price_action_types.mqh"
+
 class CPriceActionBase
   {
   public:
