@@ -55,8 +55,6 @@ private:
    bool              DetectTrendLines();
    bool              FindLTA(datetime &time1, double &price1, datetime &time2, double &price2);
    bool              FindLTB(datetime &time1, double &price1, datetime &time2, double &price2);
-   bool              IsValidSwingLow(int index);
-   bool              IsValidSwingHigh(int index);
    double            CalculateTrendLinePrice(datetime time1, double price1, datetime time2, double price2, datetime target_time);
    void              DrawTrendLines();
    void              DeleteObjects();
@@ -296,75 +294,57 @@ bool CTrendLine::DetectTrendLines()
 //+------------------------------------------------------------------+
 bool CTrendLine::FindLTA(datetime &time1, double &price1, datetime &time2, double &price2)
   {
-   double lows_buf[];
+   double fractal_up[];
+   double fractal_down[];
    datetime times_buf[];
    double lows[];
    datetime times[];
-   int indices[];
    int low_count = 0;
 
    int bars_to_copy = m_period + m_left + m_right + 1;
-   ArrayResize(lows_buf, bars_to_copy);
+   ArrayResize(fractal_up, bars_to_copy);
+   ArrayResize(fractal_down, bars_to_copy);
    ArrayResize(times_buf, bars_to_copy);
-   ArraySetAsSeries(lows_buf, true);
+   ArraySetAsSeries(fractal_up, true);
+   ArraySetAsSeries(fractal_down, true);
    ArraySetAsSeries(times_buf, true);
-   if(CopyLow(m_symbol, m_timeframe, 0, bars_to_copy, lows_buf) <= 0)
+
+   if(CopyBuffer("Fractals", m_symbol, m_timeframe, 0, bars_to_copy, fractal_up, fractal_down) <= 0)
       return false;
    if(CopyTime(m_symbol, m_timeframe, 0, bars_to_copy, times_buf) <= 0)
       return false;
-   
-   // Analisar do candle mais antigo para o mais recente (excluindo os 10 mais recentes)
-   int start_bar = m_period + m_left + m_right;
-   int end_bar = 10; // Excluir os 10 candles mais recentes
-   
-   // Encontrar mínimos válidos (swing lows) no período
+
+   int start_bar = bars_to_copy - 1;
+   int end_bar = 10;
+
    for(int i = start_bar; i >= end_bar; i--)
      {
-      if(IsValidSwingLow(i))
+      if(fractal_down[i] > 0.0)
         {
+         ArrayResize(lows, low_count + 1);
+         ArrayResize(times, low_count + 1);
+         lows[low_count] = fractal_down[i];
+         times[low_count] = times_buf[i];
          low_count++;
         }
      }
-   
+
    if(low_count < 2)
      {
-      Print("LTA: Poucos swing lows encontrados (", low_count, ")");
+      Print("LTA: Poucos fractais (", low_count, ")");
       return false;
      }
-   
-   ArrayResize(lows, low_count);
-   ArrayResize(times, low_count);
-   ArrayResize(indices, low_count);
-   int index = 0;
-   
-   // Coletar os swing lows válidos
-   for(int i = start_bar; i >= end_bar; i--)
-     {
-      if(IsValidSwingLow(i))
-        {
-         lows[index] = lows_buf[i];
-         times[index] = times_buf[i];
-         indices[index] = i;
-         index++;
-        }
-     }
-   
-   // Encontrar os dois pontos que formam a melhor linha ascendente
-   // Buscar mínimos crescentes (segundo mínimo > primeiro mínimo)
+
    double best_slope = 0;
    int best_p1 = -1, best_p2 = -1;
-   
+
    for(int i = 0; i < low_count - 1; i++)
      {
       for(int j = i + 1; j < low_count; j++)
         {
-         // Verificar se é uma linha ascendente (mínimos crescentes)
          if(lows[j] > lows[i] && times[j] > times[i])
            {
-            // Calcular inclinação
             double slope = (lows[j] - lows[i]) / (double)(times[j] - times[i]);
-            
-            // Procurar a melhor inclinação positiva
             if(slope > best_slope)
               {
                best_slope = slope;
@@ -374,18 +354,18 @@ bool CTrendLine::FindLTA(datetime &time1, double &price1, datetime &time2, doubl
            }
         }
      }
-   
+
    if(best_p1 >= 0 && best_p2 >= 0)
      {
       time1 = times[best_p1];
       price1 = lows[best_p1];
       time2 = times[best_p2];
       price2 = lows[best_p2];
-      
+
       Print("LTA: Inclinação = ", best_slope, " Ascendente = ", (price2 > price1));
       return true;
      }
-   
+
    Print("LTA: Nenhuma linha ascendente válida encontrada");
    return false;
   }
@@ -395,75 +375,57 @@ bool CTrendLine::FindLTA(datetime &time1, double &price1, datetime &time2, doubl
 //+------------------------------------------------------------------+
 bool CTrendLine::FindLTB(datetime &time1, double &price1, datetime &time2, double &price2)
   {
-   double highs_buf[];
+   double fractal_up[];
+   double fractal_down[];
    datetime times_buf[];
    double highs[];
    datetime times[];
-   int indices[];
    int high_count = 0;
 
    int bars_to_copy = m_period + m_left + m_right + 1;
-   ArrayResize(highs_buf, bars_to_copy);
+   ArrayResize(fractal_up, bars_to_copy);
+   ArrayResize(fractal_down, bars_to_copy);
    ArrayResize(times_buf, bars_to_copy);
-   ArraySetAsSeries(highs_buf, true);
+   ArraySetAsSeries(fractal_up, true);
+   ArraySetAsSeries(fractal_down, true);
    ArraySetAsSeries(times_buf, true);
-   if(CopyHigh(m_symbol, m_timeframe, 0, bars_to_copy, highs_buf) <= 0)
+
+   if(CopyBuffer("Fractals", m_symbol, m_timeframe, 0, bars_to_copy, fractal_up, fractal_down) <= 0)
       return false;
    if(CopyTime(m_symbol, m_timeframe, 0, bars_to_copy, times_buf) <= 0)
       return false;
-   
-   // Analisar do candle mais antigo para o mais recente (excluindo os 10 mais recentes)
-   int start_bar = m_period + m_left + m_right;
-   int end_bar = 10; // Excluir os 10 candles mais recentes
-   
-   // Encontrar máximos válidos (swing highs) no período
+
+   int start_bar = bars_to_copy - 1;
+   int end_bar = 10;
+
    for(int i = start_bar; i >= end_bar; i--)
      {
-      if(IsValidSwingHigh(i))
+      if(fractal_up[i] > 0.0)
         {
+         ArrayResize(highs, high_count + 1);
+         ArrayResize(times, high_count + 1);
+         highs[high_count] = fractal_up[i];
+         times[high_count] = times_buf[i];
          high_count++;
         }
      }
-   
+
    if(high_count < 2)
      {
-      Print("LTB: Poucos swing highs encontrados (", high_count, ")");
+      Print("LTB: Poucos fractais (", high_count, ")");
       return false;
      }
-   
-   ArrayResize(highs, high_count);
-   ArrayResize(times, high_count);
-   ArrayResize(indices, high_count);
-   int index = 0;
-   
-   // Coletar os swing highs válidos
-   for(int i = start_bar; i >= end_bar; i--)
-     {
-      if(IsValidSwingHigh(i))
-        {
-         highs[index] = highs_buf[i];
-         times[index] = times_buf[i];
-         indices[index] = i;
-         index++;
-        }
-     }
-   
-   // Encontrar os dois pontos que formam a melhor linha descendente
-   // Buscar máximos decrescentes (segundo máximo < primeiro máximo)
+
    double best_slope = 0;
    int best_p1 = -1, best_p2 = -1;
-   
+
    for(int i = 0; i < high_count - 1; i++)
      {
       for(int j = i + 1; j < high_count; j++)
         {
-         // Verificar se é uma linha descendente (máximos decrescentes)
          if(highs[j] < highs[i] && times[j] > times[i])
            {
-            // Calcular inclinação (será negativa)
             double slope = (highs[j] - highs[i]) / (double)(times[j] - times[i]);
-            
-            // Procurar a melhor inclinação negativa (menor valor)
             if(slope < best_slope)
               {
                best_slope = slope;
@@ -473,74 +435,20 @@ bool CTrendLine::FindLTB(datetime &time1, double &price1, datetime &time2, doubl
            }
         }
      }
-   
+
    if(best_p1 >= 0 && best_p2 >= 0)
      {
       time1 = times[best_p1];
       price1 = highs[best_p1];
       time2 = times[best_p2];
       price2 = highs[best_p2];
-      
+
       Print("LTB: Inclinação = ", best_slope, " Descendente = ", (price2 < price1));
       return true;
      }
-   
+
    Print("LTB: Nenhuma linha descendente válida encontrada");
    return false;
-  }
-
-//+------------------------------------------------------------------+
-//| Check if bar at index is a valid swing low                      |
-//+------------------------------------------------------------------+
-bool CTrendLine::IsValidSwingLow(int index)
-  {
-   if(index < m_right || index > Bars(m_symbol, m_timeframe) - m_left - 1)
-      return false;
-      
-   double center_low = iLow(m_symbol, m_timeframe, index);
-   
-   // Verificar barras à esquerda (mais antigas)
-   for(int i = index + 1; i <= index + m_left; i++)
-     {
-      if(iLow(m_symbol, m_timeframe, i) <= center_low)
-         return false;
-     }
-   
-   // Verificar barras à direita (mais recentes)
-   for(int i = index - 1; i >= index - m_right; i--)
-     {
-      if(iLow(m_symbol, m_timeframe, i) <= center_low)
-         return false;
-     }
-   
-   return true;
-  }
-
-//+------------------------------------------------------------------+
-//| Check if bar at index is a valid swing high                     |
-//+------------------------------------------------------------------+
-bool CTrendLine::IsValidSwingHigh(int index)
-  {
-   if(index < m_right || index > Bars(m_symbol, m_timeframe) - m_left - 1)
-      return false;
-      
-   double center_high = iHigh(m_symbol, m_timeframe, index);
-   
-   // Verificar barras à esquerda (mais antigas)
-   for(int i = index + 1; i <= index + m_left; i++)
-     {
-      if(iHigh(m_symbol, m_timeframe, i) >= center_high)
-         return false;
-     }
-   
-   // Verificar barras à direita (mais recentes)
-   for(int i = index - 1; i >= index - m_right; i--)
-     {
-      if(iHigh(m_symbol, m_timeframe, i) >= center_high)
-         return false;
-     }
-   
-   return true;
   }
 
 //+------------------------------------------------------------------+
