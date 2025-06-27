@@ -16,8 +16,18 @@ struct SFractalPoint
    double price;
    int bar_index;
    bool is_valid;
-   
+
    SFractalPoint() : time(0), price(0.0), bar_index(-1), is_valid(false) {}
+};
+
+struct TrendLineState
+{
+   bool         valid;
+   datetime     last_confirmation_time;
+   int          stability_count;
+   SFractalPoint p1;
+   SFractalPoint p2;
+   TrendLineState() : valid(false), last_confirmation_time(0), stability_count(0) {}
 };
 
 class CTrendLine : public CPriceActionBase
@@ -61,6 +71,12 @@ private:
    bool            m_ltb_valid;
    SFractalPoint   m_lta_point1, m_lta_point2;
    SFractalPoint   m_ltb_point1, m_ltb_point2;
+   TrendLineState  m_lta_state;
+   TrendLineState  m_ltb_state;
+   int             m_stability_bars;
+   int             m_min_distance;
+   bool            m_validate_mtf;
+   ENUM_TIMEFRAMES m_mtf_timeframe;
    
    // Métodos privados
    bool            CreateFractalsHandle();
@@ -73,6 +89,9 @@ private:
    void            DeleteObjects();
    bool            IsValidLTA(SFractalPoint &p1, SFractalPoint &p2);
    bool            IsValidLTB(SFractalPoint &p1, SFractalPoint &p2);
+   double          ScorePair(SFractalPoint &p1, SFractalPoint &p2);
+   void            UpdateTrendState(TrendLineState &state, SFractalPoint &p1, SFractalPoint &p2);
+   bool            ValidateLineWithMTF(SFractalPoint &p1, SFractalPoint &p2);
 
 public:
    CTrendLine();
@@ -118,9 +137,14 @@ CTrendLine::CTrendLine()
    m_ltb_line_name = "";
    m_lta_label_name = "";
    m_ltb_label_name = "";
-   
+
    m_lta_valid = false;
    m_ltb_valid = false;
+
+   m_stability_bars = 2;
+   m_min_distance = 5;
+   m_validate_mtf = false;
+   m_mtf_timeframe = PERIOD_H1;
 }
 
 //+------------------------------------------------------------------+
@@ -157,6 +181,10 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
    m_ltb_width = config.ltb_width;
    m_extend_right = config.extend_right;
    m_show_labels = config.show_labels;
+   m_stability_bars = config.stability_bars;
+   m_min_distance = config.min_distance;
+   m_validate_mtf = config.validate_mtf;
+   m_mtf_timeframe = config.mtf_timeframe;
    
    // Criar nomes únicos para objetos
    string suffix = "_" + m_symbol + "_" + EnumToString(m_timeframe) + "_" + IntegerToString(GetTickCount());
@@ -276,54 +304,74 @@ void CTrendLine::FindTrendLines()
 {
    m_lta_valid = false;
    m_ltb_valid = false;
-   
-   // Buscar LTA (conecta mínimos ascendentes)
+
+   // ----- Procurar LTA -----
    if(m_draw_lta && ArraySize(m_lows) >= 2)
    {
-      // Procurar os dois mínimos mais recentes que formem uma linha ascendente
+      double best_score = -1;
+      SFractalPoint best_p1, best_p2;
       for(int i = 0; i < ArraySize(m_lows) - 1; i++)
       {
          for(int j = i + 1; j < ArraySize(m_lows); j++)
          {
-            // Como arrays estão em ordem cronológica reversa (mais recente primeiro)
-            // m_lows[i] é mais recente que m_lows[j]
-            if(m_lows[i].bar_index < m_lows[j].bar_index && m_lows[i].price > m_lows[j].price)
+            if(!IsValidLTA(m_lows[i], m_lows[j]))
+               continue;
+            if((m_lows[j].bar_index - m_lows[i].bar_index) < m_min_distance)
+               continue;
+
+            double score = ScorePair(m_lows[j], m_lows[i]);
+            if(score > best_score)
             {
-               m_lta_point1 = m_lows[j]; // Ponto mais antigo (maior bar_index)
-               m_lta_point2 = m_lows[i]; // Ponto mais recente (menor bar_index)
-               m_lta_valid = true;
-               
-               Print("LTA encontrada: P1[", m_lta_point1.bar_index, "] = ", m_lta_point1.price, 
-                     " -> P2[", m_lta_point2.bar_index, "] = ", m_lta_point2.price);
-               break;
+               best_score = score;
+               best_p1 = m_lows[j];
+               best_p2 = m_lows[i];
             }
          }
-         if(m_lta_valid) break;
+      }
+
+      if(best_score > 0 && ValidateLineWithMTF(best_p1, best_p2))
+         UpdateTrendState(m_lta_state, best_p1, best_p2);
+
+      if(m_lta_state.valid)
+      {
+         m_lta_point1 = m_lta_state.p1;
+         m_lta_point2 = m_lta_state.p2;
+         m_lta_valid = true;
       }
    }
-   
-   // Buscar LTB (conecta máximos descendentes)
+
+   // ----- Procurar LTB -----
    if(m_draw_ltb && ArraySize(m_highs) >= 2)
    {
-      // Procurar os dois máximos mais recentes que formem uma linha descendente
+      double best_score = -1;
+      SFractalPoint best_p1, best_p2;
       for(int i = 0; i < ArraySize(m_highs) - 1; i++)
       {
          for(int j = i + 1; j < ArraySize(m_highs); j++)
          {
-            // Como arrays estão em ordem cronológica reversa (mais recente primeiro)
-            // m_highs[i] é mais recente que m_highs[j]
-            if(m_highs[i].bar_index < m_highs[j].bar_index && m_highs[i].price < m_highs[j].price)
+            if(!IsValidLTB(m_highs[i], m_highs[j]))
+               continue;
+            if((m_highs[j].bar_index - m_highs[i].bar_index) < m_min_distance)
+               continue;
+
+            double score = ScorePair(m_highs[j], m_highs[i]);
+            if(score > best_score)
             {
-               m_ltb_point1 = m_highs[j]; // Ponto mais antigo (maior bar_index)
-               m_ltb_point2 = m_highs[i]; // Ponto mais recente (menor bar_index)
-               m_ltb_valid = true;
-               
-               Print("LTB encontrada: P1[", m_ltb_point1.bar_index, "] = ", m_ltb_point1.price, 
-                     " -> P2[", m_ltb_point2.bar_index, "] = ", m_ltb_point2.price);
-               break;
+               best_score = score;
+               best_p1 = m_highs[j];
+               best_p2 = m_highs[i];
             }
          }
-         if(m_ltb_valid) break;
+      }
+
+      if(best_score > 0 && ValidateLineWithMTF(best_p1, best_p2))
+         UpdateTrendState(m_ltb_state, best_p1, best_p2);
+
+      if(m_ltb_state.valid)
+      {
+         m_ltb_point1 = m_ltb_state.p1;
+         m_ltb_point2 = m_ltb_state.p2;
+         m_ltb_valid = true;
       }
    }
 }
@@ -568,6 +616,62 @@ bool CTrendLine::CopyValues(int shift, int count, double &buffer[])
    }
    
    return true;
+}
+
+//+------------------------------------------------------------------+
+//| Score candidate pair                                             |
+//+------------------------------------------------------------------+
+double CTrendLine::ScorePair(SFractalPoint &p1, SFractalPoint &p2)
+{
+   int dist = p1.bar_index - p2.bar_index;
+   if(dist <= 0)
+      return -1.0;
+   double slope = MathAbs((p2.price - p1.price) / (double)dist);
+   return slope * dist;
+}
+
+//+------------------------------------------------------------------+
+//| Update persistent trend state                                    |
+//+------------------------------------------------------------------+
+void CTrendLine::UpdateTrendState(TrendLineState &state, SFractalPoint &p1, SFractalPoint &p2)
+{
+   if(state.p1.time == p1.time && state.p2.time == p2.time)
+      state.stability_count++;
+   else
+   {
+      state.p1 = p1;
+      state.p2 = p2;
+      state.stability_count = 1;
+   }
+
+   if(state.stability_count >= m_stability_bars)
+   {
+      state.valid = true;
+      state.last_confirmation_time = TimeCurrent();
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Validate line with higher timeframe                               |
+//+------------------------------------------------------------------+
+bool CTrendLine::ValidateLineWithMTF(SFractalPoint &p1, SFractalPoint &p2)
+{
+   if(!m_validate_mtf || m_mtf_timeframe == PERIOD_CURRENT)
+      return true;
+
+   int sh1 = iBarShift(m_symbol, m_mtf_timeframe, p1.time, false);
+   int sh2 = iBarShift(m_symbol, m_mtf_timeframe, p2.time, false);
+   if(sh1 < 0 || sh2 < 0)
+      return false;
+
+   double pr1 = iClose(m_symbol, m_mtf_timeframe, sh1);
+   double pr2 = iClose(m_symbol, m_mtf_timeframe, sh2);
+   if(pr1 == 0 || pr2 == 0)
+      return false;
+
+   double diff_htf = pr2 - pr1;
+   double diff = p2.price - p1.price;
+   return ((diff_htf > 0 && diff > 0) || (diff_htf < 0 && diff < 0));
 }
 
 //+------------------------------------------------------------------+

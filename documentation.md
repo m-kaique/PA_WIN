@@ -1064,13 +1064,21 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
    "lta_width": 1,
    "ltb_width": 1,
    "extend_right": true,
-   "show_labels": true,
-   "enabled": true
+  "show_labels": true,
+  "stability_bars": 2,
+  "min_distance": 5,
+  "validate_mtf": false,
+  "mtf_timeframe": "D1",
+  "enabled": true
 }
 ```
 - `left`/`right`: número de velas usadas para detectar fractais.
 - `extend_right`: projeta a linha no futuro.
 - `show_labels`: mostra preços nas linhas.
+- `stability_bars`: número mínimo de candles que o par de fractais deve permanecer igual para ser confirmado.
+- `min_distance`: distância mínima em barras entre os fractais conectados.
+- `validate_mtf`: habilita verificação em um timeframe superior.
+- `mtf_timeframe`: timeframe utilizado para validação.
 ### Acessando PriceAction
 
 ```cpp
