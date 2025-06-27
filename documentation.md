@@ -974,6 +974,103 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
     - `deviation`: multiplicador de desvio padrão.
 - `applied_price`: preço base (ex.: `CLOSE`, `OPEN`, `HIGH`, `LOW`, `MEDIAN`, `TYPICAL`, `WEIGHTED`).
 
+
+6.  **Exemplo de Média Móvel (EMA):**
+```json
+{
+   "name": "ema21",
+   "type": "MA",
+   "period": 21,
+   "method": "EMA",
+   "shift": 0,
+   "enabled": true
+}
+```
+- `period`: período da média.
+- `method`: método de cálculo.
+- `shift`: deslocamento opcional.
+
+7.  **Exemplo de Estocástico:**
+```json
+{
+   "name": "sto14",
+   "type": "STO",
+   "period": 14,
+   "dperiod": 3,
+   "slowing": 3,
+   "method": "SMA",
+   "price_field": "LOWHIGH",
+   "enabled": true
+}
+```
+- `period`: período %K.
+- `dperiod`: período da linha %D.
+- `slowing`: valor de suavização.
+- `price_field`: campo de preço.
+
+8.  **Exemplo de Indicador de Volume:**
+```json
+{
+   "name": "vol0",
+   "type": "VOL",
+   "shift": 0,
+   "enabled": true
+}
+```
+- `shift`: deslocamento para leitura do volume.
+
+9.  **Exemplo de Fibonacci Completo:**
+```json
+{
+   "name": "fibo_complete",
+   "type": "FIBO",
+   "period": 30,
+   "Level_1": 23.6,
+   "Level_2": 38.2,
+   "Level_3": 50.0,
+   "Level_4": 61.8,
+   "Level_5": 78.6,
+   "Level_6": 100.0,
+   "Ext_1": 127.0,
+   "Ext_2": 161.8,
+   "Ext_3": 261.8,
+   "LevelsColor": "Orange",
+   "ExtensionsColor": "Orange",
+   "ParallelColor": "Yellow",
+   "ShowLabels": true,
+   "enabled": true
+}
+```
+- `period`: período de análise.
+- `LevelsColor`: cor das retrações.
+- `ExtensionsColor`: cor das extensões.
+- `ParallelColor`: cor da linha base.
+- `ShowLabels`: exibe rótulos.
+
+10. **Exemplo de Price Action (TrendLine via Fractais):**
+```json
+{
+   "name": "swing_lines",
+   "type": "TRENDLINE",
+   "period": 20,
+   "left": 3,
+   "right": 3,
+   "draw_lta": true,
+   "draw_ltb": true,
+   "lta_color": "Lime",
+   "ltb_color": "Magenta",
+   "lta_style": "DASH",
+   "ltb_style": "DOT",
+   "lta_width": 1,
+   "ltb_width": 1,
+   "extend_right": true,
+   "show_labels": true,
+   "enabled": true
+}
+```
+- `left`/`right`: número de velas usadas para detectar fractais.
+- `extend_right`: projeta a linha no futuro.
+- `show_labels`: mostra preços nas linhas.
 ### Acessando PriceAction
 
 ```cpp
