@@ -329,8 +329,9 @@ bool CConfigManager::CreateContexts()
                 continue;
             }
 
-            // Criar novo contexto com lista de indicadores
-            TF_CTX *ctx = new TF_CTX(tf, config.num_candles, config.indicators);
+            // Criar novo contexto com lista de indicadores e price actions
+            TF_CTX *ctx = new TF_CTX(tf, config.num_candles,
+                                    config.indicators, config.price_actions);
             if (ctx == NULL)
             {
                 Print("ERRO: Falha ao criar contexto para ", symbol, " ", tf_str);
@@ -710,6 +711,44 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
     else
     {
         Print("AVISO: Nenhum indicador configurado");
+    }
+
+    // Lista de PriceAction
+    CJAVal *pa_array = tf_config["PriceAction"];
+    ArrayResize(config.price_actions,0);
+
+    if(pa_array != NULL)
+    {
+        for(int i=0;i<pa_array.Size();i++)
+        {
+            CJAVal *pa = (*pa_array)[i];
+            if(pa==NULL) continue;
+
+            CPriceActionConfig *pcfg=NULL;
+            string type=pa["type"].ToStr();
+            if(type=="TrendLines" || type=="TRENDLINE")
+            {
+                CTrendLinesConfig *p=new CTrendLinesConfig();
+                p.name=pa["name"].ToStr();
+                p.type="TRENDLINE";
+                p.enabled=pa["enabled"].ToBool();
+                p.period=(int)pa["period"].ToInt();
+                pcfg=p;
+            }
+
+            if(pcfg!=NULL)
+            {
+                int pos=ArraySize(config.price_actions);
+                ArrayResize(config.price_actions,pos+1);
+                config.price_actions[pos]=pcfg;
+                Print("PriceAction lido: ", pcfg.name, " Tipo: ", pcfg.type,
+                      " Enabled: ", pcfg.enabled);
+            }
+        }
+    }
+    else
+    {
+        Print("AVISO: Nenhum PriceAction configurado");
     }
 
     return config;
