@@ -67,7 +67,7 @@ graph TD
 
 1. **JSON** → `ParseTimeframeConfig()`
 2. `CTrendLineConfig` → `CTrendLine::Init()`
-3. `UpdateFractals()` → `FindTrendLines()` → `CalculateBuffers()` → `DrawLines()`
+3. `UpdateFractals(updated)` → `FindTrendLines()` → `CalculateBuffers()` → `DrawLines()`
 
 ## 3. Descrição dos Arquivos
 
@@ -109,7 +109,7 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
 
 - **`CTrendLine`**: Implementação baseada em fractais para desenhar LTA/LTB.
   - **`Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig &config)`**
-  - **`UpdateFractals()`**, **`FindTrendLines()`**, **`CalculateBuffers()`**, **`DrawLines()`**
+  - **`UpdateFractals(updated)`**, **`FindTrendLines()`**, **`CalculateBuffers()`**, **`DrawLines()`**
 
 
 
@@ -1064,12 +1064,19 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
    "lta_width": 1,
    "ltb_width": 1,
    "extend_right": true,
-  "show_labels": true,
-  "stability_bars": 2,
-  "min_distance": 5,
-  "validate_mtf": false,
-  "mtf_timeframe": "D1",
-  "enabled": true
+   "show_labels": true,
+   "stability_bars": 2,
+   "min_distance": 5,
+   "validate_mtf": false,
+   "mtf_timeframe": "D1",
+   "update_control": {
+       "min_update_interval": 30,
+       "fractal_check_interval": 10,
+       "line_break_threshold": 0.001,
+       "volatility_threshold": 0.02,
+       "auto_refresh_enabled": true
+   },
+   "enabled": true
 }
 ```
 - `left`/`right`: número de velas usadas para detectar fractais.
@@ -1079,6 +1086,12 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
 - `min_distance`: distância mínima em barras entre os fractais conectados.
 - `validate_mtf`: habilita verificação em um timeframe superior.
 - `mtf_timeframe`: timeframe utilizado para validação.
+- `update_control`: parâmetros do sistema de atualização condicional.
+  - `min_update_interval`: intervalo mínimo entre atualizações completas (segundos).
+  - `fractal_check_interval`: frequência para checar novos fractais.
+  - `line_break_threshold`: tolerância para considerar uma linha rompida.
+  - `volatility_threshold`: variação percentual do ATR que dispara recálculo.
+  - `auto_refresh_enabled`: ativa atualizações automáticas quando verdadeiro.
 ### Acessando PriceAction
 
 ```cpp
@@ -1162,3 +1175,5 @@ Esta seção registra as principais alterações e versões dos componentes do E
 ### trendline.mqh
 
 -   **Versão 1.00 (27.06.2025)**: Implementação inicial com detecção LTA/LTB via `iFractals()`, desenho automático e configuração via JSON.
+-   **Versão 1.10 (27.06.2025)**: Lógica aprimorada para considerar apenas fractais confirmados ao buscar LTA/LTB, evitando linhas instáveis.
+-   **Versão 1.11 (27.06.2025)**: Ajuste no cálculo de estabilidade das linhas, com degradação suave ao alterar pontos e correção do score para uso consistente dos fractais.

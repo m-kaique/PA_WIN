@@ -41,6 +41,7 @@ private:
     ScoreWeights ParseScoreWeights(CJAVal *sc_config);
     string CreateContextKey(string symbol, ENUM_TIMEFRAMES tf);
     bool TestJSONParsing();
+    UpdateParams ParseUpdateParams(CJAVal *uc_config);
     
 public:
     // Construtor e Destrutor
@@ -590,6 +591,27 @@ ScoreWeights CConfigManager::ParseScoreWeights(CJAVal *sc_config)
 
     return w;
 }
+//+------------------------------------------------------------------+
+//| Parsear configuracao de atualizacao                              |
+//+------------------------------------------------------------------+
+UpdateParams CConfigManager::ParseUpdateParams(CJAVal *uc)
+{
+    UpdateParams u;
+    if(uc==NULL)
+        return u;
+    if((*uc)["min_update_interval"]!=NULL)
+        u.min_update_interval = (int)(*uc)["min_update_interval"].ToInt();
+    if((*uc)["fractal_check_interval"]!=NULL)
+        u.fractal_check_interval = (int)(*uc)["fractal_check_interval"].ToInt();
+    if((*uc)["line_break_threshold"]!=NULL)
+        u.line_break_threshold = (*uc)["line_break_threshold"].ToDbl();
+    if((*uc)["volatility_threshold"]!=NULL)
+        u.volatility_threshold = (*uc)["volatility_threshold"].ToDbl();
+    if((*uc)["auto_refresh_enabled"]!=NULL)
+        u.auto_refresh_enabled = (*uc)["auto_refresh_enabled"].ToBool();
+    return u;
+}
+
 
 //+------------------------------------------------------------------+
 //| Fazer parse da configuração do timeframe                        |
@@ -781,6 +803,8 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
              if(StringLen(mtf)>0) p.mtf_timeframe=StringToTimeframe(mtf);
              CJAVal *sc=pa["scoring"];
              p.weights=ParseScoreWeights(sc);
+             CJAVal *uc=pa["update_control"];
+             p.update_control=ParseUpdateParams(uc);
 
               pacfg=p;
              }

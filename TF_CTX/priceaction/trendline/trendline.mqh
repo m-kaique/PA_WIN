@@ -102,32 +102,38 @@ private:
   LineVersion     m_ltb_version;
   bool            m_need_redraw;
   ScoreWeights    m_weights;
-   
+
+  UpdateControl   m_update_ctrl;
+  int             m_atr_handle;
+
    // Métodos privados
-   bool            CreateFractalsHandle();
-   void            ReleaseFractalsHandle();
-   bool            UpdateFractals();
+  bool            CreateATRHandle();
+  void            ReleaseATRHandle();
+  double          GetATR(int shift);
+  bool            CreateFractalsHandle();
+  void            ReleaseFractalsHandle();
+   bool            UpdateFractals(bool &updated);
    void            FindTrendLines();
    void            CalculateBuffers();
    double          CalculateLinePrice(SFractalPoint &point1, SFractalPoint &point2, int shift);
    void            DrawLines();
    void            DeleteObjects();
-   bool            IsValidLTA(SFractalPoint &p1, SFractalPoint &p2);
-   bool            IsValidLTB(SFractalPoint &p1, SFractalPoint &p2);
-   double          ScorePair(SFractalPoint &p1, SFractalPoint &p2);
-   double          ComputeTrendStrength(SFractalPoint &p1, SFractalPoint &p2);
-   double          ComputeVolumeConfirmation(SFractalPoint &p1, SFractalPoint &p2);
-   double          ComputeLineTests(SFractalPoint &p1, SFractalPoint &p2);
-   double          ComputeTimeValidity(SFractalPoint &p1, SFractalPoint &p2);
-   double          ComputePsychologicalLevel(SFractalPoint &p1, SFractalPoint &p2);
-   double          ComputeVolatilityContext(SFractalPoint &p1, SFractalPoint &p2);
-   void            UpdateTrendState(TrendLineState &state, SFractalPoint &p1, SFractalPoint &p2);
-   bool            ValidateLineWithMTF(SFractalPoint &p1, SFractalPoint &p2);
-
+   bool            IsValidLTA(SFractalPoint &p_old, SFractalPoint &p_recent);
+   bool            IsValidLTB(SFractalPoint &p_old, SFractalPoint &p_recent);
+   double          ScorePair(SFractalPoint &p_old, SFractalPoint &p_recent);
+   double          ComputeTrendStrength(SFractalPoint &p_old, SFractalPoint &p_recent);
+   double          ComputeVolumeConfirmation(SFractalPoint &p_old, SFractalPoint &p_recent);
+   double          ComputeLineTests(SFractalPoint &p_old, SFractalPoint &p_recent);
+   double          ComputeTimeValidity(SFractalPoint &p_old, SFractalPoint &p_recent);
+   double          ComputePsychologicalLevel(SFractalPoint &p_old, SFractalPoint &p_recent);
+   double          ComputeVolatilityContext(SFractalPoint &p_old, SFractalPoint &p_recent);
+   void            UpdateTrendState(TrendLineState &state, SFractalPoint &p_old, SFractalPoint &p_recent);
+   bool            ValidateLineWithMTF(SFractalPoint &p_old, SFractalPoint &p_recent);
+   void            ConditionalUpdate(ENUM_UPDATE_TRIGGER trigger);
+   bool            ShouldUpdate(ENUM_UPDATE_TRIGGER &trigger);
 public:
    CTrendLine();
    ~CTrendLine();
-
    bool            Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig &config);
    virtual bool    Init(string symbol, ENUM_TIMEFRAMES timeframe, int period);
    virtual double  GetValue(int shift = 0);
@@ -188,6 +194,7 @@ CTrendLine::CTrendLine()
    m_high_cache.confirmation_bars = m_confirm_bars;
    m_lta_version.stability_threshold = m_stability_bars;
    m_ltb_version.stability_threshold = m_stability_bars;
+   m_atr_handle = INVALID_HANDLE;
 }
 
 //+------------------------------------------------------------------+
@@ -197,6 +204,7 @@ CTrendLine::~CTrendLine()
 {
    DeleteObjects();
    ReleaseFractalsHandle();
+   ReleaseATRHandle();
    ArrayFree(m_lta_buffer);
    ArrayFree(m_ltb_buffer);
    ArrayFree(m_lows);
@@ -234,6 +242,7 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
   m_validate_mtf = config.validate_mtf;
   m_mtf_timeframe = config.mtf_timeframe;
   m_weights = config.weights;
+  m_update_ctrl.params = config.update_control;
    
    // Criar nomes únicos para objetos
    string suffix = "_" + m_symbol + "_" + EnumToString(m_timeframe) + "_" + IntegerToString(GetTickCount());
@@ -247,7 +256,10 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
   m_lta_version.stability_threshold = m_stability_bars;
   m_ltb_version.stability_threshold = m_stability_bars;
   ReleaseFractalsHandle();
-  return CreateFractalsHandle();
+  ReleaseATRHandle();
+  if(!CreateFractalsHandle())
+     return false;
+  return CreateATRHandle();
 }
 
 //+------------------------------------------------------------------+
@@ -289,16 +301,61 @@ void CTrendLine::ReleaseFractalsHandle()
 }
 
 //+------------------------------------------------------------------+
+//| Create ATR handle                                                |
+//+------------------------------------------------------------------+
+bool CTrendLine::CreateATRHandle()
+{
+   m_atr_handle = iATR(m_symbol, m_timeframe, 14);
+   if(m_atr_handle == INVALID_HANDLE)
+   {
+      Print("ERRO: Falha ao criar handle ATR para ", m_symbol);
+      return false;
+   }
+   return true;
+}
+
+//+------------------------------------------------------------------+
+//| Release ATR handle                                               |
+//+------------------------------------------------------------------+
+void CTrendLine::ReleaseATRHandle()
+{
+   if(m_atr_handle != INVALID_HANDLE)
+   {
+      IndicatorRelease(m_atr_handle);
+      m_atr_handle = INVALID_HANDLE;
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Get ATR value                                                    |
+//+------------------------------------------------------------------+
+double CTrendLine::GetATR(int shift)
+{
+   if(m_atr_handle == INVALID_HANDLE)
+      return 0.0;
+
+   double buf[];
+   ArraySetAsSeries(buf, true);
+   if(CopyBuffer(m_atr_handle, 0, shift, 1, buf) <= 0)
+      return 0.0;
+
+   return buf[0];
+}
+
+//+------------------------------------------------------------------+
 //| Update fractals data                                             |
 //+------------------------------------------------------------------+
-bool CTrendLine::UpdateFractals()
+bool CTrendLine::UpdateFractals(bool &updated)
 {
    if(m_fractals_handle == INVALID_HANDLE)
       return false;
 
    datetime cur_time=iTime(m_symbol,m_timeframe,0);
+   updated=false;
    if(m_low_cache.last_update_time==cur_time)
-      return false;
+      return true;  // dados já atualizados
+
+   updated=true;
 
    m_low_cache.last_update_time=cur_time;
    m_high_cache.last_update_time=cur_time;
@@ -378,16 +435,9 @@ void CTrendLine::FindTrendLines()
    m_ltb_valid = false;
 
    // ----- Procurar LTA -----
+   // Usar apenas fractais confirmados para evitar linhas instáveis
    SFractalPoint lows_all[];
    ArrayCopy(lows_all,m_low_cache.confirmed_points);
-   int add=ArraySize(m_low_cache.candidate_points);
-   if(add>0)
-   {
-      int sz=ArraySize(lows_all);
-      ArrayResize(lows_all,sz+add);
-      for(int k=0;k<add;k++)
-         lows_all[sz+k]=m_low_cache.candidate_points[k];
-   }
 
    if(m_draw_lta && ArraySize(lows_all) >= 2)
    {
@@ -397,7 +447,7 @@ void CTrendLine::FindTrendLines()
       {
          for(int j = i + 1; j < ArraySize(lows_all); j++)
          {
-            if(!IsValidLTA(lows_all[i], lows_all[j]))
+            if(!IsValidLTA(lows_all[j], lows_all[i]))
                continue;
             if((lows_all[j].bar_index - lows_all[i].bar_index) < m_min_distance)
                continue;
@@ -432,15 +482,8 @@ void CTrendLine::FindTrendLines()
 
    // ----- Procurar LTB -----
    SFractalPoint highs_all[];
+   // Apenas fractais confirmados para estabilidade
    ArrayCopy(highs_all,m_high_cache.confirmed_points);
-   add=ArraySize(m_high_cache.candidate_points);
-   if(add>0)
-   {
-      int sz=ArraySize(highs_all);
-      ArrayResize(highs_all,sz+add);
-      for(int k=0;k<add;k++)
-         highs_all[sz+k]=m_high_cache.candidate_points[k];
-   }
 
    if(m_draw_ltb && ArraySize(highs_all) >= 2)
    {
@@ -450,7 +493,7 @@ void CTrendLine::FindTrendLines()
       {
          for(int j = i + 1; j < ArraySize(highs_all); j++)
          {
-            if(!IsValidLTB(highs_all[i], highs_all[j]))
+            if(!IsValidLTB(highs_all[j], highs_all[i]))
                continue;
             if((highs_all[j].bar_index - highs_all[i].bar_index) < m_min_distance)
                continue;
@@ -487,21 +530,23 @@ void CTrendLine::FindTrendLines()
 //+------------------------------------------------------------------+
 //| Check if LTA is valid (ascending lows)                          |
 //+------------------------------------------------------------------+
-bool CTrendLine::IsValidLTA(SFractalPoint &p1, SFractalPoint &p2)
+bool CTrendLine::IsValidLTA(SFractalPoint &p_old, SFractalPoint &p_recent)
 {
-   // p1 é mais recente (índice menor), p2 é mais antigo (índice maior)
-   // Para LTA: preço mais recente deve ser maior que o antigo
-   return (p1.bar_index < p2.bar_index && p1.price > p2.price);
+   // p_old   : ponto mais antigo (índice maior)
+   // p_recent: ponto mais recente (índice menor)
+   // Para LTA: o preço mais recente deve ser maior que o antigo
+   return (p_old.bar_index > p_recent.bar_index && p_recent.price > p_old.price);
 }
 
 //+------------------------------------------------------------------+
 //| Check if LTB is valid (descending highs)                        |
 //+------------------------------------------------------------------+
-bool CTrendLine::IsValidLTB(SFractalPoint &p1, SFractalPoint &p2)
+bool CTrendLine::IsValidLTB(SFractalPoint &p_old, SFractalPoint &p_recent)
 {
-   // p1 é mais recente (índice menor), p2 é mais antigo (índice maior)
-   // Para LTB: preço mais recente deve ser menor que o antigo
-   return (p1.bar_index < p2.bar_index && p1.price < p2.price);
+   // p_old   : ponto mais antigo (índice maior)
+   // p_recent: ponto mais recente (índice menor)
+   // Para LTB: o preço mais recente deve ser menor que o antigo
+   return (p_old.bar_index > p_recent.bar_index && p_recent.price < p_old.price);
 }
 
 //+------------------------------------------------------------------+
@@ -732,20 +777,20 @@ bool CTrendLine::CopyValues(int shift, int count, double &buffer[])
 //+------------------------------------------------------------------+
 //| Score candidate pair                                             |
 //+------------------------------------------------------------------+
-double CTrendLine::ScorePair(SFractalPoint &p1, SFractalPoint &p2)
+double CTrendLine::ScorePair(SFractalPoint &p_old, SFractalPoint &p_recent)
 {
-   int dist = p1.bar_index - p2.bar_index;
+   int dist = p_old.bar_index - p_recent.bar_index;
    if(dist <= 0)
       return -1.0;
 
    TrendLineQuality q;
-   q.trend_strength      = ComputeTrendStrength(p1,p2);
-   q.volume_confirmation = ComputeVolumeConfirmation(p1,p2);
-   q.line_tests          = ComputeLineTests(p1,p2);
-   q.time_validity       = ComputeTimeValidity(p1,p2);
-   q.psychological_level = ComputePsychologicalLevel(p1,p2);
-   q.volatility_context  = ComputeVolatilityContext(p1,p2);
-   q.mtf_alignment       = ValidateLineWithMTF(p1,p2) ? 100.0 : 0.0;
+   q.trend_strength      = ComputeTrendStrength(p_old,p_recent);
+   q.volume_confirmation = ComputeVolumeConfirmation(p_old,p_recent);
+   q.line_tests          = ComputeLineTests(p_old,p_recent);
+   q.time_validity       = ComputeTimeValidity(p_old,p_recent);
+   q.psychological_level = ComputePsychologicalLevel(p_old,p_recent);
+   q.volatility_context  = ComputeVolatilityContext(p_old,p_recent);
+   q.mtf_alignment       = ValidateLineWithMTF(p_old,p_recent) ? 100.0 : 0.0;
 
    double total_w = m_weights.trend_weight + m_weights.volume_weight +
                     m_weights.tests_weight + m_weights.time_weight +
@@ -766,19 +811,19 @@ double CTrendLine::ScorePair(SFractalPoint &p1, SFractalPoint &p2)
 }
 
 //--- Cálculo dos fatores individuais ---
-double CTrendLine::ComputeTrendStrength(SFractalPoint &p1, SFractalPoint &p2)
+double CTrendLine::ComputeTrendStrength(SFractalPoint &p_old, SFractalPoint &p_recent)
 {
-   int dist=p1.bar_index-p2.bar_index;
+   int dist=p_old.bar_index-p_recent.bar_index;
    if(dist<=0) return 0.0;
-   double slope=MathAbs((p2.price-p1.price)/dist);
-   double rel=slope/MathMax(p1.price,1);
+   double slope=MathAbs((p_recent.price-p_old.price)/dist);
+   double rel=slope/MathMax(p_old.price,1);
    return MathMin(rel*10000.0,100.0);
 }
 
-double CTrendLine::ComputeVolumeConfirmation(SFractalPoint &p1, SFractalPoint &p2)
+double CTrendLine::ComputeVolumeConfirmation(SFractalPoint &p_old, SFractalPoint &p_recent)
 {
-   double v1=iVolume(m_symbol,m_timeframe,p1.bar_index);
-   double v2=iVolume(m_symbol,m_timeframe,p2.bar_index);
+   double v1=iVolume(m_symbol,m_timeframe,p_old.bar_index);
+   double v2=iVolume(m_symbol,m_timeframe,p_recent.bar_index);
    double sum=0; int count=0;
    for(int i=0;i<20 && i<Bars(m_symbol,m_timeframe);i++)
    { sum+=iVolume(m_symbol,m_timeframe,i); count++; }
@@ -787,12 +832,12 @@ double CTrendLine::ComputeVolumeConfirmation(SFractalPoint &p1, SFractalPoint &p
    return MathMin(rel*100.0,100.0);
 }
 
-double CTrendLine::ComputeLineTests(SFractalPoint &p1, SFractalPoint &p2)
+double CTrendLine::ComputeLineTests(SFractalPoint &p_old, SFractalPoint &p_recent)
 {
    int tests=0;
-   for(int i=p1.bar_index-1;i>p2.bar_index;i--)
+   for(int i=p_old.bar_index-1;i>p_recent.bar_index;i--)
    {
-      double price=CalculateLinePrice(p1,p2,i);
+      double price=CalculateLinePrice(p_old,p_recent,i);
       double hi=iHigh(m_symbol,m_timeframe,i);
       double lo=iLow(m_symbol,m_timeframe,i);
       if(price>=lo && price<=hi)
@@ -801,29 +846,29 @@ double CTrendLine::ComputeLineTests(SFractalPoint &p1, SFractalPoint &p2)
    return MathMin(tests*50.0,100.0); // 2 ou mais toques = 100
 }
 
-double CTrendLine::ComputeTimeValidity(SFractalPoint &p1, SFractalPoint &p2)
+double CTrendLine::ComputeTimeValidity(SFractalPoint &p_old, SFractalPoint &p_recent)
 {
-   int dist=p1.bar_index-p2.bar_index;
+   int dist=p_old.bar_index-p_recent.bar_index;
    return MathMin(dist*10.0,100.0);
 }
 
-double CTrendLine::ComputePsychologicalLevel(SFractalPoint &p1, SFractalPoint &p2)
+double CTrendLine::ComputePsychologicalLevel(SFractalPoint &p_old, SFractalPoint &p_recent)
 {
    double step=100.0;
-   double diff1=MathAbs(p1.price-MathRound(p1.price/step)*step);
-   double diff2=MathAbs(p2.price-MathRound(p2.price/step)*step);
+   double diff1=MathAbs(p_old.price-MathRound(p_old.price/step)*step);
+   double diff2=MathAbs(p_recent.price-MathRound(p_recent.price/step)*step);
    double diff=(diff1+diff2)/2.0;
    double score=100.0-(diff/(step*0.5))*100.0;
    if(score<0) score=0.0;
    return MathMin(score,100.0);
 }
 
-double CTrendLine::ComputeVolatilityContext(SFractalPoint &p1, SFractalPoint &p2)
+double CTrendLine::ComputeVolatilityContext(SFractalPoint &p_old, SFractalPoint &p_recent)
 {
-   int dist=p1.bar_index-p2.bar_index;
+   int dist=p_old.bar_index-p_recent.bar_index;
    if(dist<=0) return 0.0;
-   double slope=MathAbs((p2.price-p1.price)/dist);
-   double atr=iATR(m_symbol,m_timeframe,14);
+   double slope=MathAbs((p_recent.price-p_old.price)/dist);
+   double atr=GetATR(0);
    if(atr<=0) return 50.0;
    double rel=slope/atr;
    return MathMin(rel*50.0,100.0);
@@ -832,15 +877,29 @@ double CTrendLine::ComputeVolatilityContext(SFractalPoint &p1, SFractalPoint &p2
 //+------------------------------------------------------------------+
 //| Update persistent trend state                                    |
 //+------------------------------------------------------------------+
-void CTrendLine::UpdateTrendState(TrendLineState &state, SFractalPoint &p1, SFractalPoint &p2)
+void CTrendLine::UpdateTrendState(TrendLineState &state, SFractalPoint &p_old, SFractalPoint &p_recent)
 {
-   if(state.p1.time == p1.time && state.p2.time == p2.time)
+   bool same=(state.p1.time==p_old.time && state.p2.time==p_recent.time);
+
+   if(same)
       state.stability_count++;
    else
    {
-      state.p1 = p1;
-      state.p2 = p2;
-      state.stability_count = 1;
+      double dprice1=MathAbs(p_old.price-state.p1.price);
+      double dprice2=MathAbs(p_recent.price-state.p2.price);
+      int    dbar1=MathAbs(p_old.bar_index-state.p1.bar_index);
+      int    dbar2=MathAbs(p_recent.bar_index-state.p2.bar_index);
+      bool   near=(dbar1<=1 && dbar2<=1 &&
+                   dprice1<=state.p1.price*0.001 &&
+                   dprice2<=state.p2.price*0.001);
+
+      if(!near && state.stability_count>1)
+         state.stability_count--;
+      else if(!near)
+         state.stability_count=1;
+
+      state.p1 = p_old;
+      state.p2 = p_recent;
    }
 
    if(state.stability_count >= m_stability_bars)
@@ -853,13 +912,13 @@ void CTrendLine::UpdateTrendState(TrendLineState &state, SFractalPoint &p1, SFra
 //+------------------------------------------------------------------+
 //| Validate line with higher timeframe                               |
 //+------------------------------------------------------------------+
-bool CTrendLine::ValidateLineWithMTF(SFractalPoint &p1, SFractalPoint &p2)
+bool CTrendLine::ValidateLineWithMTF(SFractalPoint &p_old, SFractalPoint &p_recent)
 {
    if(!m_validate_mtf || m_mtf_timeframe == PERIOD_CURRENT)
       return true;
 
-   int sh1 = iBarShift(m_symbol, m_mtf_timeframe, p1.time, false);
-   int sh2 = iBarShift(m_symbol, m_mtf_timeframe, p2.time, false);
+   int sh1 = iBarShift(m_symbol, m_mtf_timeframe, p_old.time, false);
+   int sh2 = iBarShift(m_symbol, m_mtf_timeframe, p_recent.time, false);
    if(sh1 < 0 || sh2 < 0)
       return false;
 
@@ -869,7 +928,7 @@ bool CTrendLine::ValidateLineWithMTF(SFractalPoint &p1, SFractalPoint &p2)
       return false;
 
    double diff_htf = pr2 - pr1;
-   double diff = p2.price - p1.price;
+   double diff = p_recent.price - p_old.price;
    return ((diff_htf > 0 && diff > 0) || (diff_htf < 0 && diff < 0));
 }
 
@@ -882,6 +941,112 @@ bool CTrendLine::IsReady()
 }
 
 //+------------------------------------------------------------------+
+//| Determine if an update is needed                                 |
+//+------------------------------------------------------------------+
+bool CTrendLine::ShouldUpdate(ENUM_UPDATE_TRIGGER &trigger)
+{
+   trigger = TRIGGER_TIME_THRESHOLD;
+   datetime now = TimeCurrent();
+
+   // 1. Verificar novos fractais periodicamente
+   if(now - m_update_ctrl.last_fractal_time >= m_update_ctrl.params.fractal_check_interval)
+   {
+      bool updated=false;
+      if(UpdateFractals(updated) && updated)
+      {
+         m_update_ctrl.last_fractal_time = now;
+         trigger = TRIGGER_NEW_FRACTAL;
+         return true;
+      }
+   }
+
+   double price = iClose(m_symbol, m_timeframe, 0);
+   double tol   = m_update_ctrl.params.line_break_threshold;
+
+   // 2. Verificar rompimento das linhas existentes
+   if(m_lta_valid)
+   {
+      double lp = CalculateLinePrice(m_lta_point1, m_lta_point2, 0);
+      if(price < lp * (1.0 - tol))
+      {
+         trigger = TRIGGER_LINE_BROKEN;
+         return true;
+      }
+   }
+
+   if(m_ltb_valid)
+   {
+      double lp = CalculateLinePrice(m_ltb_point1, m_ltb_point2, 0);
+      if(price > lp * (1.0 + tol))
+      {
+         trigger = TRIGGER_LINE_BROKEN;
+         return true;
+      }
+   }
+
+   // 3. Checar volatilidade
+   double atr_now  = GetATR(0);
+   double atr_prev = GetATR(1);
+   if(atr_prev > 0 && MathAbs(atr_now - atr_prev) / atr_prev >= m_update_ctrl.params.volatility_threshold)
+   {
+      trigger = TRIGGER_VOLATILITY_SPIKE;
+      return true;
+   }
+
+   // 4. Intervalo mínimo
+   if(now - m_update_ctrl.last_update >= m_update_ctrl.params.min_update_interval)
+   {
+      trigger = TRIGGER_TIME_THRESHOLD;
+      return true;
+   }
+
+   // 5. Atualização manual pendente
+   if(m_update_ctrl.pending_line_update || m_update_ctrl.pending_draw_update)
+   {
+      trigger = TRIGGER_MANUAL_REFRESH;
+      return true;
+   }
+
+   return false;
+}
+
+//+------------------------------------------------------------------+
+//| Executar update condicional                                      |
+//+------------------------------------------------------------------+
+void CTrendLine::ConditionalUpdate(ENUM_UPDATE_TRIGGER trigger)
+{
+   switch(trigger)
+   {
+      case TRIGGER_NEW_FRACTAL:
+         FindTrendLines();
+         CalculateBuffers();
+         DrawLines();
+         break;
+      case TRIGGER_LINE_BROKEN:
+         CalculateBuffers();
+         DrawLines();
+         break;
+      case TRIGGER_VOLATILITY_SPIKE:
+         FindTrendLines();
+         CalculateBuffers();
+         DrawLines();
+         break;
+      case TRIGGER_MANUAL_REFRESH:
+         FindTrendLines();
+         CalculateBuffers();
+         DrawLines();
+         m_update_ctrl.pending_line_update=false;
+         m_update_ctrl.pending_draw_update=false;
+         break;
+      case TRIGGER_TIME_THRESHOLD:
+      case TRIGGER_CONFIG_CHANGE:
+         CalculateBuffers();
+         DrawLines();
+         break;
+   }
+}
+
+//+------------------------------------------------------------------+
 //| Update trend lines                                               |
 //+------------------------------------------------------------------+
 bool CTrendLine::Update()
@@ -889,19 +1054,12 @@ bool CTrendLine::Update()
    if(!IsReady())
       return false;
 
-   // Atualizar fractais
-   if(!UpdateFractals())
-      return true;
-      
-   // Encontrar linhas de tendência
-   FindTrendLines();
-   
-   // Calcular buffers
-   CalculateBuffers();
-   
-   // Desenhar linhas
-   DrawLines();
-   
+   ENUM_UPDATE_TRIGGER trig;
+   if(!ShouldUpdate(trig))
+      return false;
+
+   ConditionalUpdate(trig);
+   m_update_ctrl.last_update = TimeCurrent();
    return true;
 }
 

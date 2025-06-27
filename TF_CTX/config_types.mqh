@@ -198,6 +198,7 @@ public:
   ENUM_TIMEFRAMES mtf_timeframe; // timeframe para validação
   ScoreWeights    weights;       // pesos para o algoritmo de scoring
   
+  UpdateParams   update_control;
   CTrendLineConfig()
   {
     period = 21;
@@ -219,10 +220,10 @@ public:
     validate_mtf = false;
     mtf_timeframe = PERIOD_H1;
     weights = ScoreWeights();
+    update_control = UpdateParams();
   }
 };
 
-// Estrutura do timeframe atualizada
 struct STimeframeConfig
 {
   bool enabled;
