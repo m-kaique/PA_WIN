@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
 //|                                    priceaction/trendline.mqh      |
-//|  TrendLine pattern detection derived from CPriceActionBase        |
+//|  TrendLine pattern detection with LTA/LTB drawing                 |
 //+------------------------------------------------------------------+
 #ifndef __TRENDLINE_MQH__
 #define __TRENDLINE_MQH__
@@ -18,29 +18,51 @@ private:
    int               m_left;
    int               m_right;
    
-   // Dados da linha de tendência de suporte
-   datetime          m_support_time1;
-   double            m_support_price1;
-   datetime          m_support_time2;
-   double            m_support_price2;
-   bool              m_support_valid;
+   // Configurações de desenho
+   bool              m_draw_lta;
+   bool              m_draw_ltb;
+   color             m_lta_color;
+   color             m_ltb_color;
+   ENUM_LINE_STYLE   m_lta_style;
+   ENUM_LINE_STYLE   m_ltb_style;
+   int               m_lta_width;
+   int               m_ltb_width;
+   bool              m_extend_right;
+   bool              m_show_labels;
    
-   // Dados da linha de tendência de resistência
-   datetime          m_resistance_time1;
-   double            m_resistance_price1;
-   datetime          m_resistance_time2;
-   double            m_resistance_price2;
-   bool              m_resistance_valid;
+   // Dados da LTB (Linha de Tendência de Baixa/Suporte)
+   datetime          m_ltb_time1;
+   double            m_ltb_price1;
+   datetime          m_ltb_time2;
+   double            m_ltb_price2;
+   bool              m_ltb_valid;
+   string            m_ltb_line_name;
+   string            m_ltb_label_name;
+   
+   // Dados da LTA (Linha de Tendência de Alta/Resistência)
+   datetime          m_lta_time1;
+   double            m_lta_price1;
+   datetime          m_lta_time2;
+   double            m_lta_price2;
+   bool              m_lta_valid;
+   string            m_lta_line_name;
+   string            m_lta_label_name;
    
    bool              m_ready;
+   string            m_obj_prefix;
 
    // Métodos privados
    bool              DetectTrendLines();
-   bool              FindSupport(datetime &time1, double &price1, datetime &time2, double &price2);
-   bool              FindResistance(datetime &time1, double &price1, datetime &time2, double &price2);
+   bool              FindLTB(datetime &time1, double &price1, datetime &time2, double &price2);
+   bool              FindLTA(datetime &time1, double &price1, datetime &time2, double &price2);
    bool              IsLocalMinimum(int index);
    bool              IsLocalMaximum(int index);
    double            CalculateTrendLinePrice(datetime time1, double price1, datetime time2, double price2, datetime target_time);
+   void              DrawTrendLines();
+   void              DeleteObjects();
+   ENUM_TRENDLINE_DIRECTION GetTrendDirection(double price1, double price2);
+   bool              IsAscendingTrend(double price1, double price2);
+   bool              IsDescendingTrend(double price1, double price2);
 
 public:
                      CTrendLine();
@@ -53,18 +75,20 @@ public:
 
    // Implementação da interface base
    virtual bool      Init(string symbol, ENUM_TIMEFRAMES timeframe, int period);
-   virtual double    GetValue(int shift=0);       // Retorna preço da linha de suporte
+   virtual double    GetValue(int shift=0);       // Retorna preço da LTB por padrão
    virtual bool      CopyValues(int shift, int count, double &buffer[]);
    virtual bool      IsReady();
    virtual bool      Update();
 
    // Métodos específicos da TrendLine
-   double            GetSupportPrice(int shift=0);
-   double            GetResistancePrice(int shift=0);
-   bool              IsSupportValid();
-   bool              IsResistanceValid();
-   bool              GetSupportPoints(datetime &time1, double &price1, datetime &time2, double &price2);
-   bool              GetResistancePoints(datetime &time1, double &price1, datetime &time2, double &price2);
+   double            GetLTBPrice(int shift=0);     // Linha de Tendência de Baixa
+   double            GetLTAPrice(int shift=0);     // Linha de Tendência de Alta
+   bool              IsLTBValid();
+   bool              IsLTAValid();
+   bool              GetLTBPoints(datetime &time1, double &price1, datetime &time2, double &price2);
+   bool              GetLTAPoints(datetime &time1, double &price1, datetime &time2, double &price2);
+   ENUM_TRENDLINE_DIRECTION GetLTBDirection();
+   ENUM_TRENDLINE_DIRECTION GetLTADirection();
   };
 
 //+------------------------------------------------------------------+
@@ -78,19 +102,38 @@ CTrendLine::CTrendLine()
    m_left=3;
    m_right=3;
    
-   m_support_time1=0;
-   m_support_price1=0.0;
-   m_support_time2=0;
-   m_support_price2=0.0;
-   m_support_valid=false;
+   // Configurações padrão de desenho
+   m_draw_lta=true;
+   m_draw_ltb=true;
+   m_lta_color=clrGreen;
+   m_ltb_color=clrRed;
+   m_lta_style=STYLE_SOLID;
+   m_ltb_style=STYLE_SOLID;
+   m_lta_width=1;
+   m_ltb_width=1;
+   m_extend_right=true;
+   m_show_labels=false;
    
-   m_resistance_time1=0;
-   m_resistance_price1=0.0;
-   m_resistance_time2=0;
-   m_resistance_price2=0.0;
-   m_resistance_valid=false;
+   // LTB
+   m_ltb_time1=0;
+   m_ltb_price1=0.0;
+   m_ltb_time2=0;
+   m_ltb_price2=0.0;
+   m_ltb_valid=false;
+   m_ltb_line_name="";
+   m_ltb_label_name="";
+   
+   // LTA
+   m_lta_time1=0;
+   m_lta_price1=0.0;
+   m_lta_time2=0;
+   m_lta_price2=0.0;
+   m_lta_valid=false;
+   m_lta_line_name="";
+   m_lta_label_name="";
    
    m_ready=false;
+   m_obj_prefix="TL_"+IntegerToString(GetTickCount());
   }
 
 //+------------------------------------------------------------------+
@@ -98,6 +141,7 @@ CTrendLine::CTrendLine()
 //+------------------------------------------------------------------+
 CTrendLine::~CTrendLine()
   {
+   DeleteObjects();
   }
 
 //+------------------------------------------------------------------+
@@ -122,7 +166,26 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe,
 bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                       CTrendLineConfig &config)
   {
-   return Init(symbol, timeframe, config.period, config.left, config.right);
+   m_symbol=symbol;
+   m_timeframe=timeframe;
+   m_period=config.period;
+   m_left=config.left;
+   m_right=config.right;
+   
+   // Configurações de desenho
+   m_draw_lta=config.draw_lta;
+   m_draw_ltb=config.draw_ltb;
+   m_lta_color=config.lta_color;
+   m_ltb_color=config.ltb_color;
+   m_lta_style=config.lta_style;
+   m_ltb_style=config.ltb_style;
+   m_lta_width=config.lta_width;
+   m_ltb_width=config.ltb_width;
+   m_extend_right=config.extend_right;
+   m_show_labels=config.show_labels;
+   
+   m_ready=false;
+   return true;
   }
 
 //+------------------------------------------------------------------+
@@ -134,53 +197,53 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, int period)
   }
 
 //+------------------------------------------------------------------+
-//| Get support line price for given shift                          |
+//| Get LTB price for given shift (default return)                  |
 //+------------------------------------------------------------------+
 double CTrendLine::GetValue(int shift)
   {
-   return GetSupportPrice(shift);
+   return GetLTBPrice(shift);
   }
 
 //+------------------------------------------------------------------+
-//| Get support line price for given shift                          |
+//| Get LTB price for given shift                                   |
 //+------------------------------------------------------------------+
-double CTrendLine::GetSupportPrice(int shift)
+double CTrendLine::GetLTBPrice(int shift)
   {
-   if(!m_support_valid)
+   if(!m_ltb_valid)
       return 0.0;
       
    datetime target_time = iTime(m_symbol, m_timeframe, shift);
    if(target_time == 0)
       return 0.0;
       
-   return CalculateTrendLinePrice(m_support_time1, m_support_price1,
-                                  m_support_time2, m_support_price2,
+   return CalculateTrendLinePrice(m_ltb_time1, m_ltb_price1,
+                                  m_ltb_time2, m_ltb_price2,
                                   target_time);
   }
 
 //+------------------------------------------------------------------+
-//| Get resistance line price for given shift                       |
+//| Get LTA price for given shift                                   |
 //+------------------------------------------------------------------+
-double CTrendLine::GetResistancePrice(int shift)
+double CTrendLine::GetLTAPrice(int shift)
   {
-   if(!m_resistance_valid)
+   if(!m_lta_valid)
       return 0.0;
       
    datetime target_time = iTime(m_symbol, m_timeframe, shift);
    if(target_time == 0)
       return 0.0;
       
-   return CalculateTrendLinePrice(m_resistance_time1, m_resistance_price1,
-                                  m_resistance_time2, m_resistance_price2,
+   return CalculateTrendLinePrice(m_lta_time1, m_lta_price1,
+                                  m_lta_time2, m_lta_price2,
                                   target_time);
   }
 
 //+------------------------------------------------------------------+
-//| Copy support line values                                         |
+//| Copy LTB values                                                 |
 //+------------------------------------------------------------------+
 bool CTrendLine::CopyValues(int shift, int count, double &buffer[])
   {
-   if(!m_support_valid)
+   if(!m_ltb_valid)
       return false;
       
    ArrayResize(buffer, count);
@@ -188,7 +251,7 @@ bool CTrendLine::CopyValues(int shift, int count, double &buffer[])
    
    for(int i = 0; i < count; i++)
      {
-      buffer[i] = GetSupportPrice(shift + i);
+      buffer[i] = GetLTBPrice(shift + i);
      }
    
    return true;
@@ -212,34 +275,47 @@ bool CTrendLine::Update()
       if(Bars(m_symbol, m_timeframe) >= m_period + m_left + m_right)
         {
          m_ready = DetectTrendLines();
+         if(m_ready)
+            DrawTrendLines();
         }
       return m_ready;
      }
    
-   // Recalcular linhas de tendência
-   return DetectTrendLines();
+   // Recalcular e redesenhar linhas de tendência
+   bool result = DetectTrendLines();
+   if(result)
+      DrawTrendLines();
+   
+   return result;
   }
 
 //+------------------------------------------------------------------+
-//| Detect both support and resistance trend lines                  |
+//| Detect both LTA and LTB trend lines                             |
 //+------------------------------------------------------------------+
 bool CTrendLine::DetectTrendLines()
   {
-   bool support_found = FindSupport(m_support_time1, m_support_price1,
-                                   m_support_time2, m_support_price2);
-   bool resistance_found = FindResistance(m_resistance_time1, m_resistance_price1,
-                                         m_resistance_time2, m_resistance_price2);
+   bool ltb_found = false;
+   bool lta_found = false;
    
-   m_support_valid = support_found;
-   m_resistance_valid = resistance_found;
+   if(m_draw_ltb)
+     {
+      ltb_found = FindLTB(m_ltb_time1, m_ltb_price1, m_ltb_time2, m_ltb_price2);
+      m_ltb_valid = ltb_found;
+     }
    
-   return support_found || resistance_found;
+   if(m_draw_lta)
+     {
+      lta_found = FindLTA(m_lta_time1, m_lta_price1, m_lta_time2, m_lta_price2);
+      m_lta_valid = lta_found;
+     }
+   
+   return ltb_found || lta_found;
   }
 
 //+------------------------------------------------------------------+
-//| Find support trend line connecting lows                         |
+//| Find LTB (connecting ascending lows)                            |
 //+------------------------------------------------------------------+
-bool CTrendLine::FindSupport(datetime &time1, double &price1, datetime &time2, double &price2)
+bool CTrendLine::FindLTB(datetime &time1, double &price1, datetime &time2, double &price2)
   {
    double lows[];
    datetime times[];
@@ -271,43 +347,55 @@ bool CTrendLine::FindSupport(datetime &time1, double &price1, datetime &time2, d
         }
      }
    
-   // Encontrar os dois pontos mais significativos para a linha de suporte
-   // Usar os dois mínimos mais baixos
-   int min1_idx = 0, min2_idx = 1;
+   // Encontrar os dois pontos que formam uma linha ascendente
+   // Procurar a melhor linha de tendência de baixa (ascendente)
+   double best_slope = -999999;
+   int best_p1 = -1, best_p2 = -1;
    
-   for(int i = 0; i < low_count; i++)
+   for(int i = 0; i < low_count - 1; i++)
      {
-      if(lows[i] < lows[min1_idx])
+      for(int j = i + 1; j < low_count; j++)
         {
-         min2_idx = min1_idx;
-         min1_idx = i;
-        }
-      else if(lows[i] < lows[min2_idx] && i != min1_idx)
-        {
-         min2_idx = i;
+         // Calcular inclinação
+         if(times[j] == times[i]) continue;
+         
+         double slope = (lows[j] - lows[i]) / (double)(times[j] - times[i]);
+         
+         // Verificar se é ascendente e se é a melhor encontrada
+         if(slope > 0 && slope > best_slope)
+           {
+            best_slope = slope;
+            best_p1 = i;
+            best_p2 = j;
+           }
         }
      }
    
-   // Ordenar por tempo (o mais antigo primeiro)
-   if(times[min1_idx] > times[min2_idx])
+   if(best_p1 >= 0 && best_p2 >= 0)
      {
-      int temp_idx = min1_idx;
-      min1_idx = min2_idx;
-      min2_idx = temp_idx;
+      // Ordenar por tempo (o mais antigo primeiro)
+      if(times[best_p1] > times[best_p2])
+        {
+         int temp = best_p1;
+         best_p1 = best_p2;
+         best_p2 = temp;
+        }
+      
+      time1 = times[best_p1];
+      price1 = lows[best_p1];
+      time2 = times[best_p2];
+      price2 = lows[best_p2];
+      
+      return true;
      }
    
-   time1 = times[min1_idx];
-   price1 = lows[min1_idx];
-   time2 = times[min2_idx];
-   price2 = lows[min2_idx];
-   
-   return true;
+   return false;
   }
 
 //+------------------------------------------------------------------+
-//| Find resistance trend line connecting highs                     |
+//| Find LTA (connecting descending highs)                          |
 //+------------------------------------------------------------------+
-bool CTrendLine::FindResistance(datetime &time1, double &price1, datetime &time2, double &price2)
+bool CTrendLine::FindLTA(datetime &time1, double &price1, datetime &time2, double &price2)
   {
    double highs[];
    datetime times[];
@@ -339,37 +427,49 @@ bool CTrendLine::FindResistance(datetime &time1, double &price1, datetime &time2
         }
      }
    
-   // Encontrar os dois pontos mais significativos para a linha de resistência
-   // Usar os dois máximos mais altos
-   int max1_idx = 0, max2_idx = 1;
+   // Encontrar os dois pontos que formam uma linha descendente
+   // Procurar a melhor linha de tendência de alta (descendente)
+   double best_slope = 999999;
+   int best_p1 = -1, best_p2 = -1;
    
-   for(int i = 0; i < high_count; i++)
+   for(int i = 0; i < high_count - 1; i++)
      {
-      if(highs[i] > highs[max1_idx])
+      for(int j = i + 1; j < high_count; j++)
         {
-         max2_idx = max1_idx;
-         max1_idx = i;
-        }
-      else if(highs[i] > highs[max2_idx] && i != max1_idx)
-        {
-         max2_idx = i;
+         // Calcular inclinação
+         if(times[j] == times[i]) continue;
+         
+         double slope = (highs[j] - highs[i]) / (double)(times[j] - times[i]);
+         
+         // Verificar se é descendente e se é a melhor encontrada
+         if(slope < 0 && slope < best_slope)
+           {
+            best_slope = slope;
+            best_p1 = i;
+            best_p2 = j;
+           }
         }
      }
    
-   // Ordenar por tempo (o mais antigo primeiro)
-   if(times[max1_idx] > times[max2_idx])
+   if(best_p1 >= 0 && best_p2 >= 0)
      {
-      int temp_idx = max1_idx;
-      max1_idx = max2_idx;
-      max2_idx = temp_idx;
+      // Ordenar por tempo (o mais antigo primeiro)
+      if(times[best_p1] > times[best_p2])
+        {
+         int temp = best_p1;
+         best_p1 = best_p2;
+         best_p2 = temp;
+        }
+      
+      time1 = times[best_p1];
+      price1 = highs[best_p1];
+      time2 = times[best_p2];
+      price2 = highs[best_p2];
+      
+      return true;
      }
    
-   time1 = times[max1_idx];
-   price1 = highs[max1_idx];
-   time2 = times[max2_idx];
-   price2 = highs[max2_idx];
-   
-   return true;
+   return false;
   }
 
 //+------------------------------------------------------------------+
@@ -435,53 +535,219 @@ double CTrendLine::CalculateTrendLinePrice(datetime time1, double price1,
   }
 
 //+------------------------------------------------------------------+
-//| Get status of support line                                      |
+//| Draw trend lines on chart                                       |
 //+------------------------------------------------------------------+
-bool CTrendLine::IsSupportValid()
+void CTrendLine::DrawTrendLines()
   {
-   return m_support_valid;
+   DeleteObjects(); // Limpar objetos anteriores
+   
+   datetime current_time = TimeCurrent();
+   datetime future_time = current_time + (24 * 3600); // 1 dia no futuro
+   
+   // Desenhar LTB se válida e habilitada
+   if(m_ltb_valid && m_draw_ltb)
+     {
+      m_ltb_line_name = m_obj_prefix + "_LTB";
+      
+      datetime end_time = m_extend_right ? future_time : m_ltb_time2;
+      double end_price = m_extend_right ? 
+                        CalculateTrendLinePrice(m_ltb_time1, m_ltb_price1, m_ltb_time2, m_ltb_price2, end_time) :
+                        m_ltb_price2;
+      
+      if(ObjectCreate(0, m_ltb_line_name, OBJ_TREND, 0, m_ltb_time1, m_ltb_price1, end_time, end_price))
+        {
+         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_COLOR, m_ltb_color);
+         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_STYLE, m_ltb_style);
+         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_WIDTH, m_ltb_width);
+         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_RAY_RIGHT, m_extend_right);
+         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_RAY_LEFT, false);
+         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_SELECTABLE, true);
+         
+         // Adicionar rótulo se habilitado
+         if(m_show_labels)
+           {
+            m_ltb_label_name = m_obj_prefix + "_LTB_Label";
+            datetime label_time = m_ltb_time2 + (m_ltb_time2 - m_ltb_time1) / 4;
+            double label_price = CalculateTrendLinePrice(m_ltb_time1, m_ltb_price1, m_ltb_time2, m_ltb_price2, label_time);
+            
+            if(ObjectCreate(0, m_ltb_label_name, OBJ_TEXT, 0, label_time, label_price))
+              {
+               ObjectSetString(0, m_ltb_label_name, OBJPROP_TEXT, "LTB");
+               ObjectSetInteger(0, m_ltb_label_name, OBJPROP_COLOR, m_ltb_color);
+               ObjectSetInteger(0, m_ltb_label_name, OBJPROP_FONTSIZE, 8);
+               ObjectSetString(0, m_ltb_label_name, OBJPROP_FONT, "Arial");
+              }
+           }
+        }
+     }
+   
+   // Desenhar LTA se válida e habilitada
+   if(m_lta_valid && m_draw_lta)
+     {
+      m_lta_line_name = m_obj_prefix + "_LTA";
+      
+      datetime end_time = m_extend_right ? future_time : m_lta_time2;
+      double end_price = m_extend_right ? 
+                        CalculateTrendLinePrice(m_lta_time1, m_lta_price1, m_lta_time2, m_lta_price2, end_time) :
+                        m_lta_price2;
+      
+      if(ObjectCreate(0, m_lta_line_name, OBJ_TREND, 0, m_lta_time1, m_lta_price1, end_time, end_price))
+        {
+         ObjectSetInteger(0, m_lta_line_name, OBJPROP_COLOR, m_lta_color);
+         ObjectSetInteger(0, m_lta_line_name, OBJPROP_STYLE, m_lta_style);
+         ObjectSetInteger(0, m_lta_line_name, OBJPROP_WIDTH, m_lta_width);
+         ObjectSetInteger(0, m_lta_line_name, OBJPROP_RAY_RIGHT, m_extend_right);
+         ObjectSetInteger(0, m_lta_line_name, OBJPROP_RAY_LEFT, false);
+         ObjectSetInteger(0, m_lta_line_name, OBJPROP_SELECTABLE, true);
+         
+         // Adicionar rótulo se habilitado
+         if(m_show_labels)
+           {
+            m_lta_label_name = m_obj_prefix + "_LTA_Label";
+            datetime label_time = m_lta_time2 + (m_lta_time2 - m_lta_time1) / 4;
+            double label_price = CalculateTrendLinePrice(m_lta_time1, m_lta_price1, m_lta_time2, m_lta_price2, label_time);
+            
+            if(ObjectCreate(0, m_lta_label_name, OBJ_TEXT, 0, label_time, label_price))
+              {
+               ObjectSetString(0, m_lta_label_name, OBJPROP_TEXT, "LTA");
+               ObjectSetInteger(0, m_lta_label_name, OBJPROP_COLOR, m_lta_color);
+               ObjectSetInteger(0, m_lta_label_name, OBJPROP_FONTSIZE, 8);
+               ObjectSetString(0, m_lta_label_name, OBJPROP_FONT, "Arial");
+              }
+           }
+        }
+     }
   }
 
 //+------------------------------------------------------------------+
-//| Get status of resistance line                                   |
+//| Delete chart objects                                             |
 //+------------------------------------------------------------------+
-bool CTrendLine::IsResistanceValid()
+void CTrendLine::DeleteObjects()
   {
-   return m_resistance_valid;
+   if(StringLen(m_ltb_line_name) > 0)
+     {
+      ObjectDelete(0, m_ltb_line_name);
+      m_ltb_line_name = "";
+     }
+   
+   if(StringLen(m_ltb_label_name) > 0)
+     {
+      ObjectDelete(0, m_ltb_label_name);
+      m_ltb_label_name = "";
+     }
+   
+   if(StringLen(m_lta_line_name) > 0)
+     {
+      ObjectDelete(0, m_lta_line_name);
+      m_lta_line_name = "";
+     }
+   
+   if(StringLen(m_lta_label_name) > 0)
+     {
+      ObjectDelete(0, m_lta_label_name);
+      m_lta_label_name = "";
+     }
   }
 
 //+------------------------------------------------------------------+
-//| Get support line points                                         |
+//| Get trend direction for a line                                  |
 //+------------------------------------------------------------------+
-bool CTrendLine::GetSupportPoints(datetime &time1, double &price1,
-                                  datetime &time2, double &price2)
+ENUM_TRENDLINE_DIRECTION CTrendLine::GetTrendDirection(double price1, double price2)
   {
-   if(!m_support_valid)
+   if(price2 > price1)
+      return TRENDLINE_ASCENDING;
+   else if(price2 < price1)
+      return TRENDLINE_DESCENDING;
+   else
+      return TRENDLINE_HORIZONTAL;
+  }
+
+//+------------------------------------------------------------------+
+//| Check if trend is ascending                                     |
+//+------------------------------------------------------------------+
+bool CTrendLine::IsAscendingTrend(double price1, double price2)
+  {
+   return price2 > price1;
+  }
+
+//+------------------------------------------------------------------+
+//| Check if trend is descending                                   |
+//+------------------------------------------------------------------+
+bool CTrendLine::IsDescendingTrend(double price1, double price2)
+  {
+   return price2 < price1;
+  }
+
+//+------------------------------------------------------------------+
+//| Get status of LTB                                              |
+//+------------------------------------------------------------------+
+bool CTrendLine::IsLTBValid()
+  {
+   return m_ltb_valid;
+  }
+
+//+------------------------------------------------------------------+
+//| Get status of LTA                                              |
+//+------------------------------------------------------------------+
+bool CTrendLine::IsLTAValid()
+  {
+   return m_lta_valid;
+  }
+
+//+------------------------------------------------------------------+
+//| Get LTB points                                                 |
+//+------------------------------------------------------------------+
+bool CTrendLine::GetLTBPoints(datetime &time1, double &price1,
+                              datetime &time2, double &price2)
+  {
+   if(!m_ltb_valid)
       return false;
    
-   time1 = m_support_time1;
-   price1 = m_support_price1;
-   time2 = m_support_time2;
-   price2 = m_support_price2;
+   time1 = m_ltb_time1;
+   price1 = m_ltb_price1;
+   time2 = m_ltb_time2;
+   price2 = m_ltb_price2;
    
    return true;
   }
 
 //+------------------------------------------------------------------+
-//| Get resistance line points                                      |
+//| Get LTA points                                                 |
 //+------------------------------------------------------------------+
-bool CTrendLine::GetResistancePoints(datetime &time1, double &price1,
-                                     datetime &time2, double &price2)
+bool CTrendLine::GetLTAPoints(datetime &time1, double &price1,
+                              datetime &time2, double &price2)
   {
-   if(!m_resistance_valid)
+   if(!m_lta_valid)
       return false;
    
-   time1 = m_resistance_time1;
-   price1 = m_resistance_price1;
-   time2 = m_resistance_time2;
-   price2 = m_resistance_price2;
+   time1 = m_lta_time1;
+   price1 = m_lta_price1;
+   time2 = m_lta_time2;
+   price2 = m_lta_price2;
    
    return true;
+  }
+
+//+------------------------------------------------------------------+
+//| Get LTB direction                                              |
+//+------------------------------------------------------------------+
+ENUM_TRENDLINE_DIRECTION CTrendLine::GetLTBDirection()
+  {
+   if(!m_ltb_valid)
+      return TRENDLINE_HORIZONTAL;
+   
+   return GetTrendDirection(m_ltb_price1, m_ltb_price2);
+  }
+
+//+------------------------------------------------------------------+
+//| Get LTA direction                                              |
+//+------------------------------------------------------------------+
+ENUM_TRENDLINE_DIRECTION CTrendLine::GetLTADirection()
+  {
+   if(!m_lta_valid)
+      return TRENDLINE_HORIZONTAL;
+   
+   return GetTrendDirection(m_lta_price1, m_lta_price2);
   }
 
 #endif // __TRENDLINE_MQH__

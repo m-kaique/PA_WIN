@@ -6,7 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, MetaQuotes Ltd."
 #property link "https://www.mql5.com"
-#property version "3.00"
+#property version "3.10"
 
 #include "../utils/JAson.mqh"
 #include "tf_ctx.mqh"
@@ -555,6 +555,9 @@ color CConfigManager::StringToColor(string color_str)
     if(color_str=="Orange") return clrOrange;
     if(color_str=="White")  return clrWhite;
     if(color_str=="Black")  return clrBlack;
+    if(color_str=="Lime")   return clrLime;
+    if(color_str=="Magenta") return clrMagenta;
+    if(color_str=="Cyan")   return clrCyan;
     if(StringLen(color_str)>0)
        return (color)StringToInteger(color_str);
     return clrNONE;
@@ -707,7 +710,7 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
         Print("AVISO: Nenhum indicador configurado");
     }
 
-    // Lista de price action patterns (nova lógica)
+    // Lista de price action patterns (nova lógica atualizada)
     CJAVal *pa_array = tf_config["priceaction"];
     ArrayResize(config.priceactions,0);
 
@@ -729,6 +732,19 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
               p.period=(int)pa["period"].ToInt();
               p.left=(int)pa["left"].ToInt();
               p.right=(int)pa["right"].ToInt();
+              
+              // Novos parâmetros para LTA/LTB
+              p.draw_lta=pa["draw_lta"].ToBool();
+              p.draw_ltb=pa["draw_ltb"].ToBool();
+              p.lta_color=StringToColor(pa["lta_color"].ToStr());
+              p.ltb_color=StringToColor(pa["ltb_color"].ToStr());
+              p.lta_style=StringToLineStyle(pa["lta_style"].ToStr());
+              p.ltb_style=StringToLineStyle(pa["ltb_style"].ToStr());
+              p.lta_width=(int)pa["lta_width"].ToInt();
+              p.ltb_width=(int)pa["ltb_width"].ToInt();
+              p.extend_right=pa["extend_right"].ToBool();
+              p.show_labels=pa["show_labels"].ToBool();
+              
               pacfg=p;
              }
 

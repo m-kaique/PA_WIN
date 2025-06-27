@@ -122,6 +122,26 @@
                "ParallelColor": "Blue",
                "enabled": false
             }
+         ],
+         "priceaction": [
+            {
+               "name": "LTA_LTB",
+               "type": "TRENDLINE",
+               "period": 30,
+               "left": 5,
+               "right": 5,
+               "draw_lta": true,
+               "draw_ltb": true,
+               "lta_color": "Red",
+               "ltb_color": "Green",
+               "lta_style": "SOLID",
+               "ltb_style": "SOLID",
+               "lta_width": 2,
+               "ltb_width": 2,
+               "extend_right": true,
+               "show_labels": true,
+               "enabled": true
+            }
          ]
       },
       "H4": {
@@ -134,7 +154,35 @@
                "period": 40,
                "left": 7,
                "right": 7,
-               "enabled": false
+               "draw_lta": true,
+               "draw_ltb": false,
+               "lta_color": "Magenta",
+               "ltb_color": "Cyan",
+               "lta_style": "DASH",
+               "ltb_style": "DOT",
+               "lta_width": 1,
+               "ltb_width": 1,
+               "extend_right": true,
+               "show_labels": false,
+               "enabled": true
+            },
+            {
+               "name": "trend_h1",
+               "type": "TRENDLINE",
+               "period": 20,
+               "left": 3,
+               "right": 3,
+               "draw_lta": false,
+               "draw_ltb": true,
+               "lta_color": "Orange",
+               "ltb_color": "Blue",
+               "lta_style": "SOLID",
+               "ltb_style": "SOLID",
+               "lta_width": 1,
+               "ltb_width": 2,
+               "extend_right": false,
+               "show_labels": true,
+               "enabled": true
             }
          ],
          "indicators": [

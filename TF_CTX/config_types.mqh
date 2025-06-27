@@ -174,18 +174,39 @@ public:
   virtual ~CPriceActionConfig() {}
 };
 
-// Configuração específica para TrendLine
+// Configuração específica para TrendLine atualizada
 class CTrendLineConfig : public CPriceActionConfig
 {
 public:
-  int period; // período de análise
-  int left;   // velas à esquerda do ponto
-  int right;  // velas à direita do ponto
+  int period;                    // período de análise
+  int left;                      // velas à esquerda do ponto
+  int right;                     // velas à direita do ponto
+  bool draw_lta;                 // desenhar Linha de Tendência de Alta
+  bool draw_ltb;                 // desenhar Linha de Tendência de Baixa
+  color lta_color;               // cor da LTA
+  color ltb_color;               // cor da LTB
+  ENUM_LINE_STYLE lta_style;     // estilo da LTA
+  ENUM_LINE_STYLE ltb_style;     // estilo da LTB
+  int lta_width;                 // largura da LTA
+  int ltb_width;                 // largura da LTB
+  bool extend_right;             // estender linhas para a direita
+  bool show_labels;              // mostrar rótulos nas linhas
+  
   CTrendLineConfig()
   {
     period = 21;
     left = 3;
     right = 3;
+    draw_lta = true;
+    draw_ltb = true;
+    lta_color = clrGreen;
+    ltb_color = clrRed;
+    lta_style = STYLE_SOLID;
+    ltb_style = STYLE_SOLID;
+    lta_width = 1;
+    ltb_width = 1;
+    extend_right = true;
+    show_labels = false;
   }
 };
 

@@ -3,11 +3,12 @@
 //|                                                   Copyright 2025 |
 //|                                                 https://mql5.com |
 //| 22.06.2025 - Updated with ConfigManager and PriceAction support |
+//| 27.06.2025 - Added LTA/LTB TrendLine functionality               |
 //+------------------------------------------------------------------+
 
 #property copyright "Copyright 2025"
 #property link "https://mql5.com"
-#property version "3.00"
+#property version "3.10"
 
 #include "TF_CTX/config_manager.mqh"
 
@@ -141,21 +142,38 @@ void ExecuteOnNewBar()
          Print("EMA21 D1 Shift: ", i, " = ", ema21);
       }
 
-      Print("=== Contexto D1 - Price Action ===");
-      // Acessar Price Action (nova funcionalidade)
-      double support_price = D1_ctx.GetPriceActionValue("LTA_LTB", 0);
-      Print("Linha de Suporte (shift 0): ", support_price);
+      Print("=== Contexto D1 - Price Action LTA/LTB ===");
+      // Acessar Price Action - LTA/LTB
+      double ltb_price = D1_ctx.GetPriceActionValue("LTA_LTB", 0);
+      Print("LTB (Linha de Tendência de Baixa) shift 0: ", ltb_price);
       
-      // Exemplo de acesso específico à TrendLine
-      // Nota: Para acessar métodos específicos, seria necessário cast
-      // Este é um exemplo conceitual da funcionalidade
-      if (support_price > 0)
+      // Para acessar métodos específicos da TrendLine, seria necessário cast
+      // Mas vamos demonstrar usando os métodos genéricos disponíveis
+      if (ltb_price > 0)
       {
-         Print("Linha de tendência de suporte detectada em: ", support_price);
+         Print("Linha de Tendência de Baixa detectada em: ", ltb_price);
+         
+         // Verificar preços históricos da LTB
+         for(int j = 0; j < 3; j++)
+         {
+            double ltb_hist = D1_ctx.GetPriceActionValue("LTA_LTB", j);
+            Print("LTB shift ", j, ": ", ltb_hist);
+         }
       }
       else
       {
-         Print("Nenhuma linha de suporte válida encontrada");
+         Print("Nenhuma Linha de Tendência de Baixa válida encontrada");
+      }
+      
+      // Copiar valores da LTB para análise
+      double ltb_buffer[];
+      if(D1_ctx.CopyPriceActionValues("LTA_LTB", 0, 5, ltb_buffer))
+      {
+         Print("=== Valores LTB copiados ===");
+         for(int k = 0; k < ArraySize(ltb_buffer); k++)
+         {
+            Print("LTB[", k, "] = ", ltb_buffer[k]);
+         }
       }
    }
    else
@@ -163,19 +181,42 @@ void ExecuteOnNewBar()
       Print("AVISO: Contexto D1 não encontrado para símbolo: ", configured_symbol);
    }
 
-   // Exemplo adicional: acessar contexto H1 se disponível
-   TF_CTX *H1_ctx = g_config_manager.GetContext(configured_symbol, PERIOD_H1);
-   if (H1_ctx != NULL)
+   // Exemplo adicional: acessar contexto H4 se disponível
+   TF_CTX *H4_ctx = g_config_manager.GetContext(configured_symbol, PERIOD_H4);
+   if (H4_ctx != NULL)
    {
-      H1_ctx.Update();
+      H4_ctx.Update();
 
-      Print("=== Contexto H1 - Price Action ===");
-      double h1_support = H1_ctx.GetPriceActionValue("trend_h1", 0);
-      if (h1_support > 0)
+      Print("=== Contexto H4 - Price Action ===");
+      
+      // Verificar múltiplas configurações de TrendLine no H4
+      double swing_ltb = H4_ctx.GetPriceActionValue("swing_lines", 0);
+      if (swing_ltb > 0)
       {
-         Print("H1 Linha de Suporte: ", h1_support);
+         Print("H4 Swing Lines LTB: ", swing_ltb);
+      }
+      
+      double trend_ltb = H4_ctx.GetPriceActionValue("trend_h1", 0);
+      if (trend_ltb > 0)
+      {
+         Print("H4 Trend H1 LTB: ", trend_ltb);
+      }
+      
+      // Demonstrar análise de tendência
+      if(swing_ltb > 0 && trend_ltb > 0)
+      {
+         if(swing_ltb < trend_ltb)
+         {
+            Print("ANÁLISE: LTB de Swing está abaixo da LTB de Trend - possível suporte mais forte");
+         }
+         else
+         {
+            Print("ANÁLISE: LTB de Trend está abaixo da LTB de Swing - verificar nível de suporte");
+         }
       }
    }
+   
+   Print("=== Análise Completa ===");
 }
 
 //+------------------------------------------------------------------+
