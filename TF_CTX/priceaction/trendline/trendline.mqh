@@ -396,7 +396,8 @@ bool CTrendLine::UpdateFractals(bool &updated)
    ArrayResize(m_low_cache.confirmed_points,0);
 
    // Extrair fractais válidos com confirmação
-   for(int i=0;i<bars_to_copy;i++)
+   // Processar do mais antigo para o mais recente para manter ordem cronológica
+   for(int i=bars_to_copy-1;i>=0;i--)
    {
       if(upper_fractals[i]!=EMPTY_VALUE && upper_fractals[i]>0)
       {
@@ -451,7 +452,7 @@ void CTrendLine::FindTrendLines()
    // ----- Procurar LTA -----
    // Usar apenas fractais confirmados para evitar linhas instáveis
    SFractalPoint lows_all[];
-   ArrayCopy(lows_all,m_low_cache.confirmed_points);
+   ArrayCopy(lows_all,m_low_cache.confirmed_points); // ordem: [0] = mais antigo
    if(ArraySize(lows_all) > TRENDLINE_MAX_FRACTALS)
       ArrayResize(lows_all, TRENDLINE_MAX_FRACTALS);
 
@@ -463,19 +464,19 @@ void CTrendLine::FindTrendLines()
       {
          for(int j = i + 1; j < ArraySize(lows_all); j++)
          {
-            // lows_all[j] é o ponto mais antigo; lows_all[i], o mais recente
-            if(!IsValidLTA(lows_all[j], lows_all[i]))
+            // lows_all[i] é o ponto mais antigo; lows_all[j], o mais recente
+            if(!IsValidLTA(lows_all[i], lows_all[j]))
                continue;
-            if((lows_all[j].bar_index - lows_all[i].bar_index) < m_min_distance)
+            if((lows_all[i].bar_index - lows_all[j].bar_index) < m_min_distance)
                continue;
 
-            double score = ScorePair(lows_all[j], lows_all[i]);
+            double score = ScorePair(lows_all[i], lows_all[j]);
             if(score < TRENDLINE_SCORE_THRESHOLD) continue;
             if(score > best_score)
             {
                best_score = score;
-               best_p1 = lows_all[j];
-               best_p2 = lows_all[i];
+               best_p1 = lows_all[i];
+               best_p2 = lows_all[j];
             }
          }
       }
@@ -501,7 +502,7 @@ void CTrendLine::FindTrendLines()
    // ----- Procurar LTB -----
    SFractalPoint highs_all[];
    // Apenas fractais confirmados para estabilidade
-   ArrayCopy(highs_all,m_high_cache.confirmed_points);
+   ArrayCopy(highs_all,m_high_cache.confirmed_points); // ordem: [0] = mais antigo
    if(ArraySize(highs_all) > TRENDLINE_MAX_FRACTALS)
       ArrayResize(highs_all, TRENDLINE_MAX_FRACTALS);
 
@@ -513,19 +514,19 @@ void CTrendLine::FindTrendLines()
       {
          for(int j = i + 1; j < ArraySize(highs_all); j++)
          {
-            // highs_all[j] é o ponto mais antigo; highs_all[i], o mais recente
-            if(!IsValidLTB(highs_all[j], highs_all[i]))
+            // highs_all[i] é o ponto mais antigo; highs_all[j], o mais recente
+            if(!IsValidLTB(highs_all[i], highs_all[j]))
                continue;
-            if((highs_all[j].bar_index - highs_all[i].bar_index) < m_min_distance)
+            if((highs_all[i].bar_index - highs_all[j].bar_index) < m_min_distance)
                continue;
 
-            double score = ScorePair(highs_all[j], highs_all[i]);
+            double score = ScorePair(highs_all[i], highs_all[j]);
             if(score < TRENDLINE_SCORE_THRESHOLD) continue;
             if(score > best_score)
             {
                best_score = score;
-               best_p1 = highs_all[j];
-               best_p2 = highs_all[i];
+               best_p1 = highs_all[i];
+               best_p2 = highs_all[j];
             }
          }
       }

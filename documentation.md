@@ -1182,3 +1182,4 @@ Esta seção registra as principais alterações e versões dos componentes do E
 -   **Versão 1.20 (27.06.2025)**: Validação de projeções, otimizações de performance e novo sistema de debug com métodos adicionais.
 -   **Versão 1.21 (27.06.2025)**: Correção da lógica de validação de LTA/LTB para garantir que LTA seja sempre ascendente.
 -   **Versão 1.22 (27.06.2025)**: Verificação extra de orientação ao confirmar LTA/LTB para evitar linhas invertidas.
+-   **Versão 1.23 (27.06.2025)**: Correção da ordem dos fractais para garantir pares cronológicos corretos.
