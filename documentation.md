@@ -1064,12 +1064,19 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
    "lta_width": 1,
    "ltb_width": 1,
    "extend_right": true,
-  "show_labels": true,
-  "stability_bars": 2,
-  "min_distance": 5,
-  "validate_mtf": false,
-  "mtf_timeframe": "D1",
-  "enabled": true
+   "show_labels": true,
+   "stability_bars": 2,
+   "min_distance": 5,
+   "validate_mtf": false,
+   "mtf_timeframe": "D1",
+   "update_control": {
+       "min_update_interval": 30,
+       "fractal_check_interval": 10,
+       "line_break_threshold": 0.001,
+       "volatility_threshold": 0.02,
+       "auto_refresh_enabled": true
+   },
+   "enabled": true
 }
 ```
 - `left`/`right`: número de velas usadas para detectar fractais.
@@ -1079,6 +1086,12 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
 - `min_distance`: distância mínima em barras entre os fractais conectados.
 - `validate_mtf`: habilita verificação em um timeframe superior.
 - `mtf_timeframe`: timeframe utilizado para validação.
+- `update_control`: parâmetros do sistema de atualização condicional.
+  - `min_update_interval`: intervalo mínimo entre atualizações completas (segundos).
+  - `fractal_check_interval`: frequência para checar novos fractais.
+  - `line_break_threshold`: tolerância para considerar uma linha rompida.
+  - `volatility_threshold`: variação percentual do ATR que dispara recálculo.
+  - `auto_refresh_enabled`: ativa atualizações automáticas quando verdadeiro.
 ### Acessando PriceAction
 
 ```cpp

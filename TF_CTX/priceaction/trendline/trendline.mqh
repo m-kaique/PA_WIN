@@ -103,6 +103,7 @@ private:
   bool            m_need_redraw;
   ScoreWeights    m_weights;
    
+  UpdateControl   m_update_ctrl;
    // Métodos privados
    bool            CreateFractalsHandle();
    void            ReleaseFractalsHandle();
@@ -119,15 +120,10 @@ private:
    double          ComputeVolumeConfirmation(SFractalPoint &p1, SFractalPoint &p2);
    double          ComputeLineTests(SFractalPoint &p1, SFractalPoint &p2);
    double          ComputeTimeValidity(SFractalPoint &p1, SFractalPoint &p2);
-   double          ComputePsychologicalLevel(SFractalPoint &p1, SFractalPoint &p2);
-   double          ComputeVolatilityContext(SFractalPoint &p1, SFractalPoint &p2);
-   void            UpdateTrendState(TrendLineState &state, SFractalPoint &p1, SFractalPoint &p2);
-   bool            ValidateLineWithMTF(SFractalPoint &p1, SFractalPoint &p2);
-
+   bool            ShouldUpdate(ENUM_UPDATE_TRIGGER &trigger);
 public:
    CTrendLine();
    ~CTrendLine();
-
    bool            Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig &config);
    virtual bool    Init(string symbol, ENUM_TIMEFRAMES timeframe, int period);
    virtual double  GetValue(int shift = 0);
@@ -234,6 +230,7 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
   m_validate_mtf = config.validate_mtf;
   m_mtf_timeframe = config.mtf_timeframe;
   m_weights = config.weights;
+  m_update_ctrl.params = config.update_control;
    
    // Criar nomes únicos para objetos
    string suffix = "_" + m_symbol + "_" + EnumToString(m_timeframe) + "_" + IntegerToString(GetTickCount());
@@ -882,6 +879,111 @@ bool CTrendLine::IsReady()
 }
 
 //+------------------------------------------------------------------+
+//| Determine if an update is needed                                 |
+//+------------------------------------------------------------------+
+bool CTrendLine::ShouldUpdate(ENUM_UPDATE_TRIGGER &trigger)
+{
+   trigger = TRIGGER_TIME_THRESHOLD;
+   datetime now = TimeCurrent();
+
+   // 1. Verificar novos fractais periodicamente
+   if(now - m_update_ctrl.last_fractal_time >= m_update_ctrl.params.fractal_check_interval)
+   {
+      if(UpdateFractals())
+      {
+         m_update_ctrl.last_fractal_time = now;
+         trigger = TRIGGER_NEW_FRACTAL;
+         return true;
+      }
+   }
+
+   double price = iClose(m_symbol, m_timeframe, 0);
+   double tol   = m_update_ctrl.params.line_break_threshold;
+
+   // 2. Verificar rompimento das linhas existentes
+   if(m_lta_valid)
+   {
+      double lp = CalculateLinePrice(m_lta_point1, m_lta_point2, 0);
+      if(price < lp * (1.0 - tol))
+      {
+         trigger = TRIGGER_LINE_BROKEN;
+         return true;
+      }
+   }
+
+   if(m_ltb_valid)
+   {
+      double lp = CalculateLinePrice(m_ltb_point1, m_ltb_point2, 0);
+      if(price > lp * (1.0 + tol))
+      {
+         trigger = TRIGGER_LINE_BROKEN;
+         return true;
+      }
+   }
+
+   // 3. Checar volatilidade
+   double atr_now  = iATR(m_symbol, m_timeframe, 14, 0);
+   double atr_prev = iATR(m_symbol, m_timeframe, 14, 1);
+   if(atr_prev > 0 && MathAbs(atr_now - atr_prev) / atr_prev >= m_update_ctrl.params.volatility_threshold)
+   {
+      trigger = TRIGGER_VOLATILITY_SPIKE;
+      return true;
+   }
+
+   // 4. Intervalo mínimo
+   if(now - m_update_ctrl.last_update >= m_update_ctrl.params.min_update_interval)
+   {
+      trigger = TRIGGER_TIME_THRESHOLD;
+      return true;
+   }
+
+   // 5. Atualização manual pendente
+   if(m_update_ctrl.pending_line_update || m_update_ctrl.pending_draw_update)
+   {
+      trigger = TRIGGER_MANUAL_REFRESH;
+      return true;
+   }
+
+   return false;
+}
+
+//+------------------------------------------------------------------+
+//| Executar update condicional                                      |
+//+------------------------------------------------------------------+
+void CTrendLine::ConditionalUpdate(ENUM_UPDATE_TRIGGER trigger)
+{
+   switch(trigger)
+   {
+      case TRIGGER_NEW_FRACTAL:
+         FindTrendLines();
+         CalculateBuffers();
+         DrawLines();
+         break;
+      case TRIGGER_LINE_BROKEN:
+         CalculateBuffers();
+         DrawLines();
+         break;
+      case TRIGGER_VOLATILITY_SPIKE:
+         FindTrendLines();
+         CalculateBuffers();
+         DrawLines();
+         break;
+      case TRIGGER_MANUAL_REFRESH:
+         FindTrendLines();
+         CalculateBuffers();
+         DrawLines();
+         m_update_ctrl.pending_line_update=false;
+         m_update_ctrl.pending_draw_update=false;
+         break;
+      case TRIGGER_TIME_THRESHOLD:
+      case TRIGGER_CONFIG_CHANGE:
+         CalculateBuffers();
+         DrawLines();
+         break;
+   }
+}
+
+//+------------------------------------------------------------------+
 //| Update trend lines                                               |
 //+------------------------------------------------------------------+
 bool CTrendLine::Update()
@@ -889,19 +991,12 @@ bool CTrendLine::Update()
    if(!IsReady())
       return false;
 
-   // Atualizar fractais
-   if(!UpdateFractals())
-      return true;
-      
-   // Encontrar linhas de tendência
-   FindTrendLines();
-   
-   // Calcular buffers
-   CalculateBuffers();
-   
-   // Desenhar linhas
-   DrawLines();
-   
+   ENUM_UPDATE_TRIGGER trig;
+   if(!ShouldUpdate(trig))
+      return false;
+
+   ConditionalUpdate(trig);
+   m_update_ctrl.last_update = TimeCurrent();
    return true;
 }
 

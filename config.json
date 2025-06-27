@@ -149,6 +149,13 @@
                "min_distance": 5,
                "validate_mtf": false,
                "mtf_timeframe": "D1",
+                 "update_control": {
+                     "min_update_interval": 30,
+                     "fractal_check_interval": 10,
+                     "line_break_threshold": 0.001,
+                     "volatility_threshold": 0.02,
+                     "auto_refresh_enabled": true
+                 },
                "scoring": {
                    "trend_weight": 0.25,
                    "volume_weight": 0.15,

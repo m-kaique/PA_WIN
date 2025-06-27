@@ -69,5 +69,50 @@ struct ScoreWeights
       mtf_weight=0.10;
      }
   };
+// Atualização condicional
+enum ENUM_UPDATE_TRIGGER {
+    TRIGGER_NEW_FRACTAL,
+    TRIGGER_LINE_BROKEN,
+    TRIGGER_TIME_THRESHOLD,
+    TRIGGER_VOLATILITY_SPIKE,
+    TRIGGER_MANUAL_REFRESH,
+    TRIGGER_CONFIG_CHANGE
+};
+
+struct UpdateParams {
+    int    min_update_interval;
+    int    fractal_check_interval;
+    double line_break_threshold;
+    double volatility_threshold;
+    bool   auto_refresh_enabled;
+
+    UpdateParams() {
+        min_update_interval=30;
+        fractal_check_interval=10;
+        line_break_threshold=0.001;
+        volatility_threshold=0.02;
+        auto_refresh_enabled=true;
+    }
+};
+
+struct UpdateControl {
+    datetime          last_update;
+    datetime          last_fractal_time;
+    double            last_price_level;
+    bool              pending_line_update;
+    bool              pending_draw_update;
+    ENUM_UPDATE_TRIGGER last_trigger;
+    UpdateParams      params;
+
+    UpdateControl() {
+        last_update=0;
+        last_fractal_time=0;
+        last_price_level=0.0;
+        pending_line_update=true;
+        pending_draw_update=true;
+        last_trigger=TRIGGER_CONFIG_CHANGE;
+        params=UpdateParams();
+    }
+};
 
 #endif // __TRENDLINE_DEFS_MQH__
