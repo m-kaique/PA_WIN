@@ -127,20 +127,20 @@
             {
                "name": "LTA_LTB",
                "type": "TRENDLINE",
-               "period": 30,
+               "period": 50,
                "left": 5,
                "right": 5,
                "draw_lta": true,
                "draw_ltb": true,
-               "lta_color": "Red",
-               "ltb_color": "Green",
+               "lta_color": "Green",
+               "ltb_color": "Red",
                "lta_style": "SOLID",
                "ltb_style": "SOLID",
                "lta_width": 2,
                "ltb_width": 2,
                "extend_right": true,
                "show_labels": true,
-               "enabled": true
+               "enabled": false
             }
          ]
       },
@@ -151,25 +151,25 @@
             {
                "name": "swing_lines",
                "type": "TRENDLINE",
-               "period": 40,
+               "period": 60,
                "left": 7,
                "right": 7,
                "draw_lta": true,
                "draw_ltb": false,
-               "lta_color": "Magenta",
-               "ltb_color": "Cyan",
+               "lta_color": "Lime",
+               "ltb_color": "Magenta",
                "lta_style": "DASH",
                "ltb_style": "DOT",
                "lta_width": 1,
                "ltb_width": 1,
                "extend_right": true,
-               "show_labels": false,
+               "show_labels": true,
                "enabled": true
             },
             {
                "name": "trend_h1",
                "type": "TRENDLINE",
-               "period": 20,
+               "period": 40,
                "left": 3,
                "right": 3,
                "draw_lta": false,
@@ -182,7 +182,7 @@
                "ltb_width": 2,
                "extend_right": false,
                "show_labels": true,
-               "enabled": true
+               "enabled": false
             }
          ],
          "indicators": [

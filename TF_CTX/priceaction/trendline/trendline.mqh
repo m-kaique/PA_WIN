@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
 //|                                    priceaction/trendline.mqh      |
-//|  TrendLine pattern detection with LTA/LTB drawing                 |
+//|  TrendLine pattern detection with LTA/LTB drawing CORRECTED      |
 //+------------------------------------------------------------------+
 #ifndef __TRENDLINE_MQH__
 #define __TRENDLINE_MQH__
@@ -30,16 +30,7 @@ private:
    bool              m_extend_right;
    bool              m_show_labels;
    
-   // Dados da LTB (Linha de Tendência de Baixa/Suporte)
-   datetime          m_ltb_time1;
-   double            m_ltb_price1;
-   datetime          m_ltb_time2;
-   double            m_ltb_price2;
-   bool              m_ltb_valid;
-   string            m_ltb_line_name;
-   string            m_ltb_label_name;
-   
-   // Dados da LTA (Linha de Tendência de Alta/Resistência)
+   // Dados da LTA (Linha de Tendência de Alta - conecta mínimos ascendentes)
    datetime          m_lta_time1;
    double            m_lta_price1;
    datetime          m_lta_time2;
@@ -48,15 +39,24 @@ private:
    string            m_lta_line_name;
    string            m_lta_label_name;
    
+   // Dados da LTB (Linha de Tendência de Baixa - conecta máximos descendentes)
+   datetime          m_ltb_time1;
+   double            m_ltb_price1;
+   datetime          m_ltb_time2;
+   double            m_ltb_price2;
+   bool              m_ltb_valid;
+   string            m_ltb_line_name;
+   string            m_ltb_label_name;
+   
    bool              m_ready;
    string            m_obj_prefix;
 
    // Métodos privados
    bool              DetectTrendLines();
-   bool              FindLTB(datetime &time1, double &price1, datetime &time2, double &price2);
    bool              FindLTA(datetime &time1, double &price1, datetime &time2, double &price2);
-   bool              IsLocalMinimum(int index);
-   bool              IsLocalMaximum(int index);
+   bool              FindLTB(datetime &time1, double &price1, datetime &time2, double &price2);
+   bool              IsValidSwingLow(int index);
+   bool              IsValidSwingHigh(int index);
    double            CalculateTrendLinePrice(datetime time1, double price1, datetime time2, double price2, datetime target_time);
    void              DrawTrendLines();
    void              DeleteObjects();
@@ -75,20 +75,20 @@ public:
 
    // Implementação da interface base
    virtual bool      Init(string symbol, ENUM_TIMEFRAMES timeframe, int period);
-   virtual double    GetValue(int shift=0);       // Retorna preço da LTB por padrão
+   virtual double    GetValue(int shift=0);       // Retorna preço da LTA por padrão
    virtual bool      CopyValues(int shift, int count, double &buffer[]);
    virtual bool      IsReady();
    virtual bool      Update();
 
    // Métodos específicos da TrendLine
-   double            GetLTBPrice(int shift=0);     // Linha de Tendência de Baixa
    double            GetLTAPrice(int shift=0);     // Linha de Tendência de Alta
-   bool              IsLTBValid();
+   double            GetLTBPrice(int shift=0);     // Linha de Tendência de Baixa
    bool              IsLTAValid();
-   bool              GetLTBPoints(datetime &time1, double &price1, datetime &time2, double &price2);
+   bool              IsLTBValid();
    bool              GetLTAPoints(datetime &time1, double &price1, datetime &time2, double &price2);
-   ENUM_TRENDLINE_DIRECTION GetLTBDirection();
+   bool              GetLTBPoints(datetime &time1, double &price1, datetime &time2, double &price2);
    ENUM_TRENDLINE_DIRECTION GetLTADirection();
+   ENUM_TRENDLINE_DIRECTION GetLTBDirection();
   };
 
 //+------------------------------------------------------------------+
@@ -98,30 +98,21 @@ CTrendLine::CTrendLine()
   {
    m_symbol="";
    m_timeframe=PERIOD_CURRENT;
-   m_period=21;
-   m_left=3;
-   m_right=3;
+   m_period=50; // Período maior para análise mais consistente
+   m_left=5;    // Mais velas para confirmar pivôs
+   m_right=5;
    
    // Configurações padrão de desenho
    m_draw_lta=true;
    m_draw_ltb=true;
-   m_lta_color=clrGreen;
-   m_ltb_color=clrRed;
+   m_lta_color=clrGreen;  // Verde para linha de alta
+   m_ltb_color=clrRed;    // Vermelho para linha de baixa
    m_lta_style=STYLE_SOLID;
    m_ltb_style=STYLE_SOLID;
-   m_lta_width=1;
-   m_ltb_width=1;
+   m_lta_width=2;
+   m_ltb_width=2;
    m_extend_right=true;
    m_show_labels=false;
-   
-   // LTB
-   m_ltb_time1=0;
-   m_ltb_price1=0.0;
-   m_ltb_time2=0;
-   m_ltb_price2=0.0;
-   m_ltb_valid=false;
-   m_ltb_line_name="";
-   m_ltb_label_name="";
    
    // LTA
    m_lta_time1=0;
@@ -131,6 +122,15 @@ CTrendLine::CTrendLine()
    m_lta_valid=false;
    m_lta_line_name="";
    m_lta_label_name="";
+   
+   // LTB
+   m_ltb_time1=0;
+   m_ltb_price1=0.0;
+   m_ltb_time2=0;
+   m_ltb_price2=0.0;
+   m_ltb_valid=false;
+   m_ltb_line_name="";
+   m_ltb_label_name="";
    
    m_ready=false;
    m_obj_prefix="TL_"+IntegerToString(GetTickCount());
@@ -152,9 +152,9 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe,
   {
    m_symbol=symbol;
    m_timeframe=timeframe;
-   m_period=period;
-   m_left=left;
-   m_right=right;
+   m_period=MathMax(period, 20); // Mínimo de 20 para análise consistente
+   m_left=MathMax(left, 3);      // Mínimo de 3 para confirmar pivôs
+   m_right=MathMax(right, 3);
    
    m_ready=false;
    return true;
@@ -168,9 +168,9 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe,
   {
    m_symbol=symbol;
    m_timeframe=timeframe;
-   m_period=config.period;
-   m_left=config.left;
-   m_right=config.right;
+   m_period=MathMax(config.period, 20);
+   m_left=MathMax(config.left, 3);
+   m_right=MathMax(config.right, 3);
    
    // Configurações de desenho
    m_draw_lta=config.draw_lta;
@@ -193,32 +193,15 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe,
 //+------------------------------------------------------------------+
 bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, int period)
   {
-   return Init(symbol, timeframe, period, 3, 3);
+   return Init(symbol, timeframe, period, 5, 5);
   }
 
 //+------------------------------------------------------------------+
-//| Get LTB price for given shift (default return)                  |
+//| Get LTA price for given shift (default return)                  |
 //+------------------------------------------------------------------+
 double CTrendLine::GetValue(int shift)
   {
-   return GetLTBPrice(shift);
-  }
-
-//+------------------------------------------------------------------+
-//| Get LTB price for given shift                                   |
-//+------------------------------------------------------------------+
-double CTrendLine::GetLTBPrice(int shift)
-  {
-   if(!m_ltb_valid)
-      return 0.0;
-      
-   datetime target_time = iTime(m_symbol, m_timeframe, shift);
-   if(target_time == 0)
-      return 0.0;
-      
-   return CalculateTrendLinePrice(m_ltb_time1, m_ltb_price1,
-                                  m_ltb_time2, m_ltb_price2,
-                                  target_time);
+   return GetLTAPrice(shift);
   }
 
 //+------------------------------------------------------------------+
@@ -239,11 +222,28 @@ double CTrendLine::GetLTAPrice(int shift)
   }
 
 //+------------------------------------------------------------------+
-//| Copy LTB values                                                 |
+//| Get LTB price for given shift                                   |
+//+------------------------------------------------------------------+
+double CTrendLine::GetLTBPrice(int shift)
+  {
+   if(!m_ltb_valid)
+      return 0.0;
+      
+   datetime target_time = iTime(m_symbol, m_timeframe, shift);
+   if(target_time == 0)
+      return 0.0;
+      
+   return CalculateTrendLinePrice(m_ltb_time1, m_ltb_price1,
+                                  m_ltb_time2, m_ltb_price2,
+                                  target_time);
+  }
+
+//+------------------------------------------------------------------+
+//| Copy LTA values                                                 |
 //+------------------------------------------------------------------+
 bool CTrendLine::CopyValues(int shift, int count, double &buffer[])
   {
-   if(!m_ltb_valid)
+   if(!m_lta_valid)
       return false;
       
    ArrayResize(buffer, count);
@@ -251,7 +251,7 @@ bool CTrendLine::CopyValues(int shift, int count, double &buffer[])
    
    for(int i = 0; i < count; i++)
      {
-      buffer[i] = GetLTBPrice(shift + i);
+      buffer[i] = GetLTAPrice(shift + i);
      }
    
    return true;
@@ -262,7 +262,7 @@ bool CTrendLine::CopyValues(int shift, int count, double &buffer[])
 //+------------------------------------------------------------------+
 bool CTrendLine::IsReady()
   {
-   return m_ready && (Bars(m_symbol, m_timeframe) >= m_period + m_left + m_right);
+   return m_ready && (Bars(m_symbol, m_timeframe) >= m_period + m_left + m_right + 10);
   }
 
 //+------------------------------------------------------------------+
@@ -272,7 +272,7 @@ bool CTrendLine::Update()
   {
    if(!IsReady())
      {
-      if(Bars(m_symbol, m_timeframe) >= m_period + m_left + m_right)
+      if(Bars(m_symbol, m_timeframe) >= m_period + m_left + m_right + 10)
         {
          m_ready = DetectTrendLines();
          if(m_ready)
@@ -294,199 +294,220 @@ bool CTrendLine::Update()
 //+------------------------------------------------------------------+
 bool CTrendLine::DetectTrendLines()
   {
-   bool ltb_found = false;
    bool lta_found = false;
-   
-   if(m_draw_ltb)
-     {
-      ltb_found = FindLTB(m_ltb_time1, m_ltb_price1, m_ltb_time2, m_ltb_price2);
-      m_ltb_valid = ltb_found;
-     }
+   bool ltb_found = false;
    
    if(m_draw_lta)
      {
       lta_found = FindLTA(m_lta_time1, m_lta_price1, m_lta_time2, m_lta_price2);
       m_lta_valid = lta_found;
+      if(lta_found)
+         Print("LTA encontrada: P1(", TimeToString(m_lta_time1), ", ", m_lta_price1, ") P2(", TimeToString(m_lta_time2), ", ", m_lta_price2, ")");
      }
    
-   return ltb_found || lta_found;
+   if(m_draw_ltb)
+     {
+      ltb_found = FindLTB(m_ltb_time1, m_ltb_price1, m_ltb_time2, m_ltb_price2);
+      m_ltb_valid = ltb_found;
+      if(ltb_found)
+         Print("LTB encontrada: P1(", TimeToString(m_ltb_time1), ", ", m_ltb_price1, ") P2(", TimeToString(m_ltb_time2), ", ", m_ltb_price2, ")");
+     }
+   
+   return lta_found || ltb_found;
   }
 
 //+------------------------------------------------------------------+
-//| Find LTB (connecting ascending lows)                            |
+//| Find LTA (connecting ascending lows)                            |
 //+------------------------------------------------------------------+
-bool CTrendLine::FindLTB(datetime &time1, double &price1, datetime &time2, double &price2)
+bool CTrendLine::FindLTA(datetime &time1, double &price1, datetime &time2, double &price2)
   {
    double lows[];
    datetime times[];
+   int indices[];
    int low_count = 0;
    
-   // Encontrar mínimos locais no período
-   for(int i = m_left; i <= m_period - m_right; i++)
+   // Analisar do candle mais antigo para o mais recente (excluindo os 10 mais recentes)
+   int start_bar = m_period + m_left + m_right;
+   int end_bar = 10; // Excluir os 10 candles mais recentes
+   
+   // Encontrar mínimos válidos (swing lows) no período
+   for(int i = start_bar; i >= end_bar; i--)
      {
-      if(IsLocalMinimum(i))
+      if(IsValidSwingLow(i))
         {
          low_count++;
         }
      }
    
    if(low_count < 2)
+     {
+      Print("LTA: Poucos swing lows encontrados (", low_count, ")");
       return false;
+     }
    
    ArrayResize(lows, low_count);
    ArrayResize(times, low_count);
+   ArrayResize(indices, low_count);
    int index = 0;
    
-   for(int i = m_left; i <= m_period - m_right; i++)
+   // Coletar os swing lows válidos
+   for(int i = start_bar; i >= end_bar; i--)
      {
-      if(IsLocalMinimum(i))
+      if(IsValidSwingLow(i))
         {
          lows[index] = iLow(m_symbol, m_timeframe, i);
          times[index] = iTime(m_symbol, m_timeframe, i);
+         indices[index] = i;
          index++;
         }
      }
    
-   // Encontrar os dois pontos que formam uma linha ascendente
-   // Procurar a melhor linha de tendência de baixa (ascendente)
-   double best_slope = -999999;
+   // Encontrar os dois pontos que formam a melhor linha ascendente
+   // Buscar mínimos crescentes (segundo mínimo > primeiro mínimo)
+   double best_slope = 0;
    int best_p1 = -1, best_p2 = -1;
    
    for(int i = 0; i < low_count - 1; i++)
      {
       for(int j = i + 1; j < low_count; j++)
         {
-         // Calcular inclinação
-         if(times[j] == times[i]) continue;
-         
-         double slope = (lows[j] - lows[i]) / (double)(times[j] - times[i]);
-         
-         // Verificar se é ascendente e se é a melhor encontrada
-         if(slope > 0 && slope > best_slope)
+         // Verificar se é uma linha ascendente (mínimos crescentes)
+         if(lows[j] > lows[i] && times[j] > times[i])
            {
-            best_slope = slope;
-            best_p1 = i;
-            best_p2 = j;
+            // Calcular inclinação
+            double slope = (lows[j] - lows[i]) / (double)(times[j] - times[i]);
+            
+            // Procurar a melhor inclinação positiva
+            if(slope > best_slope)
+              {
+               best_slope = slope;
+               best_p1 = i;
+               best_p2 = j;
+              }
            }
         }
      }
    
    if(best_p1 >= 0 && best_p2 >= 0)
      {
-      // Ordenar por tempo (o mais antigo primeiro)
-      if(times[best_p1] > times[best_p2])
-        {
-         int temp = best_p1;
-         best_p1 = best_p2;
-         best_p2 = temp;
-        }
-      
       time1 = times[best_p1];
       price1 = lows[best_p1];
       time2 = times[best_p2];
       price2 = lows[best_p2];
       
+      Print("LTA: Inclinação = ", best_slope, " Ascendente = ", (price2 > price1));
       return true;
      }
    
+   Print("LTA: Nenhuma linha ascendente válida encontrada");
    return false;
   }
 
 //+------------------------------------------------------------------+
-//| Find LTA (connecting descending highs)                          |
+//| Find LTB (connecting descending highs)                          |
 //+------------------------------------------------------------------+
-bool CTrendLine::FindLTA(datetime &time1, double &price1, datetime &time2, double &price2)
+bool CTrendLine::FindLTB(datetime &time1, double &price1, datetime &time2, double &price2)
   {
    double highs[];
    datetime times[];
+   int indices[];
    int high_count = 0;
    
-   // Encontrar máximos locais no período
-   for(int i = m_left; i <= m_period - m_right; i++)
+   // Analisar do candle mais antigo para o mais recente (excluindo os 10 mais recentes)
+   int start_bar = m_period + m_left + m_right;
+   int end_bar = 10; // Excluir os 10 candles mais recentes
+   
+   // Encontrar máximos válidos (swing highs) no período
+   for(int i = start_bar; i >= end_bar; i--)
      {
-      if(IsLocalMaximum(i))
+      if(IsValidSwingHigh(i))
         {
          high_count++;
         }
      }
    
    if(high_count < 2)
+     {
+      Print("LTB: Poucos swing highs encontrados (", high_count, ")");
       return false;
+     }
    
    ArrayResize(highs, high_count);
    ArrayResize(times, high_count);
+   ArrayResize(indices, high_count);
    int index = 0;
    
-   for(int i = m_left; i <= m_period - m_right; i++)
+   // Coletar os swing highs válidos
+   for(int i = start_bar; i >= end_bar; i--)
      {
-      if(IsLocalMaximum(i))
+      if(IsValidSwingHigh(i))
         {
          highs[index] = iHigh(m_symbol, m_timeframe, i);
          times[index] = iTime(m_symbol, m_timeframe, i);
+         indices[index] = i;
          index++;
         }
      }
    
-   // Encontrar os dois pontos que formam uma linha descendente
-   // Procurar a melhor linha de tendência de alta (descendente)
-   double best_slope = 999999;
+   // Encontrar os dois pontos que formam a melhor linha descendente
+   // Buscar máximos decrescentes (segundo máximo < primeiro máximo)
+   double best_slope = 0;
    int best_p1 = -1, best_p2 = -1;
    
    for(int i = 0; i < high_count - 1; i++)
      {
       for(int j = i + 1; j < high_count; j++)
         {
-         // Calcular inclinação
-         if(times[j] == times[i]) continue;
-         
-         double slope = (highs[j] - highs[i]) / (double)(times[j] - times[i]);
-         
-         // Verificar se é descendente e se é a melhor encontrada
-         if(slope < 0 && slope < best_slope)
+         // Verificar se é uma linha descendente (máximos decrescentes)
+         if(highs[j] < highs[i] && times[j] > times[i])
            {
-            best_slope = slope;
-            best_p1 = i;
-            best_p2 = j;
+            // Calcular inclinação (será negativa)
+            double slope = (highs[j] - highs[i]) / (double)(times[j] - times[i]);
+            
+            // Procurar a melhor inclinação negativa (menor valor)
+            if(slope < best_slope)
+              {
+               best_slope = slope;
+               best_p1 = i;
+               best_p2 = j;
+              }
            }
         }
      }
    
    if(best_p1 >= 0 && best_p2 >= 0)
      {
-      // Ordenar por tempo (o mais antigo primeiro)
-      if(times[best_p1] > times[best_p2])
-        {
-         int temp = best_p1;
-         best_p1 = best_p2;
-         best_p2 = temp;
-        }
-      
       time1 = times[best_p1];
       price1 = highs[best_p1];
       time2 = times[best_p2];
       price2 = highs[best_p2];
       
+      Print("LTB: Inclinação = ", best_slope, " Descendente = ", (price2 < price1));
       return true;
      }
    
+   Print("LTB: Nenhuma linha descendente válida encontrada");
    return false;
   }
 
 //+------------------------------------------------------------------+
-//| Check if bar at index is a local minimum                        |
+//| Check if bar at index is a valid swing low                      |
 //+------------------------------------------------------------------+
-bool CTrendLine::IsLocalMinimum(int index)
+bool CTrendLine::IsValidSwingLow(int index)
   {
+   if(index < m_right || index > Bars(m_symbol, m_timeframe) - m_left - 1)
+      return false;
+      
    double center_low = iLow(m_symbol, m_timeframe, index);
    
-   // Verificar barras à esquerda
+   // Verificar barras à esquerda (mais antigas)
    for(int i = index + 1; i <= index + m_left; i++)
      {
       if(iLow(m_symbol, m_timeframe, i) <= center_low)
          return false;
      }
    
-   // Verificar barras à direita
+   // Verificar barras à direita (mais recentes)
    for(int i = index - 1; i >= index - m_right; i--)
      {
       if(iLow(m_symbol, m_timeframe, i) <= center_low)
@@ -497,20 +518,23 @@ bool CTrendLine::IsLocalMinimum(int index)
   }
 
 //+------------------------------------------------------------------+
-//| Check if bar at index is a local maximum                        |
+//| Check if bar at index is a valid swing high                     |
 //+------------------------------------------------------------------+
-bool CTrendLine::IsLocalMaximum(int index)
+bool CTrendLine::IsValidSwingHigh(int index)
   {
+   if(index < m_right || index > Bars(m_symbol, m_timeframe) - m_left - 1)
+      return false;
+      
    double center_high = iHigh(m_symbol, m_timeframe, index);
    
-   // Verificar barras à esquerda
+   // Verificar barras à esquerda (mais antigas)
    for(int i = index + 1; i <= index + m_left; i++)
      {
       if(iHigh(m_symbol, m_timeframe, i) >= center_high)
          return false;
      }
    
-   // Verificar barras à direita
+   // Verificar barras à direita (mais recentes)
    for(int i = index - 1; i >= index - m_right; i--)
      {
       if(iHigh(m_symbol, m_timeframe, i) >= center_high)
@@ -542,44 +566,7 @@ void CTrendLine::DrawTrendLines()
    DeleteObjects(); // Limpar objetos anteriores
    
    datetime current_time = TimeCurrent();
-   datetime future_time = current_time + (24 * 3600); // 1 dia no futuro
-   
-   // Desenhar LTB se válida e habilitada
-   if(m_ltb_valid && m_draw_ltb)
-     {
-      m_ltb_line_name = m_obj_prefix + "_LTB";
-      
-      datetime end_time = m_extend_right ? future_time : m_ltb_time2;
-      double end_price = m_extend_right ? 
-                        CalculateTrendLinePrice(m_ltb_time1, m_ltb_price1, m_ltb_time2, m_ltb_price2, end_time) :
-                        m_ltb_price2;
-      
-      if(ObjectCreate(0, m_ltb_line_name, OBJ_TREND, 0, m_ltb_time1, m_ltb_price1, end_time, end_price))
-        {
-         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_COLOR, m_ltb_color);
-         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_STYLE, m_ltb_style);
-         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_WIDTH, m_ltb_width);
-         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_RAY_RIGHT, m_extend_right);
-         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_RAY_LEFT, false);
-         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_SELECTABLE, true);
-         
-         // Adicionar rótulo se habilitado
-         if(m_show_labels)
-           {
-            m_ltb_label_name = m_obj_prefix + "_LTB_Label";
-            datetime label_time = m_ltb_time2 + (m_ltb_time2 - m_ltb_time1) / 4;
-            double label_price = CalculateTrendLinePrice(m_ltb_time1, m_ltb_price1, m_ltb_time2, m_ltb_price2, label_time);
-            
-            if(ObjectCreate(0, m_ltb_label_name, OBJ_TEXT, 0, label_time, label_price))
-              {
-               ObjectSetString(0, m_ltb_label_name, OBJPROP_TEXT, "LTB");
-               ObjectSetInteger(0, m_ltb_label_name, OBJPROP_COLOR, m_ltb_color);
-               ObjectSetInteger(0, m_ltb_label_name, OBJPROP_FONTSIZE, 8);
-               ObjectSetString(0, m_ltb_label_name, OBJPROP_FONT, "Arial");
-              }
-           }
-        }
-     }
+   datetime future_time = current_time + (24 * 3600 * 7); // 1 semana no futuro
    
    // Desenhar LTA se válida e habilitada
    if(m_lta_valid && m_draw_lta)
@@ -611,10 +598,49 @@ void CTrendLine::DrawTrendLines()
               {
                ObjectSetString(0, m_lta_label_name, OBJPROP_TEXT, "LTA");
                ObjectSetInteger(0, m_lta_label_name, OBJPROP_COLOR, m_lta_color);
-               ObjectSetInteger(0, m_lta_label_name, OBJPROP_FONTSIZE, 8);
-               ObjectSetString(0, m_lta_label_name, OBJPROP_FONT, "Arial");
+               ObjectSetInteger(0, m_lta_label_name, OBJPROP_FONTSIZE, 10);
+               ObjectSetString(0, m_lta_label_name, OBJPROP_FONT, "Arial Bold");
               }
            }
+         Print("LTA desenhada com sucesso");
+        }
+     }
+   
+   // Desenhar LTB se válida e habilitada
+   if(m_ltb_valid && m_draw_ltb)
+     {
+      m_ltb_line_name = m_obj_prefix + "_LTB";
+      
+      datetime end_time = m_extend_right ? future_time : m_ltb_time2;
+      double end_price = m_extend_right ? 
+                        CalculateTrendLinePrice(m_ltb_time1, m_ltb_price1, m_ltb_time2, m_ltb_price2, end_time) :
+                        m_ltb_price2;
+      
+      if(ObjectCreate(0, m_ltb_line_name, OBJ_TREND, 0, m_ltb_time1, m_ltb_price1, end_time, end_price))
+        {
+         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_COLOR, m_ltb_color);
+         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_STYLE, m_ltb_style);
+         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_WIDTH, m_ltb_width);
+         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_RAY_RIGHT, m_extend_right);
+         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_RAY_LEFT, false);
+         ObjectSetInteger(0, m_ltb_line_name, OBJPROP_SELECTABLE, true);
+         
+         // Adicionar rótulo se habilitado
+         if(m_show_labels)
+           {
+            m_ltb_label_name = m_obj_prefix + "_LTB_Label";
+            datetime label_time = m_ltb_time2 + (m_ltb_time2 - m_ltb_time1) / 4;
+            double label_price = CalculateTrendLinePrice(m_ltb_time1, m_ltb_price1, m_ltb_time2, m_ltb_price2, label_time);
+            
+            if(ObjectCreate(0, m_ltb_label_name, OBJ_TEXT, 0, label_time, label_price))
+              {
+               ObjectSetString(0, m_ltb_label_name, OBJPROP_TEXT, "LTB");
+               ObjectSetInteger(0, m_ltb_label_name, OBJPROP_COLOR, m_ltb_color);
+               ObjectSetInteger(0, m_ltb_label_name, OBJPROP_FONTSIZE, 10);
+               ObjectSetString(0, m_ltb_label_name, OBJPROP_FONT, "Arial Bold");
+              }
+           }
+         Print("LTB desenhada com sucesso");
         }
      }
   }
@@ -624,18 +650,6 @@ void CTrendLine::DrawTrendLines()
 //+------------------------------------------------------------------+
 void CTrendLine::DeleteObjects()
   {
-   if(StringLen(m_ltb_line_name) > 0)
-     {
-      ObjectDelete(0, m_ltb_line_name);
-      m_ltb_line_name = "";
-     }
-   
-   if(StringLen(m_ltb_label_name) > 0)
-     {
-      ObjectDelete(0, m_ltb_label_name);
-      m_ltb_label_name = "";
-     }
-   
    if(StringLen(m_lta_line_name) > 0)
      {
       ObjectDelete(0, m_lta_line_name);
@@ -646,6 +660,18 @@ void CTrendLine::DeleteObjects()
      {
       ObjectDelete(0, m_lta_label_name);
       m_lta_label_name = "";
+     }
+   
+   if(StringLen(m_ltb_line_name) > 0)
+     {
+      ObjectDelete(0, m_ltb_line_name);
+      m_ltb_line_name = "";
+     }
+   
+   if(StringLen(m_ltb_label_name) > 0)
+     {
+      ObjectDelete(0, m_ltb_label_name);
+      m_ltb_label_name = "";
      }
   }
 
@@ -679,14 +705,6 @@ bool CTrendLine::IsDescendingTrend(double price1, double price2)
   }
 
 //+------------------------------------------------------------------+
-//| Get status of LTB                                              |
-//+------------------------------------------------------------------+
-bool CTrendLine::IsLTBValid()
-  {
-   return m_ltb_valid;
-  }
-
-//+------------------------------------------------------------------+
 //| Get status of LTA                                              |
 //+------------------------------------------------------------------+
 bool CTrendLine::IsLTAValid()
@@ -695,20 +713,11 @@ bool CTrendLine::IsLTAValid()
   }
 
 //+------------------------------------------------------------------+
-//| Get LTB points                                                 |
+//| Get status of LTB                                              |
 //+------------------------------------------------------------------+
-bool CTrendLine::GetLTBPoints(datetime &time1, double &price1,
-                              datetime &time2, double &price2)
+bool CTrendLine::IsLTBValid()
   {
-   if(!m_ltb_valid)
-      return false;
-   
-   time1 = m_ltb_time1;
-   price1 = m_ltb_price1;
-   time2 = m_ltb_time2;
-   price2 = m_ltb_price2;
-   
-   return true;
+   return m_ltb_valid;
   }
 
 //+------------------------------------------------------------------+
@@ -729,14 +738,20 @@ bool CTrendLine::GetLTAPoints(datetime &time1, double &price1,
   }
 
 //+------------------------------------------------------------------+
-//| Get LTB direction                                              |
+//| Get LTB points                                                 |
 //+------------------------------------------------------------------+
-ENUM_TRENDLINE_DIRECTION CTrendLine::GetLTBDirection()
+bool CTrendLine::GetLTBPoints(datetime &time1, double &price1,
+                              datetime &time2, double &price2)
   {
    if(!m_ltb_valid)
-      return TRENDLINE_HORIZONTAL;
+      return false;
    
-   return GetTrendDirection(m_ltb_price1, m_ltb_price2);
+   time1 = m_ltb_time1;
+   price1 = m_ltb_price1;
+   time2 = m_ltb_time2;
+   price2 = m_ltb_price2;
+   
+   return true;
   }
 
 //+------------------------------------------------------------------+
@@ -748,6 +763,17 @@ ENUM_TRENDLINE_DIRECTION CTrendLine::GetLTADirection()
       return TRENDLINE_HORIZONTAL;
    
    return GetTrendDirection(m_lta_price1, m_lta_price2);
+  }
+
+//+------------------------------------------------------------------+
+//| Get LTB direction                                              |
+//+------------------------------------------------------------------+
+ENUM_TRENDLINE_DIRECTION CTrendLine::GetLTBDirection()
+  {
+   if(!m_ltb_valid)
+      return TRENDLINE_HORIZONTAL;
+   
+   return GetTrendDirection(m_ltb_price1, m_ltb_price2);
   }
 
 #endif // __TRENDLINE_MQH__

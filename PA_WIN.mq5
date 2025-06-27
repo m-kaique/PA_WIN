@@ -143,36 +143,35 @@ void ExecuteOnNewBar()
       }
 
       Print("=== Contexto D1 - Price Action LTA/LTB ===");
-      // Acessar Price Action - LTA/LTB
-      double ltb_price = D1_ctx.GetPriceActionValue("LTA_LTB", 0);
-      Print("LTB (Linha de Tendência de Baixa) shift 0: ", ltb_price);
+      // Acessar Price Action - LTA/LTB corrigido
+      double lta_price = D1_ctx.GetPriceActionValue("LTA_LTB", 0);
+      Print("LTA (Linha de Tendência de Alta - mínimos ascendentes) shift 0: ", lta_price);
       
-      // Para acessar métodos específicos da TrendLine, seria necessário cast
-      // Mas vamos demonstrar usando os métodos genéricos disponíveis
-      if (ltb_price > 0)
+      if (lta_price > 0)
       {
-         Print("Linha de Tendência de Baixa detectada em: ", ltb_price);
+         Print("Linha de Tendência de Alta detectada em: ", lta_price);
+         Print("*** LTA conecta MÍNIMOS ASCENDENTES e aponta para CIMA ***");
          
-         // Verificar preços históricos da LTB
+         // Verificar preços históricos da LTA
          for(int j = 0; j < 3; j++)
          {
-            double ltb_hist = D1_ctx.GetPriceActionValue("LTA_LTB", j);
-            Print("LTB shift ", j, ": ", ltb_hist);
+            double lta_hist = D1_ctx.GetPriceActionValue("LTA_LTB", j);
+            Print("LTA shift ", j, ": ", lta_hist);
          }
       }
       else
       {
-         Print("Nenhuma Linha de Tendência de Baixa válida encontrada");
+         Print("Nenhuma Linha de Tendência de Alta válida encontrada");
       }
       
-      // Copiar valores da LTB para análise
-      double ltb_buffer[];
-      if(D1_ctx.CopyPriceActionValues("LTA_LTB", 0, 5, ltb_buffer))
+      // Copiar valores da LTA para análise
+      double lta_buffer[];
+      if(D1_ctx.CopyPriceActionValues("LTA_LTB", 0, 5, lta_buffer))
       {
-         Print("=== Valores LTB copiados ===");
-         for(int k = 0; k < ArraySize(ltb_buffer); k++)
+         Print("=== Valores LTA copiados ===");
+         for(int k = 0; k < ArraySize(lta_buffer); k++)
          {
-            Print("LTB[", k, "] = ", ltb_buffer[k]);
+            Print("LTA[", k, "] = ", lta_buffer[k]);
          }
       }
    }
@@ -190,28 +189,29 @@ void ExecuteOnNewBar()
       Print("=== Contexto H4 - Price Action ===");
       
       // Verificar múltiplas configurações de TrendLine no H4
-      double swing_ltb = H4_ctx.GetPriceActionValue("swing_lines", 0);
-      if (swing_ltb > 0)
+      double swing_lta = H4_ctx.GetPriceActionValue("swing_lines", 0);
+      if (swing_lta > 0)
       {
-         Print("H4 Swing Lines LTB: ", swing_ltb);
+         Print("H4 Swing Lines LTA (mínimos ascendentes): ", swing_lta);
       }
       
       double trend_ltb = H4_ctx.GetPriceActionValue("trend_h1", 0);
       if (trend_ltb > 0)
       {
-         Print("H4 Trend H1 LTB: ", trend_ltb);
+         Print("H4 Trend H1 LTB (máximos descendentes): ", trend_ltb);
       }
       
-      // Demonstrar análise de tendência
-      if(swing_ltb > 0 && trend_ltb > 0)
+      // Demonstrar análise de tendência corrigida
+      if(swing_lta > 0 && trend_ltb > 0)
       {
-         if(swing_ltb < trend_ltb)
+         double current_price = iClose(configured_symbol, PERIOD_H4, 0);
+         if(current_price > swing_lta)
          {
-            Print("ANÁLISE: LTB de Swing está abaixo da LTB de Trend - possível suporte mais forte");
+            Print("ANÁLISE: Preço acima da LTA (", swing_lta, ") - tendência de alta confirmada");
          }
-         else
+         if(current_price < trend_ltb)
          {
-            Print("ANÁLISE: LTB de Trend está abaixo da LTB de Swing - verificar nível de suporte");
+            Print("ANÁLISE: Preço abaixo da LTB (", trend_ltb, ") - pressão de baixa confirmada");
          }
       }
    }
