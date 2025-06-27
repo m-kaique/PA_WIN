@@ -345,6 +345,10 @@ bool CConfigManager::CreateContexts()
                 continue;
             }
 
+            // Após a inicialização dos módulos, execute uma atualização
+            // inicial para que indicadores e PriceAction fiquem prontos
+            ctx.Update();
+
             // Adicionar aos arrays
             string key = CreateContextKey(symbol, tf);
             ArrayResize(m_contexts, ArraySize(m_contexts) + 1);
