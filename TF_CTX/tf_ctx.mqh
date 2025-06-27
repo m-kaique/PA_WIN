@@ -6,12 +6,16 @@
 #property link "https://www.mql5.com"
 #property version "2.00"
 
+// Registro de Indicadores
 #include "indicators/ma/moving_averages.mqh"
 #include "indicators/stochastic/stochastic.mqh"
 #include "indicators/volume/volume.mqh"
 #include "indicators/vwap/vwap.mqh"
 #include "indicators/bollinger/bollinger.mqh"
 #include "indicators/fibonacci/fibonacci.mqh"
+
+// Registro de Price Action
+#include "priceAction/trend_lines/trend_lines.mqh"
 
 #include "config_types.mqh"
 
@@ -25,6 +29,20 @@ enum ENUM_INDICATOR_TYPE
   INDICATOR_TYPE_FIBO,
   INDICATOR_TYPE_UNKNOWN
 };
+
+enum ENUM_PRICE_ACTION_TYPE
+{
+  PA_TREND_LINE,
+  PA_TYPE_UNKNOWN
+};
+
+ENUM_PRICE_ACTION_TYPE StringToPriceActionType(string type)
+{
+  if (type == "TRENDLINE")
+    return PA_TREND_LINE;
+  return PA_TYPE_UNKNOWN;
+}
+
 
 ENUM_INDICATOR_TYPE StringToIndicatorType(string type)
 {

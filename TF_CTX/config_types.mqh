@@ -7,6 +7,8 @@
 #define __CONFIG_TYPES_MQH__
 
 #include "indicators/indicators_types.mqh"
+#include "priceAction/price_action_types.mqh"
+
 //--- Timeframe configuration
 
 struct STimeframeConfig
