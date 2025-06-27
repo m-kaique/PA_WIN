@@ -196,6 +196,7 @@ public:
   int  min_distance;             // distância mínima entre fractais
   bool validate_mtf;             // validar com timeframe superior
   ENUM_TIMEFRAMES mtf_timeframe; // timeframe para validação
+  ScoreWeights    weights;       // pesos para o algoritmo de scoring
   
   CTrendLineConfig()
   {
@@ -217,6 +218,7 @@ public:
     min_distance = 5;
     validate_mtf = false;
     mtf_timeframe = PERIOD_H1;
+    weights = ScoreWeights();
   }
 };
 
