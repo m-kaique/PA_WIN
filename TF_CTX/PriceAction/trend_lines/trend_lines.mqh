@@ -112,6 +112,12 @@ public:
                        m_right = config.right;
                        return Init(symbol,timeframe,config.period);
                       }
+  // Implementation of the generic configuration interface
+  bool            Init(string symbol, ENUM_TIMEFRAMES timeframe, CPriceActionConfig &config)
+                      {
+                       CTrendLinesConfig *cfg=(CTrendLinesConfig*)&config;
+                       return Init(symbol,timeframe,*cfg);
+                      }
   bool            Update()
                       {
                        int total=Bars(m_symbol,m_timeframe);

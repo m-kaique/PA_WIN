@@ -10,11 +10,10 @@ class CPriceActionBase
   public:
    // Initialize with basic parameters
    virtual bool   Init(string symbol, ENUM_TIMEFRAMES timeframe, int period)=0;
-   // Optional initialization with configuration structure. By default it simply
-   // calls the basic Init() using the period from the configuration object.
+   // Optional initialization with configuration structure. Each derived
+   // module decides how to interpret the configuration object.
    virtual bool   Init(string symbol, ENUM_TIMEFRAMES timeframe,
-                       CPriceActionConfig &config)
-                       { return Init(symbol,timeframe,config.period); }
+                       CPriceActionConfig &config)=0;
 
    // Default update behaves like the indicator base - subclasses can override
    virtual bool   Update() { return IsReady(); }
