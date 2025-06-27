@@ -435,16 +435,9 @@ void CTrendLine::FindTrendLines()
    m_ltb_valid = false;
 
    // ----- Procurar LTA -----
+   // Usar apenas fractais confirmados para evitar linhas instáveis
    SFractalPoint lows_all[];
    ArrayCopy(lows_all,m_low_cache.confirmed_points);
-   int add=ArraySize(m_low_cache.candidate_points);
-   if(add>0)
-   {
-      int sz=ArraySize(lows_all);
-      ArrayResize(lows_all,sz+add);
-      for(int k=0;k<add;k++)
-         lows_all[sz+k]=m_low_cache.candidate_points[k];
-   }
 
    if(m_draw_lta && ArraySize(lows_all) >= 2)
    {
@@ -489,15 +482,8 @@ void CTrendLine::FindTrendLines()
 
    // ----- Procurar LTB -----
    SFractalPoint highs_all[];
+   // Apenas fractais confirmados para estabilidade
    ArrayCopy(highs_all,m_high_cache.confirmed_points);
-   add=ArraySize(m_high_cache.candidate_points);
-   if(add>0)
-   {
-      int sz=ArraySize(highs_all);
-      ArrayResize(highs_all,sz+add);
-      for(int k=0;k<add;k++)
-         highs_all[sz+k]=m_high_cache.candidate_points[k];
-   }
 
    if(m_draw_ltb && ArraySize(highs_all) >= 2)
    {
