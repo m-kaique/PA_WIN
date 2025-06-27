@@ -70,8 +70,6 @@ public:
 
    bool              Init(string symbol, ENUM_TIMEFRAMES timeframe,
                          int period, int left, int right);
-   bool              Init(string symbol, ENUM_TIMEFRAMES timeframe,
-                         CTrendLineConfig &config);
 
    // Implementação da interface base
    virtual bool      Init(string symbol, ENUM_TIMEFRAMES timeframe, int period);
@@ -151,38 +149,11 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                       int period, int left, int right)
   {
    m_symbol=symbol;
-   m_timeframe=timeframe;
-   m_period=MathMax(period, 20); // Mínimo de 20 para análise consistente
+  m_timeframe=timeframe;
+   m_obj_prefix="TL_"+symbol+"_"+EnumToString(timeframe)+"_"+IntegerToString(GetTickCount());
+  m_period=MathMax(period, 20); // Mínimo de 20 para análise consistente
    m_left=MathMax(left, 3);      // Mínimo de 3 para confirmar pivôs
    m_right=MathMax(right, 3);
-   
-   m_ready=false;
-   return true;
-  }
-
-//+------------------------------------------------------------------+
-//| Init from configuration structure                                |
-//+------------------------------------------------------------------+
-bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe,
-                      CTrendLineConfig &config)
-  {
-   m_symbol=symbol;
-   m_timeframe=timeframe;
-   m_period=MathMax(config.period, 20);
-   m_left=MathMax(config.left, 3);
-   m_right=MathMax(config.right, 3);
-   
-   // Configurações de desenho
-   m_draw_lta=config.draw_lta;
-   m_draw_ltb=config.draw_ltb;
-   m_lta_color=config.lta_color;
-   m_ltb_color=config.ltb_color;
-   m_lta_style=config.lta_style;
-   m_ltb_style=config.ltb_style;
-   m_lta_width=config.lta_width;
-   m_ltb_width=config.ltb_width;
-   m_extend_right=config.extend_right;
-   m_show_labels=config.show_labels;
    
    m_ready=false;
    return true;
@@ -277,6 +248,8 @@ bool CTrendLine::Update()
          m_ready = DetectTrendLines();
          if(m_ready)
             DrawTrendLines();
+         else
+            DeleteObjects();
         }
       return m_ready;
      }
@@ -285,6 +258,8 @@ bool CTrendLine::Update()
    bool result = DetectTrendLines();
    if(result)
       DrawTrendLines();
+   else
+      DeleteObjects();
    
    return result;
   }
@@ -321,10 +296,22 @@ bool CTrendLine::DetectTrendLines()
 //+------------------------------------------------------------------+
 bool CTrendLine::FindLTA(datetime &time1, double &price1, datetime &time2, double &price2)
   {
+   double lows_buf[];
+   datetime times_buf[];
    double lows[];
    datetime times[];
    int indices[];
    int low_count = 0;
+
+   int bars_to_copy = m_period + m_left + m_right + 1;
+   ArrayResize(lows_buf, bars_to_copy);
+   ArrayResize(times_buf, bars_to_copy);
+   ArraySetAsSeries(lows_buf, true);
+   ArraySetAsSeries(times_buf, true);
+   if(CopyLow(m_symbol, m_timeframe, 0, bars_to_copy, lows_buf) <= 0)
+      return false;
+   if(CopyTime(m_symbol, m_timeframe, 0, bars_to_copy, times_buf) <= 0)
+      return false;
    
    // Analisar do candle mais antigo para o mais recente (excluindo os 10 mais recentes)
    int start_bar = m_period + m_left + m_right;
@@ -355,8 +342,8 @@ bool CTrendLine::FindLTA(datetime &time1, double &price1, datetime &time2, doubl
      {
       if(IsValidSwingLow(i))
         {
-         lows[index] = iLow(m_symbol, m_timeframe, i);
-         times[index] = iTime(m_symbol, m_timeframe, i);
+         lows[index] = lows_buf[i];
+         times[index] = times_buf[i];
          indices[index] = i;
          index++;
         }
@@ -408,10 +395,22 @@ bool CTrendLine::FindLTA(datetime &time1, double &price1, datetime &time2, doubl
 //+------------------------------------------------------------------+
 bool CTrendLine::FindLTB(datetime &time1, double &price1, datetime &time2, double &price2)
   {
+   double highs_buf[];
+   datetime times_buf[];
    double highs[];
    datetime times[];
    int indices[];
    int high_count = 0;
+
+   int bars_to_copy = m_period + m_left + m_right + 1;
+   ArrayResize(highs_buf, bars_to_copy);
+   ArrayResize(times_buf, bars_to_copy);
+   ArraySetAsSeries(highs_buf, true);
+   ArraySetAsSeries(times_buf, true);
+   if(CopyHigh(m_symbol, m_timeframe, 0, bars_to_copy, highs_buf) <= 0)
+      return false;
+   if(CopyTime(m_symbol, m_timeframe, 0, bars_to_copy, times_buf) <= 0)
+      return false;
    
    // Analisar do candle mais antigo para o mais recente (excluindo os 10 mais recentes)
    int start_bar = m_period + m_left + m_right;
@@ -442,8 +441,8 @@ bool CTrendLine::FindLTB(datetime &time1, double &price1, datetime &time2, doubl
      {
       if(IsValidSwingHigh(i))
         {
-         highs[index] = iHigh(m_symbol, m_timeframe, i);
-         times[index] = iTime(m_symbol, m_timeframe, i);
+         highs[index] = highs_buf[i];
+         times[index] = times_buf[i];
          indices[index] = i;
          index++;
         }
@@ -565,8 +564,8 @@ void CTrendLine::DrawTrendLines()
   {
    DeleteObjects(); // Limpar objetos anteriores
    
-   datetime current_time = TimeCurrent();
-   datetime future_time = current_time + (24 * 3600 * 7); // 1 semana no futuro
+   datetime current_time = iTime(m_symbol, m_timeframe, 0);
+   datetime future_time = current_time + PeriodSeconds(m_timeframe) * 50; // 50 barras no futuro
    
    // Desenhar LTA se válida e habilitada
    if(m_lta_valid && m_draw_lta)
