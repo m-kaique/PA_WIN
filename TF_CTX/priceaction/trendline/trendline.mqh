@@ -30,6 +30,23 @@ struct TrendLineState
    TrendLineState() : valid(false), last_confirmation_time(0), stability_count(0) {}
 };
 
+struct FractalCache
+{
+   datetime       last_update_time;
+   int            confirmation_bars;
+   SFractalPoint  confirmed_points[];
+   SFractalPoint  candidate_points[];
+   FractalCache() : last_update_time(0), confirmation_bars(2) {}
+};
+
+struct LineVersion
+{
+   TrendLineState confirmed;
+   TrendLineState candidate;
+   int            stability_threshold;
+   LineVersion() : stability_threshold(2) {}
+};
+
 class CTrendLine : public CPriceActionBase
 {
 private:
@@ -72,11 +89,18 @@ private:
    SFractalPoint   m_lta_point1, m_lta_point2;
    SFractalPoint   m_ltb_point1, m_ltb_point2;
    TrendLineState  m_lta_state;
-   TrendLineState  m_ltb_state;
-   int             m_stability_bars;
-   int             m_min_distance;
-   bool            m_validate_mtf;
-   ENUM_TIMEFRAMES m_mtf_timeframe;
+  TrendLineState  m_ltb_state;
+  int             m_stability_bars;
+  int             m_confirm_bars;
+  int             m_min_distance;
+  bool            m_validate_mtf;
+  ENUM_TIMEFRAMES m_mtf_timeframe;
+
+  FractalCache    m_low_cache;
+  FractalCache    m_high_cache;
+  LineVersion     m_lta_version;
+  LineVersion     m_ltb_version;
+  bool            m_need_redraw;
    
    // Métodos privados
    bool            CreateFractalsHandle();
@@ -132,6 +156,10 @@ CTrendLine::CTrendLine()
    ArrayResize(m_ltb_buffer, 0);
    ArrayResize(m_lows, 0);
    ArrayResize(m_highs, 0);
+   ArrayResize(m_low_cache.confirmed_points,0);
+   ArrayResize(m_low_cache.candidate_points,0);
+   ArrayResize(m_high_cache.confirmed_points,0);
+   ArrayResize(m_high_cache.candidate_points,0);
    
    m_lta_line_name = "";
    m_ltb_line_name = "";
@@ -142,9 +170,16 @@ CTrendLine::CTrendLine()
    m_ltb_valid = false;
 
    m_stability_bars = 2;
+   m_confirm_bars = 2;
    m_min_distance = 5;
    m_validate_mtf = false;
    m_mtf_timeframe = PERIOD_H1;
+   m_need_redraw = true;
+
+   m_low_cache.confirmation_bars = m_confirm_bars;
+   m_high_cache.confirmation_bars = m_confirm_bars;
+   m_lta_version.stability_threshold = m_stability_bars;
+   m_ltb_version.stability_threshold = m_stability_bars;
 }
 
 //+------------------------------------------------------------------+
@@ -158,6 +193,10 @@ CTrendLine::~CTrendLine()
    ArrayFree(m_ltb_buffer);
    ArrayFree(m_lows);
    ArrayFree(m_highs);
+   ArrayFree(m_low_cache.confirmed_points);
+   ArrayFree(m_low_cache.candidate_points);
+   ArrayFree(m_high_cache.confirmed_points);
+   ArrayFree(m_high_cache.candidate_points);
 }
 
 //+------------------------------------------------------------------+
@@ -180,21 +219,26 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
    m_lta_width = config.lta_width;
    m_ltb_width = config.ltb_width;
    m_extend_right = config.extend_right;
-   m_show_labels = config.show_labels;
-   m_stability_bars = config.stability_bars;
-   m_min_distance = config.min_distance;
-   m_validate_mtf = config.validate_mtf;
-   m_mtf_timeframe = config.mtf_timeframe;
+  m_show_labels = config.show_labels;
+  m_stability_bars = config.stability_bars;
+   m_confirm_bars = config.confirm_bars;
+  m_min_distance = config.min_distance;
+  m_validate_mtf = config.validate_mtf;
+  m_mtf_timeframe = config.mtf_timeframe;
    
    // Criar nomes únicos para objetos
    string suffix = "_" + m_symbol + "_" + EnumToString(m_timeframe) + "_" + IntegerToString(GetTickCount());
    m_lta_line_name = "LTA_Line" + suffix;
    m_ltb_line_name = "LTB_Line" + suffix;
    m_lta_label_name = "LTA_Label" + suffix;
-   m_ltb_label_name = "LTB_Label" + suffix;
-   
-   ReleaseFractalsHandle();
-   return CreateFractalsHandle();
+  m_ltb_label_name = "LTB_Label" + suffix;
+
+  m_low_cache.confirmation_bars = m_confirm_bars;
+  m_high_cache.confirmation_bars = m_confirm_bars;
+  m_lta_version.stability_threshold = m_stability_bars;
+  m_ltb_version.stability_threshold = m_stability_bars;
+  ReleaseFractalsHandle();
+  return CreateFractalsHandle();
 }
 
 //+------------------------------------------------------------------+
@@ -242,7 +286,14 @@ bool CTrendLine::UpdateFractals()
 {
    if(m_fractals_handle == INVALID_HANDLE)
       return false;
-      
+
+   datetime cur_time=iTime(m_symbol,m_timeframe,0);
+   if(m_low_cache.last_update_time==cur_time)
+      return false;
+
+   m_low_cache.last_update_time=cur_time;
+   m_high_cache.last_update_time=cur_time;
+
    double upper_fractals[];
    double lower_fractals[];
    
@@ -258,42 +309,54 @@ bool CTrendLine::UpdateFractals()
       return false;
    }
    
-   // Limpar arrays
-   ArrayResize(m_highs, 0);
-   ArrayResize(m_lows, 0);
-   
-   // Extrair fractais válidos
-   for(int i = 0; i < bars_to_copy; i++)
+   // Limpar caches
+   ArrayResize(m_high_cache.candidate_points,0);
+   ArrayResize(m_low_cache.candidate_points,0);
+   ArrayResize(m_high_cache.confirmed_points,0);
+   ArrayResize(m_low_cache.confirmed_points,0);
+
+   // Extrair fractais válidos com confirmação
+   for(int i=0;i<bars_to_copy;i++)
    {
-      // Fractal superior (máximo)
-      if(upper_fractals[i] != EMPTY_VALUE && upper_fractals[i] > 0)
+      if(upper_fractals[i]!=EMPTY_VALUE && upper_fractals[i]>0)
       {
-         SFractalPoint point;
-         point.price = upper_fractals[i];
-         point.bar_index = i;
-         point.time = iTime(m_symbol, m_timeframe, i);
-         point.is_valid = true;
-         
-         int pos = ArraySize(m_highs);
-         ArrayResize(m_highs, pos + 1);
-         m_highs[pos] = point;
+         SFractalPoint p; p.price=upper_fractals[i]; p.bar_index=i; p.time=iTime(m_symbol,m_timeframe,i); p.is_valid=true;
+         if(i>=m_confirm_bars)
+         {
+            int pos=ArraySize(m_high_cache.confirmed_points);
+            ArrayResize(m_high_cache.confirmed_points,pos+1);
+            m_high_cache.confirmed_points[pos]=p;
+         }
+         else
+         {
+            int pos=ArraySize(m_high_cache.candidate_points);
+            ArrayResize(m_high_cache.candidate_points,pos+1);
+            m_high_cache.candidate_points[pos]=p;
+         }
       }
-      
-      // Fractal inferior (mínimo)
-      if(lower_fractals[i] != EMPTY_VALUE && lower_fractals[i] > 0)
+
+      if(lower_fractals[i]!=EMPTY_VALUE && lower_fractals[i]>0)
       {
-         SFractalPoint point;
-         point.price = lower_fractals[i];
-         point.bar_index = i;
-         point.time = iTime(m_symbol, m_timeframe, i);
-         point.is_valid = true;
-         
-         int pos = ArraySize(m_lows);
-         ArrayResize(m_lows, pos + 1);
-         m_lows[pos] = point;
+         SFractalPoint p; p.price=lower_fractals[i]; p.bar_index=i; p.time=iTime(m_symbol,m_timeframe,i); p.is_valid=true;
+         if(i>=m_confirm_bars)
+         {
+            int pos=ArraySize(m_low_cache.confirmed_points);
+            ArrayResize(m_low_cache.confirmed_points,pos+1);
+            m_low_cache.confirmed_points[pos]=p;
+         }
+         else
+         {
+            int pos=ArraySize(m_low_cache.candidate_points);
+            ArrayResize(m_low_cache.candidate_points,pos+1);
+            m_low_cache.candidate_points[pos]=p;
+         }
       }
    }
-   
+
+   // Copiar para arrays antigos para compatibilidade
+   ArrayCopy(m_highs,m_high_cache.confirmed_points);
+   ArrayCopy(m_lows,m_low_cache.confirmed_points);
+
    return true;
 }
 
@@ -306,71 +369,107 @@ void CTrendLine::FindTrendLines()
    m_ltb_valid = false;
 
    // ----- Procurar LTA -----
-   if(m_draw_lta && ArraySize(m_lows) >= 2)
+   SFractalPoint lows_all[];
+   ArrayCopy(lows_all,m_low_cache.confirmed_points);
+   int add=ArraySize(m_low_cache.candidate_points);
+   if(add>0)
+   {
+      int sz=ArraySize(lows_all);
+      ArrayResize(lows_all,sz+add);
+      for(int k=0;k<add;k++)
+         lows_all[sz+k]=m_low_cache.candidate_points[k];
+   }
+
+   if(m_draw_lta && ArraySize(lows_all) >= 2)
    {
       double best_score = -1;
       SFractalPoint best_p1, best_p2;
-      for(int i = 0; i < ArraySize(m_lows) - 1; i++)
+      for(int i = 0; i < ArraySize(lows_all) - 1; i++)
       {
-         for(int j = i + 1; j < ArraySize(m_lows); j++)
+         for(int j = i + 1; j < ArraySize(lows_all); j++)
          {
-            if(!IsValidLTA(m_lows[i], m_lows[j]))
+            if(!IsValidLTA(lows_all[i], lows_all[j]))
                continue;
-            if((m_lows[j].bar_index - m_lows[i].bar_index) < m_min_distance)
+            if((lows_all[j].bar_index - lows_all[i].bar_index) < m_min_distance)
                continue;
 
-            double score = ScorePair(m_lows[j], m_lows[i]);
+            double score = ScorePair(lows_all[j], lows_all[i]);
             if(score > best_score)
             {
                best_score = score;
-               best_p1 = m_lows[j];
-               best_p2 = m_lows[i];
+               best_p1 = lows_all[j];
+               best_p2 = lows_all[i];
             }
          }
       }
 
       if(best_score > 0 && ValidateLineWithMTF(best_p1, best_p2))
-         UpdateTrendState(m_lta_state, best_p1, best_p2);
+         UpdateTrendState(m_lta_version.candidate, best_p1, best_p2);
 
-      if(m_lta_state.valid)
+      if(m_lta_version.candidate.stability_count >= m_lta_version.stability_threshold)
       {
-         m_lta_point1 = m_lta_state.p1;
-         m_lta_point2 = m_lta_state.p2;
+         m_lta_version.confirmed = m_lta_version.candidate;
+         m_lta_version.confirmed.valid = true;
+         m_need_redraw = true;
+      }
+
+      if(m_lta_version.confirmed.valid)
+      {
+         m_lta_point1 = m_lta_version.confirmed.p1;
+         m_lta_point2 = m_lta_version.confirmed.p2;
          m_lta_valid = true;
       }
    }
 
    // ----- Procurar LTB -----
-   if(m_draw_ltb && ArraySize(m_highs) >= 2)
+   SFractalPoint highs_all[];
+   ArrayCopy(highs_all,m_high_cache.confirmed_points);
+   add=ArraySize(m_high_cache.candidate_points);
+   if(add>0)
+   {
+      int sz=ArraySize(highs_all);
+      ArrayResize(highs_all,sz+add);
+      for(int k=0;k<add;k++)
+         highs_all[sz+k]=m_high_cache.candidate_points[k];
+   }
+
+   if(m_draw_ltb && ArraySize(highs_all) >= 2)
    {
       double best_score = -1;
       SFractalPoint best_p1, best_p2;
-      for(int i = 0; i < ArraySize(m_highs) - 1; i++)
+      for(int i = 0; i < ArraySize(highs_all) - 1; i++)
       {
-         for(int j = i + 1; j < ArraySize(m_highs); j++)
+         for(int j = i + 1; j < ArraySize(highs_all); j++)
          {
-            if(!IsValidLTB(m_highs[i], m_highs[j]))
+            if(!IsValidLTB(highs_all[i], highs_all[j]))
                continue;
-            if((m_highs[j].bar_index - m_highs[i].bar_index) < m_min_distance)
+            if((highs_all[j].bar_index - highs_all[i].bar_index) < m_min_distance)
                continue;
 
-            double score = ScorePair(m_highs[j], m_highs[i]);
+            double score = ScorePair(highs_all[j], highs_all[i]);
             if(score > best_score)
             {
                best_score = score;
-               best_p1 = m_highs[j];
-               best_p2 = m_highs[i];
+               best_p1 = highs_all[j];
+               best_p2 = highs_all[i];
             }
          }
       }
 
       if(best_score > 0 && ValidateLineWithMTF(best_p1, best_p2))
-         UpdateTrendState(m_ltb_state, best_p1, best_p2);
+         UpdateTrendState(m_ltb_version.candidate, best_p1, best_p2);
 
-      if(m_ltb_state.valid)
+      if(m_ltb_version.candidate.stability_count >= m_ltb_version.stability_threshold)
       {
-         m_ltb_point1 = m_ltb_state.p1;
-         m_ltb_point2 = m_ltb_state.p2;
+         m_ltb_version.confirmed = m_ltb_version.candidate;
+         m_ltb_version.confirmed.valid = true;
+         m_need_redraw = true;
+      }
+
+      if(m_ltb_version.confirmed.valid)
+      {
+         m_ltb_point1 = m_ltb_version.confirmed.p1;
+         m_ltb_point2 = m_ltb_version.confirmed.p2;
          m_ltb_valid = true;
       }
    }
@@ -453,6 +552,9 @@ void CTrendLine::CalculateBuffers()
 //+------------------------------------------------------------------+
 void CTrendLine::DrawLines()
 {
+   if(!m_need_redraw)
+      return;
+   m_need_redraw=false;
    DeleteObjects();
    
    // Desenhar LTA
@@ -689,10 +791,10 @@ bool CTrendLine::Update()
 {
    if(!IsReady())
       return false;
-      
+
    // Atualizar fractais
    if(!UpdateFractals())
-      return false;
+      return true;
       
    // Encontrar linhas de tendência
    FindTrendLines();
