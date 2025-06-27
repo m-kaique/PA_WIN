@@ -6,7 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, MetaQuotes Ltd."
 #property link "https://www.mql5.com"
-#property version "2.00"
+#property version "3.00"
 
 #include "../utils/JAson.mqh"
 #include "tf_ctx.mqh"
@@ -281,11 +281,6 @@ bool CConfigManager::CreateContexts()
 {
     Print("Criando contextos a partir da configuração JSON...");
 
-    // Itera todos os símbolos configurados e, para cada um,
-    // percorre dinamicamente as chaves de timeframe existentes
-    // no nó do JSON. Isso permite adicionar novos timeframes ao
-    // arquivo de configuração sem modificar o código fonte.
-
     for (int s = 0; s < ArraySize(m_symbols); s++)
     {
         string symbol = m_symbols[s];
@@ -314,7 +309,7 @@ bool CConfigManager::CreateContexts()
             }
 
             STimeframeConfig config = ParseTimeframeConfig(tf_config);
-            Print("TimeFrame ", tf_str, " - Enabled: ", config.enabled, " NumCandles: ", config.num_candles);
+            Print("TimeFrame ", tf_str, " - Enabled: ", config.enabled);
 
             if (!config.enabled)
             {
@@ -329,8 +324,8 @@ bool CConfigManager::CreateContexts()
                 continue;
             }
 
-            // Criar novo contexto com lista de indicadores
-            TF_CTX *ctx = new TF_CTX(tf, config.num_candles, config.indicators);
+            // Criar novo contexto com indicadores e price action
+            TF_CTX *ctx = new TF_CTX(tf, config.num_candles, config.indicators, config.priceactions);
             if (ctx == NULL)
             {
                 Print("ERRO: Falha ao criar contexto para ", symbol, " ", tf_str);
@@ -586,7 +581,7 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
 
     Print("Parseando timeframe - Enabled: ", config.enabled, " NumCandles: ", config.num_candles);
 
-    // Lista de indicadores
+    // Lista de indicadores (lógica existente)
     CJAVal *ind_array = tf_config["indicators"];
     ArrayResize(config.indicators,0);
 
@@ -710,6 +705,43 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
     else
     {
         Print("AVISO: Nenhum indicador configurado");
+    }
+
+    // Lista de price action patterns (nova lógica)
+    CJAVal *pa_array = tf_config["priceaction"];
+    ArrayResize(config.priceactions,0);
+
+    if(pa_array != NULL)
+    {
+        for(int i=0;i<pa_array.Size();i++)
+        {
+           CJAVal *pa = (*pa_array)[i];
+           if(pa==NULL) continue;
+
+           CPriceActionConfig *pacfg=NULL;
+           string type=pa["type"].ToStr();
+           if(type=="TRENDLINE")
+             {
+              CTrendLineConfig *p=new CTrendLineConfig();
+              p.name=pa["name"].ToStr();
+              p.type=type;
+              p.enabled=pa["enabled"].ToBool();
+              p.period=(int)pa["period"].ToInt();
+              p.left=(int)pa["left"].ToInt();
+              p.right=(int)pa["right"].ToInt();
+              pacfg=p;
+             }
+
+            int pos = ArraySize(config.priceactions);
+            ArrayResize(config.priceactions,pos+1);
+            config.priceactions[pos]=pacfg;
+
+            Print("PriceAction lido: ", pacfg.name, " Tipo: ", pacfg.type, " Enabled: ", pacfg.enabled);
+        }
+    }
+    else
+    {
+        Print("AVISO: Nenhum price action configurado");
     }
 
     return config;

@@ -2,12 +2,12 @@
 //|                                                       PA_WIN.mq5 |
 //|                                                   Copyright 2025 |
 //|                                                 https://mql5.com |
-//| 22.06.2025 - Updated with ConfigManager                          |
+//| 22.06.2025 - Updated with ConfigManager and PriceAction support |
 //+------------------------------------------------------------------+
 
 #property copyright "Copyright 2025"
 #property link "https://mql5.com"
-#property version "2.00"
+#property version "3.00"
 
 #include "TF_CTX/config_manager.mqh"
 
@@ -131,18 +131,50 @@ void ExecuteOnNewBar()
    {
       D1_ctx.Update();
 
-      Print("=== Contexto D1 ===");
-      for (int i = 1; i < 2; i++)
+      Print("=== Contexto D1 - Indicadores ===");
+      // Acessar indicadores (lógica existente)
+      for (int i = 1; i < 3; i++)
       {
          double ema9  = D1_ctx.GetIndicatorValue("ema9", i);
          double ema21 = D1_ctx.GetIndicatorValue("ema21", i);
          Print("EMA9 D1 Shift: ", i, " = ", ema9);
          Print("EMA21 D1 Shift: ", i, " = ", ema21);
       }
+
+      Print("=== Contexto D1 - Price Action ===");
+      // Acessar Price Action (nova funcionalidade)
+      double support_price = D1_ctx.GetPriceActionValue("LTA_LTB", 0);
+      Print("Linha de Suporte (shift 0): ", support_price);
+      
+      // Exemplo de acesso específico à TrendLine
+      // Nota: Para acessar métodos específicos, seria necessário cast
+      // Este é um exemplo conceitual da funcionalidade
+      if (support_price > 0)
+      {
+         Print("Linha de tendência de suporte detectada em: ", support_price);
+      }
+      else
+      {
+         Print("Nenhuma linha de suporte válida encontrada");
+      }
    }
    else
    {
       Print("AVISO: Contexto D1 não encontrado para símbolo: ", configured_symbol);
+   }
+
+   // Exemplo adicional: acessar contexto H1 se disponível
+   TF_CTX *H1_ctx = g_config_manager.GetContext(configured_symbol, PERIOD_H1);
+   if (H1_ctx != NULL)
+   {
+      H1_ctx.Update();
+
+      Print("=== Contexto H1 - Price Action ===");
+      double h1_support = H1_ctx.GetPriceActionValue("trend_h1", 0);
+      if (h1_support > 0)
+      {
+         Print("H1 Linha de Suporte: ", h1_support);
+      }
    }
 }
 

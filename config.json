@@ -127,6 +127,16 @@
       "H4": {
          "enabled": true,
          "num_candles": 18,
+         "priceaction": [
+            {
+               "name": "swing_lines",
+               "type": "TRENDLINE",
+               "period": 40,
+               "left": 7,
+               "right": 7,
+               "enabled": false
+            }
+         ],
          "indicators": [
             {
                "name": "ema9",
