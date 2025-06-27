@@ -458,10 +458,16 @@ void CTrendLine::FindTrendLines()
 
    if(ArraySize(lows_all) < 2)
    {
-      if(m_lta_version.confirmed.valid)
+      if(m_lta_version.confirmed.valid || m_lta_version.candidate.stability_count>0)
       {
-         m_lta_version.confirmed.valid=false;
-         m_need_redraw=true;
+         m_lta_version.confirmed.valid = false;
+         m_lta_version.candidate.stability_count = 0;
+         m_lta_version.candidate.p1.is_valid = false;
+         m_lta_version.candidate.p2.is_valid = false;
+         m_lta_valid = false;
+         m_lta_point1.is_valid = false;
+         m_lta_point2.is_valid = false;
+         m_need_redraw = true;
       }
    }
    else if(m_draw_lta)
@@ -521,10 +527,16 @@ void CTrendLine::FindTrendLines()
 
    if(ArraySize(highs_all) < 2)
    {
-      if(m_ltb_version.confirmed.valid)
+      if(m_ltb_version.confirmed.valid || m_ltb_version.candidate.stability_count>0)
       {
-         m_ltb_version.confirmed.valid=false;
-         m_need_redraw=true;
+         m_ltb_version.confirmed.valid = false;
+         m_ltb_version.candidate.stability_count = 0;
+         m_ltb_version.candidate.p1.is_valid = false;
+         m_ltb_version.candidate.p2.is_valid = false;
+         m_ltb_valid = false;
+         m_ltb_point1.is_valid = false;
+         m_ltb_point2.is_valid = false;
+         m_need_redraw = true;
       }
    }
    else if(m_draw_ltb)
@@ -684,6 +696,8 @@ void CTrendLine::DrawLines()
          // Estender a linha para frente (shift negativo para projeção futura)
          end_time = TimeCurrent() + PeriodSeconds(m_timeframe) * 20;
          end_price = CalculateLinePrice(m_lta_point1, m_lta_point2, -20);
+         if(end_price == EMPTY_VALUE)
+            end_price = m_lta_point2.price;
       }
       else
       {
@@ -734,6 +748,8 @@ void CTrendLine::DrawLines()
          // Estender a linha para frente
          end_time = TimeCurrent() + PeriodSeconds(m_timeframe) * 20;
          end_price = CalculateLinePrice(m_ltb_point1, m_ltb_point2, -20);
+         if(end_price == EMPTY_VALUE)
+            end_price = m_ltb_point2.price;
       }
       else
       {
@@ -1172,6 +1188,9 @@ void CTrendLine::ValidateLineCorrections()
       if(os<=0.0)
       {
          m_lta_version.confirmed.valid=false;
+         m_lta_version.candidate.stability_count=0;
+         m_lta_version.candidate.p1.is_valid=false;
+         m_lta_version.candidate.p2.is_valid=false;
          m_lta_valid=false;
          m_lta_point1.is_valid=false;
          m_lta_point2.is_valid=false;
@@ -1196,6 +1215,9 @@ void CTrendLine::ValidateLineCorrections()
       if(os>=0.0)
       {
          m_ltb_version.confirmed.valid=false;
+         m_ltb_version.candidate.stability_count=0;
+         m_ltb_version.candidate.p1.is_valid=false;
+         m_ltb_version.candidate.p2.is_valid=false;
          m_ltb_valid=false;
          m_ltb_point1.is_valid=false;
          m_ltb_point2.is_valid=false;
