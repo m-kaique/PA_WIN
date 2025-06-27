@@ -38,6 +38,7 @@ private:
     ENUM_LINE_STYLE StringToLineStyle(string style_str);
     color StringToColor(string color_str);
     STimeframeConfig ParseTimeframeConfig(CJAVal *tf_config);
+    ScoreWeights ParseScoreWeights(CJAVal *sc_config);
     string CreateContextKey(string symbol, ENUM_TIMEFRAMES tf);
     bool TestJSONParsing();
     
@@ -558,9 +559,36 @@ color CConfigManager::StringToColor(string color_str)
     if(color_str=="Lime")   return clrLime;
     if(color_str=="Magenta") return clrMagenta;
     if(color_str=="Cyan")   return clrCyan;
-    if(StringLen(color_str)>0)
-       return (color)StringToInteger(color_str);
-    return clrNONE;
+   if(StringLen(color_str)>0)
+      return (color)StringToInteger(color_str);
+   return clrNONE;
+}
+
+//+------------------------------------------------------------------+
+//| Parsear pesos de scoring                                         |
+//+------------------------------------------------------------------+
+ScoreWeights CConfigManager::ParseScoreWeights(CJAVal *sc_config)
+{
+    ScoreWeights w;
+    if(sc_config==NULL)
+        return w;
+
+    if((*sc_config)["trend_weight"]!=NULL)
+        w.trend_weight = (*sc_config)["trend_weight"].ToDbl();
+    if((*sc_config)["volume_weight"]!=NULL)
+        w.volume_weight = (*sc_config)["volume_weight"].ToDbl();
+    if((*sc_config)["tests_weight"]!=NULL)
+        w.tests_weight = (*sc_config)["tests_weight"].ToDbl();
+    if((*sc_config)["time_weight"]!=NULL)
+        w.time_weight = (*sc_config)["time_weight"].ToDbl();
+    if((*sc_config)["psychological_weight"]!=NULL)
+        w.psychological_weight = (*sc_config)["psychological_weight"].ToDbl();
+    if((*sc_config)["volatility_weight"]!=NULL)
+        w.volatility_weight = (*sc_config)["volatility_weight"].ToDbl();
+    if((*sc_config)["mtf_weight"]!=NULL)
+        w.mtf_weight = (*sc_config)["mtf_weight"].ToDbl();
+
+    return w;
 }
 
 //+------------------------------------------------------------------+
@@ -748,10 +776,12 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
               p.show_labels=pa["show_labels"].ToBool();
               p.stability_bars=(int)pa["stability_bars"].ToInt();
               p.min_distance=(int)pa["min_distance"].ToInt();
-              p.validate_mtf=pa["validate_mtf"].ToBool();
-              string mtf=pa["mtf_timeframe"].ToStr();
-              if(StringLen(mtf)>0) p.mtf_timeframe=StringToTimeframe(mtf);
-              
+             p.validate_mtf=pa["validate_mtf"].ToBool();
+             string mtf=pa["mtf_timeframe"].ToStr();
+             if(StringLen(mtf)>0) p.mtf_timeframe=StringToTimeframe(mtf);
+             CJAVal *sc=pa["scoring"];
+             p.weights=ParseScoreWeights(sc);
+
               pacfg=p;
              }
 

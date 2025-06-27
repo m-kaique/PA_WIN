@@ -149,6 +149,15 @@
                "min_distance": 5,
                "validate_mtf": false,
                "mtf_timeframe": "D1",
+               "scoring": {
+                   "trend_weight": 0.25,
+                   "volume_weight": 0.15,
+                   "tests_weight": 0.20,
+                   "time_weight": 0.10,
+                   "psychological_weight": 0.10,
+                   "volatility_weight": 0.10,
+                   "mtf_weight": 0.10
+               },
                "enabled": true
             }
          ],

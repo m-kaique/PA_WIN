@@ -101,6 +101,7 @@ private:
   LineVersion     m_lta_version;
   LineVersion     m_ltb_version;
   bool            m_need_redraw;
+  ScoreWeights    m_weights;
    
    // Métodos privados
    bool            CreateFractalsHandle();
@@ -114,6 +115,12 @@ private:
    bool            IsValidLTA(SFractalPoint &p1, SFractalPoint &p2);
    bool            IsValidLTB(SFractalPoint &p1, SFractalPoint &p2);
    double          ScorePair(SFractalPoint &p1, SFractalPoint &p2);
+   double          ComputeTrendStrength(SFractalPoint &p1, SFractalPoint &p2);
+   double          ComputeVolumeConfirmation(SFractalPoint &p1, SFractalPoint &p2);
+   double          ComputeLineTests(SFractalPoint &p1, SFractalPoint &p2);
+   double          ComputeTimeValidity(SFractalPoint &p1, SFractalPoint &p2);
+   double          ComputePsychologicalLevel(SFractalPoint &p1, SFractalPoint &p2);
+   double          ComputeVolatilityContext(SFractalPoint &p1, SFractalPoint &p2);
    void            UpdateTrendState(TrendLineState &state, SFractalPoint &p1, SFractalPoint &p2);
    bool            ValidateLineWithMTF(SFractalPoint &p1, SFractalPoint &p2);
 
@@ -175,6 +182,7 @@ CTrendLine::CTrendLine()
    m_validate_mtf = false;
    m_mtf_timeframe = PERIOD_H1;
    m_need_redraw = true;
+   m_weights = ScoreWeights();
 
    m_low_cache.confirmation_bars = m_confirm_bars;
    m_high_cache.confirmation_bars = m_confirm_bars;
@@ -225,6 +233,7 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
   m_min_distance = config.min_distance;
   m_validate_mtf = config.validate_mtf;
   m_mtf_timeframe = config.mtf_timeframe;
+  m_weights = config.weights;
    
    // Criar nomes únicos para objetos
    string suffix = "_" + m_symbol + "_" + EnumToString(m_timeframe) + "_" + IntegerToString(GetTickCount());
@@ -728,8 +737,96 @@ double CTrendLine::ScorePair(SFractalPoint &p1, SFractalPoint &p2)
    int dist = p1.bar_index - p2.bar_index;
    if(dist <= 0)
       return -1.0;
-   double slope = MathAbs((p2.price - p1.price) / (double)dist);
-   return slope * dist;
+
+   TrendLineQuality q;
+   q.trend_strength      = ComputeTrendStrength(p1,p2);
+   q.volume_confirmation = ComputeVolumeConfirmation(p1,p2);
+   q.line_tests          = ComputeLineTests(p1,p2);
+   q.time_validity       = ComputeTimeValidity(p1,p2);
+   q.psychological_level = ComputePsychologicalLevel(p1,p2);
+   q.volatility_context  = ComputeVolatilityContext(p1,p2);
+   q.mtf_alignment       = ValidateLineWithMTF(p1,p2) ? 100.0 : 0.0;
+
+   double total_w = m_weights.trend_weight + m_weights.volume_weight +
+                    m_weights.tests_weight + m_weights.time_weight +
+                    m_weights.psychological_weight + m_weights.volatility_weight +
+                    m_weights.mtf_weight;
+   if(total_w<=0.0) total_w=1.0;
+
+   double score =
+       q.trend_strength      * m_weights.trend_weight +
+       q.volume_confirmation * m_weights.volume_weight +
+       q.line_tests          * m_weights.tests_weight +
+       q.time_validity       * m_weights.time_weight +
+       q.psychological_level * m_weights.psychological_weight +
+       q.volatility_context  * m_weights.volatility_weight +
+       q.mtf_alignment       * m_weights.mtf_weight;
+
+   return score / total_w;
+}
+
+//--- Cálculo dos fatores individuais ---
+double CTrendLine::ComputeTrendStrength(SFractalPoint &p1, SFractalPoint &p2)
+{
+   int dist=p1.bar_index-p2.bar_index;
+   if(dist<=0) return 0.0;
+   double slope=MathAbs((p2.price-p1.price)/dist);
+   double rel=slope/MathMax(p1.price,1);
+   return MathMin(rel*10000.0,100.0);
+}
+
+double CTrendLine::ComputeVolumeConfirmation(SFractalPoint &p1, SFractalPoint &p2)
+{
+   double v1=iVolume(m_symbol,m_timeframe,p1.bar_index);
+   double v2=iVolume(m_symbol,m_timeframe,p2.bar_index);
+   double sum=0; int count=0;
+   for(int i=0;i<20 && i<Bars(m_symbol,m_timeframe);i++)
+   { sum+=iVolume(m_symbol,m_timeframe,i); count++; }
+   double avg=(count>0)?sum/count:1.0;
+   double rel=((v1+v2)/2.0)/MathMax(avg,1.0);
+   return MathMin(rel*100.0,100.0);
+}
+
+double CTrendLine::ComputeLineTests(SFractalPoint &p1, SFractalPoint &p2)
+{
+   int tests=0;
+   for(int i=p1.bar_index-1;i>p2.bar_index;i--)
+   {
+      double price=CalculateLinePrice(p1,p2,i);
+      double hi=iHigh(m_symbol,m_timeframe,i);
+      double lo=iLow(m_symbol,m_timeframe,i);
+      if(price>=lo && price<=hi)
+         tests++;
+   }
+   return MathMin(tests*50.0,100.0); // 2 ou mais toques = 100
+}
+
+double CTrendLine::ComputeTimeValidity(SFractalPoint &p1, SFractalPoint &p2)
+{
+   int dist=p1.bar_index-p2.bar_index;
+   return MathMin(dist*10.0,100.0);
+}
+
+double CTrendLine::ComputePsychologicalLevel(SFractalPoint &p1, SFractalPoint &p2)
+{
+   double step=100.0;
+   double diff1=MathAbs(p1.price-MathRound(p1.price/step)*step);
+   double diff2=MathAbs(p2.price-MathRound(p2.price/step)*step);
+   double diff=(diff1+diff2)/2.0;
+   double score=100.0-(diff/(step*0.5))*100.0;
+   if(score<0) score=0.0;
+   return MathMin(score,100.0);
+}
+
+double CTrendLine::ComputeVolatilityContext(SFractalPoint &p1, SFractalPoint &p2)
+{
+   int dist=p1.bar_index-p2.bar_index;
+   if(dist<=0) return 0.0;
+   double slope=MathAbs((p2.price-p1.price)/dist);
+   double atr=iATR(m_symbol,m_timeframe,14);
+   if(atr<=0) return 50.0;
+   double rel=slope/atr;
+   return MathMin(rel*50.0,100.0);
 }
 
 //+------------------------------------------------------------------+
