@@ -1066,6 +1066,8 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
    "lta_width": 1,
    "ltb_width": 1,
    "extend_right": true,
+   "extend_bars": 20,
+   "label_offset": 50,
    "show_labels": true,
    "stability_bars": 2,
    "min_distance": 5,
@@ -1083,6 +1085,8 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
 ```
 - `left`/`right`: número de velas usadas para detectar fractais.
 - `extend_right`: projeta a linha no futuro.
+- `extend_bars`: quantidade de barras usadas para projeção.
+- `label_offset`: deslocamento vertical dos rótulos, em pontos.
 - `show_labels`: mostra preços nas linhas.
 - `stability_bars`: número mínimo de candles que o par de fractais deve permanecer igual para ser confirmado.
 - `min_distance`: distância mínima em barras entre os fractais conectados.
