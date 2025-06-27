@@ -67,9 +67,11 @@ private:
    ENUM_LINE_STYLE m_lta_style;
    ENUM_LINE_STYLE m_ltb_style;
    int             m_lta_width;
-   int             m_ltb_width;
-   bool            m_extend_right;
-   bool            m_show_labels;
+  int             m_ltb_width;
+  bool            m_extend_right;
+  bool            m_show_labels;
+  int             m_extend_bars;
+  double          m_label_offset;
    
    // Handles e buffers
    int             m_fractals_handle;
@@ -131,7 +133,7 @@ private:
    double          ComputePsychologicalLevel(SFractalPoint &p_old, SFractalPoint &p_recent);
    double          ComputeVolatilityContext(SFractalPoint &p_old, SFractalPoint &p_recent);
    void            UpdateTrendState(TrendLineState &state, SFractalPoint &p_old, SFractalPoint &p_recent);
-   bool            ValidateLineWithMTF(SFractalPoint &p_old, SFractalPoint &p_recent);
+   bool            ValidateLineWithMTF(const SFractalPoint &p_old, const SFractalPoint &p_recent);
    void            ConditionalUpdate(ENUM_UPDATE_TRIGGER trigger);
    bool            ShouldUpdate(ENUM_UPDATE_TRIGGER &trigger);
    void            ValidateLineCorrections();
@@ -175,8 +177,10 @@ CTrendLine::CTrendLine()
    m_ltb_style = STYLE_SOLID;
    m_lta_width = 1;
    m_ltb_width = 1;
-   m_extend_right = true;
-   m_show_labels = false;
+  m_extend_right = true;
+  m_show_labels = false;
+  m_extend_bars = 20;
+  m_label_offset = 50.0 * _Point;
    
    m_fractals_handle = INVALID_HANDLE;
    ArrayResize(m_lta_buffer, 0);
@@ -247,9 +251,11 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
    m_lta_style = config.lta_style;
    m_ltb_style = config.ltb_style;
    m_lta_width = config.lta_width;
-   m_ltb_width = config.ltb_width;
-   m_extend_right = config.extend_right;
+  m_ltb_width = config.ltb_width;
+  m_extend_right = config.extend_right;
   m_show_labels = config.show_labels;
+  m_extend_bars = config.extend_bars;
+  m_label_offset = config.label_offset * _Point;
   m_stability_bars = config.stability_bars;
    m_confirm_bars = config.confirm_bars;
   m_min_distance = config.min_distance;
@@ -272,8 +278,18 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
   ReleaseFractalsHandle();
   ReleaseATRHandle();
   if(!CreateFractalsHandle())
+  {
+     ReleaseFractalsHandle();
+     ReleaseATRHandle();
      return false;
-  return CreateATRHandle();
+  }
+  if(!CreateATRHandle())
+  {
+     ReleaseFractalsHandle();
+     ReleaseATRHandle();
+     return false;
+  }
+  return true;
 }
 
 //+------------------------------------------------------------------+
@@ -635,7 +651,8 @@ double CTrendLine::CalculateLinePrice(SFractalPoint &point1, SFractalPoint &poin
    // Calcular preço no shift especificado
    // A fórmula: preço = preço_do_ponto_mais_recente + slope * (bar_index_ponto_recente - shift)
    double price = point2.price + slope * (point2.bar_index - shift);
-   double deviation=MathAbs(price-point2.price)/MathMax(point2.price,1);
+   double base=MathMax(MathAbs(point2.price),_Point);
+   double deviation=MathAbs(price-point2.price)/base;
    if(deviation>1.0 || price<=0 || MathAbs(shift-point2.bar_index)>(delta_bars*2))
       return EMPTY_VALUE;
    
@@ -693,11 +710,11 @@ void CTrendLine::DrawLines()
       
       if(m_extend_right)
       {
-         // Estender a linha para frente (shift negativo para projeção futura)
-         end_time = TimeCurrent() + PeriodSeconds(m_timeframe) * 20;
-         end_price = CalculateLinePrice(m_lta_point1, m_lta_point2, -20);
-         if(end_price == EMPTY_VALUE)
-            end_price = m_lta_point2.price;
+         end_time  = iTime(m_symbol,m_timeframe,0) + PeriodSeconds(m_timeframe)*m_extend_bars;
+         double slope=(m_lta_point2.price-m_lta_point1.price)/(double)(m_lta_point1.bar_index-m_lta_point2.bar_index);
+         end_price = m_lta_point2.price + slope*m_extend_bars;
+         if(end_price==EMPTY_VALUE)
+            end_price=m_lta_point2.price;
       }
       else
       {
@@ -718,7 +735,7 @@ void CTrendLine::DrawLines()
          
          if(m_show_labels)
          {
-            if(ObjectCreate(0, m_lta_label_name, OBJ_TEXT, 0, start_time, start_price - 50 * _Point))
+            if(ObjectCreate(0, m_lta_label_name, OBJ_TEXT, 0, start_time, start_price - m_label_offset))
             {
                ObjectSetString(0, m_lta_label_name, OBJPROP_TEXT, "LTA");
                ObjectSetInteger(0, m_lta_label_name, OBJPROP_COLOR, m_lta_color);
@@ -745,10 +762,10 @@ void CTrendLine::DrawLines()
       
       if(m_extend_right)
       {
-         // Estender a linha para frente
-         end_time = TimeCurrent() + PeriodSeconds(m_timeframe) * 20;
-         end_price = CalculateLinePrice(m_ltb_point1, m_ltb_point2, -20);
-         if(end_price == EMPTY_VALUE)
+         end_time = iTime(m_symbol,m_timeframe,0) + PeriodSeconds(m_timeframe)*m_extend_bars;
+         double slope=(m_ltb_point2.price-m_ltb_point1.price)/(double)(m_ltb_point1.bar_index-m_ltb_point2.bar_index);
+         end_price = m_ltb_point2.price + slope*m_extend_bars;
+         if(end_price==EMPTY_VALUE)
             end_price = m_ltb_point2.price;
       }
       else
@@ -770,7 +787,7 @@ void CTrendLine::DrawLines()
          
          if(m_show_labels)
          {
-            if(ObjectCreate(0, m_ltb_label_name, OBJ_TEXT, 0, start_time, start_price + 50 * _Point))
+            if(ObjectCreate(0, m_ltb_label_name, OBJ_TEXT, 0, start_time, start_price + m_label_offset))
             {
                ObjectSetString(0, m_ltb_label_name, OBJPROP_TEXT, "LTB");
                ObjectSetInteger(0, m_ltb_label_name, OBJPROP_COLOR, m_ltb_color);
@@ -985,7 +1002,7 @@ void CTrendLine::UpdateTrendState(TrendLineState &state, SFractalPoint &p_old, S
 //+------------------------------------------------------------------+
 //| Validate line with higher timeframe                               |
 //+------------------------------------------------------------------+
-bool CTrendLine::ValidateLineWithMTF(SFractalPoint &p_old, SFractalPoint &p_recent)
+bool CTrendLine::ValidateLineWithMTF(const SFractalPoint &p_old, const SFractalPoint &p_recent)
 {
    if(!m_validate_mtf || m_mtf_timeframe == PERIOD_CURRENT)
       return true;
