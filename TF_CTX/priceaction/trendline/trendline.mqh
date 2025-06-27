@@ -112,7 +112,7 @@ private:
   double          GetATR(int shift);
   bool            CreateFractalsHandle();
   void            ReleaseFractalsHandle();
-   bool            UpdateFractals();
+   bool            UpdateFractals(bool &updated);
    void            FindTrendLines();
    void            CalculateBuffers();
    double          CalculateLinePrice(SFractalPoint &point1, SFractalPoint &point2, int shift);
@@ -345,14 +345,17 @@ double CTrendLine::GetATR(int shift)
 //+------------------------------------------------------------------+
 //| Update fractals data                                             |
 //+------------------------------------------------------------------+
-bool CTrendLine::UpdateFractals()
+bool CTrendLine::UpdateFractals(bool &updated)
 {
    if(m_fractals_handle == INVALID_HANDLE)
       return false;
 
    datetime cur_time=iTime(m_symbol,m_timeframe,0);
+   updated=false;
    if(m_low_cache.last_update_time==cur_time)
-      return false;
+      return true;  // dados já atualizados
+
+   updated=true;
 
    m_low_cache.last_update_time=cur_time;
    m_high_cache.last_update_time=cur_time;
@@ -948,7 +951,8 @@ bool CTrendLine::ShouldUpdate(ENUM_UPDATE_TRIGGER &trigger)
    // 1. Verificar novos fractais periodicamente
    if(now - m_update_ctrl.last_fractal_time >= m_update_ctrl.params.fractal_check_interval)
    {
-      if(UpdateFractals())
+      bool updated=false;
+      if(UpdateFractals(updated) && updated)
       {
          m_update_ctrl.last_fractal_time = now;
          trigger = TRIGGER_NEW_FRACTAL;

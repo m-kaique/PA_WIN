@@ -67,7 +67,7 @@ graph TD
 
 1. **JSON** → `ParseTimeframeConfig()`
 2. `CTrendLineConfig` → `CTrendLine::Init()`
-3. `UpdateFractals()` → `FindTrendLines()` → `CalculateBuffers()` → `DrawLines()`
+3. `UpdateFractals(updated)` → `FindTrendLines()` → `CalculateBuffers()` → `DrawLines()`
 
 ## 3. Descrição dos Arquivos
 
@@ -109,7 +109,7 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
 
 - **`CTrendLine`**: Implementação baseada em fractais para desenhar LTA/LTB.
   - **`Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig &config)`**
-  - **`UpdateFractals()`**, **`FindTrendLines()`**, **`CalculateBuffers()`**, **`DrawLines()`**
+  - **`UpdateFractals(updated)`**, **`FindTrendLines()`**, **`CalculateBuffers()`**, **`DrawLines()`**
 
 
 
