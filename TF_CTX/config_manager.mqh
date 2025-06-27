@@ -744,6 +744,11 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
               p.ltb_width=(int)pa["ltb_width"].ToInt();
               p.extend_right=pa["extend_right"].ToBool();
               p.show_labels=pa["show_labels"].ToBool();
+              p.stability_bars=(int)pa["stability_bars"].ToInt();
+              p.min_distance=(int)pa["min_distance"].ToInt();
+              p.validate_mtf=pa["validate_mtf"].ToBool();
+              string mtf=pa["mtf_timeframe"].ToStr();
+              if(StringLen(mtf)>0) p.mtf_timeframe=StringToTimeframe(mtf);
               
               pacfg=p;
              }

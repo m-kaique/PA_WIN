@@ -144,6 +144,10 @@
                "ltb_width": 1,
                "extend_right": true,
                "show_labels": true,
+               "stability_bars": 2,
+               "min_distance": 5,
+               "validate_mtf": false,
+               "mtf_timeframe": "D1",
                "enabled": true
             }
          ],

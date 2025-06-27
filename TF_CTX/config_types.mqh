@@ -191,6 +191,10 @@ public:
   int ltb_width;                 // largura da LTB
   bool extend_right;             // estender linhas para a direita
   bool show_labels;              // mostrar rótulos nas linhas
+  int  stability_bars;           // mínimo de barras para confirmar
+  int  min_distance;             // distância mínima entre fractais
+  bool validate_mtf;             // validar com timeframe superior
+  ENUM_TIMEFRAMES mtf_timeframe; // timeframe para validação
   
   CTrendLineConfig()
   {
@@ -207,6 +211,10 @@ public:
     ltb_width = 1;
     extend_right = true;
     show_labels = false;
+    stability_bars = 2;
+    min_distance = 5;
+    validate_mtf = false;
+    mtf_timeframe = PERIOD_H1;
   }
 };
 
