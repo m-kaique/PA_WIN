@@ -181,6 +181,7 @@ public:
   int period;                    // período de análise
   int left;                      // velas à esquerda do ponto
   int right;                     // velas à direita do ponto
+  int confirm_bars;              // barras para confirmar fractal
   bool draw_lta;                 // desenhar Linha de Tendência de Alta
   bool draw_ltb;                 // desenhar Linha de Tendência de Baixa
   color lta_color;               // cor da LTA
@@ -201,6 +202,7 @@ public:
     period = 21;
     left = 3;
     right = 3;
+    confirm_bars = 2;
     draw_lta = true;
     draw_ltb = true;
     lta_color = clrGreen;

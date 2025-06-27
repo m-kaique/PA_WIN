@@ -730,8 +730,10 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
               p.type=type;
               p.enabled=pa["enabled"].ToBool();
               p.period=(int)pa["period"].ToInt();
-              p.left=(int)pa["left"].ToInt();
-              p.right=(int)pa["right"].ToInt();
+             p.left=(int)pa["left"].ToInt();
+             p.right=(int)pa["right"].ToInt();
+             p.confirm_bars=(int)pa["confirm_bars"].ToInt();
+             if(p.confirm_bars<=0) p.confirm_bars=2;
               
               // Novos parâmetros para LTA/LTB
               p.draw_lta=pa["draw_lta"].ToBool();

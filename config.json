@@ -134,6 +134,7 @@
                "period": 20,
                "left": 3,
                "right": 3,
+               "confirm_bars": 2,
                "draw_lta": true,
                "draw_ltb": true,
                "lta_color": "Lime",
