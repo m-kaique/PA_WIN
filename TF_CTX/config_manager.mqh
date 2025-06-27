@@ -737,6 +737,7 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
                 p.type="TRENDLINE";
                 p.enabled=pa["enabled"].ToBool();
                 p.period=(int)pa["period"].ToInt();
+                if(p.period<=0) p.period=21;
                 p.left=(int)pa["left"].ToInt();
                 if(p.left<=0) p.left=3;
                 p.right=(int)pa["right"].ToInt();

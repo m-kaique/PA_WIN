@@ -20,7 +20,7 @@ public:
    int  period;
    int  left;
    int  right;
-   CTrendLinesConfig(){ period=0; left=3; right=3; }
+   CTrendLinesConfig(){ period=21; left=3; right=3; }
   };
 
 #endif // __PRICE_ACTION_CONFIG_TYPES_MQH__

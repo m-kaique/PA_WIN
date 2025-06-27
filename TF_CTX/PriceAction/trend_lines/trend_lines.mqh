@@ -45,8 +45,8 @@ private:
                     }
   void            DeleteObjects()
                     {
-                     if(StringLen(m_lta_name)>0) ObjectDelete(0,m_lta_name);
-                     if(StringLen(m_ltb_name)>0) ObjectDelete(0,m_ltb_name);
+                     if(StringLen(m_lta_name)>0) { ObjectDelete(0,m_lta_name); m_lta_name=""; }
+                     if(StringLen(m_ltb_name)>0) { ObjectDelete(0,m_ltb_name); m_ltb_name=""; }
                     }
   void            ClearPivots()
                     {
@@ -115,10 +115,19 @@ public:
   bool            Update()
                       {
                        int total=Bars(m_symbol,m_timeframe);
-                       int bars=MathMin(total,m_period+m_left+m_right);
+                       if(total<=m_left+m_right)
+                         {
+                          DeleteObjects();
+                          ClearPivots();
+                          m_ready=false;
+                          return false;
+                         }
+
+                       int last = total - m_right - 1;
+                       int first = m_left;
 
                        ClearPivots();
-                       for(int i=m_left;i<bars-m_right;i++)
+                       for(int i=last;i>=first;i--)
                          {
                           if(IsSwingHigh(i,m_left,m_right))
                              m_swingHighs.Add(new PivotPoint(i,iHigh(m_symbol,m_timeframe,i)));
@@ -126,16 +135,17 @@ public:
                              m_swingLows.Add(new PivotPoint(i,iLow(m_symbol,m_timeframe,i)));
                          }
 
-                       m_ready=false;
+                       bool has_lta=false;
+                       bool has_ltb=false;
                        DeleteObjects();
 
-                       for(int i=0;i<m_swingLows.Total()-1 && !m_ready;i++)
+                       for(int i=0;i<m_swingLows.Total()-1 && !has_lta;i++)
                          {
                           PivotPoint *p1=(PivotPoint*)m_swingLows.At(i);
                           for(int j=i+1;j<m_swingLows.Total();j++)
                             {
                              PivotPoint *p2=(PivotPoint*)m_swingLows.At(j);
-                             if(p2.index-p1.index<5) continue;
+                             if(p1.index-p2.index<5) continue; // require distance in bars
                              if(p2.price>p1.price)
                                {
                                 if(StringLen(m_lta_name)==0) m_lta_name="LTA_"+IntegerToString(GetTickCount());
@@ -143,19 +153,19 @@ public:
                                 datetime t2=iTime(m_symbol,m_timeframe,p2.index);
                                 ObjectCreate(0,m_lta_name,OBJ_TREND,0,t2,p2.price,t1,p1.price);
                                 ObjectSetInteger(0,m_lta_name,OBJPROP_COLOR,clrLime);
-                                m_ready=true;
+                                has_lta=true;
                                 break;
                                }
                             }
                          }
 
-                       for(int i=0;i<m_swingHighs.Total()-1 && !m_ready;i++)
+                       for(int i=0;i<m_swingHighs.Total()-1 && !has_ltb;i++)
                          {
                           PivotPoint *p1=(PivotPoint*)m_swingHighs.At(i);
                           for(int j=i+1;j<m_swingHighs.Total();j++)
                             {
                              PivotPoint *p2=(PivotPoint*)m_swingHighs.At(j);
-                             if(p2.index-p1.index<5) continue;
+                             if(p1.index-p2.index<5) continue;
                              if(p2.price<p1.price)
                                {
                                 if(StringLen(m_ltb_name)==0) m_ltb_name="LTB_"+IntegerToString(GetTickCount());
@@ -163,12 +173,13 @@ public:
                                 datetime h2=iTime(m_symbol,m_timeframe,p2.index);
                                 ObjectCreate(0,m_ltb_name,OBJ_TREND,0,h2,p2.price,h1,p1.price);
                                 ObjectSetInteger(0,m_ltb_name,OBJPROP_COLOR,clrRed);
-                                m_ready=true;
+                                has_ltb=true;
                                 break;
                                }
                             }
                          }
 
+                       m_ready = has_lta || has_ltb;
                        return m_ready;
                       }
    bool            IsReady(){ return m_ready; }
