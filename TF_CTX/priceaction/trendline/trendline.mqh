@@ -120,6 +120,11 @@ private:
    double          ComputeVolumeConfirmation(SFractalPoint &p1, SFractalPoint &p2);
    double          ComputeLineTests(SFractalPoint &p1, SFractalPoint &p2);
    double          ComputeTimeValidity(SFractalPoint &p1, SFractalPoint &p2);
+   double          ComputePsychologicalLevel(SFractalPoint &p1, SFractalPoint &p2);
+   double          ComputeVolatilityContext(SFractalPoint &p1, SFractalPoint &p2);
+   void            UpdateTrendState(TrendLineState &state, SFractalPoint &p1, SFractalPoint &p2);
+   bool            ValidateLineWithMTF(SFractalPoint &p1, SFractalPoint &p2);
+   void            ConditionalUpdate(ENUM_UPDATE_TRIGGER trigger);
    bool            ShouldUpdate(ENUM_UPDATE_TRIGGER &trigger);
 public:
    CTrendLine();
