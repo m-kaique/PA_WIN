@@ -494,7 +494,7 @@ void CTrendLine::FindTrendLines()
       {
          m_lta_point1 = m_lta_version.confirmed.p1;
          m_lta_point2 = m_lta_version.confirmed.p2;
-         m_lta_valid = true;
+         m_lta_valid = (m_lta_point2.price > m_lta_point1.price);
       }
    }
 
@@ -544,7 +544,7 @@ void CTrendLine::FindTrendLines()
       {
          m_ltb_point1 = m_ltb_version.confirmed.p1;
          m_ltb_point2 = m_ltb_version.confirmed.p2;
-         m_ltb_valid = true;
+         m_ltb_valid = (m_ltb_point2.price < m_ltb_point1.price);
       }
    }
    ValidateLineCorrections();
@@ -1136,7 +1136,28 @@ void CTrendLine::PrintLineStatus(){
          " p1",m_ltb_point1.bar_index," ",m_ltb_point1.price,
          " p2",m_ltb_point2.bar_index," ",m_ltb_point2.price);
 }
-void CTrendLine::ValidateLineCorrections(){if(m_lta_version.confirmed.valid){double os=(m_lta_version.confirmed.p2.price-m_lta_version.confirmed.p1.price)/(double)(m_lta_version.confirmed.p1.bar_index-m_lta_version.confirmed.p2.bar_index);double ns=(m_lta_version.candidate.p2.price-m_lta_version.candidate.p1.price)/(double)(m_lta_version.candidate.p1.bar_index-m_lta_version.candidate.p2.bar_index);if(MathAbs(ns-os)/MathMax(MathAbs(os),0.0001)>0.1)m_lta_version.candidate=m_lta_version.confirmed;}if(m_ltb_version.confirmed.valid){double os=(m_ltb_version.confirmed.p2.price-m_ltb_version.confirmed.p1.price)/(double)(m_ltb_version.confirmed.p1.bar_index-m_ltb_version.confirmed.p2.bar_index);double ns=(m_ltb_version.candidate.p2.price-m_ltb_version.candidate.p1.price)/(double)(m_ltb_version.candidate.p1.bar_index-m_ltb_version.candidate.p2.bar_index);if(MathAbs(ns-os)/MathMax(MathAbs(os),0.0001)>0.1)m_ltb_version.candidate=m_ltb_version.confirmed;}}
+void CTrendLine::ValidateLineCorrections()
+{
+   if(m_lta_version.confirmed.valid)
+   {
+      double os=(m_lta_version.confirmed.p2.price-m_lta_version.confirmed.p1.price)/
+                (double)(m_lta_version.confirmed.p1.bar_index-m_lta_version.confirmed.p2.bar_index);
+      double ns=(m_lta_version.candidate.p2.price-m_lta_version.candidate.p1.price)/
+                (double)(m_lta_version.candidate.p1.bar_index-m_lta_version.candidate.p2.bar_index);
+      if(ns<=0.0 || MathAbs(ns-os)/MathMax(MathAbs(os),0.0001)>0.1)
+         m_lta_version.candidate=m_lta_version.confirmed;
+   }
+
+   if(m_ltb_version.confirmed.valid)
+   {
+      double os=(m_ltb_version.confirmed.p2.price-m_ltb_version.confirmed.p1.price)/
+                (double)(m_ltb_version.confirmed.p1.bar_index-m_ltb_version.confirmed.p2.bar_index);
+      double ns=(m_ltb_version.candidate.p2.price-m_ltb_version.candidate.p1.price)/
+                (double)(m_ltb_version.candidate.p1.bar_index-m_ltb_version.candidate.p2.bar_index);
+      if(ns>=0.0 || MathAbs(ns-os)/MathMax(MathAbs(os),0.0001)>0.1)
+         m_ltb_version.candidate=m_ltb_version.confirmed;
+   }
+}
 
 
 
