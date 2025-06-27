@@ -102,11 +102,16 @@ private:
   LineVersion     m_ltb_version;
   bool            m_need_redraw;
   ScoreWeights    m_weights;
-   
+
   UpdateControl   m_update_ctrl;
+  int             m_atr_handle;
+
    // Métodos privados
-   bool            CreateFractalsHandle();
-   void            ReleaseFractalsHandle();
+  bool            CreateATRHandle();
+  void            ReleaseATRHandle();
+  double          GetATR(int shift);
+  bool            CreateFractalsHandle();
+  void            ReleaseFractalsHandle();
    bool            UpdateFractals();
    void            FindTrendLines();
    void            CalculateBuffers();
@@ -189,6 +194,7 @@ CTrendLine::CTrendLine()
    m_high_cache.confirmation_bars = m_confirm_bars;
    m_lta_version.stability_threshold = m_stability_bars;
    m_ltb_version.stability_threshold = m_stability_bars;
+   m_atr_handle = INVALID_HANDLE;
 }
 
 //+------------------------------------------------------------------+
@@ -198,6 +204,7 @@ CTrendLine::~CTrendLine()
 {
    DeleteObjects();
    ReleaseFractalsHandle();
+   ReleaseATRHandle();
    ArrayFree(m_lta_buffer);
    ArrayFree(m_ltb_buffer);
    ArrayFree(m_lows);
@@ -249,7 +256,10 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
   m_lta_version.stability_threshold = m_stability_bars;
   m_ltb_version.stability_threshold = m_stability_bars;
   ReleaseFractalsHandle();
-  return CreateFractalsHandle();
+  ReleaseATRHandle();
+  if(!CreateFractalsHandle())
+     return false;
+  return CreateATRHandle();
 }
 
 //+------------------------------------------------------------------+
@@ -288,6 +298,48 @@ void CTrendLine::ReleaseFractalsHandle()
       IndicatorRelease(m_fractals_handle);
       m_fractals_handle = INVALID_HANDLE;
    }
+}
+
+//+------------------------------------------------------------------+
+//| Create ATR handle                                                |
+//+------------------------------------------------------------------+
+bool CTrendLine::CreateATRHandle()
+{
+   m_atr_handle = iATR(m_symbol, m_timeframe, 14);
+   if(m_atr_handle == INVALID_HANDLE)
+   {
+      Print("ERRO: Falha ao criar handle ATR para ", m_symbol);
+      return false;
+   }
+   return true;
+}
+
+//+------------------------------------------------------------------+
+//| Release ATR handle                                               |
+//+------------------------------------------------------------------+
+void CTrendLine::ReleaseATRHandle()
+{
+   if(m_atr_handle != INVALID_HANDLE)
+   {
+      IndicatorRelease(m_atr_handle);
+      m_atr_handle = INVALID_HANDLE;
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Get ATR value                                                    |
+//+------------------------------------------------------------------+
+double CTrendLine::GetATR(int shift)
+{
+   if(m_atr_handle == INVALID_HANDLE)
+      return 0.0;
+
+   double buf[];
+   ArraySetAsSeries(buf, true);
+   if(CopyBuffer(m_atr_handle, 0, shift, 1, buf) <= 0)
+      return 0.0;
+
+   return buf[0];
 }
 
 //+------------------------------------------------------------------+
@@ -825,7 +877,7 @@ double CTrendLine::ComputeVolatilityContext(SFractalPoint &p1, SFractalPoint &p2
    int dist=p1.bar_index-p2.bar_index;
    if(dist<=0) return 0.0;
    double slope=MathAbs((p2.price-p1.price)/dist);
-   double atr=iATR(m_symbol,m_timeframe,14);
+   double atr=GetATR(0);
    if(atr<=0) return 50.0;
    double rel=slope/atr;
    return MathMin(rel*50.0,100.0);
@@ -927,8 +979,8 @@ bool CTrendLine::ShouldUpdate(ENUM_UPDATE_TRIGGER &trigger)
    }
 
    // 3. Checar volatilidade
-   double atr_now  = iATR(m_symbol, m_timeframe, 14, 0);
-   double atr_prev = iATR(m_symbol, m_timeframe, 14, 1);
+   double atr_now  = GetATR(0);
+   double atr_prev = GetATR(1);
    if(atr_prev > 0 && MathAbs(atr_now - atr_prev) / atr_prev >= m_update_ctrl.params.volatility_threshold)
    {
       trigger = TRIGGER_VOLATILITY_SPIKE;
