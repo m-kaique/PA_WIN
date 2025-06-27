@@ -879,13 +879,27 @@ double CTrendLine::ComputeVolatilityContext(SFractalPoint &p_old, SFractalPoint 
 //+------------------------------------------------------------------+
 void CTrendLine::UpdateTrendState(TrendLineState &state, SFractalPoint &p_old, SFractalPoint &p_recent)
 {
-   if(state.p1.time == p_old.time && state.p2.time == p_recent.time)
+   bool same=(state.p1.time==p_old.time && state.p2.time==p_recent.time);
+
+   if(same)
       state.stability_count++;
    else
    {
+      double dprice1=MathAbs(p_old.price-state.p1.price);
+      double dprice2=MathAbs(p_recent.price-state.p2.price);
+      int    dbar1=MathAbs(p_old.bar_index-state.p1.bar_index);
+      int    dbar2=MathAbs(p_recent.bar_index-state.p2.bar_index);
+      bool   near=(dbar1<=1 && dbar2<=1 &&
+                   dprice1<=state.p1.price*0.001 &&
+                   dprice2<=state.p2.price*0.001);
+
+      if(!near && state.stability_count>1)
+         state.stability_count--;
+      else if(!near)
+         state.stability_count=1;
+
       state.p1 = p_old;
       state.p2 = p_recent;
-      state.stability_count = 1;
    }
 
    if(state.stability_count >= m_stability_bars)
