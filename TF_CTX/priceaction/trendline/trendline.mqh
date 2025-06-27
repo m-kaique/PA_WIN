@@ -9,6 +9,9 @@
 #include "../../config_types.mqh"
 #include "trendline_defs.mqh"
 
+const int TRENDLINE_MAX_FRACTALS = 50;
+const double TRENDLINE_SCORE_THRESHOLD = 10.0;
+
 // Estrutura para armazenar um ponto fractal
 struct SFractalPoint
 {
@@ -131,6 +134,7 @@ private:
    bool            ValidateLineWithMTF(SFractalPoint &p_old, SFractalPoint &p_recent);
    void            ConditionalUpdate(ENUM_UPDATE_TRIGGER trigger);
    bool            ShouldUpdate(ENUM_UPDATE_TRIGGER &trigger);
+   void            ValidateLineCorrections();
 public:
    CTrendLine();
    ~CTrendLine();
@@ -139,6 +143,16 @@ public:
    virtual double  GetValue(int shift = 0);
    virtual bool    CopyValues(int shift, int count, double &buffer[]);
    virtual bool    IsReady();
+   double         GetLTAValue(int shift=0);
+   double         GetLTBValue(int shift=0);
+   bool           IsLTAValid();
+   bool           IsLTBValid();
+   void           GetLTAPoints(SFractalPoint &p1, SFractalPoint &p2);
+   void           GetLTBPoints(SFractalPoint &p1, SFractalPoint &p2);
+   double         GetLTASlope();
+   double         GetLTBSlope();
+   ENUM_TRENDLINE_DIRECTION GetLineDirection(SFractalPoint &p1, SFractalPoint &p2);
+   void           PrintLineStatus();
    virtual bool    Update();
 };
 
@@ -382,7 +396,8 @@ bool CTrendLine::UpdateFractals(bool &updated)
    ArrayResize(m_low_cache.confirmed_points,0);
 
    // Extrair fractais válidos com confirmação
-   for(int i=0;i<bars_to_copy;i++)
+   // Processar do mais antigo para o mais recente para manter ordem cronológica
+   for(int i=bars_to_copy-1;i>=0;i--)
    {
       if(upper_fractals[i]!=EMPTY_VALUE && upper_fractals[i]>0)
       {
@@ -437,7 +452,9 @@ void CTrendLine::FindTrendLines()
    // ----- Procurar LTA -----
    // Usar apenas fractais confirmados para evitar linhas instáveis
    SFractalPoint lows_all[];
-   ArrayCopy(lows_all,m_low_cache.confirmed_points);
+   ArrayCopy(lows_all,m_low_cache.confirmed_points); // ordem: [0] = mais antigo
+   if(ArraySize(lows_all) > TRENDLINE_MAX_FRACTALS)
+      ArrayResize(lows_all, TRENDLINE_MAX_FRACTALS);
 
    if(m_draw_lta && ArraySize(lows_all) >= 2)
    {
@@ -447,18 +464,19 @@ void CTrendLine::FindTrendLines()
       {
          for(int j = i + 1; j < ArraySize(lows_all); j++)
          {
-            // lows_all[j] é o ponto mais antigo; lows_all[i], o mais recente
-            if(!IsValidLTA(lows_all[j], lows_all[i]))
+            // lows_all[i] é o ponto mais antigo; lows_all[j], o mais recente
+            if(!IsValidLTA(lows_all[i], lows_all[j]))
                continue;
-            if((lows_all[j].bar_index - lows_all[i].bar_index) < m_min_distance)
+            if((lows_all[i].bar_index - lows_all[j].bar_index) < m_min_distance)
                continue;
 
-            double score = ScorePair(lows_all[j], lows_all[i]);
+            double score = ScorePair(lows_all[i], lows_all[j]);
+            if(score < TRENDLINE_SCORE_THRESHOLD) continue;
             if(score > best_score)
             {
                best_score = score;
-               best_p1 = lows_all[j];
-               best_p2 = lows_all[i];
+               best_p1 = lows_all[i];
+               best_p2 = lows_all[j];
             }
          }
       }
@@ -477,14 +495,16 @@ void CTrendLine::FindTrendLines()
       {
          m_lta_point1 = m_lta_version.confirmed.p1;
          m_lta_point2 = m_lta_version.confirmed.p2;
-         m_lta_valid = true;
+         m_lta_valid = (m_lta_point2.price > m_lta_point1.price);
       }
    }
 
    // ----- Procurar LTB -----
    SFractalPoint highs_all[];
    // Apenas fractais confirmados para estabilidade
-   ArrayCopy(highs_all,m_high_cache.confirmed_points);
+   ArrayCopy(highs_all,m_high_cache.confirmed_points); // ordem: [0] = mais antigo
+   if(ArraySize(highs_all) > TRENDLINE_MAX_FRACTALS)
+      ArrayResize(highs_all, TRENDLINE_MAX_FRACTALS);
 
    if(m_draw_ltb && ArraySize(highs_all) >= 2)
    {
@@ -494,18 +514,19 @@ void CTrendLine::FindTrendLines()
       {
          for(int j = i + 1; j < ArraySize(highs_all); j++)
          {
-            // highs_all[j] é o ponto mais antigo; highs_all[i], o mais recente
-            if(!IsValidLTB(highs_all[j], highs_all[i]))
+            // highs_all[i] é o ponto mais antigo; highs_all[j], o mais recente
+            if(!IsValidLTB(highs_all[i], highs_all[j]))
                continue;
-            if((highs_all[j].bar_index - highs_all[i].bar_index) < m_min_distance)
+            if((highs_all[i].bar_index - highs_all[j].bar_index) < m_min_distance)
                continue;
 
-            double score = ScorePair(highs_all[j], highs_all[i]);
+            double score = ScorePair(highs_all[i], highs_all[j]);
+            if(score < TRENDLINE_SCORE_THRESHOLD) continue;
             if(score > best_score)
             {
                best_score = score;
-               best_p1 = highs_all[j];
-               best_p2 = highs_all[i];
+               best_p1 = highs_all[i];
+               best_p2 = highs_all[j];
             }
          }
       }
@@ -524,9 +545,10 @@ void CTrendLine::FindTrendLines()
       {
          m_ltb_point1 = m_ltb_version.confirmed.p1;
          m_ltb_point2 = m_ltb_version.confirmed.p2;
-         m_ltb_valid = true;
+         m_ltb_valid = (m_ltb_point2.price < m_ltb_point1.price);
       }
    }
+   ValidateLineCorrections();
 }
 
 //+------------------------------------------------------------------+
@@ -575,6 +597,9 @@ double CTrendLine::CalculateLinePrice(SFractalPoint &point1, SFractalPoint &poin
    // Calcular preço no shift especificado
    // A fórmula: preço = preço_do_ponto_mais_recente + slope * (bar_index_ponto_recente - shift)
    double price = point2.price + slope * (point2.bar_index - shift);
+   double deviation=MathAbs(price-point2.price)/MathMax(point2.price,1);
+   if(deviation>1.0 || price<=0 || MathAbs(shift-point2.bar_index)>(delta_bars*2))
+      return EMPTY_VALUE;
    
    return price;
 }
@@ -1068,5 +1093,73 @@ bool CTrendLine::Update()
    m_update_ctrl.last_update = TimeCurrent();
    return true;
 }
+double CTrendLine::GetLTASlope()
+{
+   if(!m_lta_valid) return 0.0;
+   int dist=m_lta_point1.bar_index-m_lta_point2.bar_index;
+   if(dist==0) return 0.0;
+   return (m_lta_point2.price-m_lta_point1.price)/(double)dist;
+}
+
+double CTrendLine::GetLTBSlope()
+{
+   if(!m_ltb_valid) return 0.0;
+   int dist=m_ltb_point1.bar_index-m_ltb_point2.bar_index;
+   if(dist==0) return 0.0;
+   return (m_ltb_point2.price-m_ltb_point1.price)/(double)dist;
+}
+
+ENUM_TRENDLINE_DIRECTION CTrendLine::GetLineDirection(SFractalPoint &p1, SFractalPoint &p2)
+{
+   if(p2.price > p1.price)
+      return TRENDLINE_ASCENDING;
+   else if(p2.price < p1.price)
+      return TRENDLINE_DESCENDING;
+   else
+      return TRENDLINE_HORIZONTAL;
+}
+
+void CTrendLine::GetLTAPoints(SFractalPoint &p1, SFractalPoint &p2){p1=m_lta_point1;p2=m_lta_point2;}
+void CTrendLine::GetLTBPoints(SFractalPoint &p1, SFractalPoint &p2){p1=m_ltb_point1;p2=m_ltb_point2;}
+bool CTrendLine::IsLTAValid(){return m_lta_valid;}
+bool CTrendLine::IsLTBValid(){return m_ltb_valid;}
+double CTrendLine::GetLTAValue(int shift){if(!m_lta_valid||shift>=ArraySize(m_lta_buffer))return EMPTY_VALUE;return m_lta_buffer[shift];}
+double CTrendLine::GetLTBValue(int shift){if(!m_ltb_valid||shift>=ArraySize(m_ltb_buffer))return EMPTY_VALUE;return m_ltb_buffer[shift];}
+void CTrendLine::PrintLineStatus(){
+   Print("LTA",m_lta_valid,
+         " slope",GetLTASlope(),
+         " dir",GetLineDirection(m_lta_point1,m_lta_point2),
+         " p1",m_lta_point1.bar_index," ",m_lta_point1.price,
+         " p2",m_lta_point2.bar_index," ",m_lta_point2.price);
+   Print("LTB",m_ltb_valid,
+         " slope",GetLTBSlope(),
+         " dir",GetLineDirection(m_ltb_point1,m_ltb_point2),
+         " p1",m_ltb_point1.bar_index," ",m_ltb_point1.price,
+         " p2",m_ltb_point2.bar_index," ",m_ltb_point2.price);
+}
+void CTrendLine::ValidateLineCorrections()
+{
+   if(m_lta_version.confirmed.valid)
+   {
+      double os=(m_lta_version.confirmed.p2.price-m_lta_version.confirmed.p1.price)/
+                (double)(m_lta_version.confirmed.p1.bar_index-m_lta_version.confirmed.p2.bar_index);
+      double ns=(m_lta_version.candidate.p2.price-m_lta_version.candidate.p1.price)/
+                (double)(m_lta_version.candidate.p1.bar_index-m_lta_version.candidate.p2.bar_index);
+      if(ns<=0.0 || MathAbs(ns-os)/MathMax(MathAbs(os),0.0001)>0.1)
+         m_lta_version.candidate=m_lta_version.confirmed;
+   }
+
+   if(m_ltb_version.confirmed.valid)
+   {
+      double os=(m_ltb_version.confirmed.p2.price-m_ltb_version.confirmed.p1.price)/
+                (double)(m_ltb_version.confirmed.p1.bar_index-m_ltb_version.confirmed.p2.bar_index);
+      double ns=(m_ltb_version.candidate.p2.price-m_ltb_version.candidate.p1.price)/
+                (double)(m_ltb_version.candidate.p1.bar_index-m_ltb_version.candidate.p2.bar_index);
+      if(ns>=0.0 || MathAbs(ns-os)/MathMax(MathAbs(os),0.0001)>0.1)
+         m_ltb_version.candidate=m_ltb_version.confirmed;
+   }
+}
+
+
 
 #endif // __TRENDLINE_MQH__
