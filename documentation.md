@@ -2,7 +2,7 @@
 
 ## Sumário
 1. [Visão Geral](#1-visão-geral)
-2. [Arquitetura e Fluxo de Execução](#2-arquitetura-e-fluxo-de-execução)
+2. [Arquitetura e Fluxo de Execução (PriceAction)](#2-arquitetura-e-fluxo-de-execucao)
 3. [Descrição dos Arquivos](#3-descrição-dos-arquivos)
 4. [Referência de Funções e Classes](#4-referência-de-funções-e-classes)
 5. [Parâmetros de Entrada](#5-parâmetros-de-entrada)
@@ -24,7 +24,7 @@
 
 ## 2. Arquitetura e Fluxo de Execução
 
-O Expert Advisor PA_WIN opera com uma arquitetura modular, centrada em um `CConfigManager` que gerencia as configurações carregadas de um arquivo JSON (`config.json`). Este gerenciador é responsável por inicializar e manter múltiplos contextos de timeframe (`TF_CTX`), cada um associado a um símbolo e timeframe específicos, e configurado com médias móveis (`CMovingAverages`).
+O Expert Advisor PA_WIN opera com uma arquitetura modular, centrada em um `CConfigManager` que gerencia as configurações carregadas de um arquivo JSON (`config.json`). Este gerenciador é responsável por criar e manter múltiplos contextos de timeframe (`TF_CTX`), cada um associado a um símbolo e timeframe específicos. Cada contexto possui listas de indicadores derivados de `CIndicatorBase` e padrões de *PriceAction* derivados de `CPriceActionBase` (como `CTrendLine`).
 
 ### Fluxo de Execução Simplificado:
 
@@ -32,8 +32,8 @@ O Expert Advisor PA_WIN opera com uma arquitetura modular, centrada em um `CConf
     *   O EA cria uma instância global de `CConfigManager`.
     *   Tenta carregar a configuração do arquivo `config.json` especificado pelo parâmetro de entrada `JsonConfigFile`.
     *   Se o carregamento for bem-sucedido, o `CConfigManager` parseia o JSON e cria instâncias de `TF_CTX` para cada símbolo e timeframe habilitado na configuração.
-    *   Cada `TF_CTX` inicializa suas próprias instâncias de `CMovingAverages` com base nas configurações de médias móveis definidas no JSON.
-    *   Define o timeframe de controle inicial para detecção de novos candles (padrão D1).
+     *   Cada `TF_CTX` inicializa suas listas de indicadores (`CIndicatorBase`) e de padrões de *PriceAction* (`CPriceActionBase`) de acordo com o JSON (ex.: `CTrendLine`).
+     *   Define o timeframe de controle inicial para detecção de novos candles (padrão D1). O sistema suporta múltiplos timeframes processados simultaneamente.
 
 2.  **Processamento de Tick (`OnTick`):**
     *   A cada tick, o EA verifica se um novo candle foi formado no timeframe de controle (`m_control_tf`).
@@ -47,30 +47,27 @@ O Expert Advisor PA_WIN opera com uma arquitetura modular, centrada em um `CConf
     *   A lógica de negociação real seria implementada aqui, utilizando os dados fornecidos pelos objetos `TF_CTX`.
 
 4.  **Desinicialização (`OnDeinit`):**
-    *   Quando o EA é removido do gráfico ou o terminal é fechado, o destrutor do `CConfigManager` é chamado, liberando todos os recursos alocados (instâncias de `TF_CTX` e `CMovingAverages`).
+     *   Quando o EA é removido do gráfico ou o terminal é fechado, o destrutor do `CConfigManager` é chamado, liberando todos os recursos alocados (instâncias de `TF_CTX`, indicadores e padrões de *PriceAction*).
 
 ### Diagrama Simplificado do Fluxo:
 
 ```mermaid
 graph TD
-    A[Início EA] --> B{OnInit()};
-    B --> C{Carregar config.json via CConfigManager};
-    C -- Sucesso --> D{Criar TF_CTX e CMovingAverages};
-    C -- Falha --> E[Erro e Sair];
-    D --> F[Loop OnTick()];
-    F --> G{IsNewBar(m_control_tf)?};
-    G -- Não --> F;
-    G -- Sim --> H{ExecuteOnNewBar()};
-    H --> I{Obter TF_CTX para WIN$N/D1};
-    I --> J{Atualizar TF_CTX (D1_ctx.Update())};
-    J --> K[Executar Lógica de Negociação (ex: ler EMAs)];
-    K --> F;
-    F --> L{OnDeinit()};
-    L --> M[Limpar recursos e Sair];
+    A[OnInit] --> B[CConfigManager]
+    B --> C[CreateContexts]
+    C --> D[Indicators + PriceAction]
+    D --> E[OnTick]
+    E --> F{IsNewBar?}
+    F -- Não --> E
+    F -- Sim --> G[ExecuteOnNewBar]
+    G --> H[Update (Indicators + PriceAction)]
 ```
 
+#### Fluxo de PriceAction (novo)
 
-
+1. **JSON** → `ParseTimeframeConfig()`
+2. `CTrendLineConfig` → `CTrendLine::Init()`
+3. `UpdateFractals()` → `FindTrendLines()` → `CalculateBuffers()` → `DrawLines()`
 
 ## 3. Descrição dos Arquivos
 
@@ -99,6 +96,20 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
   específico (ex.: `ma_defs.mqh`, `stochastic_defs.mqh`, `bollinger_defs.mqh`) contendo as
   enumerações relacionadas a suas opções, padronizando a organização das
   constantes assim como já ocorria com `vwap_defs.mqh`.
+ - **`priceaction_base.mqh`**: Interface abstrata `CPriceActionBase` para criação de padrões de PriceAction.
+ - **`priceaction/trendline/trendline.mqh`**: Implementa `CTrendLine` com detecção de LTA/LTB via fractais e desenho automático.
+- **`priceaction/trendline/trendline_defs.mqh`**: Enumerações de apoio ao módulo de linhas de tendência.
+
+### priceaction_base.mqh
+
+- **`CPriceActionBase`**: Interface abstrata para criação de padrões de PriceAction.
+  - **Métodos principais**: `Init()`, `GetValue()`, `CopyValues()`, `IsReady()` e `Update()`.
+
+### trendline.mqh
+
+- **`CTrendLine`**: Implementação baseada em fractais para desenhar LTA/LTB.
+  - **`Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig &config)`**
+  - **`UpdateFractals()`**, **`FindTrendLines()`**, **`CalculateBuffers()`**, **`DrawLines()`**
 
 
 
@@ -711,8 +722,10 @@ Esta seção detalha as principais funções e classes encontradas no código do
     - **`Init()`**: Inicializa o contexto criando os indicadores.
     - **`Update()`**: Percorre a lista `m_indicators` e chama `Update()` em cada objeto. Essa chamada utiliza o método da classe base `CIndicatorBase`, que por padrão apenas verifica `IsReady()`, mas pode ser sobrescrito por indicadores específicos (ex.: `CFibonacci`). Retorna `true` se todos estiverem prontos.
     - **`GetIndicatorValue(string name, int shift = 0)`**: Obtém o valor de um indicador pelo nome.
-    - **`CopyIndicatorValues(string name, int shift, int count, double &buffer[])`**: Copia múltiplos valores.
-    - **`IsInitialized() const`**, **`GetTimeframe() const`**, **`GetNumCandles() const`**, **`GetSymbol() const`**: Acessores.
+     - **`CopyIndicatorValues(string name, int shift, int count, double &buffer[])`**: Copia múltiplos valores.
+     - **`GetPriceActionValue(string name, int shift = 0)`**: Retorna o valor de um padrão de PriceAction pelo nome.
+     - **`CopyPriceActionValues(string name, int shift, int count, double &buffer[])`**: Copia valores de PriceAction para um array.
+     - **`IsInitialized() const`**, **`GetTimeframe() const`**, **`GetNumCandles() const`**, **`GetSymbol() const`**: Acessores.
 ### moving_averages.mqh
 
 #### Classes
@@ -959,7 +972,120 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
     - `period`: período utilizado para a média central.
     - `shift`: deslocamento das bandas.
     - `deviation`: multiplicador de desvio padrão.
-    - `applied_price`: preço base (ex.: `CLOSE`, `OPEN`, `HIGH`, `LOW`, `MEDIAN`, `TYPICAL`, `WEIGHTED`).
+- `applied_price`: preço base (ex.: `CLOSE`, `OPEN`, `HIGH`, `LOW`, `MEDIAN`, `TYPICAL`, `WEIGHTED`).
+
+
+6.  **Exemplo de Média Móvel (EMA):**
+```json
+{
+   "name": "ema21",
+   "type": "MA",
+   "period": 21,
+   "method": "EMA",
+   "shift": 0,
+   "enabled": true
+}
+```
+- `period`: período da média.
+- `method`: método de cálculo.
+- `shift`: deslocamento opcional.
+
+7.  **Exemplo de Estocástico:**
+```json
+{
+   "name": "sto14",
+   "type": "STO",
+   "period": 14,
+   "dperiod": 3,
+   "slowing": 3,
+   "method": "SMA",
+   "price_field": "LOWHIGH",
+   "enabled": true
+}
+```
+- `period`: período %K.
+- `dperiod`: período da linha %D.
+- `slowing`: valor de suavização.
+- `price_field`: campo de preço.
+
+8.  **Exemplo de Indicador de Volume:**
+```json
+{
+   "name": "vol0",
+   "type": "VOL",
+   "shift": 0,
+   "enabled": true
+}
+```
+- `shift`: deslocamento para leitura do volume.
+
+9.  **Exemplo de Fibonacci Completo:**
+```json
+{
+   "name": "fibo_complete",
+   "type": "FIBO",
+   "period": 30,
+   "Level_1": 23.6,
+   "Level_2": 38.2,
+   "Level_3": 50.0,
+   "Level_4": 61.8,
+   "Level_5": 78.6,
+   "Level_6": 100.0,
+   "Ext_1": 127.0,
+   "Ext_2": 161.8,
+   "Ext_3": 261.8,
+   "LevelsColor": "Orange",
+   "ExtensionsColor": "Orange",
+   "ParallelColor": "Yellow",
+   "ShowLabels": true,
+   "enabled": true
+}
+```
+- `period`: período de análise.
+- `LevelsColor`: cor das retrações.
+- `ExtensionsColor`: cor das extensões.
+- `ParallelColor`: cor da linha base.
+- `ShowLabels`: exibe rótulos.
+
+10. **Exemplo de Price Action (TrendLine via Fractais):**
+```json
+{
+   "name": "swing_lines",
+   "type": "TRENDLINE",
+   "period": 20,
+   "left": 3,
+   "right": 3,
+   "draw_lta": true,
+   "draw_ltb": true,
+   "lta_color": "Lime",
+   "ltb_color": "Magenta",
+   "lta_style": "DASH",
+   "ltb_style": "DOT",
+   "lta_width": 1,
+   "ltb_width": 1,
+   "extend_right": true,
+   "show_labels": true,
+   "enabled": true
+}
+```
+- `left`/`right`: número de velas usadas para detectar fractais.
+- `extend_right`: projeta a linha no futuro.
+- `show_labels`: mostra preços nas linhas.
+### Acessando PriceAction
+
+```cpp
+TF_CTX *D1_ctx = g_config_manager.GetContext("WIN$N", PERIOD_D1);
+double lta_price = D1_ctx.GetPriceActionValue("LTA_LTB", 0);
+if (lta_price > 0) {
+    Print("LTA atual: ", lta_price);
+}
+```
+
+### Configuração Multi-Timeframe
+
+```json
+// M5 para scalping, H1 para swing, D1 para bias
+```
 
 **Observação Importante:** Para que o EA leia o `config.json`, o arquivo deve ser salvo na pasta `MQL5/Files` ou `Common/Files` do seu terminal MetaTrader 5. O parâmetro de entrada `JsonConfigFile` no EA deve corresponder ao nome do arquivo (ex: `config.json`).
 
@@ -972,6 +1098,7 @@ Esta seção registra as principais alterações e versões dos componentes do E
 
 ### PA_WIN.mq5
 
+-   **Versão 3.10 (27.06.2025)**: Adicionado suporte completo a PriceAction com detecção de linhas de tendência via fractais.
 -   **Versão 2.00 (22.06.2025)**: Atualizado para integrar o `ConfigManager` para gerenciamento de configurações externas via JSON.
 
 ### JAson.mqh
@@ -984,7 +1111,7 @@ Esta seção registra as principais alterações e versões dos componentes do E
 
 ### tf_ctx.mqh
 
--   **Versão 2.00**: Suporte a lista dinâmica de indicadores baseada em `CIndicatorBase`.
+-   **Versão 3.00 (27.06.2025)**: Adicionado suporte completo a PriceAction patterns.
 
 ### indicator_base.mqh
 
@@ -1023,3 +1150,7 @@ Esta seção registra as principais alterações e versões dos componentes do E
 
 -   **Versao 1.00**: Implementa o indicador de retração de Fibonacci derivado de `CIndicatorBase`.
 -   **Versao 2.00**: Suporte a extensões, estilos configuráveis e rótulos personalizados via JSON.
+
+### trendline.mqh
+
+-   **Versão 1.00 (27.06.2025)**: Implementação inicial com detecção LTA/LTB via `iFractals()`, desenho automático e configuração via JSON.
