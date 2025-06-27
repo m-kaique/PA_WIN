@@ -486,9 +486,14 @@ void CTrendLine::FindTrendLines()
 
       if(m_lta_version.candidate.stability_count >= m_lta_version.stability_threshold)
       {
-         m_lta_version.confirmed = m_lta_version.candidate;
-         m_lta_version.confirmed.valid = true;
-         m_need_redraw = true;
+         double slope = (m_lta_version.candidate.p2.price - m_lta_version.candidate.p1.price)
+                        / (double)(m_lta_version.candidate.p1.bar_index - m_lta_version.candidate.p2.bar_index);
+         if(slope > 0)
+         {
+            m_lta_version.confirmed = m_lta_version.candidate;
+            m_lta_version.confirmed.valid = true;
+            m_need_redraw = true;
+         }
       }
 
       if(m_lta_version.confirmed.valid)
@@ -536,9 +541,14 @@ void CTrendLine::FindTrendLines()
 
       if(m_ltb_version.candidate.stability_count >= m_ltb_version.stability_threshold)
       {
-         m_ltb_version.confirmed = m_ltb_version.candidate;
-         m_ltb_version.confirmed.valid = true;
-         m_need_redraw = true;
+         double slope = (m_ltb_version.candidate.p2.price - m_ltb_version.candidate.p1.price)
+                        / (double)(m_ltb_version.candidate.p1.bar_index - m_ltb_version.candidate.p2.bar_index);
+         if(slope < 0)
+         {
+            m_ltb_version.confirmed = m_ltb_version.candidate;
+            m_ltb_version.confirmed.valid = true;
+            m_need_redraw = true;
+         }
       }
 
       if(m_ltb_version.confirmed.valid)
