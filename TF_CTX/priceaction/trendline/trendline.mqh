@@ -456,7 +456,21 @@ void CTrendLine::FindTrendLines()
    if(ArraySize(lows_all) > TRENDLINE_MAX_FRACTALS)
       ArrayResize(lows_all, TRENDLINE_MAX_FRACTALS);
 
-   if(m_draw_lta && ArraySize(lows_all) >= 2)
+   if(ArraySize(lows_all) < 2)
+   {
+      if(m_lta_version.confirmed.valid || m_lta_version.candidate.stability_count>0)
+      {
+         m_lta_version.confirmed.valid = false;
+         m_lta_version.candidate.stability_count = 0;
+         m_lta_version.candidate.p1.is_valid = false;
+         m_lta_version.candidate.p2.is_valid = false;
+         m_lta_valid = false;
+         m_lta_point1.is_valid = false;
+         m_lta_point2.is_valid = false;
+         m_need_redraw = true;
+      }
+   }
+   else if(m_draw_lta)
    {
       double best_score = -1;
       SFractalPoint best_p1, best_p2;
@@ -486,9 +500,14 @@ void CTrendLine::FindTrendLines()
 
       if(m_lta_version.candidate.stability_count >= m_lta_version.stability_threshold)
       {
-         m_lta_version.confirmed = m_lta_version.candidate;
-         m_lta_version.confirmed.valid = true;
-         m_need_redraw = true;
+         double slope = (m_lta_version.candidate.p2.price - m_lta_version.candidate.p1.price)
+                        / (double)(m_lta_version.candidate.p1.bar_index - m_lta_version.candidate.p2.bar_index);
+         if(slope > 0)
+         {
+            m_lta_version.confirmed = m_lta_version.candidate;
+            m_lta_version.confirmed.valid = true;
+            m_need_redraw = true;
+         }
       }
 
       if(m_lta_version.confirmed.valid)
@@ -506,7 +525,21 @@ void CTrendLine::FindTrendLines()
    if(ArraySize(highs_all) > TRENDLINE_MAX_FRACTALS)
       ArrayResize(highs_all, TRENDLINE_MAX_FRACTALS);
 
-   if(m_draw_ltb && ArraySize(highs_all) >= 2)
+   if(ArraySize(highs_all) < 2)
+   {
+      if(m_ltb_version.confirmed.valid || m_ltb_version.candidate.stability_count>0)
+      {
+         m_ltb_version.confirmed.valid = false;
+         m_ltb_version.candidate.stability_count = 0;
+         m_ltb_version.candidate.p1.is_valid = false;
+         m_ltb_version.candidate.p2.is_valid = false;
+         m_ltb_valid = false;
+         m_ltb_point1.is_valid = false;
+         m_ltb_point2.is_valid = false;
+         m_need_redraw = true;
+      }
+   }
+   else if(m_draw_ltb)
    {
       double best_score = -1;
       SFractalPoint best_p1, best_p2;
@@ -536,9 +569,14 @@ void CTrendLine::FindTrendLines()
 
       if(m_ltb_version.candidate.stability_count >= m_ltb_version.stability_threshold)
       {
-         m_ltb_version.confirmed = m_ltb_version.candidate;
-         m_ltb_version.confirmed.valid = true;
-         m_need_redraw = true;
+         double slope = (m_ltb_version.candidate.p2.price - m_ltb_version.candidate.p1.price)
+                        / (double)(m_ltb_version.candidate.p1.bar_index - m_ltb_version.candidate.p2.bar_index);
+         if(slope < 0)
+         {
+            m_ltb_version.confirmed = m_ltb_version.candidate;
+            m_ltb_version.confirmed.valid = true;
+            m_need_redraw = true;
+         }
       }
 
       if(m_ltb_version.confirmed.valid)
@@ -658,6 +696,8 @@ void CTrendLine::DrawLines()
          // Estender a linha para frente (shift negativo para projeção futura)
          end_time = TimeCurrent() + PeriodSeconds(m_timeframe) * 20;
          end_price = CalculateLinePrice(m_lta_point1, m_lta_point2, -20);
+         if(end_price == EMPTY_VALUE)
+            end_price = m_lta_point2.price;
       }
       else
       {
@@ -708,6 +748,8 @@ void CTrendLine::DrawLines()
          // Estender a linha para frente
          end_time = TimeCurrent() + PeriodSeconds(m_timeframe) * 20;
          end_price = CalculateLinePrice(m_ltb_point1, m_ltb_point2, -20);
+         if(end_price == EMPTY_VALUE)
+            end_price = m_ltb_point2.price;
       }
       else
       {
@@ -1143,20 +1185,54 @@ void CTrendLine::ValidateLineCorrections()
    {
       double os=(m_lta_version.confirmed.p2.price-m_lta_version.confirmed.p1.price)/
                 (double)(m_lta_version.confirmed.p1.bar_index-m_lta_version.confirmed.p2.bar_index);
+      if(os<=0.0)
+      {
+         m_lta_version.confirmed.valid=false;
+         m_lta_version.candidate.stability_count=0;
+         m_lta_version.candidate.p1.is_valid=false;
+         m_lta_version.candidate.p2.is_valid=false;
+         m_lta_valid=false;
+         m_lta_point1.is_valid=false;
+         m_lta_point2.is_valid=false;
+         m_need_redraw=true;
+      }
       double ns=(m_lta_version.candidate.p2.price-m_lta_version.candidate.p1.price)/
                 (double)(m_lta_version.candidate.p1.bar_index-m_lta_version.candidate.p2.bar_index);
       if(ns<=0.0 || MathAbs(ns-os)/MathMax(MathAbs(os),0.0001)>0.1)
          m_lta_version.candidate=m_lta_version.confirmed;
+   }
+   else
+   {
+      m_lta_valid=false;
+      m_lta_point1.is_valid=false;
+      m_lta_point2.is_valid=false;
    }
 
    if(m_ltb_version.confirmed.valid)
    {
       double os=(m_ltb_version.confirmed.p2.price-m_ltb_version.confirmed.p1.price)/
                 (double)(m_ltb_version.confirmed.p1.bar_index-m_ltb_version.confirmed.p2.bar_index);
+      if(os>=0.0)
+      {
+         m_ltb_version.confirmed.valid=false;
+         m_ltb_version.candidate.stability_count=0;
+         m_ltb_version.candidate.p1.is_valid=false;
+         m_ltb_version.candidate.p2.is_valid=false;
+         m_ltb_valid=false;
+         m_ltb_point1.is_valid=false;
+         m_ltb_point2.is_valid=false;
+         m_need_redraw=true;
+      }
       double ns=(m_ltb_version.candidate.p2.price-m_ltb_version.candidate.p1.price)/
                 (double)(m_ltb_version.candidate.p1.bar_index-m_ltb_version.candidate.p2.bar_index);
       if(ns>=0.0 || MathAbs(ns-os)/MathMax(MathAbs(os),0.0001)>0.1)
          m_ltb_version.candidate=m_ltb_version.confirmed;
+   }
+   else
+   {
+      m_ltb_valid=false;
+      m_ltb_point1.is_valid=false;
+      m_ltb_point2.is_valid=false;
    }
 }
 
