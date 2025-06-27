@@ -28,7 +28,13 @@ private:
    int               m_lta_width;
    int               m_ltb_width;
    bool              m_extend_right;
-   bool              m_show_labels;
+  bool              m_show_labels;
+
+  // Buffers para fractais
+  double            m_fractalsHigh[];
+  double            m_fractalsLow[];
+  int               m_barsHigh[];
+  int               m_barsLow[];
    
    // Dados da LTA (Linha de Tendência de Alta - conecta mínimos ascendentes)
    datetime          m_lta_time1;
@@ -57,17 +63,22 @@ private:
    bool              FindLTB(datetime &time1, double &price1, datetime &time2, double &price2);
    double            CalculateTrendLinePrice(datetime time1, double price1, datetime time2, double price2, datetime target_time);
    void              DrawTrendLines();
-   void              DeleteObjects();
-   ENUM_TRENDLINE_DIRECTION GetTrendDirection(double price1, double price2);
-   bool              IsAscendingTrend(double price1, double price2);
-   bool              IsDescendingTrend(double price1, double price2);
+  void              DeleteObjects();
+  ENUM_TRENDLINE_DIRECTION GetTrendDirection(double price1, double price2);
+  bool              IsAscendingTrend(double price1, double price2);
+  bool              IsDescendingTrend(double price1, double price2);
+  void              UpdateFractals();
+  bool              GetLastLTB(int &bar1,double &price1,int &bar2,double &price2);
+  bool              GetLastLTA(int &bar1,double &price1,int &bar2,double &price2);
 
 public:
                      CTrendLine();
                     ~CTrendLine();
 
-   bool              Init(string symbol, ENUM_TIMEFRAMES timeframe,
+  bool              Init(string symbol, ENUM_TIMEFRAMES timeframe,
                          int period, int left, int right);
+  bool              Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                         CTrendLineConfig &config);
 
    // Implementação da interface base
    virtual bool      Init(string symbol, ENUM_TIMEFRAMES timeframe, int period);
@@ -147,12 +158,40 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                       int period, int left, int right)
   {
    m_symbol=symbol;
-  m_timeframe=timeframe;
+   m_timeframe=timeframe;
    m_obj_prefix="TL_"+symbol+"_"+EnumToString(timeframe)+"_"+IntegerToString(GetTickCount());
-  m_period=MathMax(period, 20); // Mínimo de 20 para análise consistente
+   m_period=MathMax(period, 20); // Mínimo de 20 para análise consistente
    m_left=MathMax(left, 3);      // Mínimo de 3 para confirmar pivôs
    m_right=MathMax(right, 3);
-   
+
+   m_ready=false;
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| Init from configuration structure                                |
+//+------------------------------------------------------------------+
+bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                      CTrendLineConfig &config)
+  {
+   m_symbol=symbol;
+   m_timeframe=timeframe;
+   m_obj_prefix="TL_"+symbol+"_"+EnumToString(timeframe)+"_"+IntegerToString(GetTickCount());
+   m_period=MathMax(config.period,20);
+   m_left=MathMax(config.left,3);
+   m_right=MathMax(config.right,3);
+
+   m_draw_lta=config.draw_lta;
+   m_draw_ltb=config.draw_ltb;
+   m_lta_color=config.lta_color;
+   m_ltb_color=config.ltb_color;
+   m_lta_style=config.lta_style;
+   m_ltb_style=config.ltb_style;
+   m_lta_width=config.lta_width;
+   m_ltb_width=config.ltb_width;
+   m_extend_right=config.extend_right;
+   m_show_labels=config.show_labels;
+
    m_ready=false;
    return true;
   }
@@ -269,6 +308,8 @@ bool CTrendLine::DetectTrendLines()
   {
    bool lta_found = false;
    bool ltb_found = false;
+
+   UpdateFractals();
    
    if(m_draw_lta)
      {
@@ -294,92 +335,16 @@ bool CTrendLine::DetectTrendLines()
 //+------------------------------------------------------------------+
 bool CTrendLine::FindLTA(datetime &time1, double &price1, datetime &time2, double &price2)
   {
-   double fractal_up[];
-   double fractal_down[];
-   datetime times_buf[];
-   double lows[];
-   datetime times[];
-   int low_count = 0;
-
-   int bars_to_copy = m_period + m_left + m_right + 1;
-   ArrayResize(fractal_up, bars_to_copy);
-   ArrayResize(fractal_down, bars_to_copy);
-   ArrayResize(times_buf, bars_to_copy);
-   ArraySetAsSeries(fractal_up, true);
-   ArraySetAsSeries(fractal_down, true);
-   ArraySetAsSeries(times_buf, true);
-
-   int fractal_handle=iFractals(m_symbol,m_timeframe);
-   if(fractal_handle==INVALID_HANDLE)
-      return false;
-   if(CopyBuffer(fractal_handle,0,0,bars_to_copy,fractal_up)<=0)
-     {
-      IndicatorRelease(fractal_handle);
-      return false;
-     }
-   if(CopyBuffer(fractal_handle,1,0,bars_to_copy,fractal_down)<=0)
-     {
-      IndicatorRelease(fractal_handle);
-      return false;
-     }
-   IndicatorRelease(fractal_handle);
-   if(CopyTime(m_symbol, m_timeframe, 0, bars_to_copy, times_buf) <= 0)
-      return false;
-
-   int start_bar = bars_to_copy - 1;
-   int end_bar = 10;
-
-   for(int i = start_bar; i >= end_bar; i--)
-     {
-      if(fractal_down[i] > 0.0)
-        {
-         ArrayResize(lows, low_count + 1);
-         ArrayResize(times, low_count + 1);
-         lows[low_count] = fractal_down[i];
-         times[low_count] = times_buf[i];
-         low_count++;
-        }
-     }
-
-   if(low_count < 2)
-     {
-      Print("LTA: Poucos fractais (", low_count, ")");
-      return false;
-     }
-
-   double best_slope = 0;
-   int best_p1 = -1, best_p2 = -1;
-
-   for(int i = 0; i < low_count - 1; i++)
-     {
-      for(int j = i + 1; j < low_count; j++)
-        {
-         if(lows[j] > lows[i] && times[j] > times[i])
-           {
-            double slope = (lows[j] - lows[i]) / (double)(times[j] - times[i]);
-            if(slope > best_slope)
-              {
-               best_slope = slope;
-               best_p1 = i;
-               best_p2 = j;
-              }
-           }
-        }
-     }
-
-   if(best_p1 >= 0 && best_p2 >= 0)
-     {
-      time1 = times[best_p1];
-      price1 = lows[best_p1];
-      time2 = times[best_p2];
-      price2 = lows[best_p2];
-
-      Print("LTA: Inclinação = ", best_slope, " Ascendente = ", (price2 > price1));
-      return true;
-     }
-
-   Print("LTA: Nenhuma linha ascendente válida encontrada");
-   return false;
+   int b1,b2; double p1,p2;
+   if(!GetLastLTA(b1,p1,b2,p2))
+     return false;
+   if(p2<=p1)
+     return false;
+   time1=iTime(m_symbol,m_timeframe,b1);
+   price1=p1;
+   time2=iTime(m_symbol,m_timeframe,b2);
+   price2=p2;
+   return true;
   }
 
 //+------------------------------------------------------------------+
@@ -387,92 +352,16 @@ bool CTrendLine::FindLTA(datetime &time1, double &price1, datetime &time2, doubl
 //+------------------------------------------------------------------+
 bool CTrendLine::FindLTB(datetime &time1, double &price1, datetime &time2, double &price2)
   {
-   double fractal_up[];
-   double fractal_down[];
-   datetime times_buf[];
-   double highs[];
-   datetime times[];
-   int high_count = 0;
-
-   int bars_to_copy = m_period + m_left + m_right + 1;
-   ArrayResize(fractal_up, bars_to_copy);
-   ArrayResize(fractal_down, bars_to_copy);
-   ArrayResize(times_buf, bars_to_copy);
-   ArraySetAsSeries(fractal_up, true);
-   ArraySetAsSeries(fractal_down, true);
-   ArraySetAsSeries(times_buf, true);
-
-   int fractal_handle=iFractals(m_symbol,m_timeframe);
-   if(fractal_handle==INVALID_HANDLE)
-      return false;
-   if(CopyBuffer(fractal_handle,0,0,bars_to_copy,fractal_up)<=0)
-     {
-      IndicatorRelease(fractal_handle);
-      return false;
-     }
-   if(CopyBuffer(fractal_handle,1,0,bars_to_copy,fractal_down)<=0)
-     {
-      IndicatorRelease(fractal_handle);
-      return false;
-     }
-   IndicatorRelease(fractal_handle);
-   if(CopyTime(m_symbol, m_timeframe, 0, bars_to_copy, times_buf) <= 0)
-      return false;
-
-   int start_bar = bars_to_copy - 1;
-   int end_bar = 10;
-
-   for(int i = start_bar; i >= end_bar; i--)
-     {
-      if(fractal_up[i] > 0.0)
-        {
-         ArrayResize(highs, high_count + 1);
-         ArrayResize(times, high_count + 1);
-         highs[high_count] = fractal_up[i];
-         times[high_count] = times_buf[i];
-         high_count++;
-        }
-     }
-
-   if(high_count < 2)
-     {
-      Print("LTB: Poucos fractais (", high_count, ")");
-      return false;
-     }
-
-   double best_slope = 0;
-   int best_p1 = -1, best_p2 = -1;
-
-   for(int i = 0; i < high_count - 1; i++)
-     {
-      for(int j = i + 1; j < high_count; j++)
-        {
-         if(highs[j] < highs[i] && times[j] > times[i])
-           {
-            double slope = (highs[j] - highs[i]) / (double)(times[j] - times[i]);
-            if(slope < best_slope)
-              {
-               best_slope = slope;
-               best_p1 = i;
-               best_p2 = j;
-              }
-           }
-        }
-     }
-
-   if(best_p1 >= 0 && best_p2 >= 0)
-     {
-      time1 = times[best_p1];
-      price1 = highs[best_p1];
-      time2 = times[best_p2];
-      price2 = highs[best_p2];
-
-      Print("LTB: Inclinação = ", best_slope, " Descendente = ", (price2 < price1));
-      return true;
-     }
-
-   Print("LTB: Nenhuma linha descendente válida encontrada");
-   return false;
+   int b1,b2; double p1,p2;
+   if(!GetLastLTB(b1,p1,b2,p2))
+     return false;
+   if(p2>=p1)
+     return false;
+   time1=iTime(m_symbol,m_timeframe,b1);
+   price1=p1;
+   time2=iTime(m_symbol,m_timeframe,b2);
+   price2=p2;
+   return true;
   }
 
 //+------------------------------------------------------------------+
@@ -703,8 +592,72 @@ ENUM_TRENDLINE_DIRECTION CTrendLine::GetLTBDirection()
   {
    if(!m_ltb_valid)
       return TRENDLINE_HORIZONTAL;
-   
+
    return GetTrendDirection(m_ltb_price1, m_ltb_price2);
+  }
+
+//+------------------------------------------------------------------+
+//| Atualiza arrays de fractais                                      |
+//+------------------------------------------------------------------+
+void CTrendLine::UpdateFractals()
+  {
+   ArrayResize(m_fractalsHigh,0);
+   ArrayResize(m_fractalsLow,0);
+   ArrayResize(m_barsHigh,0);
+   ArrayResize(m_barsLow,0);
+
+   int total=MathMin(m_period,Bars(m_symbol,m_timeframe)-2);
+   for(int i=total;i>=2;i--)
+     {
+      double high=iFractals(m_symbol,m_timeframe,MODE_UPPER,i);
+      double low =iFractals(m_symbol,m_timeframe,MODE_LOWER,i);
+      if(high!=0.0)
+        {
+         int pos=ArraySize(m_fractalsHigh);
+         ArrayResize(m_fractalsHigh,pos+1);
+         ArrayResize(m_barsHigh,pos+1);
+         m_fractalsHigh[pos]=high;
+         m_barsHigh[pos]=i;
+        }
+      if(low!=0.0)
+        {
+         int pos=ArraySize(m_fractalsLow);
+         ArrayResize(m_fractalsLow,pos+1);
+         ArrayResize(m_barsLow,pos+1);
+         m_fractalsLow[pos]=low;
+         m_barsLow[pos]=i;
+        }
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| Retorna os 2 últimos fractais de alta (LTB)                      |
+//+------------------------------------------------------------------+
+bool CTrendLine::GetLastLTB(int &bar1,double &price1,int &bar2,double &price2)
+  {
+   if(ArraySize(m_fractalsHigh)<2)
+      return false;
+   int sz=ArraySize(m_fractalsHigh);
+   bar1 = m_barsHigh[sz-2];
+   price1= m_fractalsHigh[sz-2];
+   bar2 = m_barsHigh[sz-1];
+   price2= m_fractalsHigh[sz-1];
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| Retorna os 2 últimos fractais de baixa (LTA)                     |
+//+------------------------------------------------------------------+
+bool CTrendLine::GetLastLTA(int &bar1,double &price1,int &bar2,double &price2)
+  {
+   if(ArraySize(m_fractalsLow)<2)
+      return false;
+   int sz=ArraySize(m_fractalsLow);
+   bar1 = m_barsLow[sz-2];
+   price1= m_fractalsLow[sz-2];
+   bar2 = m_barsLow[sz-1];
+   price2= m_fractalsLow[sz-1];
+   return true;
   }
 
 #endif // __TRENDLINE_MQH__

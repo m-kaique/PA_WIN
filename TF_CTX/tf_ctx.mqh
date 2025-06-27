@@ -272,8 +272,7 @@ bool TF_CTX::Init()
       {
         pa = new CTrendLine();
         CTrendLineConfig *tl_cfg=(CTrendLineConfig*)m_priceaction_cfg[i];
-        if (pa == NULL || !((CTrendLine*)pa).Init(m_symbol, m_timeframe,
-                                           tl_cfg.period, tl_cfg.left, tl_cfg.right))
+        if (pa == NULL || !((CTrendLine*)pa).Init(m_symbol, m_timeframe, *tl_cfg))
         {
           Print("ERRO: Falha ao inicializar price action ", m_priceaction_cfg[i].name);
           delete pa;
