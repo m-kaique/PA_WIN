@@ -122,6 +122,14 @@
                "ParallelColor": "Blue",
                "enabled": false
             }
+         ],
+         "PriceAction": [
+            {
+               "name": "LTA_LTB",
+               "type": "TrendLines",
+               "period": 21,
+               "enabled": true
+            }
          ]
       },
       "H4": {

@@ -76,12 +76,17 @@ private:
   CIndicatorConfig *m_cfg[];
   CIndicatorBase *m_indicators[];
   string m_names[];
+  // Configurações e instâncias de price action
+  CPriceActionConfig *m_pa_cfg[];
+  CPriceActionBase  *m_price_actions[];
+  string m_pa_names[];
 
   bool ValidateParameters();
   void CleanUp();
 
 public:
-  TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, CIndicatorConfig *&cfg[]);
+  TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles,
+         CIndicatorConfig *&cfg[], CPriceActionConfig *&pa_cfg[]);
   ~TF_CTX();
 
   bool Init();
@@ -93,7 +98,8 @@ public:
 //+------------------------------------------------------------------+
 //| Construtor                                                       |
 //+------------------------------------------------------------------+
-TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, CIndicatorConfig *&cfg[])
+TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles,
+               CIndicatorConfig *&cfg[], CPriceActionConfig *&pa_cfg[])
 {
   m_timeframe = timeframe;
   m_num_candles = num_candles;
@@ -105,8 +111,15 @@ TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, CIndicatorConfig *&cf
   for (int i = 0; i < sz; i++)
     m_cfg[i] = cfg[i];
 
+  int psz = ArraySize(pa_cfg);
+  ArrayResize(m_pa_cfg, psz);
+  for(int i=0;i<psz;i++)
+    m_pa_cfg[i]=pa_cfg[i];
+
   ArrayResize(m_indicators, 0);
   ArrayResize(m_names, 0);
+  ArrayResize(m_price_actions,0);
+  ArrayResize(m_pa_names,0);
 }
 
 //+------------------------------------------------------------------+
@@ -239,6 +252,38 @@ bool TF_CTX::Init()
     m_names[pos] = m_cfg[i].name;
   }
 
+  // Price action modules
+  for(int i=0;i<ArraySize(m_pa_cfg);i++)
+  {
+    if(m_pa_cfg[i]==NULL || !m_pa_cfg[i].enabled)
+      continue;
+
+    CPriceActionBase *pa=NULL;
+    switch(StringToPriceActionType(m_pa_cfg[i].type))
+    {
+      case PA_TREND_LINE:
+        pa=new CTrendLines();
+        if(pa==NULL || !((CTrendLines*)pa).Init(m_symbol,m_timeframe,
+                                 ((CTrendLinesConfig*)m_pa_cfg[i]).period))
+        {
+          Print("ERRO: Falha ao inicializar price action ", m_pa_cfg[i].name);
+          delete pa;
+          CleanUp();
+          return false;
+        }
+        break;
+      default:
+        Print("Tipo de PriceAction nao suportado: ", m_pa_cfg[i].type);
+        continue;
+    }
+
+    int ppos=ArraySize(m_price_actions);
+    ArrayResize(m_price_actions,ppos+1);
+    ArrayResize(m_pa_names,ppos+1);
+    m_price_actions[ppos]=pa;
+    m_pa_names[ppos]=m_pa_cfg[i].name;
+  }
+
   m_initialized = true;
   return true;
 }
@@ -271,14 +316,27 @@ void TF_CTX::CleanUp()
     if (m_indicators[i] != NULL)
       delete m_indicators[i];
   }
+  for (int i = 0; i < ArraySize(m_price_actions); i++)
+  {
+    if (m_price_actions[i] != NULL)
+      delete m_price_actions[i];
+  }
   for (int i = 0; i < ArraySize(m_cfg); i++)
   {
     if (m_cfg[i] != NULL)
       delete m_cfg[i];
   }
+  for (int i = 0; i < ArraySize(m_pa_cfg); i++)
+  {
+    if (m_pa_cfg[i] != NULL)
+      delete m_pa_cfg[i];
+  }
   ArrayResize(m_indicators, 0);
   ArrayResize(m_names, 0);
+  ArrayResize(m_price_actions,0);
+  ArrayResize(m_pa_names,0);
   ArrayResize(m_cfg, 0);
+  ArrayResize(m_pa_cfg,0);
   m_initialized = false;
 }
 
@@ -318,6 +376,9 @@ bool TF_CTX::Update()
   for (int i = 0; i < ArraySize(m_indicators); i++)
     if (m_indicators[i] != NULL)
       ready &= m_indicators[i].Update();
+  for (int i = 0; i < ArraySize(m_price_actions); i++)
+    if (m_price_actions[i] != NULL)
+      ready &= m_price_actions[i].Update();
   return ready;
 }
 

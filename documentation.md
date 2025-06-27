@@ -84,9 +84,9 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
 
 - **`config_manager.mqh`**: Este arquivo define a classe `CConfigManager`, responsável por carregar, parsear e gerenciar a configuração do EA a partir do arquivo `config.json`. Ele cria e mantém os contextos de timeframe (`TF_CTX`) para cada símbolo e timeframe configurado, atuando como a camada de abstração entre a configuração JSON e a lógica de negociação.
 
-- **`config_types.mqh`**: Define as estruturas de dados utilizadas para tipificar a configuração lida do JSON. Nesta versão são utilizadas `SIndicatorConfig` (configuração de um indicador genérico) e `STimeframeConfig`, que possui um array de `SIndicatorConfig` para cada timeframe.
+- **`config_types.mqh`**: Define as estruturas de dados utilizadas para tipificar a configuração lida do JSON. A estrutura `STimeframeConfig` agora possui arrays de `SIndicatorConfig` e `CPriceActionConfig`, permitindo configurar indicadores e módulos de Price Action para cada timeframe.
 
-- **`tf_ctx.mqh`**: Define a classe `TF_CTX` (TimeFrame Context). Cada instância mantém uma lista de indicadores derivados de `CIndicatorBase`, criados dinamicamente conforme a configuração. Fornece métodos genéricos para acessar valores e atualizar o contexto. Seu método `Update()` percorre essa lista e chama `Update()` em cada indicador, mantendo todos sincronizados.
+- **`tf_ctx.mqh`**: Define a classe `TF_CTX` (TimeFrame Context). Cada instância mantém listas de indicadores (derivados de `CIndicatorBase`) e de módulos de Price Action (`CPriceActionBase`). O método `Update()` percorre ambas as listas chamando `Update()` em cada objeto, mantendo todos sincronizados.
 - **`indicator_base.mqh`**: Declara a classe abstrata `CIndicatorBase`, utilizada como interface para os diversos tipos de indicadores. Nela está definido o método virtual `Update()`, que por padrão apenas verifica `IsReady()`. Indicadores mais complexos podem sobrescrever esse método para recalcular seus dados.
 
 - **`moving_averages.mqh`**: Implementa a classe `CMovingAverages`, derivada de `CIndicatorBase`, responsável por criar e gerenciar indicadores de média móvel.
@@ -95,6 +95,8 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
 - **`bollinger.mqh`**: Implementa a classe `CBollinger`, derivada de `CIndicatorBase`, responsável pelo cálculo das Bandas de Bollinger.
  - **`vwap.mqh`**: Implementa a classe `CVWAP`, derivada de `CIndicatorBase`, com cálculo acumulado de VWAP por sessão, opções de preço e detecção avançada de sessões.
 - **`fibonacci.mqh`**: Implementa o indicador `CFibonacci`, capaz de desenhar níveis de retração e extensões de Fibonacci com total customização via JSON.
+- **`price_action_base.mqh`**: Define a classe abstrata `CPriceActionBase`, usada como interface para módulos de Price Action.
+- **`trend_lines.mqh`**: Implementa `CTrendLines`, responsável por detectar linhas de tendência de alta (LTA) e baixa (LTB).
 - **Arquivos `*_defs.mqh`**: Cada indicador possui agora um arquivo de definições
   específico (ex.: `ma_defs.mqh`, `stochastic_defs.mqh`, `bollinger_defs.mqh`) contendo as
   enumerações relacionadas a suas opções, padronizando a organização das
@@ -682,18 +684,19 @@ Esta seção detalha as principais funções e classes encontradas no código do
     - `labels_color`, `labels_font_size`, `labels_font`: Aparência dos textos.
 
 - **`STimeframeConfig`**
-  - **Descrição simplificada**: Configuração para um timeframe específico contendo uma lista de indicadores.
+  - **Descrição simplificada**: Configuração para um timeframe específico contendo listas de indicadores e módulos de Price Action.
   - **Membros**:
     - `enabled` (`bool`): Indica se este timeframe está habilitado.
     - `num_candles` (`int`): Número de candles a considerar.
     - `indicators[]` (`SIndicatorConfig[]`): Array de configurações de indicadores.
+    - `price_actions[]` (`CPriceActionConfig[]`): Array de módulos de Price Action.
 
 ### tf_ctx.mqh
 
 #### Classes
 
 - **`TF_CTX`**
-  - **Descrição simplificada**: Classe que representa um contexto para um símbolo e timeframe, mantendo uma lista de indicadores.
+  - **Descrição simplificada**: Classe que representa um contexto para um símbolo e timeframe, mantendo listas de indicadores e de módulos de Price Action.
   - **Membros Privados**:
     - `m_timeframe` (`ENUM_TIMEFRAMES`): Timeframe analisado.
     - `m_num_candles` (`int`): Número de candles considerados.
@@ -701,15 +704,17 @@ Esta seção detalha as principais funções e classes encontradas no código do
     - `m_initialized` (`bool`): Indica se o contexto foi inicializado.
     - `m_cfg[]` (`SIndicatorConfig[]`): Configurações dos indicadores.
     - `m_indicators[]` (`CIndicatorBase*[]`): Instâncias dos indicadores.
+    - `m_pa_cfg[]` (`CPriceActionConfig[]`): Configurações de Price Action.
+    - `m_price_actions[]` (`CPriceActionBase*[]`): Instâncias dos módulos de Price Action.
   - **Métodos Privados**:
     - **`ValidateParameters()`**: Valida os parâmetros de construção.
     - **`CleanUp()`**: Libera recursos.
   - **Construtor e Destrutor**:
-    - **`TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, SIndicatorConfig &cfg[])`**: Cria o contexto usando a lista de indicadores.
+    - **`TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, SIndicatorConfig &cfg[], CPriceActionConfig &pa_cfg[])`**: Cria o contexto usando as listas de indicadores e de Price Action.
     - **`~TF_CTX()`**: Libera recursos.
   - **Métodos Públicos**:
     - **`Init()`**: Inicializa o contexto criando os indicadores.
-    - **`Update()`**: Percorre a lista `m_indicators` e chama `Update()` em cada objeto. Essa chamada utiliza o método da classe base `CIndicatorBase`, que por padrão apenas verifica `IsReady()`, mas pode ser sobrescrito por indicadores específicos (ex.: `CFibonacci`). Retorna `true` se todos estiverem prontos.
+    - **`Update()`**: Percorre as listas `m_indicators` e `m_price_actions`, chamando `Update()` em cada objeto. Essa chamada utiliza o método das classes base (`CIndicatorBase` ou `CPriceActionBase`), que por padrão apenas verificam `IsReady()`. Retorna `true` se todos estiverem prontos.
     - **`GetIndicatorValue(string name, int shift = 0)`**: Obtém o valor de um indicador pelo nome.
     - **`CopyIndicatorValues(string name, int shift, int count, double &buffer[])`**: Copia múltiplos valores.
     - **`IsInitialized() const`**, **`GetTimeframe() const`**, **`GetNumCandles() const`**, **`GetSymbol() const`**: Acessores.

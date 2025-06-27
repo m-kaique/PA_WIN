@@ -16,6 +16,7 @@ struct STimeframeConfig
    bool              enabled;
    int               num_candles;
    CIndicatorConfig *indicators[];
+   CPriceActionConfig *price_actions[];
   };
 
 #endif // __CONFIG_TYPES_MQH__
