@@ -151,6 +151,7 @@ public:
    void           GetLTBPoints(SFractalPoint &p1, SFractalPoint &p2);
    double         GetLTASlope();
    double         GetLTBSlope();
+   ENUM_TRENDLINE_DIRECTION GetLineDirection(SFractalPoint &p1, SFractalPoint &p2);
    void           PrintLineStatus();
    virtual bool    Update();
 };
@@ -1107,13 +1108,34 @@ double CTrendLine::GetLTBSlope()
    return (m_ltb_point2.price-m_ltb_point1.price)/(double)dist;
 }
 
+ENUM_TRENDLINE_DIRECTION CTrendLine::GetLineDirection(SFractalPoint &p1, SFractalPoint &p2)
+{
+   if(p2.price > p1.price)
+      return TRENDLINE_ASCENDING;
+   else if(p2.price < p1.price)
+      return TRENDLINE_DESCENDING;
+   else
+      return TRENDLINE_HORIZONTAL;
+}
+
 void CTrendLine::GetLTAPoints(SFractalPoint &p1, SFractalPoint &p2){p1=m_lta_point1;p2=m_lta_point2;}
 void CTrendLine::GetLTBPoints(SFractalPoint &p1, SFractalPoint &p2){p1=m_ltb_point1;p2=m_ltb_point2;}
 bool CTrendLine::IsLTAValid(){return m_lta_valid;}
 bool CTrendLine::IsLTBValid(){return m_ltb_valid;}
 double CTrendLine::GetLTAValue(int shift){if(!m_lta_valid||shift>=ArraySize(m_lta_buffer))return EMPTY_VALUE;return m_lta_buffer[shift];}
 double CTrendLine::GetLTBValue(int shift){if(!m_ltb_valid||shift>=ArraySize(m_ltb_buffer))return EMPTY_VALUE;return m_ltb_buffer[shift];}
-void CTrendLine::PrintLineStatus(){Print("LTA",m_lta_valid," slope",GetLTASlope()," p1",m_lta_point1.bar_index," ",m_lta_point1.price," p2",m_lta_point2.bar_index," ",m_lta_point2.price);Print("LTB",m_ltb_valid," slope",GetLTBSlope()," p1",m_ltb_point1.bar_index," ",m_ltb_point1.price," p2",m_ltb_point2.bar_index," ",m_ltb_point2.price);}
+void CTrendLine::PrintLineStatus(){
+   Print("LTA",m_lta_valid,
+         " slope",GetLTASlope(),
+         " dir",GetLineDirection(m_lta_point1,m_lta_point2),
+         " p1",m_lta_point1.bar_index," ",m_lta_point1.price,
+         " p2",m_lta_point2.bar_index," ",m_lta_point2.price);
+   Print("LTB",m_ltb_valid,
+         " slope",GetLTBSlope(),
+         " dir",GetLineDirection(m_ltb_point1,m_ltb_point2),
+         " p1",m_ltb_point1.bar_index," ",m_ltb_point1.price,
+         " p2",m_ltb_point2.bar_index," ",m_ltb_point2.price);
+}
 void CTrendLine::ValidateLineCorrections(){if(m_lta_version.confirmed.valid){double os=(m_lta_version.confirmed.p2.price-m_lta_version.confirmed.p1.price)/(double)(m_lta_version.confirmed.p1.bar_index-m_lta_version.confirmed.p2.bar_index);double ns=(m_lta_version.candidate.p2.price-m_lta_version.candidate.p1.price)/(double)(m_lta_version.candidate.p1.bar_index-m_lta_version.candidate.p2.bar_index);if(MathAbs(ns-os)/MathMax(MathAbs(os),0.0001)>0.1)m_lta_version.candidate=m_lta_version.confirmed;}if(m_ltb_version.confirmed.valid){double os=(m_ltb_version.confirmed.p2.price-m_ltb_version.confirmed.p1.price)/(double)(m_ltb_version.confirmed.p1.bar_index-m_ltb_version.confirmed.p2.bar_index);double ns=(m_ltb_version.candidate.p2.price-m_ltb_version.candidate.p1.price)/(double)(m_ltb_version.candidate.p1.bar_index-m_ltb_version.candidate.p2.bar_index);if(MathAbs(ns-os)/MathMax(MathAbs(os),0.0001)>0.1)m_ltb_version.candidate=m_ltb_version.confirmed;}}
 
 

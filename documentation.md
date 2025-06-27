@@ -112,7 +112,7 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
   - **`UpdateFractals(updated)`**, **`FindTrendLines()`**, **`CalculateBuffers()`**, **`DrawLines()`**
 
   - Métodos de consulta: `GetLTAValue()`, `GetLTBValue()`, `IsLTAValid()`, `IsLTBValid()`
-  - Informações avançadas: `GetLTASlope()`, `GetLTBSlope()`, `PrintLineStatus()`
+  - Informações avançadas: `GetLTASlope()`, `GetLTBSlope()`, `GetLineDirection()`, `PrintLineStatus()`
 
 
 
@@ -1180,3 +1180,4 @@ Esta seção registra as principais alterações e versões dos componentes do E
 -   **Versão 1.10 (27.06.2025)**: Lógica aprimorada para considerar apenas fractais confirmados ao buscar LTA/LTB, evitando linhas instáveis.
 -   **Versão 1.11 (27.06.2025)**: Ajuste no cálculo de estabilidade das linhas, com degradação suave ao alterar pontos e correção do score para uso consistente dos fractais.
 -   **Versão 1.20 (27.06.2025)**: Validação de projeções, otimizações de performance e novo sistema de debug com métodos adicionais.
+-   **Versão 1.21 (27.06.2025)**: Correção da lógica de validação de LTA/LTB para garantir que LTA seja sempre ascendente.
