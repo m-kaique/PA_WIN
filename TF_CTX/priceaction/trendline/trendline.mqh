@@ -309,8 +309,20 @@ bool CTrendLine::FindLTA(datetime &time1, double &price1, datetime &time2, doubl
    ArraySetAsSeries(fractal_down, true);
    ArraySetAsSeries(times_buf, true);
 
-   if(CopyBuffer("Fractals", m_symbol, m_timeframe, 0, bars_to_copy, fractal_up, fractal_down) <= 0)
+   int fractal_handle=iFractals(m_symbol,m_timeframe);
+   if(fractal_handle==INVALID_HANDLE)
       return false;
+   if(CopyBuffer(fractal_handle,0,0,bars_to_copy,fractal_up)<=0)
+     {
+      IndicatorRelease(fractal_handle);
+      return false;
+     }
+   if(CopyBuffer(fractal_handle,1,0,bars_to_copy,fractal_down)<=0)
+     {
+      IndicatorRelease(fractal_handle);
+      return false;
+     }
+   IndicatorRelease(fractal_handle);
    if(CopyTime(m_symbol, m_timeframe, 0, bars_to_copy, times_buf) <= 0)
       return false;
 
@@ -390,8 +402,20 @@ bool CTrendLine::FindLTB(datetime &time1, double &price1, datetime &time2, doubl
    ArraySetAsSeries(fractal_down, true);
    ArraySetAsSeries(times_buf, true);
 
-   if(CopyBuffer("Fractals", m_symbol, m_timeframe, 0, bars_to_copy, fractal_up, fractal_down) <= 0)
+   int fractal_handle=iFractals(m_symbol,m_timeframe);
+   if(fractal_handle==INVALID_HANDLE)
       return false;
+   if(CopyBuffer(fractal_handle,0,0,bars_to_copy,fractal_up)<=0)
+     {
+      IndicatorRelease(fractal_handle);
+      return false;
+     }
+   if(CopyBuffer(fractal_handle,1,0,bars_to_copy,fractal_down)<=0)
+     {
+      IndicatorRelease(fractal_handle);
+      return false;
+     }
+   IndicatorRelease(fractal_handle);
    if(CopyTime(m_symbol, m_timeframe, 0, bars_to_copy, times_buf) <= 0)
       return false;
 
