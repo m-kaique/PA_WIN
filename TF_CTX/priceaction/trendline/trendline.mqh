@@ -124,7 +124,7 @@ private:
    bool            UpdateFractals(bool &updated);
    void            FindTrendLines();
    void            CalculateBuffers();
-   double          CalculateLinePrice(SFractalPoint &point1, SFractalPoint &point2, int shift);
+   double          CalculateLinePrice(const SFractalPoint &point1, const SFractalPoint &point2, int shift);
    void            DrawLines();
    void            DeleteObjects();
    bool            IsValidLTA(SFractalPoint &p_old, SFractalPoint &p_recent);
@@ -669,7 +669,7 @@ bool CTrendLine::IsValidLTB(SFractalPoint &p_old, SFractalPoint &p_recent)
 //+------------------------------------------------------------------+
 //| Calculate price of line at specific shift                        |
 //+------------------------------------------------------------------+
-double CTrendLine::CalculateLinePrice(SFractalPoint &point1, SFractalPoint &point2, int shift)
+double CTrendLine::CalculateLinePrice(const SFractalPoint &point1, const SFractalPoint &point2, int shift)
 {
    if(!point1.is_valid || !point2.is_valid)
       return EMPTY_VALUE;
