@@ -355,6 +355,7 @@ void CTrendLine::ReleaseFractalsHandle()
 //+------------------------------------------------------------------+
 bool CTrendLine::CreateATRHandle()
 {
+   // período do ATR vem da configuração lida via JSON
    m_atr_handle = iATR(m_symbol, m_timeframe, m_atr_period);
    if(m_atr_handle == INVALID_HANDLE)
    {
@@ -703,9 +704,13 @@ double CTrendLine::CalculateLinePrice(const SFractalPoint &point1, const SFracta
    // Calcular preço no shift especificado
    // A fórmula: preço = preço_do_ponto_mais_recente + slope * (bar_index_ponto_recente - shift)
    double price = point2.price + slope * (point2.bar_index - shift);
-   double base=MathMax(MathAbs(point2.price),_Point);
-   double deviation=MathAbs(price-point2.price)/base;
-   if(deviation>1.0 || price<=0 || MathAbs(shift-point2.bar_index)>(delta_bars*2))
+   double atr = GetATR(0);
+   if(atr <= 0)
+      atr = 100 * _Point;
+
+   if(MathAbs(price - point2.price) > atr * 10 ||
+      price <= 0 ||
+      MathAbs(shift - point2.bar_index) > (delta_bars * 3))
       return EMPTY_VALUE;
    
    return price;
