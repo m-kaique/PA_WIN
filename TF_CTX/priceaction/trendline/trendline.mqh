@@ -13,7 +13,6 @@ const int TRENDLINE_MAX_FRACTALS = 50;
 // Pontuação mínima para aceitar uma linha candidata
 const double TRENDLINE_SCORE_THRESHOLD = 40.0;
 const double TRENDLINE_PI = 3.14159265358979323846;
-const double TRENDLINE_RSQUARED_THRESHOLD = 0.7;
 
 // Estrutura para armazenar um ponto fractal
 struct SFractalPoint
@@ -145,33 +144,6 @@ private:
   double CalculateMeanError(const SFractalPoint &p_old, const SFractalPoint &p_recent);
   double GetAverageCandleRange(int periods);
   void UpdateTrendState(TrendLineState &state, SFractalPoint &p_old, SFractalPoint &p_recent);
- 
-  double          CalculateRSquared(const SFractalPoint &p_old, const SFractalPoint &p_recent);
-  bool            ValidateLineStatistically(const SFractalPoint &p_old, const SFractalPoint &p_recent);
-  bool            ValidateLineWithMTF(const SFractalPoint &p_old, const SFractalPoint &p_recent);
-  void            ConditionalUpdate(ENUM_UPDATE_TRIGGER trigger);
-  bool            ShouldUpdate(ENUM_UPDATE_TRIGGER &trigger);
-  void            ValidateLineCorrections();
-public:
-   CTrendLine();
-   ~CTrendLine();
-   bool            Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig &config);
-   virtual bool    Init(string symbol, ENUM_TIMEFRAMES timeframe, int period);
-   virtual double  GetValue(int shift = 0);
-   virtual bool    CopyValues(int shift, int count, double &buffer[]);
-   virtual bool    IsReady();
-   double         GetLTAValue(int shift=0);
-   double         GetLTBValue(int shift=0);
-   bool           IsLTAValid();
-   bool           IsLTBValid();
-   void           GetLTAPoints(SFractalPoint &p1, SFractalPoint &p2);
-   void           GetLTBPoints(SFractalPoint &p1, SFractalPoint &p2);
-   double         GetLTASlope();
-   double         GetLTBSlope();
-   ENUM_TRENDLINE_DIRECTION GetLineDirection(SFractalPoint &p1, SFractalPoint &p2);
-   void           PrintLineStatus();
-   virtual bool    Update();
-=======
   bool ValidateLineWithMTF(const SFractalPoint &p_old, const SFractalPoint &p_recent);
   void ConditionalUpdate(ENUM_UPDATE_TRIGGER trigger);
   bool ShouldUpdate(ENUM_UPDATE_TRIGGER &trigger);
@@ -196,7 +168,6 @@ public:
   ENUM_TRENDLINE_DIRECTION GetLineDirection(SFractalPoint &p1, SFractalPoint &p2);
   void PrintLineStatus();
   virtual bool Update();
- 
 };
 
 //+------------------------------------------------------------------+
@@ -567,13 +538,11 @@ void CTrendLine::FindTrendLines()
            double score = ScorePair(lows_all[i], lows_all[j]);
            if(score < TRENDLINE_SCORE_THRESHOLD)
               continue;
-           if(!ValidateLineStatistically(lows_all[i], lows_all[j]))
-              continue;
-           if(score > best_score)
-           {
-              best_score = score;
-              best_p1 = lows_all[i];
-              best_p2 = lows_all[j];
+            if(score > best_score)
+            {
+               best_score = score;
+               best_p1 = lows_all[i];
+               best_p2 = lows_all[j];
             }
          }
       }
@@ -654,13 +623,11 @@ void CTrendLine::FindTrendLines()
            double score = ScorePair(highs_all[i], highs_all[j]);
            if(score < TRENDLINE_SCORE_THRESHOLD)
               continue;
-           if(!ValidateLineStatistically(highs_all[i], highs_all[j]))
-              continue;
-           if(score > best_score)
-           {
-              best_score = score;
-              best_p1 = highs_all[i];
-              best_p2 = highs_all[j];
+            if(score > best_score)
+            {
+               best_score = score;
+               best_p1 = highs_all[i];
+               best_p2 = highs_all[j];
             }
          }
       }
@@ -990,46 +957,6 @@ double CTrendLine::ScorePair(SFractalPoint &p_old, SFractalPoint &p_recent)
    score *= (1.0 + (q.mtf_alignment       * m_weights.mtf_weight)        / 100.0);
 
    return MathMin(score,100.0);
-}
-
-double CTrendLine::CalculateRSquared(const SFractalPoint &p_old, const SFractalPoint &p_recent)
-{
-   int start = MathMin(p_old.bar_index, p_recent.bar_index);
-   int end   = MathMax(p_old.bar_index, p_recent.bar_index);
-   double sum_x=0.0, sum_y=0.0, sum_x2=0.0, sum_y2=0.0, sum_xy=0.0;
-   int count=0;
-
-   for(int i=start; i<=end; i++)
-   {
-      double x = CalculateLinePrice(p_old, p_recent, i);
-      if(x==EMPTY_VALUE)
-         continue;
-      double y = iClose(m_symbol, m_timeframe, i);
-      sum_x+=x;
-      sum_y+=y;
-      sum_x2+=x*x;
-      sum_y2+=y*y;
-      sum_xy+=x*y;
-      count++;
-   }
-
-   if(count<2)
-      return 0.0;
-
-   double num = count*sum_xy - sum_x*sum_y;
-   double den1 = count*sum_x2 - sum_x*sum_x;
-   double den2 = count*sum_y2 - sum_y*sum_y;
-   if(den1<=0.0 || den2<=0.0)
-      return 0.0;
-
-   double r = num / MathSqrt(den1*den2);
-   return r*r;
-}
-
-bool CTrendLine::ValidateLineStatistically(const SFractalPoint &p_old, const SFractalPoint &p_recent)
-{
-   double r2 = CalculateRSquared(p_old, p_recent);
-   return (r2 >= TRENDLINE_RSQUARED_THRESHOLD);
 }
 
 //--- Cálculo dos fatores individuais ---
