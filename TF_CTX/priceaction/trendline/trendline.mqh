@@ -138,7 +138,7 @@ private:
   double          ComputeVolatilityContext(SFractalPoint &p_old, SFractalPoint &p_recent);
   bool            CheckHighFractal(int index,double value);
   bool            CheckLowFractal(int index,double value);
-  int             CountAlignedFractals(SFractalPoint &p_old, SFractalPoint &p_recent, const SFractalPoint fracs[]);
+  int             CountAlignedFractals(SFractalPoint &p_old, SFractalPoint &p_recent, const SFractalPoint &fracs[]);
   void            UpdateTrendState(TrendLineState &state, SFractalPoint &p_old, SFractalPoint &p_recent);
    bool            ValidateLineWithMTF(const SFractalPoint &p_old, const SFractalPoint &p_recent);
    void            ConditionalUpdate(ENUM_UPDATE_TRIGGER trigger);
@@ -1024,7 +1024,7 @@ bool CTrendLine::CheckLowFractal(int index,double value)
 //+------------------------------------------------------------------+
 //| Count fractal points aligned with line                           |
 //+------------------------------------------------------------------+
-int CTrendLine::CountAlignedFractals(SFractalPoint &p_old, SFractalPoint &p_recent, const SFractalPoint fracs[])
+int CTrendLine::CountAlignedFractals(SFractalPoint &p_old, SFractalPoint &p_recent, const SFractalPoint &fracs[])
 {
    int count = 0;
    for(int i=0;i<ArraySize(fracs);i++)
