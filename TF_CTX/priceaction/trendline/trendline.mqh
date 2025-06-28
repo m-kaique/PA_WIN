@@ -922,6 +922,19 @@ double CTrendLine::ScorePair(SFractalPoint &p_old, SFractalPoint &p_recent)
    if(dist <= 0)
       return -1.0;
 
+   int aligned = 0;
+   if(p_recent.price > p_old.price)
+      aligned = CountAlignedFractals(p_old, p_recent, m_low_cache.confirmed_points);
+   else
+      aligned = CountAlignedFractals(p_old, p_recent, m_high_cache.confirmed_points);
+
+   double mean_error = CalculateMeanError(p_old, p_recent);
+   double avg_range  = GetAverageCandleRange(m_period);
+   if(avg_range <= 0.0)
+      return -1.0;
+
+   double base_score = MathMin(aligned * 50.0, 100.0) * MathExp(-mean_error / avg_range);
+
    TrendLineQuality q;
    q.trend_strength      = ComputeTrendStrength(p_old,p_recent);
    q.volume_confirmation = ComputeVolumeConfirmation(p_old,p_recent);
@@ -931,22 +944,16 @@ double CTrendLine::ScorePair(SFractalPoint &p_old, SFractalPoint &p_recent)
    q.volatility_context  = ComputeVolatilityContext(p_old,p_recent);
    q.mtf_alignment       = ValidateLineWithMTF(p_old,p_recent) ? 100.0 : 0.0;
 
-   double total_w = m_weights.trend_weight + m_weights.volume_weight +
-                    m_weights.tests_weight + m_weights.time_weight +
-                    m_weights.psychological_weight + m_weights.volatility_weight +
-                    m_weights.mtf_weight;
-   if(total_w<=0.0) total_w=1.0;
+   double score = base_score;
+   score *= (1.0 + (q.trend_strength      * m_weights.trend_weight)      / 100.0);
+   score *= (1.0 + (q.volume_confirmation * m_weights.volume_weight)     / 100.0);
+   score *= (1.0 + (q.line_tests          * m_weights.tests_weight)      / 100.0);
+   score *= (1.0 + (q.time_validity       * m_weights.time_weight)       / 100.0);
+   score *= (1.0 + (q.psychological_level * m_weights.psychological_weight)/100.0);
+   score *= (1.0 + (q.volatility_context  * m_weights.volatility_weight) / 100.0);
+   score *= (1.0 + (q.mtf_alignment       * m_weights.mtf_weight)        / 100.0);
 
-   double score =
-       q.trend_strength      * m_weights.trend_weight +
-       q.volume_confirmation * m_weights.volume_weight +
-       q.line_tests          * m_weights.tests_weight +
-       q.time_validity       * m_weights.time_weight +
-       q.psychological_level * m_weights.psychological_weight +
-       q.volatility_context  * m_weights.volatility_weight +
-       q.mtf_alignment       * m_weights.mtf_weight;
-
-   return score / total_w;
+   return MathMin(score,100.0);
 }
 
 //--- Cálculo dos fatores individuais ---
@@ -1069,6 +1076,48 @@ int CTrendLine::CountAlignedFractals(const SFractalPoint &p_old, const SFractalP
    }
 
    return count;
+}
+
+//+------------------------------------------------------------------+
+//| Calculate mean error of line against closes                       |
+//+------------------------------------------------------------------+
+double CTrendLine::CalculateMeanError(const SFractalPoint &p_old, const SFractalPoint &p_recent)
+{
+   int start = MathMin(p_old.bar_index, p_recent.bar_index);
+   int end   = MathMax(p_old.bar_index, p_recent.bar_index);
+   double sum = 0.0;
+   int count  = 0;
+
+   for(int i=start; i<=end; i++)
+   {
+      double lp = CalculateLinePrice(p_old, p_recent, i);
+      if(lp == EMPTY_VALUE)
+         continue;
+      double close = iClose(m_symbol, m_timeframe, i);
+      sum += MathAbs(close - lp);
+      count++;
+   }
+
+   if(count == 0)
+      return 0.0;
+   return sum / (double)count;
+}
+
+//+------------------------------------------------------------------+
+//| Average candle range                                              |
+//+------------------------------------------------------------------+
+double CTrendLine::GetAverageCandleRange(int periods)
+{
+   int bars = Bars(m_symbol, m_timeframe);
+   int n = MathMin(periods, bars);
+   if(n <= 0)
+      return 0.0;
+
+   double sum = 0.0;
+   for(int i=0; i<n; i++)
+      sum += iHigh(m_symbol, m_timeframe, i) - iLow(m_symbol, m_timeframe, i);
+
+   return sum / (double)n;
 }
 
 //+------------------------------------------------------------------+
