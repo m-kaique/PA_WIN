@@ -138,7 +138,7 @@ private:
   double          ComputeVolatilityContext(SFractalPoint &p_old, SFractalPoint &p_recent);
   bool            CheckHighFractal(int index,double value);
   bool            CheckLowFractal(int index,double value);
-  int             CountAlignedFractals(SFractalPoint &p_old, SFractalPoint &p_recent, const SFractalPoint &fracs[]);
+  int             CountAlignedFractals(const SFractalPoint &p_old, const SFractalPoint &p_recent, const SFractalPoint &fracs[]);
   void            UpdateTrendState(TrendLineState &state, SFractalPoint &p_old, SFractalPoint &p_recent);
    bool            ValidateLineWithMTF(const SFractalPoint &p_old, const SFractalPoint &p_recent);
    void            ConditionalUpdate(ENUM_UPDATE_TRIGGER trigger);
@@ -1032,21 +1032,28 @@ bool CTrendLine::CheckLowFractal(int index,double value)
 //+------------------------------------------------------------------+
 //| Count fractal points aligned with line                           |
 //+------------------------------------------------------------------+
-int CTrendLine::CountAlignedFractals(SFractalPoint &p_old, SFractalPoint &p_recent, const SFractalPoint &fracs[])
+int CTrendLine::CountAlignedFractals(const SFractalPoint &p_old, const SFractalPoint &p_recent, const SFractalPoint &fracs[])
 {
-   int count = 0;
-   for(int i=0;i<ArraySize(fracs);i++)
+   int min_b = MathMin(p_old.bar_index, p_recent.bar_index);
+   int max_b = MathMax(p_old.bar_index, p_recent.bar_index);
+   int count  = 0;
+
+   for(int i=0; i<ArraySize(fracs); i++)
    {
-      if(fracs[i].bar_index>p_old.bar_index || fracs[i].bar_index<p_recent.bar_index)
+      int bi = fracs[i].bar_index;
+      if(bi < min_b || bi > max_b)
          continue;
-      double lp = CalculateLinePrice(p_old,p_recent,fracs[i].bar_index);
-      if(lp==EMPTY_VALUE)
+
+      double lp = CalculateLinePrice(p_old, p_recent, bi);
+      if(lp == EMPTY_VALUE)
          continue;
+
       double diff = MathAbs(fracs[i].price - lp);
-      double tol = MathMax(fracs[i].price*0.001, 10*_Point);
+      double tol  = MathMax(fracs[i].price * 0.001, 10 * _Point);
       if(diff <= tol)
          count++;
    }
+
    return count;
 }
 

@@ -804,6 +804,8 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
              p.min_distance=(int)pa["min_distance"].ToInt();
              if(pa["min_fractals"]!=NULL)
                 p.min_fractals=(int)pa["min_fractals"].ToInt();
+             if(p.min_fractals<2)
+                p.min_fractals=2;
             p.validate_mtf=pa["validate_mtf"].ToBool();
             string mtf=pa["mtf_timeframe"].ToStr();
             if(StringLen(mtf)>0) p.mtf_timeframe=StringToTimeframe(mtf);
