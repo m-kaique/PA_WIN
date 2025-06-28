@@ -519,8 +519,13 @@ void CTrendLine::FindTrendLines()
             if((lows_all[i].bar_index - lows_all[j].bar_index) < m_min_distance)
                continue;
 
+            int aligned = CountAlignedFractals(lows_all[i], lows_all[j], lows_all);
+            if(aligned < m_min_fractals)
+               continue;
+
             double score = ScorePair(lows_all[i], lows_all[j]);
-            if(score < TRENDLINE_SCORE_THRESHOLD) continue;
+            if(score < TRENDLINE_SCORE_THRESHOLD)
+               continue;
             if(score > best_score)
             {
                best_score = score;
@@ -530,8 +535,7 @@ void CTrendLine::FindTrendLines()
          }
       }
 
-      int aligned = CountAlignedFractals(best_p1, best_p2, lows_all);
-      if(best_score > 0 && aligned >= m_min_fractals && ValidateLineWithMTF(best_p1, best_p2))
+      if(best_score > 0 && ValidateLineWithMTF(best_p1, best_p2))
          UpdateTrendState(m_lta_version.candidate, best_p1, best_p2);
 
       if(m_lta_version.candidate.stability_count >= m_lta_version.stability_threshold)
@@ -595,8 +599,13 @@ void CTrendLine::FindTrendLines()
             if((highs_all[i].bar_index - highs_all[j].bar_index) < m_min_distance)
                continue;
 
+            int aligned_h = CountAlignedFractals(highs_all[i], highs_all[j], highs_all);
+            if(aligned_h < m_min_fractals)
+               continue;
+
             double score = ScorePair(highs_all[i], highs_all[j]);
-            if(score < TRENDLINE_SCORE_THRESHOLD) continue;
+            if(score < TRENDLINE_SCORE_THRESHOLD)
+               continue;
             if(score > best_score)
             {
                best_score = score;
@@ -606,8 +615,7 @@ void CTrendLine::FindTrendLines()
          }
       }
 
-      int aligned_h = CountAlignedFractals(best_p1, best_p2, highs_all);
-      if(best_score > 0 && aligned_h >= m_min_fractals && ValidateLineWithMTF(best_p1, best_p2))
+      if(best_score > 0 && ValidateLineWithMTF(best_p1, best_p2))
          UpdateTrendState(m_ltb_version.candidate, best_p1, best_p2);
 
       if(m_ltb_version.candidate.stability_count >= m_ltb_version.stability_threshold)
