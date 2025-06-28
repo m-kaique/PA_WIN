@@ -976,11 +976,11 @@ double CTrendLine::ComputeTrendStrength(SFractalPoint &p_old, SFractalPoint &p_r
 
 double CTrendLine::ComputeVolumeConfirmation(SFractalPoint &p_old, SFractalPoint &p_recent)
 {
-   double v1=iVolume(m_symbol,m_timeframe,p_old.bar_index);
-   double v2=iVolume(m_symbol,m_timeframe,p_recent.bar_index);
+   double v1= (double)iVolume(m_symbol,m_timeframe,p_old.bar_index);
+   double v2=(double)iVolume(m_symbol,m_timeframe,p_recent.bar_index);
    double sum=0; int count=0;
    for(int i=0;i<20 && i<Bars(m_symbol,m_timeframe);i++)
-   { sum+=iVolume(m_symbol,m_timeframe,i); count++; }
+   { sum+=(double)iVolume(m_symbol,m_timeframe,i); count++; }
    double avg=(count>0)?sum/count:1.0;
    double rel=((v1+v2)/2.0)/MathMax(avg,1.0);
    return MathMin(rel*100.0,100.0);
