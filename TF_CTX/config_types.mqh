@@ -199,7 +199,9 @@ public:
   bool validate_mtf;             // validar com timeframe superior
   ENUM_TIMEFRAMES mtf_timeframe; // timeframe para validação
   ScoreWeights    weights;       // pesos para o algoritmo de scoring
-  
+  int             atr_period;    // período do ATR usado para contexto
+  double          psych_step;    // passo para níveis psicológicos
+
   UpdateParams   update_control;
   CTrendLineConfig()
   {
@@ -224,6 +226,8 @@ public:
     validate_mtf = false;
     mtf_timeframe = PERIOD_H1;
     weights = ScoreWeights();
+    atr_period = 14;
+    psych_step = 100.0;
     update_control = UpdateParams();
   }
 };

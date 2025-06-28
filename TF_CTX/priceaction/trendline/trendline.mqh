@@ -100,6 +100,8 @@ private:
   int             m_min_distance;
   bool            m_validate_mtf;
   ENUM_TIMEFRAMES m_mtf_timeframe;
+  int             m_atr_period;
+  double          m_psych_step;
 
   FractalCache    m_low_cache;
   FractalCache    m_high_cache;
@@ -204,9 +206,11 @@ CTrendLine::CTrendLine()
    m_confirm_bars = 2;
    m_min_distance = 5;
    m_validate_mtf = false;
-   m_mtf_timeframe = PERIOD_H1;
-   m_need_redraw = true;
-   m_weights = ScoreWeights();
+  m_mtf_timeframe = PERIOD_H1;
+  m_need_redraw = true;
+  m_weights = ScoreWeights();
+  m_atr_period = 14;
+  m_psych_step = 100.0;
 
    m_low_cache.confirmation_bars = m_confirm_bars;
    m_high_cache.confirmation_bars = m_confirm_bars;
@@ -262,6 +266,8 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
   m_validate_mtf = config.validate_mtf;
   m_mtf_timeframe = config.mtf_timeframe;
   m_weights = config.weights;
+  m_atr_period = config.atr_period;
+  m_psych_step = config.psych_step;
   m_update_ctrl.params = config.update_control;
    
    // Criar nomes únicos para objetos
@@ -335,7 +341,7 @@ void CTrendLine::ReleaseFractalsHandle()
 //+------------------------------------------------------------------+
 bool CTrendLine::CreateATRHandle()
 {
-   m_atr_handle = iATR(m_symbol, m_timeframe, 14);
+   m_atr_handle = iATR(m_symbol, m_timeframe, m_atr_period);
    if(m_atr_handle == INVALID_HANDLE)
    {
       Print("ERRO: Falha ao criar handle ATR para ", m_symbol);
@@ -944,7 +950,7 @@ double CTrendLine::ComputeTimeValidity(SFractalPoint &p_old, SFractalPoint &p_re
 
 double CTrendLine::ComputePsychologicalLevel(SFractalPoint &p_old, SFractalPoint &p_recent)
 {
-   double step=100.0;
+   double step=m_psych_step;
    double diff1=MathAbs(p_old.price-MathRound(p_old.price/step)*step);
    double diff2=MathAbs(p_recent.price-MathRound(p_recent.price/step)*step);
    double diff=(diff1+diff2)/2.0;
