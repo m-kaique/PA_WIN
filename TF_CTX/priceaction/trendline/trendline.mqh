@@ -10,7 +10,8 @@
 #include "trendline_defs.mqh"
 
 const int TRENDLINE_MAX_FRACTALS = 50;
-const double TRENDLINE_SCORE_THRESHOLD = 10.0;
+// Pontuação mínima para aceitar uma linha candidata
+const double TRENDLINE_SCORE_THRESHOLD = 40.0;
 
 // Estrutura para armazenar um ponto fractal
 struct SFractalPoint
@@ -131,10 +132,12 @@ private:
    double          ComputeTrendStrength(SFractalPoint &p_old, SFractalPoint &p_recent);
    double          ComputeVolumeConfirmation(SFractalPoint &p_old, SFractalPoint &p_recent);
    double          ComputeLineTests(SFractalPoint &p_old, SFractalPoint &p_recent);
-   double          ComputeTimeValidity(SFractalPoint &p_old, SFractalPoint &p_recent);
-   double          ComputePsychologicalLevel(SFractalPoint &p_old, SFractalPoint &p_recent);
-   double          ComputeVolatilityContext(SFractalPoint &p_old, SFractalPoint &p_recent);
-   void            UpdateTrendState(TrendLineState &state, SFractalPoint &p_old, SFractalPoint &p_recent);
+  double          ComputeTimeValidity(SFractalPoint &p_old, SFractalPoint &p_recent);
+  double          ComputePsychologicalLevel(SFractalPoint &p_old, SFractalPoint &p_recent);
+  double          ComputeVolatilityContext(SFractalPoint &p_old, SFractalPoint &p_recent);
+  bool            CheckHighFractal(int index,double value);
+  bool            CheckLowFractal(int index,double value);
+  void            UpdateTrendState(TrendLineState &state, SFractalPoint &p_old, SFractalPoint &p_recent);
    bool            ValidateLineWithMTF(const SFractalPoint &p_old, const SFractalPoint &p_recent);
    void            ConditionalUpdate(ENUM_UPDATE_TRIGGER trigger);
    bool            ShouldUpdate(ENUM_UPDATE_TRIGGER &trigger);
@@ -421,7 +424,7 @@ bool CTrendLine::UpdateFractals(bool &updated)
    // Processar do mais antigo para o mais recente para manter ordem cronológica
    for(int i=bars_to_copy-1;i>=0;i--)
    {
-      if(upper_fractals[i]!=EMPTY_VALUE && upper_fractals[i]>0)
+      if(upper_fractals[i]!=EMPTY_VALUE && upper_fractals[i]>0 && CheckHighFractal(i,upper_fractals[i]))
       {
          SFractalPoint p; p.price=upper_fractals[i]; p.bar_index=i; p.time=iTime(m_symbol,m_timeframe,i); p.is_valid=true;
          if(i>=m_confirm_bars)
@@ -438,7 +441,7 @@ bool CTrendLine::UpdateFractals(bool &updated)
          }
       }
 
-      if(lower_fractals[i]!=EMPTY_VALUE && lower_fractals[i]>0)
+      if(lower_fractals[i]!=EMPTY_VALUE && lower_fractals[i]>0 && CheckLowFractal(i,lower_fractals[i]))
       {
          SFractalPoint p; p.price=lower_fractals[i]; p.bar_index=i; p.time=iTime(m_symbol,m_timeframe,i); p.is_valid=true;
          if(i>=m_confirm_bars)
@@ -476,7 +479,13 @@ void CTrendLine::FindTrendLines()
    SFractalPoint lows_all[];
    ArrayCopy(lows_all,m_low_cache.confirmed_points); // ordem: [0] = mais antigo
    if(ArraySize(lows_all) > TRENDLINE_MAX_FRACTALS)
-      ArrayResize(lows_all, TRENDLINE_MAX_FRACTALS);
+   {
+      SFractalPoint tmp[];
+      int start=ArraySize(lows_all)-TRENDLINE_MAX_FRACTALS;
+      ArrayResize(tmp,TRENDLINE_MAX_FRACTALS);
+      ArrayCopy(tmp,lows_all,0,start,TRENDLINE_MAX_FRACTALS);
+      ArrayCopy(lows_all,tmp);
+   }
 
    if(ArraySize(lows_all) < 2)
    {
@@ -545,7 +554,13 @@ void CTrendLine::FindTrendLines()
    // Apenas fractais confirmados para estabilidade
    ArrayCopy(highs_all,m_high_cache.confirmed_points); // ordem: [0] = mais antigo
    if(ArraySize(highs_all) > TRENDLINE_MAX_FRACTALS)
-      ArrayResize(highs_all, TRENDLINE_MAX_FRACTALS);
+   {
+      SFractalPoint tmp[];
+      int start=ArraySize(highs_all)-TRENDLINE_MAX_FRACTALS;
+      ArrayResize(tmp,TRENDLINE_MAX_FRACTALS);
+      ArrayCopy(tmp,highs_all,0,start,TRENDLINE_MAX_FRACTALS);
+      ArrayCopy(highs_all,tmp);
+   }
 
    if(ArraySize(highs_all) < 2)
    {
@@ -970,6 +985,36 @@ double CTrendLine::ComputeVolatilityContext(SFractalPoint &p_old, SFractalPoint 
    return MathMin(rel*50.0,100.0);
 }
 
+bool CTrendLine::CheckHighFractal(int index,double value)
+{
+   int bars=Bars(m_symbol,m_timeframe);
+   if(index-m_right<0 || index+m_left>=bars)
+      return false;
+
+   for(int i=1;i<=m_left;i++)
+      if(iHigh(m_symbol,m_timeframe,index+i)>value)
+         return false;
+   for(int i=1;i<=m_right;i++)
+      if(iHigh(m_symbol,m_timeframe,index-i)>=value)
+         return false;
+   return true;
+}
+
+bool CTrendLine::CheckLowFractal(int index,double value)
+{
+   int bars=Bars(m_symbol,m_timeframe);
+   if(index-m_right<0 || index+m_left>=bars)
+      return false;
+
+   for(int i=1;i<=m_left;i++)
+      if(iLow(m_symbol,m_timeframe,index+i)<value)
+         return false;
+   for(int i=1;i<=m_right;i++)
+      if(iLow(m_symbol,m_timeframe,index-i)<=value)
+         return false;
+   return true;
+}
+
 //+------------------------------------------------------------------+
 //| Update persistent trend state                                    |
 //+------------------------------------------------------------------+
@@ -989,13 +1034,15 @@ void CTrendLine::UpdateTrendState(TrendLineState &state, SFractalPoint &p_old, S
                    dprice1<=state.p1.price*0.001 &&
                    dprice2<=state.p2.price*0.001);
 
-      if(!near && state.stability_count>1)
-         state.stability_count--;
-      else if(!near)
-         state.stability_count=1;
-
       state.p1 = p_old;
       state.p2 = p_recent;
+
+      if(near)
+         state.stability_count++;
+      else if(state.stability_count>1)
+         state.stability_count--;
+      else
+         state.stability_count=1;
    }
 
    if(state.stability_count >= m_stability_bars)
@@ -1043,6 +1090,16 @@ bool CTrendLine::ShouldUpdate(ENUM_UPDATE_TRIGGER &trigger)
 {
    trigger = TRIGGER_TIME_THRESHOLD;
    datetime now = TimeCurrent();
+
+   if(!m_update_ctrl.params.auto_refresh_enabled)
+   {
+      if(m_update_ctrl.pending_line_update || m_update_ctrl.pending_draw_update)
+      {
+         trigger = TRIGGER_MANUAL_REFRESH;
+         return true;
+      }
+      return false;
+   }
 
    // 1. Verificar novos fractais periodicamente
    if(now - m_update_ctrl.last_fractal_time >= m_update_ctrl.params.fractal_check_interval)
