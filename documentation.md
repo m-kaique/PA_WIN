@@ -1059,6 +1059,7 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
    "right": 3,
    "atr_period": 14,
    "psych_step": 1000,
+   "min_angle_deg": 10,
    "draw_lta": true,
    "draw_ltb": true,
    "lta_color": "Lime",
@@ -1096,6 +1097,7 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
 - `mtf_timeframe`: timeframe utilizado para validação.
 - `atr_period`: período do ATR usado para avaliar volatilidade.
 - `psych_step`: distância em pontos para níveis psicológicos.
+- `min_angle_deg`: ângulo mínimo em graus para aceitar uma linha.
 - `update_control`: parâmetros do sistema de atualização condicional.
   - `min_update_interval`: intervalo mínimo entre atualizações completas (segundos).
   - `fractal_check_interval`: frequência para checar novos fractais.
@@ -1191,3 +1193,4 @@ Esta seção registra as principais alterações e versões dos componentes do E
 -   **Versão 1.21 (27.06.2025)**: Correção da lógica de validação de LTA/LTB para garantir que LTA seja sempre ascendente.
 -   **Versão 1.22 (27.06.2025)**: Verificação extra de orientação ao confirmar LTA/LTB para evitar linhas invertidas.
 -   **Versão 1.23 (27.06.2025)**: Correção da ordem dos fractais para garantir pares cronológicos corretos.
+-   **Versão 1.24 (27.06.2025)**: Adicionado filtro `min_angle_deg` para ignorar linhas muito horizontais.

@@ -202,6 +202,7 @@ public:
   ScoreWeights    weights;       // pesos para o algoritmo de scoring
   int             atr_period;    // período do ATR usado para contexto
   double          psych_step;    // passo para níveis psicológicos
+  double          min_angle_deg; // ângulo mínimo aceitável
 
   UpdateParams   update_control;
   CTrendLineConfig()
@@ -230,6 +231,7 @@ public:
     weights = ScoreWeights();
     atr_period = 14;
     psych_step = 100.0;
+    min_angle_deg = 10.0;
     update_control = UpdateParams();
   }
 };
