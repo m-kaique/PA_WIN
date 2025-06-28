@@ -145,6 +145,7 @@ private:
   double CalculateMeanError(const SFractalPoint &p_old, const SFractalPoint &p_recent);
   double GetAverageCandleRange(int periods);
   void UpdateTrendState(TrendLineState &state, SFractalPoint &p_old, SFractalPoint &p_recent);
+ 
   double          CalculateRSquared(const SFractalPoint &p_old, const SFractalPoint &p_recent);
   bool            ValidateLineStatistically(const SFractalPoint &p_old, const SFractalPoint &p_recent);
   bool            ValidateLineWithMTF(const SFractalPoint &p_old, const SFractalPoint &p_recent);
@@ -170,6 +171,32 @@ public:
    ENUM_TRENDLINE_DIRECTION GetLineDirection(SFractalPoint &p1, SFractalPoint &p2);
    void           PrintLineStatus();
    virtual bool    Update();
+=======
+  bool ValidateLineWithMTF(const SFractalPoint &p_old, const SFractalPoint &p_recent);
+  void ConditionalUpdate(ENUM_UPDATE_TRIGGER trigger);
+  bool ShouldUpdate(ENUM_UPDATE_TRIGGER &trigger);
+  void ValidateLineCorrections();
+
+  public:
+  CTrendLine();
+  ~CTrendLine();
+  bool Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig &config);
+  virtual bool Init(string symbol, ENUM_TIMEFRAMES timeframe, int period);
+  virtual double GetValue(int shift = 0);
+  virtual bool CopyValues(int shift, int count, double &buffer[]);
+  virtual bool IsReady();
+  double GetLTAValue(int shift = 0);
+  double GetLTBValue(int shift = 0);
+  bool IsLTAValid();
+  bool IsLTBValid();
+  void GetLTAPoints(SFractalPoint &p1, SFractalPoint &p2);
+  void GetLTBPoints(SFractalPoint &p1, SFractalPoint &p2);
+  double GetLTASlope();
+  double GetLTBSlope();
+  ENUM_TRENDLINE_DIRECTION GetLineDirection(SFractalPoint &p1, SFractalPoint &p2);
+  void PrintLineStatus();
+  virtual bool Update();
+ 
 };
 
 //+------------------------------------------------------------------+
