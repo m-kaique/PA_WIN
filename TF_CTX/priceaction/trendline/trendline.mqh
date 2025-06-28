@@ -99,6 +99,7 @@ private:
   int             m_stability_bars;
   int             m_confirm_bars;
   int             m_min_distance;
+  int             m_min_fractals;
   bool            m_validate_mtf;
   ENUM_TIMEFRAMES m_mtf_timeframe;
   int             m_atr_period;
@@ -123,7 +124,7 @@ private:
    bool            UpdateFractals(bool &updated);
    void            FindTrendLines();
    void            CalculateBuffers();
-   double          CalculateLinePrice(SFractalPoint &point1, SFractalPoint &point2, int shift);
+   double          CalculateLinePrice(const SFractalPoint &point1, const SFractalPoint &point2, int shift);
    void            DrawLines();
    void            DeleteObjects();
    bool            IsValidLTA(SFractalPoint &p_old, SFractalPoint &p_recent);
@@ -137,6 +138,7 @@ private:
   double          ComputeVolatilityContext(SFractalPoint &p_old, SFractalPoint &p_recent);
   bool            CheckHighFractal(int index,double value);
   bool            CheckLowFractal(int index,double value);
+  int             CountAlignedFractals(const SFractalPoint &p_old, const SFractalPoint &p_recent, const SFractalPoint &fracs[]);
   void            UpdateTrendState(TrendLineState &state, SFractalPoint &p_old, SFractalPoint &p_recent);
    bool            ValidateLineWithMTF(const SFractalPoint &p_old, const SFractalPoint &p_recent);
    void            ConditionalUpdate(ENUM_UPDATE_TRIGGER trigger);
@@ -205,10 +207,11 @@ CTrendLine::CTrendLine()
    m_lta_valid = false;
    m_ltb_valid = false;
 
-   m_stability_bars = 2;
-   m_confirm_bars = 2;
-   m_min_distance = 5;
-   m_validate_mtf = false;
+  m_stability_bars = 2;
+  m_confirm_bars = 2;
+  m_min_distance = 5;
+  m_min_fractals = 3;
+  m_validate_mtf = false;
   m_mtf_timeframe = PERIOD_H1;
   m_need_redraw = true;
   m_weights = ScoreWeights();
@@ -266,6 +269,7 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
   m_stability_bars = config.stability_bars;
    m_confirm_bars = config.confirm_bars;
   m_min_distance = config.min_distance;
+  m_min_fractals = config.min_fractals;
   m_validate_mtf = config.validate_mtf;
   m_mtf_timeframe = config.mtf_timeframe;
   m_weights = config.weights;
@@ -515,8 +519,13 @@ void CTrendLine::FindTrendLines()
             if((lows_all[i].bar_index - lows_all[j].bar_index) < m_min_distance)
                continue;
 
+            int aligned = CountAlignedFractals(lows_all[i], lows_all[j], lows_all);
+            if(aligned < m_min_fractals)
+               continue;
+
             double score = ScorePair(lows_all[i], lows_all[j]);
-            if(score < TRENDLINE_SCORE_THRESHOLD) continue;
+            if(score < TRENDLINE_SCORE_THRESHOLD)
+               continue;
             if(score > best_score)
             {
                best_score = score;
@@ -590,8 +599,13 @@ void CTrendLine::FindTrendLines()
             if((highs_all[i].bar_index - highs_all[j].bar_index) < m_min_distance)
                continue;
 
+            int aligned_h = CountAlignedFractals(highs_all[i], highs_all[j], highs_all);
+            if(aligned_h < m_min_fractals)
+               continue;
+
             double score = ScorePair(highs_all[i], highs_all[j]);
-            if(score < TRENDLINE_SCORE_THRESHOLD) continue;
+            if(score < TRENDLINE_SCORE_THRESHOLD)
+               continue;
             if(score > best_score)
             {
                best_score = score;
@@ -655,7 +669,7 @@ bool CTrendLine::IsValidLTB(SFractalPoint &p_old, SFractalPoint &p_recent)
 //+------------------------------------------------------------------+
 //| Calculate price of line at specific shift                        |
 //+------------------------------------------------------------------+
-double CTrendLine::CalculateLinePrice(SFractalPoint &point1, SFractalPoint &point2, int shift)
+double CTrendLine::CalculateLinePrice(const SFractalPoint &point1, const SFractalPoint &point2, int shift)
 {
    if(!point1.is_valid || !point2.is_valid)
       return EMPTY_VALUE;
@@ -1012,7 +1026,35 @@ bool CTrendLine::CheckLowFractal(int index,double value)
    for(int i=1;i<=m_right;i++)
       if(iLow(m_symbol,m_timeframe,index-i)<=value)
          return false;
-   return true;
+  return true;
+}
+
+//+------------------------------------------------------------------+
+//| Count fractal points aligned with line                           |
+//+------------------------------------------------------------------+
+int CTrendLine::CountAlignedFractals(const SFractalPoint &p_old, const SFractalPoint &p_recent, const SFractalPoint &fracs[])
+{
+   int min_b = MathMin(p_old.bar_index, p_recent.bar_index);
+   int max_b = MathMax(p_old.bar_index, p_recent.bar_index);
+   int count  = 0;
+
+   for(int i=0; i<ArraySize(fracs); i++)
+   {
+      int bi = fracs[i].bar_index;
+      if(bi < min_b || bi > max_b)
+         continue;
+
+      double lp = CalculateLinePrice(p_old, p_recent, bi);
+      if(lp == EMPTY_VALUE)
+         continue;
+
+      double diff = MathAbs(fracs[i].price - lp);
+      double tol  = MathMax(fracs[i].price * 0.001, 10 * _Point);
+      if(diff <= tol)
+         count++;
+   }
+
+   return count;
 }
 
 //+------------------------------------------------------------------+
