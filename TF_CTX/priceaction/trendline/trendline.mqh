@@ -142,7 +142,9 @@ private:
   bool            CheckHighFractal(int index,double value);
   bool            CheckLowFractal(int index,double value);
   int             CountAlignedFractals(const SFractalPoint &p_old, const SFractalPoint &p_recent, const SFractalPoint &fracs[]);
-  void            UpdateTrendState(TrendLineState &state, SFractalPoint &p_old, SFractalPoint &p_recent);
+  double CalculateMeanError(const SFractalPoint &p_old, const SFractalPoint &p_recent);
+  double GetAverageCandleRange(int periods);
+  void UpdateTrendState(TrendLineState &state, SFractalPoint &p_old, SFractalPoint &p_recent);
   double          CalculateRSquared(const SFractalPoint &p_old, const SFractalPoint &p_recent);
   bool            ValidateLineStatistically(const SFractalPoint &p_old, const SFractalPoint &p_recent);
   bool            ValidateLineWithMTF(const SFractalPoint &p_old, const SFractalPoint &p_recent);
