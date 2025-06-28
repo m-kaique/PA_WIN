@@ -12,6 +12,7 @@
 const int TRENDLINE_MAX_FRACTALS = 50;
 // Pontuação mínima para aceitar uma linha candidata
 const double TRENDLINE_SCORE_THRESHOLD = 40.0;
+const double TRENDLINE_PI = 3.14159265358979323846;
 
 // Estrutura para armazenar um ponto fractal
 struct SFractalPoint
@@ -104,6 +105,7 @@ private:
   ENUM_TIMEFRAMES m_mtf_timeframe;
   int             m_atr_period;
   double          m_psych_step;
+  double          m_min_angle_deg;
 
   FractalCache    m_low_cache;
   FractalCache    m_high_cache;
@@ -217,6 +219,7 @@ CTrendLine::CTrendLine()
   m_weights = ScoreWeights();
   m_atr_period = 14;
   m_psych_step = 100.0;
+  m_min_angle_deg = 10.0;
 
    m_low_cache.confirmation_bars = m_confirm_bars;
    m_high_cache.confirmation_bars = m_confirm_bars;
@@ -275,6 +278,7 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
   m_weights = config.weights;
   m_atr_period = config.atr_period;
   m_psych_step = config.psych_step;
+  m_min_angle_deg = config.min_angle_deg;
   m_update_ctrl.params = config.update_control;
    
    // Criar nomes únicos para objetos
@@ -519,13 +523,18 @@ void CTrendLine::FindTrendLines()
             if((lows_all[i].bar_index - lows_all[j].bar_index) < m_min_distance)
                continue;
 
-            int aligned = CountAlignedFractals(lows_all[i], lows_all[j], lows_all);
-            if(aligned < m_min_fractals)
-               continue;
+           int aligned = CountAlignedFractals(lows_all[i], lows_all[j], lows_all);
+           if(aligned < m_min_fractals)
+              continue;
 
-            double score = ScorePair(lows_all[i], lows_all[j]);
-            if(score < TRENDLINE_SCORE_THRESHOLD)
-               continue;
+           double slope_tmp=(lows_all[j].price - lows_all[i].price)/(double)(lows_all[i].bar_index - lows_all[j].bar_index);
+           double angle_tmp=MathArctan(MathAbs(slope_tmp))*180.0/TRENDLINE_PI;
+           if(angle_tmp < m_min_angle_deg)
+              continue;
+
+           double score = ScorePair(lows_all[i], lows_all[j]);
+           if(score < TRENDLINE_SCORE_THRESHOLD)
+              continue;
             if(score > best_score)
             {
                best_score = score;
@@ -599,13 +608,18 @@ void CTrendLine::FindTrendLines()
             if((highs_all[i].bar_index - highs_all[j].bar_index) < m_min_distance)
                continue;
 
-            int aligned_h = CountAlignedFractals(highs_all[i], highs_all[j], highs_all);
-            if(aligned_h < m_min_fractals)
-               continue;
+           int aligned_h = CountAlignedFractals(highs_all[i], highs_all[j], highs_all);
+           if(aligned_h < m_min_fractals)
+              continue;
 
-            double score = ScorePair(highs_all[i], highs_all[j]);
-            if(score < TRENDLINE_SCORE_THRESHOLD)
-               continue;
+           double slope_tmp=(highs_all[j].price - highs_all[i].price)/(double)(highs_all[i].bar_index - highs_all[j].bar_index);
+           double angle_tmp=MathArctan(MathAbs(slope_tmp))*180.0/TRENDLINE_PI;
+           if(angle_tmp < m_min_angle_deg)
+              continue;
+
+           double score = ScorePair(highs_all[i], highs_all[j]);
+           if(score < TRENDLINE_SCORE_THRESHOLD)
+              continue;
             if(score > best_score)
             {
                best_score = score;
@@ -1307,7 +1321,8 @@ void CTrendLine::ValidateLineCorrections()
    {
       double os=(m_lta_version.confirmed.p2.price-m_lta_version.confirmed.p1.price)/
                 (double)(m_lta_version.confirmed.p1.bar_index-m_lta_version.confirmed.p2.bar_index);
-      if(os<=0.0)
+      double os_angle=MathArctan(MathAbs(os))*180.0/TRENDLINE_PI;
+      if(os<=0.0 || os_angle<m_min_angle_deg)
       {
          m_lta_version.confirmed.valid=false;
          m_lta_version.candidate.stability_count=0;
@@ -1320,7 +1335,8 @@ void CTrendLine::ValidateLineCorrections()
       }
       double ns=(m_lta_version.candidate.p2.price-m_lta_version.candidate.p1.price)/
                 (double)(m_lta_version.candidate.p1.bar_index-m_lta_version.candidate.p2.bar_index);
-      if(ns<=0.0 || MathAbs(ns-os)/MathMax(MathAbs(os),0.0001)>0.1)
+      double ns_angle=MathArctan(MathAbs(ns))*180.0/TRENDLINE_PI;
+      if(ns<=0.0 || ns_angle<m_min_angle_deg || MathAbs(ns-os)/MathMax(MathAbs(os),0.0001)>0.1)
          m_lta_version.candidate=m_lta_version.confirmed;
    }
    else
@@ -1334,7 +1350,8 @@ void CTrendLine::ValidateLineCorrections()
    {
       double os=(m_ltb_version.confirmed.p2.price-m_ltb_version.confirmed.p1.price)/
                 (double)(m_ltb_version.confirmed.p1.bar_index-m_ltb_version.confirmed.p2.bar_index);
-      if(os>=0.0)
+      double os_angle=MathArctan(MathAbs(os))*180.0/TRENDLINE_PI;
+      if(os>=0.0 || os_angle<m_min_angle_deg)
       {
          m_ltb_version.confirmed.valid=false;
          m_ltb_version.candidate.stability_count=0;
@@ -1347,8 +1364,9 @@ void CTrendLine::ValidateLineCorrections()
       }
       double ns=(m_ltb_version.candidate.p2.price-m_ltb_version.candidate.p1.price)/
                 (double)(m_ltb_version.candidate.p1.bar_index-m_ltb_version.candidate.p2.bar_index);
-      if(ns>=0.0 || MathAbs(ns-os)/MathMax(MathAbs(os),0.0001)>0.1)
-         m_ltb_version.candidate=m_ltb_version.confirmed;
+      double ns_angle=MathArctan(MathAbs(ns))*180.0/TRENDLINE_PI;
+      if(ns>=0.0 || ns_angle<m_min_angle_deg || MathAbs(ns-os)/MathMax(MathAbs(os),0.0001)>0.1)
+        m_ltb_version.candidate=m_ltb_version.confirmed;
    }
    else
    {

@@ -813,7 +813,9 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
                p.atr_period=(int)pa["atr_period"].ToInt();
             if(pa["psych_step"]!=NULL)
                p.psych_step=pa["psych_step"].ToDbl();
-            CJAVal *sc=pa["scoring"];
+           if(pa["min_angle_deg"]!=NULL)
+              p.min_angle_deg=pa["min_angle_deg"].ToDbl();
+           CJAVal *sc=pa["scoring"];
             p.weights=ParseScoreWeights(sc);
              CJAVal *uc=pa["update_control"];
              p.update_control=ParseUpdateParams(uc);
