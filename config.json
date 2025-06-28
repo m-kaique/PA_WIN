@@ -137,6 +137,7 @@
                "atr_period": 14,
                "psych_step": 1000,
                "confirm_bars": 2,
+               "min_fractals": 3,
                "draw_lta": true,
                "draw_ltb": true,
                "lta_color": "Lime",

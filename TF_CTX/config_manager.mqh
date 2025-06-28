@@ -801,7 +801,9 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
              p.label_offset=pa["label_offset"].ToDbl();
              if(p.label_offset<=0) p.label_offset=50.0;
              p.stability_bars=(int)pa["stability_bars"].ToInt();
-              p.min_distance=(int)pa["min_distance"].ToInt();
+             p.min_distance=(int)pa["min_distance"].ToInt();
+             if(pa["min_fractals"]!=NULL)
+                p.min_fractals=(int)pa["min_fractals"].ToInt();
             p.validate_mtf=pa["validate_mtf"].ToBool();
             string mtf=pa["mtf_timeframe"].ToStr();
             if(StringLen(mtf)>0) p.mtf_timeframe=StringToTimeframe(mtf);

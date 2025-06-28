@@ -196,6 +196,7 @@ public:
   double label_offset;           // deslocamento vertical dos rótulos (pontos)
   int  stability_bars;           // mínimo de barras para confirmar
   int  min_distance;             // distância mínima entre fractais
+  int  min_fractals;             // quantidade mínima de fractais alinhados
   bool validate_mtf;             // validar com timeframe superior
   ENUM_TIMEFRAMES mtf_timeframe; // timeframe para validação
   ScoreWeights    weights;       // pesos para o algoritmo de scoring
@@ -223,6 +224,7 @@ public:
     label_offset = 50.0;
     stability_bars = 2;
     min_distance = 5;
+    min_fractals = 3;
     validate_mtf = false;
     mtf_timeframe = PERIOD_H1;
     weights = ScoreWeights();
