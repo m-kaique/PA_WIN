@@ -134,6 +134,8 @@
                "period": 20,
                "left": 3,
                "right": 3,
+               "atr_period": 14,
+               "psych_step": 1000,
                "confirm_bars": 2,
                "draw_lta": true,
                "draw_ltb": true,

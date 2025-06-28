@@ -1057,6 +1057,8 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
    "period": 20,
    "left": 3,
    "right": 3,
+   "atr_period": 14,
+   "psych_step": 1000,
    "draw_lta": true,
    "draw_ltb": true,
    "lta_color": "Lime",
@@ -1092,6 +1094,8 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
 - `min_distance`: distância mínima em barras entre os fractais conectados.
 - `validate_mtf`: habilita verificação em um timeframe superior.
 - `mtf_timeframe`: timeframe utilizado para validação.
+- `atr_period`: período do ATR usado para avaliar volatilidade.
+- `psych_step`: distância em pontos para níveis psicológicos.
 - `update_control`: parâmetros do sistema de atualização condicional.
   - `min_update_interval`: intervalo mínimo entre atualizações completas (segundos).
   - `fractal_check_interval`: frequência para checar novos fractais.

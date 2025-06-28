@@ -802,11 +802,15 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
              if(p.label_offset<=0) p.label_offset=50.0;
              p.stability_bars=(int)pa["stability_bars"].ToInt();
               p.min_distance=(int)pa["min_distance"].ToInt();
-             p.validate_mtf=pa["validate_mtf"].ToBool();
-             string mtf=pa["mtf_timeframe"].ToStr();
-             if(StringLen(mtf)>0) p.mtf_timeframe=StringToTimeframe(mtf);
-             CJAVal *sc=pa["scoring"];
-             p.weights=ParseScoreWeights(sc);
+            p.validate_mtf=pa["validate_mtf"].ToBool();
+            string mtf=pa["mtf_timeframe"].ToStr();
+            if(StringLen(mtf)>0) p.mtf_timeframe=StringToTimeframe(mtf);
+            if(pa["atr_period"]!=NULL)
+               p.atr_period=(int)pa["atr_period"].ToInt();
+            if(pa["psych_step"]!=NULL)
+               p.psych_step=pa["psych_step"].ToDbl();
+            CJAVal *sc=pa["scoring"];
+            p.weights=ParseScoreWeights(sc);
              CJAVal *uc=pa["update_control"];
              p.update_control=ParseUpdateParams(uc);
 
