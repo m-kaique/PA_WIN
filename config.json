@@ -127,7 +127,22 @@
             {
                "name": "LTA_LTB",
                "type": "TrendLines",
-               "period": 21,
+               "Resistance_Color": "Red",
+               "Resistance_Style": "SOLID",
+               "Resistance_Width": 2,
+               "Support_Color": "Blue",
+               "Support_Style": "SOLID",
+               "Support_Width": 2,
+               "Fractal_Timeframe": "H4",
+               "Detail_Timeframe": "H1",
+               "Alert_Timeframe": "H1",
+               "Fractal_Period_Hours": 4,
+               "Max_Bars_Detail": 10,
+               "Enable_Alerts": true,
+               "Show_Price_In_Alert": true,
+               "Price_Decimal_Places": 0,
+               "Update_Only_New_Bar": true,
+               "Show_Debug_Info": false,
                "enabled": true
             }
          ]
