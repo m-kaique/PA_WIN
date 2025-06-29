@@ -12,6 +12,7 @@
 #include "indicators/volume/volume_defs.mqh"
 #include "indicators/bollinger/bollinger_defs.mqh"
 #include "indicators/fibonacci/fibonacci_defs.mqh"
+#include "priceaction/trendline/trendline_defs.mqh"
 
 //--- Base configuration
 class CIndicatorConfig
@@ -121,6 +122,46 @@ public:
       parallel_color=clrYellow; parallel_style=STYLE_SOLID; parallel_width=1;
       show_labels=true; labels_color=clrWhite; labels_font_size=8; labels_font="Arial";
      }
+  }; 
+
+//--- Base configuration for PriceActions
+class CPriceActionConfig
+  {
+public:
+   string name;
+   string type;
+   bool   enabled;
+   virtual ~CPriceActionConfig(){}
+  };
+
+//--- TrendLine configuration
+class CTrendLineConfig : public CPriceActionConfig
+  {
+public:
+   int    period;
+   int    left;
+   int    right;
+   bool   draw_lta;
+   bool   draw_ltb;
+   color  lta_color;
+   color  ltb_color;
+   ENUM_LINE_STYLE lta_style;
+   ENUM_LINE_STYLE ltb_style;
+   int    lta_width;
+   int    ltb_width;
+   bool   extend_right;
+   bool   show_labels;
+   ENUM_TIMEFRAMES fractal_tf;
+   ENUM_TIMEFRAMES detail_tf;
+   ENUM_TIMEFRAMES alert_tf;
+   CTrendLineConfig()
+     {
+      period=20; left=3; right=3; draw_lta=true; draw_ltb=true;
+      lta_color=clrGreen; ltb_color=clrRed;
+      lta_style=STYLE_SOLID; ltb_style=STYLE_SOLID;
+      lta_width=1; ltb_width=1; extend_right=true; show_labels=false;
+      fractal_tf=PERIOD_H4; detail_tf=PERIOD_H1; alert_tf=PERIOD_H1;
+     }
   };
 
 //--- Timeframe configuration
@@ -129,6 +170,7 @@ struct STimeframeConfig
    bool              enabled;
    int               num_candles;
    CIndicatorConfig *indicators[];
+   CPriceActionConfig *priceactions[];
   };
 
 #endif // __CONFIG_TYPES_MQH__

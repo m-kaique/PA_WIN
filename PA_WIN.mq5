@@ -144,6 +144,15 @@ void ExecuteOnNewBar()
    {
       Print("AVISO: Contexto D1 não encontrado para símbolo: ", configured_symbol);
    }
+
+   // Contexto H4 com PriceAction
+   TF_CTX *H4_ctx = g_config_manager.GetContext(configured_symbol, PERIOD_H4);
+   if(H4_ctx!=NULL)
+   {
+      H4_ctx.Update();
+      double lta = H4_ctx.GetPriceActionValue("swing_lines",0);
+      Print("LTA H4 atual: ", lta);
+   }
 }
 
 //+------------------------------------------------------------------+

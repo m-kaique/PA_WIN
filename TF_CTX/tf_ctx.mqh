@@ -12,6 +12,7 @@
 #include "indicators/vwap/vwap.mqh"
 #include "indicators/bollinger/bollinger.mqh"
 #include "indicators/fibonacci/fibonacci.mqh"
+#include "priceaction/trendline/trendline.mqh"
 #include "config_types.mqh"
 
 enum ENUM_INDICATOR_TYPE
@@ -23,6 +24,12 @@ enum ENUM_INDICATOR_TYPE
   INDICATOR_TYPE_BOLL,
   INDICATOR_TYPE_FIBO,
   INDICATOR_TYPE_UNKNOWN
+};
+
+enum ENUM_PRICEACTION_TYPE
+{
+  PRICEACTION_TYPE_TRENDLINE,
+  PRICEACTION_TYPE_UNKNOWN
 };
 
 ENUM_INDICATOR_TYPE StringToIndicatorType(string type)
@@ -42,6 +49,13 @@ ENUM_INDICATOR_TYPE StringToIndicatorType(string type)
   return INDICATOR_TYPE_UNKNOWN;
 }
 
+ENUM_PRICEACTION_TYPE StringToPriceActionType(string type)
+{
+  if(type=="TRENDLINE")
+    return PRICEACTION_TYPE_TRENDLINE;
+  return PRICEACTION_TYPE_UNKNOWN;
+}
+
 //+------------------------------------------------------------------+
 //| Classe principal para contexto de TimeFrame                     |
 //+------------------------------------------------------------------+
@@ -58,23 +72,32 @@ private:
   CIndicatorBase *m_indicators[];
   string m_names[];
 
+  // PriceActions
+  CPriceActionConfig *m_pa_cfg[];
+  CPriceActionBase  *m_priceactions[];
+  string m_pa_names[];
+
   bool ValidateParameters();
   void CleanUp();
 
 public:
-  TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, CIndicatorConfig *&cfg[]);
+  TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles,
+         CIndicatorConfig *&cfg[], CPriceActionConfig *&pa_cfg[]);
   ~TF_CTX();
 
   bool Init();
   bool Update();
   double GetIndicatorValue(string name, int shift = 0);
   bool CopyIndicatorValues(string name, int shift, int count, double &buffer[]);
+  double GetPriceActionValue(string name,int shift=0);
+  bool CopyPriceActionValues(string name,int shift,int count,double &buffer[]);
 };
 
 //+------------------------------------------------------------------+
 //| Construtor                                                       |
 //+------------------------------------------------------------------+
-TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, CIndicatorConfig *&cfg[])
+TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles,
+               CIndicatorConfig *&cfg[], CPriceActionConfig *&pa_cfg[])
 {
   m_timeframe = timeframe;
   m_num_candles = num_candles;
@@ -86,8 +109,15 @@ TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles, CIndicatorConfig *&cf
   for (int i = 0; i < sz; i++)
     m_cfg[i] = cfg[i];
 
+  int psz=ArraySize(pa_cfg);
+  ArrayResize(m_pa_cfg,psz);
+  for(int i=0;i<psz;i++)
+    m_pa_cfg[i]=pa_cfg[i];
+
   ArrayResize(m_indicators, 0);
   ArrayResize(m_names, 0);
+  ArrayResize(m_priceactions,0);
+  ArrayResize(m_pa_names,0);
 }
 
 //+------------------------------------------------------------------+
@@ -220,6 +250,36 @@ bool TF_CTX::Init()
     m_names[pos] = m_cfg[i].name;
   }
 
+  // Inicializar priceactions
+  for(int i=0;i<ArraySize(m_pa_cfg);i++)
+  {
+    if(m_pa_cfg[i]==NULL || !m_pa_cfg[i].enabled)
+      continue;
+
+    CPriceActionBase *pa=NULL;
+    switch(StringToPriceActionType(m_pa_cfg[i].type))
+    {
+      case PRICEACTION_TYPE_TRENDLINE:
+        pa=new CTrendLine();
+        if(pa==NULL || !((CTrendLine*)pa).Init(m_symbol,m_timeframe,*(CTrendLineConfig*)m_pa_cfg[i]))
+        {
+          Print("ERRO: Falha ao inicializar priceaction ", m_pa_cfg[i].name);
+          delete pa;
+          CleanUp();
+          return false;
+        }
+        break;
+      default:
+        Print("Tipo de priceaction nao suportado: ", m_pa_cfg[i].type);
+        continue;
+    }
+    int ppos=ArraySize(m_priceactions);
+    ArrayResize(m_priceactions,ppos+1);
+    ArrayResize(m_pa_names,ppos+1);
+    m_priceactions[ppos]=pa;
+    m_pa_names[ppos]=m_pa_cfg[i].name;
+  }
+
   m_initialized = true;
   return true;
 }
@@ -252,14 +312,23 @@ void TF_CTX::CleanUp()
     if (m_indicators[i] != NULL)
       delete m_indicators[i];
   }
+  for(int i=0;i<ArraySize(m_priceactions);i++)
+    if(m_priceactions[i]!=NULL)
+      delete m_priceactions[i];
   for (int i = 0; i < ArraySize(m_cfg); i++)
   {
     if (m_cfg[i] != NULL)
       delete m_cfg[i];
   }
+  for(int i=0;i<ArraySize(m_pa_cfg);i++)
+    if(m_pa_cfg[i]!=NULL)
+      delete m_pa_cfg[i];
   ArrayResize(m_indicators, 0);
   ArrayResize(m_names, 0);
   ArrayResize(m_cfg, 0);
+  ArrayResize(m_priceactions,0);
+  ArrayResize(m_pa_names,0);
+  ArrayResize(m_pa_cfg,0);
   m_initialized = false;
 }
 
@@ -288,6 +357,30 @@ bool TF_CTX::CopyIndicatorValues(string name, int shift, int count, double &buff
 }
 
 //+------------------------------------------------------------------+
+//| Obter valor da price action                                       |
+//+------------------------------------------------------------------+
+double TF_CTX::GetPriceActionValue(string name,int shift)
+{
+  for(int i=0;i<ArraySize(m_pa_names);i++)
+    if(m_pa_names[i]==name && m_priceactions[i]!=NULL)
+      return m_priceactions[i].GetValue(shift);
+  Print("PriceAction nao encontrado: ",name);
+  return 0.0;
+}
+
+//+------------------------------------------------------------------+
+//| Copiar valores da price action                                    |
+//+------------------------------------------------------------------+
+bool TF_CTX::CopyPriceActionValues(string name,int shift,int count,double &buffer[])
+{
+  for(int i=0;i<ArraySize(m_pa_names);i++)
+    if(m_pa_names[i]==name && m_priceactions[i]!=NULL)
+      return m_priceactions[i].CopyValues(shift,count,buffer);
+  Print("PriceAction nao encontrado: ",name);
+  return false;
+}
+
+//+------------------------------------------------------------------+
 //| Atualizar contexto                                               |
 //+------------------------------------------------------------------+
 bool TF_CTX::Update()
@@ -299,6 +392,9 @@ bool TF_CTX::Update()
   for (int i = 0; i < ArraySize(m_indicators); i++)
     if (m_indicators[i] != NULL)
       ready &= m_indicators[i].Update();
+  for(int i=0;i<ArraySize(m_priceactions);i++)
+    if(m_priceactions[i]!=NULL)
+      ready &= m_priceactions[i].Update();
   return ready;
 }
 

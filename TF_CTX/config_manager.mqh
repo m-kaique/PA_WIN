@@ -329,8 +329,9 @@ bool CConfigManager::CreateContexts()
                 continue;
             }
 
-            // Criar novo contexto com lista de indicadores
-            TF_CTX *ctx = new TF_CTX(tf, config.num_candles, config.indicators);
+            // Criar novo contexto com lista de indicadores e priceactions
+            TF_CTX *ctx = new TF_CTX(tf, config.num_candles,
+                                    config.indicators, config.priceactions);
             if (ctx == NULL)
             {
                 Print("ERRO: Falha ao criar contexto para ", symbol, " ", tf_str);
@@ -589,6 +590,7 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
     // Lista de indicadores
     CJAVal *ind_array = tf_config["indicators"];
     ArrayResize(config.indicators,0);
+    ArrayResize(config.priceactions,0);
 
     if(ind_array != NULL)
     {
@@ -710,6 +712,56 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
     else
     {
         Print("AVISO: Nenhum indicador configurado");
+    }
+
+    // Lista de priceactions
+    CJAVal *pa_array = tf_config["priceaction"];
+    if(pa_array != NULL)
+    {
+        for(int i=0;i<pa_array.Size();i++)
+        {
+           CJAVal *pa = (*pa_array)[i];
+           if(pa==NULL) continue;
+
+           CPriceActionConfig *pcfg=NULL;
+           string type=pa["type"].ToStr();
+           if(type=="TRENDLINE")
+             {
+              CTrendLineConfig *p=new CTrendLineConfig();
+              p.name=pa["name"].ToStr();
+              p.type=type;
+              p.enabled=pa["enabled"].ToBool();
+              p.period=(int)pa["period"].ToInt();
+              p.left=(int)pa["left"].ToInt();
+              p.right=(int)pa["right"].ToInt();
+              p.draw_lta=pa["draw_lta"].ToBool();
+              p.draw_ltb=pa["draw_ltb"].ToBool();
+              p.lta_color=StringToColor(pa["lta_color"].ToStr());
+              p.ltb_color=StringToColor(pa["ltb_color"].ToStr());
+              p.lta_style=StringToLineStyle(pa["lta_style"].ToStr());
+             p.ltb_style=StringToLineStyle(pa["ltb_style"].ToStr());
+             p.lta_width=(int)pa["lta_width"].ToInt();
+             p.ltb_width=(int)pa["ltb_width"].ToInt();
+             p.extend_right=pa["extend_right"].ToBool();
+             p.show_labels=pa["show_labels"].ToBool();
+             p.fractal_tf=StringToTimeframe(pa["fractal_tf"].ToStr());
+             p.detail_tf=StringToTimeframe(pa["detail_tf"].ToStr());
+             p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
+             pcfg=p;
+            }
+
+           if(pcfg!=NULL)
+             {
+              int pos=ArraySize(config.priceactions);
+              ArrayResize(config.priceactions,pos+1);
+              config.priceactions[pos]=pcfg;
+              Print("PriceAction lido: ", pcfg.name, " Tipo: ", pcfg.type, " Enabled: ", pcfg.enabled);
+             }
+        }
+    }
+    else
+    {
+        Print("AVISO: Nenhum priceaction configurado");
     }
 
     return config;
