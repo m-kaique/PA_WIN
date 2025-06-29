@@ -149,7 +149,7 @@ bool TF_CTX::Init()
       Print("Tipo de indicador nao suportado: ", m_cfg[i].type);
       continue;
     }
-    CIndicatorBase *ind=factory.Create(m_cfg[i].type,m_symbol,m_timeframe,*m_cfg[i]);
+    CIndicatorBase *ind=factory.Create(m_cfg[i].type,m_symbol,m_timeframe,m_cfg[i]);
     if(ind==NULL)
     {
       Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
@@ -175,7 +175,7 @@ bool TF_CTX::Init()
       Print("Tipo de priceaction nao suportado: ", m_pa_cfg[i].type);
       continue;
     }
-    CPriceActionBase *pa=pafactory.Create(m_pa_cfg[i].type,m_symbol,m_timeframe,*m_pa_cfg[i]);
+    CPriceActionBase *pa=pafactory.Create(m_pa_cfg[i].type,m_symbol,m_timeframe,m_pa_cfg[i]);
     if(pa==NULL)
     {
       Print("ERRO: Falha ao inicializar priceaction ", m_pa_cfg[i].name);

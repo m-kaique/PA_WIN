@@ -10,7 +10,7 @@
 #include "../config_types.mqh"
 
 // Creator function signature
-typedef CIndicatorBase* (*IndicatorCreatorFunc)(string symbol, ENUM_TIMEFRAMES timeframe, CIndicatorConfig &config);
+typedef CIndicatorBase* (*IndicatorCreatorFunc)(string symbol, ENUM_TIMEFRAMES timeframe, CIndicatorConfig *config);
 
 class CIndicatorFactory
   {
@@ -31,12 +31,12 @@ private:
 
    void RegisterDefaults();
 
-   static CIndicatorBase* CreateMA(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig &cfg);
-   static CIndicatorBase* CreateSTO(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig &cfg);
-   static CIndicatorBase* CreateVOL(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig &cfg);
-   static CIndicatorBase* CreateVWAP(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig &cfg);
-   static CIndicatorBase* CreateBOLL(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig &cfg);
-   static CIndicatorBase* CreateFIBO(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig &cfg);
+   static CIndicatorBase* CreateMA(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg);
+   static CIndicatorBase* CreateSTO(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg);
+   static CIndicatorBase* CreateVOL(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg);
+   static CIndicatorBase* CreateVWAP(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg);
+   static CIndicatorBase* CreateBOLL(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg);
+   static CIndicatorBase* CreateFIBO(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg);
 
 public:
    static CIndicatorFactory* Instance()
@@ -66,7 +66,7 @@ public:
       return false;
      }
 
-   CIndicatorBase* Create(string type, string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig &cfg)
+   CIndicatorBase* Create(string type, string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg)
      {
       for(int i=0;i<ArraySize(m_creators);i++)
          if(m_creators[i].type==type)
@@ -90,29 +90,35 @@ void CIndicatorFactory::RegisterDefaults()
    Register("FIBO", CreateFIBO);
   }
 
-CIndicatorBase* CIndicatorFactory::CreateMA(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig &cfg)
+CIndicatorBase* CIndicatorFactory::CreateMA(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg)
   {
-   CMAConfig &c = (CMAConfig&)cfg;
+   CMAConfig *c = (CMAConfig*)cfg;
+   if(c==NULL)
+      return NULL;
    CMovingAverages *ind = new CMovingAverages();
-   if(ind!=NULL && ind.Init(symbol, tf, c))
+   if(ind!=NULL && ind.Init(symbol, tf, *c))
       return ind;
    delete ind;
    return NULL;
   }
 
-CIndicatorBase* CIndicatorFactory::CreateSTO(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig &cfg)
+CIndicatorBase* CIndicatorFactory::CreateSTO(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg)
   {
-   CStochasticConfig &c = (CStochasticConfig&)cfg;
+   CStochasticConfig *c = (CStochasticConfig*)cfg;
+   if(c==NULL)
+      return NULL;
    CStochastic *ind = new CStochastic();
-   if(ind!=NULL && ind.Init(symbol, tf, c))
+   if(ind!=NULL && ind.Init(symbol, tf, *c))
       return ind;
    delete ind;
    return NULL;
   }
 
-CIndicatorBase* CIndicatorFactory::CreateVOL(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig &cfg)
+CIndicatorBase* CIndicatorFactory::CreateVOL(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg)
   {
-   CVolumeConfig &c = (CVolumeConfig&)cfg;
+   CVolumeConfig *c = (CVolumeConfig*)cfg;
+   if(c==NULL)
+      return NULL;
    CVolume *ind = new CVolume();
    if(ind!=NULL && ind.Init(symbol, tf, c.shift, MODE_SMA))
       return ind;
@@ -120,9 +126,11 @@ CIndicatorBase* CIndicatorFactory::CreateVOL(string symbol, ENUM_TIMEFRAMES tf, 
    return NULL;
   }
 
-CIndicatorBase* CIndicatorFactory::CreateVWAP(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig &cfg)
+CIndicatorBase* CIndicatorFactory::CreateVWAP(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg)
   {
-   CVWAPConfig &c = (CVWAPConfig&)cfg;
+   CVWAPConfig *c = (CVWAPConfig*)cfg;
+   if(c==NULL)
+      return NULL;
    CVWAP *ind = new CVWAP();
    if(ind!=NULL && ind.Init(symbol, tf, c.period, c.method, c.calc_mode, c.session_tf, c.price_type, c.start_time, c.line_color, c.line_style, c.line_width))
       return ind;
@@ -130,9 +138,11 @@ CIndicatorBase* CIndicatorFactory::CreateVWAP(string symbol, ENUM_TIMEFRAMES tf,
    return NULL;
   }
 
-CIndicatorBase* CIndicatorFactory::CreateBOLL(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig &cfg)
+CIndicatorBase* CIndicatorFactory::CreateBOLL(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg)
   {
-   CBollingerConfig &c = (CBollingerConfig&)cfg;
+   CBollingerConfig *c = (CBollingerConfig*)cfg;
+   if(c==NULL)
+      return NULL;
    CBollinger *ind = new CBollinger();
    if(ind!=NULL && ind.Init(symbol, tf, c.period, c.shift, c.deviation, c.applied_price))
       return ind;
@@ -140,11 +150,13 @@ CIndicatorBase* CIndicatorFactory::CreateBOLL(string symbol, ENUM_TIMEFRAMES tf,
    return NULL;
   }
 
-CIndicatorBase* CIndicatorFactory::CreateFIBO(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig &cfg)
+CIndicatorBase* CIndicatorFactory::CreateFIBO(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg)
   {
-   CFiboConfig &c = (CFiboConfig&)cfg;
+   CFiboConfig *c = (CFiboConfig*)cfg;
+   if(c==NULL)
+      return NULL;
    CFibonacci *ind = new CFibonacci();
-   if(ind!=NULL && ind.Init(symbol, tf, c))
+   if(ind!=NULL && ind.Init(symbol, tf, *c))
       return ind;
    delete ind;
    return NULL;

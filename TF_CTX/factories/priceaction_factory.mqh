@@ -5,7 +5,7 @@
 #include "../config_types.mqh"
 
 // Creator function signature
-typedef CPriceActionBase* (*PriceActionCreatorFunc)(string symbol, ENUM_TIMEFRAMES timeframe, CPriceActionConfig &config);
+typedef CPriceActionBase* (*PriceActionCreatorFunc)(string symbol, ENUM_TIMEFRAMES timeframe, CPriceActionConfig *config);
 
 class CPriceActionFactory
   {
@@ -25,7 +25,7 @@ private:
      }
 
    void RegisterDefaults();
-   static CPriceActionBase* CreateTrendLine(string symbol, ENUM_TIMEFRAMES tf, CPriceActionConfig &cfg);
+   static CPriceActionBase* CreateTrendLine(string symbol, ENUM_TIMEFRAMES tf, CPriceActionConfig *cfg);
 
 public:
    static CPriceActionFactory* Instance()
@@ -55,7 +55,7 @@ public:
       return false;
      }
 
-   CPriceActionBase* Create(string type, string symbol, ENUM_TIMEFRAMES tf, CPriceActionConfig &cfg)
+   CPriceActionBase* Create(string type, string symbol, ENUM_TIMEFRAMES tf, CPriceActionConfig *cfg)
      {
       for(int i=0;i<ArraySize(m_creators);i++)
          if(m_creators[i].type==type)
@@ -72,11 +72,13 @@ void CPriceActionFactory::RegisterDefaults()
    Register("TRENDLINE", CreateTrendLine);
   }
 
-CPriceActionBase* CPriceActionFactory::CreateTrendLine(string symbol, ENUM_TIMEFRAMES tf, CPriceActionConfig &cfg)
+CPriceActionBase* CPriceActionFactory::CreateTrendLine(string symbol, ENUM_TIMEFRAMES tf, CPriceActionConfig *cfg)
   {
-   CTrendLineConfig &c = (CTrendLineConfig&)cfg;
+   CTrendLineConfig *c = (CTrendLineConfig*)cfg;
+   if(c==NULL)
+      return NULL;
    CTrendLine *pa = new CTrendLine();
-   if(pa!=NULL && pa.Init(symbol, tf, c))
+   if(pa!=NULL && pa.Init(symbol, tf, *c))
       return pa;
    delete pa;
    return NULL;
