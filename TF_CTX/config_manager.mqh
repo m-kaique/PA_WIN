@@ -739,13 +739,16 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
               p.lta_color=StringToColor(pa["lta_color"].ToStr());
               p.ltb_color=StringToColor(pa["ltb_color"].ToStr());
               p.lta_style=StringToLineStyle(pa["lta_style"].ToStr());
-              p.ltb_style=StringToLineStyle(pa["ltb_style"].ToStr());
-              p.lta_width=(int)pa["lta_width"].ToInt();
-              p.ltb_width=(int)pa["ltb_width"].ToInt();
-              p.extend_right=pa["extend_right"].ToBool();
-              p.show_labels=pa["show_labels"].ToBool();
-              pcfg=p;
-             }
+             p.ltb_style=StringToLineStyle(pa["ltb_style"].ToStr());
+             p.lta_width=(int)pa["lta_width"].ToInt();
+             p.ltb_width=(int)pa["ltb_width"].ToInt();
+             p.extend_right=pa["extend_right"].ToBool();
+             p.show_labels=pa["show_labels"].ToBool();
+             p.fractal_tf=StringToTimeframe(pa["fractal_tf"].ToStr());
+             p.detail_tf=StringToTimeframe(pa["detail_tf"].ToStr());
+             p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
+             pcfg=p;
+            }
 
            if(pcfg!=NULL)
              {
