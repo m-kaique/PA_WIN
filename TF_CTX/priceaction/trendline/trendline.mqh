@@ -271,10 +271,13 @@ bool CTrendLine::Update()
       m_ready=true;
     }
 
-  double close[2];
-  datetime ct[2];
-  ArraySetAsSeries(close,true);
-  ArraySetAsSeries(ct,true);
+  double close[];       // Dynamic array
+  datetime ct[];        // Dynamic array
+  ArrayResize(close, 2);
+  ArrayResize(ct, 2);
+  ArraySetAsSeries(close, true);
+  ArraySetAsSeries(ct, true);
+  
   if(CopyClose(m_symbol,m_alert_tf,0,2,close)>0 &&
      CopyTime(m_symbol,m_alert_tf,0,2,ct)>0)
     {
