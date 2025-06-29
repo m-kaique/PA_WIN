@@ -732,7 +732,24 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
                 p.name=pa["name"].ToStr();
                 p.type="TRENDLINE";
                 p.enabled=pa["enabled"].ToBool();
-                p.period=(int)pa["period"].ToInt();
+                string col=pa["Resistance_Color"].ToStr();
+                p.resistance_color=StringToColor(col);
+                p.resistance_style=StringToLineStyle(pa["Resistance_Style"].ToStr());
+                p.resistance_width=(int)pa["Resistance_Width"].ToInt();
+                col=pa["Support_Color"].ToStr();
+                p.support_color=StringToColor(col);
+                p.support_style=StringToLineStyle(pa["Support_Style"].ToStr());
+                p.support_width=(int)pa["Support_Width"].ToInt();
+                p.fractal_timeframe=StringToTimeframe(pa["Fractal_Timeframe"].ToStr());
+                p.detail_timeframe=StringToTimeframe(pa["Detail_Timeframe"].ToStr());
+                p.alert_timeframe=StringToTimeframe(pa["Alert_Timeframe"].ToStr());
+                p.fractal_period_hours=(int)pa["Fractal_Period_Hours"].ToInt();
+                p.max_bars_detail=(int)pa["Max_Bars_Detail"].ToInt();
+                p.enable_alerts=pa["Enable_Alerts"].ToBool();
+                p.show_price_in_alert=pa["Show_Price_In_Alert"].ToBool();
+                p.price_decimal_places=(int)pa["Price_Decimal_Places"].ToInt();
+                p.update_only_new_bar=pa["Update_Only_New_Bar"].ToBool();
+                p.show_debug_info=pa["Show_Debug_Info"].ToBool();
                 pcfg=p;
             }
 
