@@ -13,6 +13,8 @@
 #include "indicators/bollinger/bollinger.mqh"
 #include "indicators/fibonacci/fibonacci.mqh"
 #include "priceaction/trendline/trendline.mqh"
+#include "factories/indicator_factory.mqh"
+#include "factories/priceaction_factory.mqh"
 #include "config_types.mqh"
 
 enum ENUM_INDICATOR_TYPE
@@ -141,113 +143,24 @@ bool TF_CTX::Init()
     if (m_cfg[i]==NULL || !m_cfg[i].enabled)
       continue;
 
-    CIndicatorBase *ind = NULL;
-    switch (StringToIndicatorType(m_cfg[i].type))
+    CIndicatorFactory *factory=CIndicatorFactory::Instance();
+    if(!factory.IsRegistered(m_cfg[i].type))
     {
-    case INDICATOR_TYPE_MA:
-      {
-        ind = new CMovingAverages();
-        CMAConfig *ma_cfg=(CMAConfig*)m_cfg[i];
-        if (ind == NULL || !((CMovingAverages*)ind).Init(m_symbol, m_timeframe,
-                                           ma_cfg.period, ma_cfg.method))
-        {
-          Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-          delete ind;
-          CleanUp();
-          return false;
-        }
-      }
-      break;
-
-    case INDICATOR_TYPE_STO:
-      {
-        ind = new CStochastic();
-        CStochasticConfig *sto_cfg=(CStochasticConfig*)m_cfg[i];
-        if (ind == NULL || !((CStochastic *)ind).Init(m_symbol, m_timeframe,
-                                           sto_cfg.period, sto_cfg.dperiod, sto_cfg.slowing,
-                                           sto_cfg.method, sto_cfg.price_field))
-        {
-          Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-          delete ind;
-          CleanUp();
-          return false;
-        }
-      }
-      break;
-
-    case INDICATOR_TYPE_VOL:
-      {
-        ind = new CVolume();
-        CVolumeConfig *vol_cfg=(CVolumeConfig*)m_cfg[i];
-        if (ind == NULL || !((CVolume*)ind).Init(m_symbol, m_timeframe,
-                                           vol_cfg.shift, MODE_SMA))
-        {
-          Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-          delete ind;
-          CleanUp();
-          return false;
-        }
-      }
-      break;
-
-    case INDICATOR_TYPE_VWAP:
-      {
-        ind = new CVWAP();
-        CVWAPConfig *vwap_cfg=(CVWAPConfig*)m_cfg[i];
-        if (ind == NULL || !((CVWAP*)ind).Init(m_symbol, m_timeframe,
-                                           vwap_cfg.period, vwap_cfg.method, vwap_cfg.calc_mode,
-                                           vwap_cfg.session_tf, vwap_cfg.price_type,
-                                           vwap_cfg.start_time, vwap_cfg.line_color,
-                                           vwap_cfg.line_style, vwap_cfg.line_width))
-        {
-          Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-          delete ind;
-          CleanUp();
-          return false;
-        }
-      }
-      break;
-
-    case INDICATOR_TYPE_BOLL:
-      {
-        ind = new CBollinger();
-        CBollingerConfig *boll_cfg=(CBollingerConfig*)m_cfg[i];
-        if (ind == NULL || !((CBollinger *)ind).Init(m_symbol, m_timeframe,
-                                           boll_cfg.period, boll_cfg.shift,
-                                           boll_cfg.deviation, boll_cfg.applied_price))
-        {
-          Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-          delete ind;
-          CleanUp();
-          return false;
-        }
-      }
-      break;
-
-    case INDICATOR_TYPE_FIBO:
-      {
-        ind = new CFibonacci();
-        CFiboConfig *fibo_cfg=(CFiboConfig*)m_cfg[i];
-        if (ind == NULL || !((CFibonacci *)ind).Init(m_symbol, m_timeframe, *fibo_cfg))
-        {
-          Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-          delete ind;
-          CleanUp();
-          return false;
-        }
-      }
-      break;
-
-    default:
       Print("Tipo de indicador nao suportado: ", m_cfg[i].type);
       continue;
     }
-
+    CIndicatorBase *ind=factory.Create(m_cfg[i].type,m_symbol,m_timeframe,*m_cfg[i]);
+    if(ind==NULL)
+    {
+      Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
+      CleanUp();
+      return false;
+    }
     int pos = ArraySize(m_indicators);
-    ArrayResize(m_indicators, pos + 1);
-    ArrayResize(m_names, pos + 1);
-    m_indicators[pos] = ind;
-    m_names[pos] = m_cfg[i].name;
+    ArrayResize(m_indicators,pos+1);
+    ArrayResize(m_names,pos+1);
+    m_indicators[pos]=ind;
+    m_names[pos]=m_cfg[i].name;
   }
 
   // Inicializar priceactions
@@ -256,22 +169,18 @@ bool TF_CTX::Init()
     if(m_pa_cfg[i]==NULL || !m_pa_cfg[i].enabled)
       continue;
 
-    CPriceActionBase *pa=NULL;
-    switch(StringToPriceActionType(m_pa_cfg[i].type))
+    CPriceActionFactory *pafactory=CPriceActionFactory::Instance();
+    if(!pafactory.IsRegistered(m_pa_cfg[i].type))
     {
-      case PRICEACTION_TYPE_TRENDLINE:
-        pa=new CTrendLine();
-        if(pa==NULL || !((CTrendLine*)pa).Init(m_symbol,m_timeframe,*(CTrendLineConfig*)m_pa_cfg[i]))
-        {
-          Print("ERRO: Falha ao inicializar priceaction ", m_pa_cfg[i].name);
-          delete pa;
-          CleanUp();
-          return false;
-        }
-        break;
-      default:
-        Print("Tipo de priceaction nao suportado: ", m_pa_cfg[i].type);
-        continue;
+      Print("Tipo de priceaction nao suportado: ", m_pa_cfg[i].type);
+      continue;
+    }
+    CPriceActionBase *pa=pafactory.Create(m_pa_cfg[i].type,m_symbol,m_timeframe,*m_pa_cfg[i]);
+    if(pa==NULL)
+    {
+      Print("ERRO: Falha ao inicializar priceaction ", m_pa_cfg[i].name);
+      CleanUp();
+      return false;
     }
     int ppos=ArraySize(m_priceactions);
     ArrayResize(m_priceactions,ppos+1);
