@@ -6,57 +6,10 @@
 #property link "https://www.mql5.com"
 #property version "2.00"
 
-#include "indicators/ma/moving_averages.mqh"
-#include "indicators/stochastic/stochastic.mqh"
-#include "indicators/volume/volume.mqh"
-#include "indicators/vwap/vwap.mqh"
-#include "indicators/bollinger/bollinger.mqh"
-#include "indicators/fibonacci/fibonacci.mqh"
-#include "priceaction/trendline/trendline.mqh"
 #include "factories/indicator_factory.mqh"
 #include "factories/priceaction_factory.mqh"
 #include "config_types.mqh"
 
-enum ENUM_INDICATOR_TYPE
-{
-  INDICATOR_TYPE_MA,
-  INDICATOR_TYPE_STO,
-  INDICATOR_TYPE_VOL,
-  INDICATOR_TYPE_VWAP,
-  INDICATOR_TYPE_BOLL,
-  INDICATOR_TYPE_FIBO,
-  INDICATOR_TYPE_UNKNOWN
-};
-
-enum ENUM_PRICEACTION_TYPE
-{
-  PRICEACTION_TYPE_TRENDLINE,
-  PRICEACTION_TYPE_UNKNOWN
-};
-
-ENUM_INDICATOR_TYPE StringToIndicatorType(string type)
-{
-  if (type == "MA")
-    return INDICATOR_TYPE_MA;
-  if (type == "STO")
-    return INDICATOR_TYPE_STO;
-  if (type == "VOL")
-    return INDICATOR_TYPE_VOL;
-  if (type == "VWAP")
-    return INDICATOR_TYPE_VWAP;
-  if (type == "BOLL")
-    return INDICATOR_TYPE_BOLL;
-  if (type == "FIBO")
-    return INDICATOR_TYPE_FIBO;
-  return INDICATOR_TYPE_UNKNOWN;
-}
-
-ENUM_PRICEACTION_TYPE StringToPriceActionType(string type)
-{
-  if(type=="TRENDLINE")
-    return PRICEACTION_TYPE_TRENDLINE;
-  return PRICEACTION_TYPE_UNKNOWN;
-}
 
 //+------------------------------------------------------------------+
 //| Classe principal para contexto de TimeFrame                     |
