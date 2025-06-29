@@ -341,7 +341,7 @@ void CVWAP::ComputeAll()
       if(reset)
         {
          cum_pv=price*volume;
-         cum_vol=volume;
+         cum_vol=(double)volume;
         }
       else
         {
