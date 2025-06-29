@@ -1060,6 +1060,7 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
    "atr_period": 14,
    "psych_step": 1000,
    "min_angle_deg": 10,
+   "score_threshold": 40,
    "draw_lta": true,
    "draw_ltb": true,
    "lta_color": "Lime",
@@ -1098,6 +1099,7 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
 - `atr_period`: período do ATR usado para avaliar volatilidade.
 - `psych_step`: distância em pontos para níveis psicológicos.
 - `min_angle_deg`: ângulo mínimo em graus para aceitar uma linha.
+- `score_threshold`: nota mínima em `ScorePair` para validar a linha.
 - `update_control`: parâmetros do sistema de atualização condicional.
   - `min_update_interval`: intervalo mínimo entre atualizações completas (segundos).
   - `fractal_check_interval`: frequência para checar novos fractais.

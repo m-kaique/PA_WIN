@@ -203,6 +203,7 @@ public:
   int             atr_period;    // período do ATR usado para contexto
   double          psych_step;    // passo para níveis psicológicos
   double          min_angle_deg; // ângulo mínimo aceitável
+  double          score_threshold; // pontuação mínima para aceitar a linha
 
   UpdateParams   update_control;
   CTrendLineConfig()
@@ -232,6 +233,7 @@ public:
     atr_period = 14;
     psych_step = 100.0;
     min_angle_deg = 10.0;
+    score_threshold = 40.0;
     update_control = UpdateParams();
   }
 };

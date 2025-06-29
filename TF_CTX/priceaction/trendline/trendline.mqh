@@ -10,8 +10,8 @@
 #include "trendline_defs.mqh"
 
 const int TRENDLINE_MAX_FRACTALS = 50;
-// Pontuação mínima para aceitar uma linha candidata
-const double TRENDLINE_SCORE_THRESHOLD = 40.0;
+// Pontuação mínima padrão para aceitar uma linha candidata
+const double TRENDLINE_DEFAULT_SCORE_THRESHOLD = 40.0;
 const double TRENDLINE_PI = 3.14159265358979323846;
 
 // Estrutura para armazenar um ponto fractal
@@ -106,6 +106,7 @@ private:
   int             m_atr_period;
   double          m_psych_step;
   double          m_min_angle_deg;
+  double          m_score_threshold;
 
   FractalCache    m_low_cache;
   FractalCache    m_high_cache;
@@ -223,6 +224,7 @@ CTrendLine::CTrendLine()
   m_atr_period = 14;
   m_psych_step = 100.0;
   m_min_angle_deg = 10.0;
+  m_score_threshold = TRENDLINE_DEFAULT_SCORE_THRESHOLD;
 
    m_low_cache.confirmation_bars = m_confirm_bars;
    m_high_cache.confirmation_bars = m_confirm_bars;
@@ -282,6 +284,7 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
   m_atr_period = config.atr_period;
   m_psych_step = config.psych_step;
   m_min_angle_deg = config.min_angle_deg;
+  m_score_threshold = config.score_threshold;
   m_update_ctrl.params = config.update_control;
    
    // Criar nomes únicos para objetos
@@ -537,8 +540,8 @@ void CTrendLine::FindTrendLines()
               continue;
 
            double score = ScorePair(lows_all[i], lows_all[j]);
-           if(score < TRENDLINE_SCORE_THRESHOLD)
-              continue;
+           if(score < m_score_threshold)
+             continue;
             if(score > best_score)
             {
                best_score = score;
@@ -622,8 +625,8 @@ void CTrendLine::FindTrendLines()
               continue;
 
            double score = ScorePair(highs_all[i], highs_all[j]);
-           if(score < TRENDLINE_SCORE_THRESHOLD)
-              continue;
+           if(score < m_score_threshold)
+             continue;
             if(score > best_score)
             {
                best_score = score;

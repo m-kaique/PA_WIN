@@ -811,14 +811,16 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
             if(StringLen(mtf)>0) p.mtf_timeframe=StringToTimeframe(mtf);
             if(pa["atr_period"]!=NULL)
                p.atr_period=(int)pa["atr_period"].ToInt();
-            if(pa["psych_step"]!=NULL)
-               p.psych_step=pa["psych_step"].ToDbl();
-           if(pa["min_angle_deg"]!=NULL)
-              p.min_angle_deg=pa["min_angle_deg"].ToDbl();
-           CJAVal *sc=pa["scoring"];
-            p.weights=ParseScoreWeights(sc);
-             CJAVal *uc=pa["update_control"];
-             p.update_control=ParseUpdateParams(uc);
+           if(pa["psych_step"]!=NULL)
+              p.psych_step=pa["psych_step"].ToDbl();
+          if(pa["min_angle_deg"]!=NULL)
+             p.min_angle_deg=pa["min_angle_deg"].ToDbl();
+          if(pa["score_threshold"]!=NULL)
+             p.score_threshold=pa["score_threshold"].ToDbl();
+          CJAVal *sc=pa["scoring"];
+           p.weights=ParseScoreWeights(sc);
+            CJAVal *uc=pa["update_control"];
+            p.update_control=ParseUpdateParams(uc);
 
               pacfg=p;
              }

@@ -138,6 +138,7 @@
                "psych_step": 500,
                "confirm_bars": 2,
                "min_angle_deg": 10,
+               "score_threshold": 45,
                "min_fractals": 3,
                "draw_lta": true,
                "draw_ltb": true,
