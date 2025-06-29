@@ -152,9 +152,11 @@ public:
                        ArraySetAsSeries(fr_up,true);
                        ArraySetAsSeries(fr_down,true);
                        int total=Bars(m_symbol,m_fractal_tf);
-                       if(CopyBuffer(m_fr_handle,0,TimeCurrent(),total,fr_up)<=0)
+                       if(total<=0)
                           return false;
-                       if(CopyBuffer(m_fr_handle,1,TimeCurrent(),total,fr_down)<=0)
+                       if(CopyBuffer(m_fr_handle,0,0,total,fr_up)<=0)
+                          return false;
+                       if(CopyBuffer(m_fr_handle,1,0,total,fr_down)<=0)
                           return false;
 
                        for(n=0;n<total;n++)
@@ -233,8 +235,8 @@ public:
                           Alert("Not enough history for proper operation!");
 
                        double close[]; datetime close_t[];
-                       CopyClose(m_symbol,m_alert_tf,TimeCurrent(),10,close);
-                       CopyTime(m_symbol,m_alert_tf,TimeCurrent(),10,close_t);
+                       CopyClose(m_symbol,m_alert_tf,0,10,close);
+                       CopyTime(m_symbol,m_alert_tf,0,10,close_t);
                        ArraySetAsSeries(close,true); ArraySetAsSeries(close_t,true);
 
                        double price_sup=ObjectGetValueByTime(0,m_support_name,close_t[1]);
