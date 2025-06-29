@@ -53,6 +53,7 @@ public:
     TF_CTX *GetContext(string symbol, ENUM_TIMEFRAMES timeframe);
     bool IsContextEnabled(string symbol, ENUM_TIMEFRAMES timeframe);
     void GetConfiguredSymbols(string &symbols[]);
+    int GetSymbolContexts(string symbol, TF_CTX *&contexts[], ENUM_TIMEFRAMES &timeframes[]);
     void Cleanup();
     bool IsInitialized() const { return m_initialized; }
 };
@@ -397,6 +398,32 @@ void CConfigManager::GetConfiguredSymbols(string &symbols[])
     {
         symbols[i] = m_symbols[i];
     }
+}
+
+//+------------------------------------------------------------------+
+//| Obter todos os contextos de um símbolo                           |
+//+------------------------------------------------------------------+
+int CConfigManager::GetSymbolContexts(string symbol, TF_CTX *&contexts[], ENUM_TIMEFRAMES &timeframes[])
+{
+    ArrayResize(contexts, 0);
+    ArrayResize(timeframes, 0);
+
+    for (int i = 0; i < ArraySize(m_context_keys); i++)
+    {
+        string key = m_context_keys[i];
+        if (StringFind(key, symbol + "_") == 0)
+        {
+            int pos = ArraySize(contexts);
+            ArrayResize(contexts, pos + 1);
+            ArrayResize(timeframes, pos + 1);
+            contexts[pos] = m_contexts[i];
+
+            string tf_str = StringSubstr(key, StringLen(symbol) + 1);
+            timeframes[pos] = StringToTimeframe(tf_str);
+        }
+    }
+
+    return ArraySize(contexts);
 }
 
 //+------------------------------------------------------------------+
