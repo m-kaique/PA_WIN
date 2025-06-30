@@ -49,7 +49,7 @@ int OnInit()
    }
 
    // Inicializar controle de novo candle com D1
-   m_control_tf = PERIOD_D1;
+   m_control_tf = PERIOD_M5;
    m_last_bar_time = 0; // Forçar execução no primeiro tick
 
    Print("ConfigManager inicializado com sucesso");
@@ -144,24 +144,25 @@ void ExecuteOnNewBar()
       if(ctx==NULL)
          continue;
 
+      Print("Atualizando Contexto: " + EnumToString(tfs[i]));
       ctx.Update();
 
-      if(tf==PERIOD_D1)
-      {
-         Print("=== Contexto D1 ===");
-         for (int j = 1; j < 2; j++)
-         {
-            double ema9  = ctx.GetIndicatorValue("ema9", j);
-            double ema21 = ctx.GetIndicatorValue("ema21", j);
-            Print("EMA9 D1 Shift: ", j, " = ", ema9);
-            Print("EMA21 D1 Shift: ", j, " = ", ema21);
-         }
-      }
-      else if(tf==PERIOD_H1)
-      {
-         double lta = ctx.GetPriceActionValue("swing_lines",0);
-         Print("LTA H1 atual: ", lta);
-      }
+      // if(tf==PERIOD_D1)
+      // {
+      //    Print("=== Contexto D1 ===");
+      //    for (int j = 1; j < 2; j++)
+      //    {
+      //       double ema9  = ctx.GetIndicatorValue("ema9", j);
+      //       double ema21 = ctx.GetIndicatorValue("ema21", j);
+      //       Print("EMA9 D1 Shift: ", j, " = ", ema9);
+      //       Print("EMA21 D1 Shift: ", j, " = ", ema21);
+      //    }
+      // }
+      // else if(tf==PERIOD_H1)
+      // {
+      //    double lta = ctx.GetPriceActionValue("swing_lines",0);
+      //    Print("LTA H1 atual: ", lta);
+      // }
    }
 }
 
