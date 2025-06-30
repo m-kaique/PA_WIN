@@ -124,7 +124,7 @@
             }
          ]
       },
-      "H4": {
+      "H1": {
          "enabled": true,
          "num_candles": 18,
          "indicators": [
@@ -192,7 +192,7 @@
                "period": 20,
                "left": 3,
                "right": 3,
-               "fractal_tf": "H4",
+               "fractal_tf": "H1",
                "detail_tf": "H1",
                "alert_tf": "H1",
                "draw_lta": true,

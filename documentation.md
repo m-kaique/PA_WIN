@@ -139,7 +139,7 @@ Esta seção detalha as principais funções e classes encontradas no código do
 
 - **`ExecuteOnNewBar()`**
   - **Assinatura**: `void ExecuteOnNewBar()`
-  - **Descrição simplificada**: Contém a lógica a ser executada quando um novo candle é detectado. Atualmente, obtém e atualiza o contexto D1 para o símbolo "WIN$N" e imprime os valores das EMAs 9 e 21.
+  - **Descrição simplificada**: Contém a lógica a ser executada quando um novo candle é detectado. Agora os contextos configurados no JSON para o símbolo "WIN$N" são obtidos de forma dinâmica. Cada contexto é atualizado automaticamente e são impressas informações específicas, como as EMAs no timeframe D1 ou a linha de tendência do H1.
   - **Parâmetros**: Nenhum.
   - **Valor de retorno**: Nenhum.
 

@@ -125,33 +125,43 @@ void ExecuteOnNewBar()
 
    string configured_symbol = "WIN$N"; // Usar símbolo fixo do JSON
 
-   // Obter contexto D1 se habilitado
-   TF_CTX *D1_ctx = g_config_manager.GetContext(configured_symbol, PERIOD_D1);
-   if (D1_ctx != NULL)
-   {
-      D1_ctx.Update();
+   // Atualizar automaticamente todos os contextos carregados do JSON
+   TF_CTX *contexts[];
+   ENUM_TIMEFRAMES tfs[];
+   int count = g_config_manager.GetSymbolContexts(configured_symbol, contexts, tfs);
 
-      Print("=== Contexto D1 ===");
-      for (int i = 1; i < 2; i++)
+   if(count==0)
+   {
+      Print("AVISO: Nenhum contexto encontrado para símbolo: ", configured_symbol);
+      return;
+   }
+
+   for(int i=0;i<count;i++)
+   {
+      TF_CTX *ctx = contexts[i];
+      ENUM_TIMEFRAMES tf = tfs[i];
+
+      if(ctx==NULL)
+         continue;
+
+      ctx.Update();
+
+      if(tf==PERIOD_D1)
       {
-         double ema9  = D1_ctx.GetIndicatorValue("ema9", i);
-         double ema21 = D1_ctx.GetIndicatorValue("ema21", i);
-         Print("EMA9 D1 Shift: ", i, " = ", ema9);
-         Print("EMA21 D1 Shift: ", i, " = ", ema21);
+         Print("=== Contexto D1 ===");
+         for (int j = 1; j < 2; j++)
+         {
+            double ema9  = ctx.GetIndicatorValue("ema9", j);
+            double ema21 = ctx.GetIndicatorValue("ema21", j);
+            Print("EMA9 D1 Shift: ", j, " = ", ema9);
+            Print("EMA21 D1 Shift: ", j, " = ", ema21);
+         }
       }
-   }
-   else
-   {
-      Print("AVISO: Contexto D1 não encontrado para símbolo: ", configured_symbol);
-   }
-
-   // Contexto H4 com PriceAction
-   TF_CTX *H4_ctx = g_config_manager.GetContext(configured_symbol, PERIOD_H4);
-   if(H4_ctx!=NULL)
-   {
-      H4_ctx.Update();
-      double lta = H4_ctx.GetPriceActionValue("swing_lines",0);
-      Print("LTA H4 atual: ", lta);
+      else if(tf==PERIOD_H1)
+      {
+         double lta = ctx.GetPriceActionValue("swing_lines",0);
+         Print("LTA H1 atual: ", lta);
+      }
    }
 }
 

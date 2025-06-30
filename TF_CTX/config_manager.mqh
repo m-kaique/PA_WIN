@@ -37,7 +37,7 @@ private:
     ENUM_VWAP_PRICE_TYPE StringToVWAPPriceType(string type_str);
     ENUM_LINE_STYLE StringToLineStyle(string style_str);
     color StringToColor(string color_str);
-    STimeframeConfig ParseTimeframeConfig(CJAVal *tf_config);
+    STimeframeConfig ParseTimeframeConfig(CJAVal *tf_config, ENUM_TIMEFRAMES tf);
     string CreateContextKey(string symbol, ENUM_TIMEFRAMES tf);
     bool TestJSONParsing();
     
@@ -53,6 +53,7 @@ public:
     TF_CTX *GetContext(string symbol, ENUM_TIMEFRAMES timeframe);
     bool IsContextEnabled(string symbol, ENUM_TIMEFRAMES timeframe);
     void GetConfiguredSymbols(string &symbols[]);
+    int GetSymbolContexts(string symbol, TF_CTX *&contexts[], ENUM_TIMEFRAMES &timeframes[]);
     void Cleanup();
     bool IsInitialized() const { return m_initialized; }
 };
@@ -313,19 +314,19 @@ bool CConfigManager::CreateContexts()
                 continue;
             }
 
-            STimeframeConfig config = ParseTimeframeConfig(tf_config);
+            ENUM_TIMEFRAMES tf = StringToTimeframe(tf_str);
+            if (tf == PERIOD_CURRENT)
+            {
+                Print("ERRO: TimeFrame inválido: ", tf_str);
+                continue;
+            }
+
+            STimeframeConfig config = ParseTimeframeConfig(tf_config, tf);
             Print("TimeFrame ", tf_str, " - Enabled: ", config.enabled, " NumCandles: ", config.num_candles);
 
             if (!config.enabled)
             {
                 Print("TimeFrame ", tf_str, " está desabilitado");
-                continue;
-            }
-
-            ENUM_TIMEFRAMES tf = StringToTimeframe(tf_str);
-            if (tf == PERIOD_CURRENT)
-            {
-                Print("ERRO: TimeFrame inválido: ", tf_str);
                 continue;
             }
 
@@ -397,6 +398,32 @@ void CConfigManager::GetConfiguredSymbols(string &symbols[])
     {
         symbols[i] = m_symbols[i];
     }
+}
+
+//+------------------------------------------------------------------+
+//| Obter todos os contextos de um símbolo                           |
+//+------------------------------------------------------------------+
+int CConfigManager::GetSymbolContexts(string symbol, TF_CTX *&contexts[], ENUM_TIMEFRAMES &timeframes[])
+{
+    ArrayResize(contexts, 0);
+    ArrayResize(timeframes, 0);
+
+    for (int i = 0; i < ArraySize(m_context_keys); i++)
+    {
+        string key = m_context_keys[i];
+        if (StringFind(key, symbol + "_") == 0)
+        {
+            int pos = ArraySize(contexts);
+            ArrayResize(contexts, pos + 1);
+            ArrayResize(timeframes, pos + 1);
+            contexts[pos] = m_contexts[i];
+
+            string tf_str = StringSubstr(key, StringLen(symbol) + 1);
+            timeframes[pos] = StringToTimeframe(tf_str);
+        }
+    }
+
+    return ArraySize(contexts);
 }
 
 //+------------------------------------------------------------------+
@@ -569,7 +596,7 @@ color CConfigManager::StringToColor(string color_str)
 //+------------------------------------------------------------------+
 //| Fazer parse da configuração do timeframe                        |
 //+------------------------------------------------------------------+
-STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
+STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config, ENUM_TIMEFRAMES ctx_tf)
 {
     STimeframeConfig config;
     
@@ -747,6 +774,10 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config)
              p.fractal_tf=StringToTimeframe(pa["fractal_tf"].ToStr());
              p.detail_tf=StringToTimeframe(pa["detail_tf"].ToStr());
              p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
+
+             if(p.fractal_tf==PERIOD_CURRENT) p.fractal_tf=ctx_tf;
+             if(p.detail_tf==PERIOD_CURRENT)  p.detail_tf=ctx_tf;
+             if(p.alert_tf==PERIOD_CURRENT)   p.alert_tf=ctx_tf;
              pcfg=p;
             }
 
