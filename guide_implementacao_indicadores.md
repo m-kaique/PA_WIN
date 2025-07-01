@@ -36,10 +36,11 @@ Register("SUPRES", CreateSupRes);
 
 ## 5. Uso no `config.json`
 
-Inclua um bloco semelhante ao abaixo no timeframe desejado:
+Inclua um bloco semelhante ao abaixo no timeframe desejado. Este exemplo mostra
+todos os campos disponíveis para o **SUPRES**:
 ```json
 {
-   "name": "sr_simple",
+   "name": "sr_completo",
    "type": "SUPRES",
    "period": 50,
    "draw_sup": true,
@@ -53,6 +54,10 @@ Inclua um bloco semelhante ao abaixo no timeframe desejado:
    "extend_right": true,
    "show_labels": false,
    "alert_tf": "H1",
+   "touch_lookback": 20,
+   "touch_tolerance": 5.0,
+   "min_touches": 2,
+   "validation": 2,
    "enabled": true
 }
 ```
