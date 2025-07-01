@@ -752,8 +752,8 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config, ENUM_TI
 
            CPriceActionConfig *pcfg=NULL;
            string type=pa["type"].ToStr();
-           if(type=="TRENDLINE")
-             {
+          if(type=="TRENDLINE")
+            {
               CTrendLineConfig *p=new CTrendLineConfig();
               p.name=pa["name"].ToStr();
               p.type=type;
@@ -778,6 +778,27 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config, ENUM_TI
              if(p.fractal_tf==PERIOD_CURRENT) p.fractal_tf=ctx_tf;
              if(p.detail_tf==PERIOD_CURRENT)  p.detail_tf=ctx_tf;
              if(p.alert_tf==PERIOD_CURRENT)   p.alert_tf=ctx_tf;
+             pcfg=p;
+            }
+          else if(type=="SUPRES")
+            {
+             CSupResConfig *p=new CSupResConfig();
+             p.name=pa["name"].ToStr();
+             p.type=type;
+             p.enabled=pa["enabled"].ToBool();
+             p.period=(int)pa["period"].ToInt();
+             p.draw_sup=pa["draw_sup"].ToBool();
+             p.draw_res=pa["draw_res"].ToBool();
+             p.sup_color=StringToColor(pa["sup_color"].ToStr());
+             p.res_color=StringToColor(pa["res_color"].ToStr());
+             p.sup_style=StringToLineStyle(pa["sup_style"].ToStr());
+             p.res_style=StringToLineStyle(pa["res_style"].ToStr());
+             p.sup_width=(int)pa["sup_width"].ToInt();
+             p.res_width=(int)pa["res_width"].ToInt();
+             p.extend_right=pa["extend_right"].ToBool();
+             p.show_labels=pa["show_labels"].ToBool();
+             p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
+             if(p.alert_tf==PERIOD_CURRENT) p.alert_tf=ctx_tf;
              pcfg=p;
             }
 

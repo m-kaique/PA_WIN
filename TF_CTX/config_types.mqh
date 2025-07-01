@@ -154,13 +154,39 @@ public:
    ENUM_TIMEFRAMES fractal_tf;
    ENUM_TIMEFRAMES detail_tf;
    ENUM_TIMEFRAMES alert_tf;
-   CTrendLineConfig()
-     {
+  CTrendLineConfig()
+    {
       period=20; left=3; right=3; draw_lta=true; draw_ltb=true;
       lta_color=clrGreen; ltb_color=clrRed;
       lta_style=STYLE_SOLID; ltb_style=STYLE_SOLID;
       lta_width=1; ltb_width=1; extend_right=true; show_labels=false;
       fractal_tf=PERIOD_H4; detail_tf=PERIOD_H1; alert_tf=PERIOD_H1;
+    }
+  };
+
+//--- Support/Resistance configuration
+class CSupResConfig : public CPriceActionConfig
+  {
+public:
+   int             period;
+   bool            draw_sup;
+   bool            draw_res;
+   color           sup_color;
+   color           res_color;
+   ENUM_LINE_STYLE sup_style;
+   ENUM_LINE_STYLE res_style;
+   int             sup_width;
+   int             res_width;
+   bool            extend_right;
+   bool            show_labels;
+   ENUM_TIMEFRAMES alert_tf;
+   CSupResConfig()
+     {
+      period=50; draw_sup=true; draw_res=true;
+      sup_color=clrBlue; res_color=clrRed;
+      sup_style=STYLE_SOLID; res_style=STYLE_SOLID;
+      sup_width=1; res_width=1; extend_right=true; show_labels=false;
+      alert_tf=PERIOD_H1;
      }
   };
 

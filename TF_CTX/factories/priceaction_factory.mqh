@@ -2,6 +2,7 @@
 #define __PRICEACTION_FACTORY_MQH__
 
 #include "../priceaction/trendline/trendline.mqh"
+#include "../priceaction/sup_res/sup_res.mqh"
 #include "../config_types.mqh"
 
 // Creator function signature
@@ -24,8 +25,9 @@ private:
       RegisterDefaults();
      }
 
-   void RegisterDefaults();
-   static CPriceActionBase* CreateTrendLine(string symbol, ENUM_TIMEFRAMES tf, CPriceActionConfig *cfg);
+  void RegisterDefaults();
+  static CPriceActionBase* CreateTrendLine(string symbol, ENUM_TIMEFRAMES tf, CPriceActionConfig *cfg);
+  static CPriceActionBase* CreateSupRes(string symbol, ENUM_TIMEFRAMES tf, CPriceActionConfig *cfg);
 
 public:
    static CPriceActionFactory* Instance()
@@ -70,6 +72,7 @@ CPriceActionFactory* CPriceActionFactory::s_instance = NULL;
 void CPriceActionFactory::RegisterDefaults()
   {
    Register("TRENDLINE", CreateTrendLine);
+   Register("SUPRES",   CreateSupRes);
   }
 
 CPriceActionBase* CPriceActionFactory::CreateTrendLine(string symbol, ENUM_TIMEFRAMES tf, CPriceActionConfig *cfg)
@@ -78,6 +81,18 @@ CPriceActionBase* CPriceActionFactory::CreateTrendLine(string symbol, ENUM_TIMEF
    if(c==NULL)
       return NULL;
    CTrendLine *pa = new CTrendLine();
+   if(pa!=NULL && pa.Init(symbol, tf, *c))
+      return pa;
+  delete pa;
+  return NULL;
+  }
+
+CPriceActionBase* CPriceActionFactory::CreateSupRes(string symbol, ENUM_TIMEFRAMES tf, CPriceActionConfig *cfg)
+  {
+   CSupResConfig *c = (CSupResConfig*)cfg;
+   if(c==NULL)
+      return NULL;
+   CSupRes *pa = new CSupRes();
    if(pa!=NULL && pa.Init(symbol, tf, *c))
       return pa;
    delete pa;
