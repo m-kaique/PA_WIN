@@ -25,16 +25,26 @@ private:
    int             m_res_width;
    bool            m_extend_right;
    bool            m_show_labels;
-   ENUM_TIMEFRAMES m_alert_tf;
-   bool            m_ready;
-   double          m_sup_val;
-   double          m_res_val;
-   bool            m_breakdown;
+  ENUM_TIMEFRAMES m_alert_tf;
+  int             m_touch_lookback;
+  double          m_touch_tolerance;
+  int             m_min_touches;
+  ENUM_SUPRES_VALIDATION m_validation;
+  bool            m_sup_valid;
+  bool            m_res_valid;
+  bool            m_ready;
+  double          m_sup_val;
+  double          m_res_val;
+  bool            m_breakdown;
    bool            m_breakup;
    string          m_obj_sup;
    string          m_obj_res;
 
-   void            DrawLine(string name,double price,color col,ENUM_LINE_STYLE st,int width);
+  void            DrawLine(string name,double price,color col,ENUM_LINE_STYLE st,int width);
+  bool            IsBullPinBar(int index);
+  bool            IsBearPinBar(int index);
+  bool            IsBullEngulf(int index);
+  bool            IsBearEngulf(int index);
 
 public:
                      CSupRes();
@@ -44,13 +54,21 @@ public:
    virtual bool     Init(string symbol,ENUM_TIMEFRAMES timeframe,int period);
    virtual double   GetValue(int shift=0); // returns support value
    virtual bool     CopyValues(int shift,int count,double &buffer[]);
-   virtual bool     IsReady();
-   virtual bool     Update();
+  virtual bool     IsReady();
+  virtual bool     Update();
 
-   double           GetSupportValue(int shift=0);
-   double           GetResistanceValue(int shift=0);
-   bool             IsBreakdown();
-   bool             IsBreakup();
+  double           GetSupportValue(int shift=0);
+  double           GetResistanceValue(int shift=0);
+  bool             IsBreakdown();
+  bool             IsBreakup();
+
+  // Counters for touches and patterns
+  int             m_sup_touches;
+  int             m_res_touches;
+  int             m_sup_pinbar;
+  int             m_res_pinbar;
+  int             m_sup_engulf;
+  int             m_res_engulf;
   };
 
 //+------------------------------------------------------------------+
@@ -71,8 +89,20 @@ CSupRes::CSupRes()
    m_res_width=1;
    m_extend_right=true;
    m_show_labels=false;
-   m_alert_tf=PERIOD_CURRENT;
-   m_ready=false;
+  m_alert_tf=PERIOD_CURRENT;
+  m_touch_lookback=20;
+  m_touch_tolerance=0.0;
+  m_min_touches=2;
+  m_validation=SUPRES_VALIDATE_TOUCHES;
+  m_sup_touches=0;
+  m_res_touches=0;
+  m_sup_pinbar=0;
+  m_res_pinbar=0;
+  m_sup_engulf=0;
+  m_res_engulf=0;
+  m_sup_valid=false;
+  m_res_valid=false;
+  m_ready=false;
    m_sup_val=0.0;
    m_res_val=0.0;
    m_breakdown=false;
@@ -108,6 +138,64 @@ void CSupRes::DrawLine(string name,double price,color col,ENUM_LINE_STYLE st,int
   }
 
 //+------------------------------------------------------------------+
+//| Check for bullish pin bar (hammer)                                |
+//+------------------------------------------------------------------+
+bool CSupRes::IsBullPinBar(int index)
+  {
+   double o=iOpen(m_symbol,m_timeframe,index);
+   double c=iClose(m_symbol,m_timeframe,index);
+   double h=iHigh(m_symbol,m_timeframe,index);
+   double l=iLow(m_symbol,m_timeframe,index);
+   double body=MathAbs(o-c);
+   double upper=h-MathMax(o,c);
+   double lower=MathMin(o,c)-l;
+   return(lower>body*2 && upper<body);
+  }
+
+//+------------------------------------------------------------------+
+//| Check for bearish pin bar (shooting star)                         |
+//+------------------------------------------------------------------+
+bool CSupRes::IsBearPinBar(int index)
+  {
+   double o=iOpen(m_symbol,m_timeframe,index);
+   double c=iClose(m_symbol,m_timeframe,index);
+   double h=iHigh(m_symbol,m_timeframe,index);
+   double l=iLow(m_symbol,m_timeframe,index);
+   double body=MathAbs(o-c);
+   double upper=h-MathMax(o,c);
+   double lower=MathMin(o,c)-l;
+   return(upper>body*2 && lower<body);
+  }
+
+//+------------------------------------------------------------------+
+//| Check for bullish engulfing                                       |
+//+------------------------------------------------------------------+
+bool CSupRes::IsBullEngulf(int index)
+  {
+   if(index+1>=Bars(m_symbol,m_timeframe))
+      return false;
+   double o1=iOpen(m_symbol,m_timeframe,index+1);
+   double c1=iClose(m_symbol,m_timeframe,index+1);
+   double o2=iOpen(m_symbol,m_timeframe,index);
+   double c2=iClose(m_symbol,m_timeframe,index);
+   return(c1<o1 && c2>o2 && c2>o1 && o2<c1);
+  }
+
+//+------------------------------------------------------------------+
+//| Check for bearish engulfing                                       |
+//+------------------------------------------------------------------+
+bool CSupRes::IsBearEngulf(int index)
+  {
+   if(index+1>=Bars(m_symbol,m_timeframe))
+      return false;
+   double o1=iOpen(m_symbol,m_timeframe,index+1);
+   double c1=iClose(m_symbol,m_timeframe,index+1);
+   double o2=iOpen(m_symbol,m_timeframe,index);
+   double c2=iClose(m_symbol,m_timeframe,index);
+   return(c1>o1 && c2<o2 && c2<o1 && o2>c1);
+  }
+
+//+------------------------------------------------------------------+
 //| Init using configuration                                          |
 //+------------------------------------------------------------------+
 bool CSupRes::Init(string symbol,ENUM_TIMEFRAMES timeframe,CSupResConfig &cfg)
@@ -123,9 +211,21 @@ bool CSupRes::Init(string symbol,ENUM_TIMEFRAMES timeframe,CSupResConfig &cfg)
    m_res_style=cfg.res_style;
    m_sup_width=cfg.sup_width;
    m_res_width=cfg.res_width;
-   m_extend_right=cfg.extend_right;
-   m_show_labels=cfg.show_labels;
-   m_alert_tf=cfg.alert_tf;
+  m_extend_right=cfg.extend_right;
+  m_show_labels=cfg.show_labels;
+  m_alert_tf=cfg.alert_tf;
+  m_touch_lookback=cfg.touch_lookback;
+  m_touch_tolerance=cfg.touch_tolerance;
+  m_min_touches=cfg.min_touches;
+  m_validation=cfg.validation;
+  m_sup_touches=0;
+  m_res_touches=0;
+  m_sup_pinbar=0;
+  m_res_pinbar=0;
+  m_sup_engulf=0;
+  m_res_engulf=0;
+  m_sup_valid=false;
+  m_res_valid=false;
 
    m_obj_sup="SR_SUP_"+IntegerToString(GetTickCount());
    m_obj_res="SR_RES_"+IntegerToString(GetTickCount());
@@ -214,13 +314,58 @@ bool CSupRes::Update()
    int lo_idx=ArrayMinimum(lows);
    m_res_val=highs[hi_idx];
    m_sup_val=lows[lo_idx];
-   datetime hi_time=iTime(m_symbol,m_timeframe,hi_idx);
-   datetime lo_time=iTime(m_symbol,m_timeframe,lo_idx);
+  datetime hi_time=iTime(m_symbol,m_timeframe,hi_idx);
+  datetime lo_time=iTime(m_symbol,m_timeframe,lo_idx);
 
-   if(m_draw_res)
-      DrawLine(m_obj_res,m_res_val,m_res_color,m_res_style,m_res_width);
-   if(m_draw_sup)
-      DrawLine(m_obj_sup,m_sup_val,m_sup_color,m_sup_style,m_sup_width);
+  if(m_draw_res)
+     DrawLine(m_obj_res,m_res_val,m_res_color,m_res_style,m_res_width);
+  if(m_draw_sup)
+     DrawLine(m_obj_sup,m_sup_val,m_sup_color,m_sup_style,m_sup_width);
+
+  // reset counters
+  m_sup_touches=0;
+  m_res_touches=0;
+  m_sup_pinbar=0;
+  m_res_pinbar=0;
+  m_sup_engulf=0;
+  m_res_engulf=0;
+
+  int lookback=MathMin(m_touch_lookback,bars-1);
+  for(int i=1;i<=lookback;i++)
+    {
+     bool sup_touch=(highs[i]>=m_sup_val-m_touch_tolerance && lows[i]<=m_sup_val+m_touch_tolerance);
+     bool res_touch=(highs[i]>=m_res_val-m_touch_tolerance && lows[i]<=m_res_val+m_touch_tolerance);
+     if(sup_touch)
+       {
+        m_sup_touches++;
+        if(IsBullPinBar(i))   m_sup_pinbar++;
+        if(IsBullEngulf(i))   m_sup_engulf++;
+       }
+     if(res_touch)
+       {
+        m_res_touches++;
+        if(IsBearPinBar(i))   m_res_pinbar++;
+        if(IsBearEngulf(i))   m_res_engulf++;
+       }
+    }
+
+  m_sup_valid=true;
+  m_res_valid=true;
+  if(m_validation==SUPRES_VALIDATE_TOUCHES)
+    {
+     m_sup_valid=(m_sup_touches>=m_min_touches);
+     m_res_valid=(m_res_touches>=m_min_touches);
+    }
+  else if(m_validation==SUPRES_VALIDATE_PATTERNS)
+    {
+     m_sup_valid=((m_sup_pinbar+m_sup_engulf)>0);
+     m_res_valid=((m_res_pinbar+m_res_engulf)>0);
+    }
+  else if(m_validation==SUPRES_VALIDATE_BOTH)
+    {
+     m_sup_valid=(m_sup_touches>=m_min_touches && (m_sup_pinbar+m_sup_engulf)>0);
+     m_res_valid=(m_res_touches>=m_min_touches && (m_res_pinbar+m_res_engulf)>0);
+    }
 
    double close[];
    ArraySetAsSeries(close,true);

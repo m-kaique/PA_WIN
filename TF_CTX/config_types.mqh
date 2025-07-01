@@ -13,6 +13,7 @@
 #include "indicators/bollinger/bollinger_defs.mqh"
 #include "indicators/fibonacci/fibonacci_defs.mqh"
 #include "priceaction/trendline/trendline_defs.mqh"
+#include "priceaction/sup_res/sup_res_defs.mqh"
 
 //--- Base configuration
 class CIndicatorConfig
@@ -180,6 +181,10 @@ public:
    bool            extend_right;
    bool            show_labels;
    ENUM_TIMEFRAMES alert_tf;
+   int             touch_lookback;
+   double          touch_tolerance;
+   int             min_touches;
+   ENUM_SUPRES_VALIDATION validation;
    CSupResConfig()
      {
       period=50; draw_sup=true; draw_res=true;
@@ -187,6 +192,10 @@ public:
       sup_style=STYLE_SOLID; res_style=STYLE_SOLID;
       sup_width=1; res_width=1; extend_right=true; show_labels=false;
       alert_tf=PERIOD_H1;
+      touch_lookback=20;
+      touch_tolerance=0.0;
+      min_touches=2;
+      validation=SUPRES_VALIDATE_TOUCHES;
      }
   };
 

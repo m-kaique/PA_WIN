@@ -794,10 +794,14 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config, ENUM_TI
              p.sup_style=StringToLineStyle(pa["sup_style"].ToStr());
              p.res_style=StringToLineStyle(pa["res_style"].ToStr());
              p.sup_width=(int)pa["sup_width"].ToInt();
-             p.res_width=(int)pa["res_width"].ToInt();
-             p.extend_right=pa["extend_right"].ToBool();
-             p.show_labels=pa["show_labels"].ToBool();
-             p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
+            p.res_width=(int)pa["res_width"].ToInt();
+            p.extend_right=pa["extend_right"].ToBool();
+            p.show_labels=pa["show_labels"].ToBool();
+            p.touch_lookback=(int)pa["touch_lookback"].ToInt();
+            p.touch_tolerance=pa["touch_tolerance"].ToDbl();
+            p.min_touches=(int)pa["min_touches"].ToInt();
+            p.validation=(ENUM_SUPRES_VALIDATION)pa["validation"].ToInt();
+            p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
              if(p.alert_tf==PERIOD_CURRENT) p.alert_tf=ctx_tf;
              pcfg=p;
             }
