@@ -9,6 +9,14 @@
 #include "sup_res_defs.mqh"
 #include "../../config_types.mqh"
 
+// Structure representing a support/resistance zone
+struct SRZone
+  {
+   double upper;   // upper price limit of the zone
+   double lower;   // lower price limit of the zone
+   int    touches; // number of touches inside the zone
+  };
+
 class CSupRes : public CPriceActionBase
   {
 private:
@@ -28,6 +36,8 @@ private:
   ENUM_TIMEFRAMES m_alert_tf;
   int             m_touch_lookback;
   double          m_touch_tolerance;
+  double          m_zone_range;      // max range to group touches as one zone
+  int             m_max_zones_to_draw;
   int             m_min_touches;
   ENUM_SUPRES_VALIDATION m_validation;
   bool            m_sup_valid;
@@ -36,11 +46,16 @@ private:
   double          m_sup_val;
   double          m_res_val;
   bool            m_breakdown;
-   bool            m_breakup;
-   string          m_obj_sup;
-   string          m_obj_res;
+  bool            m_breakup;
+  string          m_zone_obj_names[];    // graphic object names for zones
+  SRZone          m_price_zones[];       // all calculated zones
+  SRZone          m_current_supports[];  // zones classified as supports
+  SRZone          m_current_resistances[]; // zones classified as resistances
 
   void            DrawLine(string name,double price,color col,ENUM_LINE_STYLE st,int width);
+  void            DrawZone(string name,double lower,double upper,color col);
+  void            CalculatePriceZones(const double &highs[],const double &lows[],int bars,double range);
+  void            ClassifyZones();
   bool            IsBullPinBar(const double &o[],const double &c[],const double &h[],const double &l[],int index);
   bool            IsBearPinBar(const double &o[],const double &c[],const double &h[],const double &l[],int index);
   bool            IsBullEngulf(const double &o[],const double &c[],int index);
@@ -64,6 +79,8 @@ public:
 
   double           GetSupportValue(int shift=0);
   double           GetResistanceValue(int shift=0);
+  int              GetSupportZones(SRZone &zones_buffer[]);
+  int              GetResistanceZones(SRZone &zones_buffer[]);
   bool             IsBreakdown();
   bool             IsBreakup();
 
@@ -107,6 +124,8 @@ CSupRes::CSupRes()
   m_alert_tf=PERIOD_CURRENT;
   m_touch_lookback=20;
   m_touch_tolerance=0.0;
+  m_zone_range=10.0;
+  m_max_zones_to_draw=3;
   m_min_touches=2;
   m_validation=SUPRES_VALIDATE_TOUCHES;
   m_sup_touches=0;
@@ -130,21 +149,22 @@ CSupRes::CSupRes()
   m_ready=false;
    m_sup_val=0.0;
    m_res_val=0.0;
-   m_breakdown=false;
-   m_breakup=false;
-   m_obj_sup="";
-   m_obj_res="";
-  }
+  m_breakdown=false;
+  m_breakup=false;
+  ArrayResize(m_zone_obj_names,0);
+  ArrayResize(m_price_zones,0);
+  ArrayResize(m_current_supports,0);
+  ArrayResize(m_current_resistances,0);
+}
 
 //+------------------------------------------------------------------+
 //| Destructor                                                        |
 //+------------------------------------------------------------------+
 CSupRes::~CSupRes()
   {
-   if(StringLen(m_obj_sup)>0)
-      ObjectDelete(0,m_obj_sup);
-   if(StringLen(m_obj_res)>0)
-      ObjectDelete(0,m_obj_res);
+  for(int i=0;i<ArraySize(m_zone_obj_names);i++)
+     if(StringLen(m_zone_obj_names[i])>0)
+        ObjectDelete(0,m_zone_obj_names[i]);
   }
 
 //+------------------------------------------------------------------+
@@ -160,6 +180,24 @@ void CSupRes::DrawLine(string name,double price,color col,ENUM_LINE_STYLE st,int
    ObjectSetInteger(0,name,OBJPROP_STYLE,st);
    ObjectSetInteger(0,name,OBJPROP_WIDTH,width);
    ObjectSetInteger(0,name,OBJPROP_RAY_RIGHT,m_extend_right);
+  }
+
+//+------------------------------------------------------------------+
+//| Draw support/resistance zone                                      |
+//+------------------------------------------------------------------+
+void CSupRes::DrawZone(string name,double lower,double upper,color col)
+  {
+   datetime t1=iTime(m_symbol,m_timeframe,m_period-1);
+   datetime t2=iTime(m_symbol,m_timeframe,0);
+   if(ObjectFind(0,name)<0)
+      ObjectCreate(0,name,OBJ_RECTANGLE,0,t1,lower,t2,upper);
+   else
+     {
+      ObjectMove(0,name,0,t1,lower);
+      ObjectMove(0,name,1,t2,upper);
+     }
+   ObjectSetInteger(0,name,OBJPROP_COLOR,col);
+   ObjectSetInteger(0,name,OBJPROP_BACK,true);
   }
 
 //+------------------------------------------------------------------+
@@ -266,6 +304,135 @@ bool CSupRes::IsOutsideBar(const double &h[],const double &l[],int index)
   }
 
 //+------------------------------------------------------------------+
+//| Calculate price zones using highs and lows                         |
+//+------------------------------------------------------------------+
+void CSupRes::CalculatePriceZones(const double &highs[],const double &lows[],int bars,double range)
+  {
+   double pivots[];
+   ArrayResize(pivots,(bars-1)*2);
+   int pidx=0;
+   for(int i=1;i<bars;i++)
+     {
+      pivots[pidx++]=highs[i];
+      pivots[pidx++]=lows[i];
+     }
+
+   SRZone zones[];
+   ArrayResize(zones,0);
+
+   // Agrupa preços iniciais em zonas considerando o range
+   for(int i=0;i<ArraySize(pivots);i++)
+     {
+      double price=pivots[i];
+      bool added=false;
+      for(int j=0;j<ArraySize(zones);j++)
+        {
+         if(price>=zones[j].lower-range && price<=zones[j].upper+range)
+           {
+            if(price<zones[j].lower) zones[j].lower=price;
+            if(price>zones[j].upper) zones[j].upper=price;
+            zones[j].touches++;
+            added=true;
+            break;
+           }
+        }
+      if(!added)
+        {
+         int pos=ArraySize(zones);
+         ArrayResize(zones,pos+1);
+         zones[pos].lower=price;
+         zones[pos].upper=price;
+         zones[pos].touches=1;
+        }
+     }
+
+   // Mescla zonas sobrepostas somando seus toques
+   bool merged=true;
+   while(merged)
+     {
+      merged=false;
+      for(int i=0;i<ArraySize(zones);i++)
+        {
+         for(int j=i+1;j<ArraySize(zones);j++)
+           {
+            if(zones[i].upper>=zones[j].lower && zones[i].lower<=zones[j].upper)
+              {
+               zones[i].lower=MathMin(zones[i].lower,zones[j].lower);
+               zones[i].upper=MathMax(zones[i].upper,zones[j].upper);
+               zones[i].touches+=zones[j].touches;
+               for(int k=j;k<ArraySize(zones)-1;k++)
+                  zones[k]=zones[k+1];
+               ArrayResize(zones,ArraySize(zones)-1);
+               merged=true;
+               j--; // índices ajustados
+              }
+           }
+        }
+     }
+
+   // Ordena zonas por número de toques (decrescente)
+   int n=ArraySize(zones);
+   for(int i=0;i<n-1;i++)
+      for(int j=i+1;j<n;j++)
+         if(zones[j].touches>zones[i].touches)
+           { SRZone tmp=zones[i]; zones[i]=zones[j]; zones[j]=tmp; }
+
+   SRZone filtered[];
+   ArrayResize(filtered,0);
+   for(int i=0;i<n;i++)
+      if(zones[i].touches>=m_min_touches)
+        {
+         int p=ArraySize(filtered);
+         ArrayResize(filtered,p+1);
+         filtered[p]=zones[i];
+        }
+
+   int limit=ArraySize(filtered);
+   if(limit>m_max_zones_to_draw)
+      limit=m_max_zones_to_draw;
+   ArrayResize(m_price_zones,limit);
+  for(int i=0;i<limit;i++)
+     m_price_zones[i]=filtered[i];
+  }
+
+//+------------------------------------------------------------------+
+//| Classify zones as support or resistance based on current price    |
+//+------------------------------------------------------------------+
+void CSupRes::ClassifyZones()
+  {
+   double current_price=SymbolInfoDouble(m_symbol,SYMBOL_BID);
+   ArrayResize(m_current_supports,0);
+   ArrayResize(m_current_resistances,0);
+   for(int i=0;i<ArraySize(m_price_zones);i++)
+     {
+      if(current_price>m_price_zones[i].upper)
+        {
+         int p=ArraySize(m_current_supports);
+         ArrayResize(m_current_supports,p+1);
+         m_current_supports[p]=m_price_zones[i];
+        }
+      else if(current_price<m_price_zones[i].lower)
+        {
+         int p=ArraySize(m_current_resistances);
+         ArrayResize(m_current_resistances,p+1);
+         m_current_resistances[p]=m_price_zones[i];
+        }
+     }
+
+   // sort supports descending by upper price (nearest first)
+   for(int i=0;i<ArraySize(m_current_supports)-1;i++)
+      for(int j=i+1;j<ArraySize(m_current_supports);j++)
+         if(m_current_supports[j].upper>m_current_supports[i].upper)
+           { SRZone tmp=m_current_supports[i]; m_current_supports[i]=m_current_supports[j]; m_current_supports[j]=tmp; }
+
+   // sort resistances ascending by lower price
+   for(int i=0;i<ArraySize(m_current_resistances)-1;i++)
+      for(int j=i+1;j<ArraySize(m_current_resistances);j++)
+         if(m_current_resistances[j].lower<m_current_resistances[i].lower)
+           { SRZone tmp=m_current_resistances[i]; m_current_resistances[i]=m_current_resistances[j]; m_current_resistances[j]=tmp; }
+  }
+
+//+------------------------------------------------------------------+
 //| Init using configuration                                          |
 //+------------------------------------------------------------------+
 bool CSupRes::Init(string symbol,ENUM_TIMEFRAMES timeframe,CSupResConfig &cfg)
@@ -286,6 +453,8 @@ bool CSupRes::Init(string symbol,ENUM_TIMEFRAMES timeframe,CSupResConfig &cfg)
   m_alert_tf=cfg.alert_tf;
   m_touch_lookback=cfg.touch_lookback;
   m_touch_tolerance=cfg.touch_tolerance;
+  m_zone_range=cfg.zone_range;
+  m_max_zones_to_draw=cfg.max_zones_to_draw;
   m_min_touches=cfg.min_touches;
   m_validation=cfg.validation;
   m_sup_touches=0;
@@ -306,9 +475,7 @@ bool CSupRes::Init(string symbol,ENUM_TIMEFRAMES timeframe,CSupResConfig &cfg)
   m_res_outsidebar=0;
   m_sup_valid=false;
   m_res_valid=false;
-
-   m_obj_sup="SR_SUP_"+IntegerToString(GetTickCount());
-   m_obj_res="SR_RES_"+IntegerToString(GetTickCount());
+  ArrayResize(m_zone_obj_names,0);
 
    return Update();
   }
@@ -330,10 +497,7 @@ double CSupRes::GetSupportValue(int shift)
   {
    if(shift==0)
       return m_sup_val;
-   datetime t=iTime(m_symbol,m_alert_tf,shift);
-   if(t==0) return 0.0;
-   double val=ObjectGetValueByTime(0,m_obj_sup,t);
-   return val;
+   return m_sup_val; // for older interface shift ignored
   }
 
 //+------------------------------------------------------------------+
@@ -343,10 +507,25 @@ double CSupRes::GetResistanceValue(int shift)
   {
    if(shift==0)
       return m_res_val;
-   datetime t=iTime(m_symbol,m_alert_tf,shift);
-   if(t==0) return 0.0;
-   double val=ObjectGetValueByTime(0,m_obj_res,t);
-   return val;
+   return m_res_val; // shift ignored with zones
+  }
+
+int CSupRes::GetSupportZones(SRZone &zones_buffer[])
+  {
+   int n=ArraySize(m_current_supports);
+   ArrayResize(zones_buffer,n);
+   for(int i=0;i<n;i++)
+      zones_buffer[i]=m_current_supports[i];
+   return n;
+  }
+
+int CSupRes::GetResistanceZones(SRZone &zones_buffer[])
+  {
+   int n=ArraySize(m_current_resistances);
+   ArrayResize(zones_buffer,n);
+   for(int i=0;i<n;i++)
+      zones_buffer[i]=m_current_resistances[i];
+   return n;
   }
 
 //+------------------------------------------------------------------+
@@ -381,8 +560,8 @@ bool CSupRes::IsReady()
 //+------------------------------------------------------------------+
 bool CSupRes::Update()
   {
-   int bars=m_period>0?m_period:50;
-   double highs[],lows[],opens[],closes[];
+  int bars=m_period>0?m_period:50;
+  double highs[],lows[],opens[],closes[];
    ArraySetAsSeries(highs,true);
    ArraySetAsSeries(lows,true);
    ArraySetAsSeries(opens,true);
@@ -396,17 +575,47 @@ bool CSupRes::Update()
    if(CopyClose(m_symbol,m_timeframe,0,bars,closes)<=0)
       return false;
 
-   int hi_idx=ArrayMaximum(highs);
-   int lo_idx=ArrayMinimum(lows);
-   m_res_val=highs[hi_idx];
-   m_sup_val=lows[lo_idx];
+  int hi_idx=ArrayMaximum(highs);
+  int lo_idx=ArrayMinimum(lows);
+
+  // recalcular zonas unificadas
+  CalculatePriceZones(highs,lows,bars,m_zone_range);
+  ClassifyZones();
+
+  // valores principais para compatibilidade
+  m_res_val=(ArraySize(m_current_resistances)>0)?m_current_resistances[0].upper:0.0;
+  m_sup_val=(ArraySize(m_current_supports)>0)?m_current_supports[0].lower:0.0;
   datetime hi_time=iTime(m_symbol,m_timeframe,hi_idx);
   datetime lo_time=iTime(m_symbol,m_timeframe,lo_idx);
 
-  if(m_draw_res)
-     DrawLine(m_obj_res,m_res_val,m_res_color,m_res_style,m_res_width);
-  if(m_draw_sup)
-     DrawLine(m_obj_sup,m_sup_val,m_sup_color,m_sup_style,m_sup_width);
+  // apagar objetos antigos
+  for(int i=0;i<ArraySize(m_zone_obj_names);i++)
+     if(StringLen(m_zone_obj_names[i])>0)
+        ObjectDelete(0,m_zone_obj_names[i]);
+  ArrayResize(m_zone_obj_names,0);
+
+ if(m_draw_res)
+   {
+    int start=ArraySize(m_zone_obj_names);
+    for(int i=0;i<ArraySize(m_current_resistances);i++)
+      {
+       string name="DYN_RES_"+IntegerToString(i)+"_"+IntegerToString(GetTickCount());
+       DrawZone(name,m_current_resistances[i].lower,m_current_resistances[i].upper,m_res_color);
+       ArrayResize(m_zone_obj_names,start+i+1);
+       m_zone_obj_names[start+i]=name;
+      }
+   }
+ if(m_draw_sup)
+   {
+    int start=ArraySize(m_zone_obj_names);
+    for(int i=0;i<ArraySize(m_current_supports);i++)
+      {
+       string name="DYN_SUP_"+IntegerToString(i)+"_"+IntegerToString(GetTickCount());
+       DrawZone(name,m_current_supports[i].lower,m_current_supports[i].upper,m_sup_color);
+       ArrayResize(m_zone_obj_names,start+i+1);
+       m_zone_obj_names[start+i]=name;
+      }
+   }
 
   // reset counters
   m_sup_touches=0;
@@ -429,8 +638,16 @@ bool CSupRes::Update()
   int lookback=MathMin(m_touch_lookback,bars-1);
   for(int i=1;i<=lookback;i++)
     {
-     bool sup_touch=(highs[i]>=m_sup_val-m_touch_tolerance && lows[i]<=m_sup_val+m_touch_tolerance);
-     bool res_touch=(highs[i]>=m_res_val-m_touch_tolerance && lows[i]<=m_res_val+m_touch_tolerance);
+     bool sup_touch=false;
+     for(int z=0;z<ArraySize(m_current_supports);z++)
+        if(highs[i]>=m_current_supports[z].lower-m_touch_tolerance && lows[i]<=m_current_supports[z].upper+m_touch_tolerance)
+          { sup_touch=true; break; }
+
+     bool res_touch=false;
+     for(int z=0;z<ArraySize(m_current_resistances);z++)
+        if(highs[i]>=m_current_resistances[z].lower-m_touch_tolerance && lows[i]<=m_current_resistances[z].upper+m_touch_tolerance)
+          { res_touch=true; break; }
+
      if(sup_touch)
        {
         m_sup_touches++;
@@ -481,9 +698,22 @@ bool CSupRes::Update()
    ArraySetAsSeries(close,true);
    if(CopyClose(m_symbol,m_alert_tf,0,2,close)>0)
      {
-      m_breakup=(close[1]>m_res_val);
-      m_breakdown=(close[1]<m_sup_val);
-     }
+      m_breakup=false;
+      double nearest_res=DBL_MAX;
+      for(int z=0;z<ArraySize(m_current_resistances);z++)
+         if(m_current_resistances[z].upper<nearest_res)
+            nearest_res=m_current_resistances[z].upper;
+      if(nearest_res<DBL_MAX && close[1]>nearest_res)
+         m_breakup=true;
+
+      m_breakdown=false;
+      double nearest_sup=-DBL_MAX;
+      for(int z=0;z<ArraySize(m_current_supports);z++)
+         if(m_current_supports[z].lower>nearest_sup)
+            nearest_sup=m_current_supports[z].lower;
+      if(nearest_sup>-DBL_MAX && close[1]<nearest_sup)
+         m_breakdown=true;
+    }
    else
      {
       m_breakup=false;
