@@ -314,6 +314,8 @@ void CSupRes::CalculateZone(const double &src[],int bars,double range,bool is_su
   {
    SRZone zones[];
    ArrayResize(zones,0);
+
+   // Agrupa preços iniciais em zonas considerando o range
    for(int i=1;i<bars;i++)
      {
       double price=src[i];
@@ -338,13 +340,41 @@ void CSupRes::CalculateZone(const double &src[],int bars,double range,bool is_su
          zones[pos].touches=1;
         }
      }
+
+   // Mescla zonas sobrepostas somando seus toques
+   bool merged=true;
+   while(merged)
+     {
+      merged=false;
+      for(int i=0;i<ArraySize(zones);i++)
+        {
+         for(int j=i+1;j<ArraySize(zones);j++)
+           {
+            if(zones[i].upper>=zones[j].lower && zones[i].lower<=zones[j].upper)
+              {
+               zones[i].lower=MathMin(zones[i].lower,zones[j].lower);
+               zones[i].upper=MathMax(zones[i].upper,zones[j].upper);
+               zones[i].touches+=zones[j].touches;
+               for(int k=j;k<ArraySize(zones)-1;k++)
+                  zones[k]=zones[k+1];
+               ArrayResize(zones,ArraySize(zones)-1);
+               merged=true;
+               j--; // voltar um passo pois os índices mudaram
+              }
+           }
+        }
+     }
+
+   // Seleciona a zona com mais toques
    int best=-1;
    for(int j=0;j<ArraySize(zones);j++)
      {
       if(best==-1 || zones[j].touches>zones[best].touches ||
-         (zones[j].touches==zones[best].touches && ((is_support && zones[j].lower<zones[best].lower) || (!is_support && zones[j].upper>zones[best].upper))))
+         (zones[j].touches==zones[best].touches &&
+          ((is_support && zones[j].lower<zones[best].lower) || (!is_support && zones[j].upper>zones[best].upper))))
            best=j;
      }
+
    if(best>=0)
      zone=zones[best];
    else
