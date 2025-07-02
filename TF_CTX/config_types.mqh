@@ -13,6 +13,7 @@
 #include "indicators/bollinger/bollinger_defs.mqh"
 #include "indicators/fibonacci/fibonacci_defs.mqh"
 #include "priceaction/trendline/trendline_defs.mqh"
+#include "priceaction/sup_res/sup_res_defs.mqh"
 
 //--- Base configuration
 class CIndicatorConfig
@@ -154,13 +155,47 @@ public:
    ENUM_TIMEFRAMES fractal_tf;
    ENUM_TIMEFRAMES detail_tf;
    ENUM_TIMEFRAMES alert_tf;
-   CTrendLineConfig()
-     {
+  CTrendLineConfig()
+    {
       period=20; left=3; right=3; draw_lta=true; draw_ltb=true;
       lta_color=clrGreen; ltb_color=clrRed;
       lta_style=STYLE_SOLID; ltb_style=STYLE_SOLID;
       lta_width=1; ltb_width=1; extend_right=true; show_labels=false;
       fractal_tf=PERIOD_H4; detail_tf=PERIOD_H1; alert_tf=PERIOD_H1;
+    }
+  };
+
+//--- Support/Resistance configuration
+class CSupResConfig : public CPriceActionConfig
+  {
+public:
+   int             period;
+   bool            draw_sup;
+   bool            draw_res;
+   color           sup_color;
+   color           res_color;
+   ENUM_LINE_STYLE sup_style;
+   ENUM_LINE_STYLE res_style;
+   int             sup_width;
+   int             res_width;
+   bool            extend_right;
+   bool            show_labels;
+   ENUM_TIMEFRAMES alert_tf;
+   int             touch_lookback;
+   double          touch_tolerance;
+   int             min_touches;
+   ENUM_SUPRES_VALIDATION validation;
+   CSupResConfig()
+     {
+      period=50; draw_sup=true; draw_res=true;
+      sup_color=clrBlue; res_color=clrRed;
+      sup_style=STYLE_SOLID; res_style=STYLE_SOLID;
+      sup_width=1; res_width=1; extend_right=true; show_labels=false;
+      alert_tf=PERIOD_H1;
+      touch_lookback=20;
+      touch_tolerance=0.0;
+      min_touches=2;
+      validation=SUPRES_VALIDATE_TOUCHES;
      }
   };
 
