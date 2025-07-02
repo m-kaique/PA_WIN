@@ -62,4 +62,8 @@ todos os campos disponíveis para o **SUPRES**:
 }
 ```
 
+O objeto `CSupRes` expõe contadores públicos para o número de toques e para cada
+padrão detectado (Pin Bar, Engolfo, Doji, Marubozu, Inside/Outside Bar).
+Esses valores podem ser usados em outras partes do EA para filtros ou logs.
+
 Após salvar o JSON e recarregar a configuração (função `ReloadConfig()`), o novo componente será criado automaticamente.

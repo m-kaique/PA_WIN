@@ -41,10 +41,15 @@ private:
    string          m_obj_res;
 
   void            DrawLine(string name,double price,color col,ENUM_LINE_STYLE st,int width);
-  bool            IsBullPinBar(int index);
-  bool            IsBearPinBar(int index);
-  bool            IsBullEngulf(int index);
-  bool            IsBearEngulf(int index);
+  bool            IsBullPinBar(const double &o[],const double &c[],const double &h[],const double &l[],int index);
+  bool            IsBearPinBar(const double &o[],const double &c[],const double &h[],const double &l[],int index);
+  bool            IsBullEngulf(const double &o[],const double &c[],int index);
+  bool            IsBearEngulf(const double &o[],const double &c[],int index);
+  bool            IsDoji(const double &o[],const double &c[],const double &h[],const double &l[],int index);
+  bool            IsBullMarubozu(const double &o[],const double &c[],const double &h[],const double &l[],int index);
+  bool            IsBearMarubozu(const double &o[],const double &c[],const double &h[],const double &l[],int index);
+  bool            IsInsideBar(const double &h[],const double &l[],int index);
+  bool            IsOutsideBar(const double &h[],const double &l[],int index);
 
 public:
                      CSupRes();
@@ -69,6 +74,16 @@ public:
   int             m_res_pinbar;
   int             m_sup_engulf;
   int             m_res_engulf;
+  int             m_sup_doji;
+  int             m_res_doji;
+  int             m_sup_maru_bull;
+  int             m_res_maru_bull;
+  int             m_sup_maru_bear;
+  int             m_res_maru_bear;
+  int             m_sup_insidebar;
+  int             m_res_insidebar;
+  int             m_sup_outsidebar;
+  int             m_res_outsidebar;
   };
 
 //+------------------------------------------------------------------+
@@ -100,6 +115,16 @@ CSupRes::CSupRes()
   m_res_pinbar=0;
   m_sup_engulf=0;
   m_res_engulf=0;
+  m_sup_doji=0;
+  m_res_doji=0;
+  m_sup_maru_bull=0;
+  m_res_maru_bull=0;
+  m_sup_maru_bear=0;
+  m_res_maru_bear=0;
+  m_sup_insidebar=0;
+  m_res_insidebar=0;
+  m_sup_outsidebar=0;
+  m_res_outsidebar=0;
   m_sup_valid=false;
   m_res_valid=false;
   m_ready=false;
@@ -140,59 +165,104 @@ void CSupRes::DrawLine(string name,double price,color col,ENUM_LINE_STYLE st,int
 //+------------------------------------------------------------------+
 //| Check for bullish pin bar (hammer)                                |
 //+------------------------------------------------------------------+
-bool CSupRes::IsBullPinBar(int index)
+bool CSupRes::IsBullPinBar(const double &o[],const double &c[],const double &h[],const double &l[],int index)
   {
-   double o=iOpen(m_symbol,m_timeframe,index);
-   double c=iClose(m_symbol,m_timeframe,index);
-   double h=iHigh(m_symbol,m_timeframe,index);
-   double l=iLow(m_symbol,m_timeframe,index);
-   double body=MathAbs(o-c);
-   double upper=h-MathMax(o,c);
-   double lower=MathMin(o,c)-l;
+   double body=MathAbs(o[index]-c[index]);
+   double upper=h[index]-MathMax(o[index],c[index]);
+   double lower=MathMin(o[index],c[index])-l[index];
    return(lower>body*2 && upper<body);
   }
 
 //+------------------------------------------------------------------+
 //| Check for bearish pin bar (shooting star)                         |
 //+------------------------------------------------------------------+
-bool CSupRes::IsBearPinBar(int index)
+bool CSupRes::IsBearPinBar(const double &o[],const double &c[],const double &h[],const double &l[],int index)
   {
-   double o=iOpen(m_symbol,m_timeframe,index);
-   double c=iClose(m_symbol,m_timeframe,index);
-   double h=iHigh(m_symbol,m_timeframe,index);
-   double l=iLow(m_symbol,m_timeframe,index);
-   double body=MathAbs(o-c);
-   double upper=h-MathMax(o,c);
-   double lower=MathMin(o,c)-l;
+   double body=MathAbs(o[index]-c[index]);
+   double upper=h[index]-MathMax(o[index],c[index]);
+   double lower=MathMin(o[index],c[index])-l[index];
    return(upper>body*2 && lower<body);
   }
 
 //+------------------------------------------------------------------+
 //| Check for bullish engulfing                                       |
 //+------------------------------------------------------------------+
-bool CSupRes::IsBullEngulf(int index)
+bool CSupRes::IsBullEngulf(const double &o[],const double &c[],int index)
   {
-   if(index+1>=Bars(m_symbol,m_timeframe))
+   if(index+1>=ArraySize(o))
       return false;
-   double o1=iOpen(m_symbol,m_timeframe,index+1);
-   double c1=iClose(m_symbol,m_timeframe,index+1);
-   double o2=iOpen(m_symbol,m_timeframe,index);
-   double c2=iClose(m_symbol,m_timeframe,index);
+   double o1=o[index+1];
+   double c1=c[index+1];
+   double o2=o[index];
+   double c2=c[index];
    return(c1<o1 && c2>o2 && c2>o1 && o2<c1);
   }
 
 //+------------------------------------------------------------------+
 //| Check for bearish engulfing                                       |
 //+------------------------------------------------------------------+
-bool CSupRes::IsBearEngulf(int index)
+bool CSupRes::IsBearEngulf(const double &o[],const double &c[],int index)
   {
-   if(index+1>=Bars(m_symbol,m_timeframe))
+   if(index+1>=ArraySize(o))
       return false;
-   double o1=iOpen(m_symbol,m_timeframe,index+1);
-   double c1=iClose(m_symbol,m_timeframe,index+1);
-   double o2=iOpen(m_symbol,m_timeframe,index);
-   double c2=iClose(m_symbol,m_timeframe,index);
+   double o1=o[index+1];
+   double c1=c[index+1];
+   double o2=o[index];
+   double c2=c[index];
    return(c1>o1 && c2<o2 && c2<o1 && o2>c1);
+  }
+
+//+------------------------------------------------------------------+
+//| Check for doji                                                    |
+//+------------------------------------------------------------------+
+bool CSupRes::IsDoji(const double &o[],const double &c[],const double &h[],const double &l[],int index)
+  {
+   double range=h[index]-l[index];
+   if(range==0.0) return false;
+   double body=MathAbs(o[index]-c[index]);
+   return(body<=range*0.1);
+  }
+
+//+------------------------------------------------------------------+
+//| Check for bullish marubozu                                        |
+//+------------------------------------------------------------------+
+bool CSupRes::IsBullMarubozu(const double &o[],const double &c[],const double &h[],const double &l[],int index)
+  {
+   double body=c[index]-o[index];
+   double upper=h[index]-c[index];
+   double lower=o[index]-l[index];
+   return(body>0 && upper<=body*0.1 && lower<=body*0.1);
+  }
+
+//+------------------------------------------------------------------+
+//| Check for bearish marubozu                                        |
+//+------------------------------------------------------------------+
+bool CSupRes::IsBearMarubozu(const double &o[],const double &c[],const double &h[],const double &l[],int index)
+  {
+   double body=o[index]-c[index];
+   double upper=h[index]-o[index];
+   double lower=c[index]-l[index];
+   return(body>0 && upper<=body*0.1 && lower<=body*0.1);
+  }
+
+//+------------------------------------------------------------------+
+//| Check for inside bar                                              |
+//+------------------------------------------------------------------+
+bool CSupRes::IsInsideBar(const double &h[],const double &l[],int index)
+  {
+   if(index+1>=ArraySize(h))
+      return false;
+   return(h[index]<h[index+1] && l[index]>l[index+1]);
+  }
+
+//+------------------------------------------------------------------+
+//| Check for outside bar                                             |
+//+------------------------------------------------------------------+
+bool CSupRes::IsOutsideBar(const double &h[],const double &l[],int index)
+  {
+   if(index+1>=ArraySize(h))
+      return false;
+   return(h[index]>h[index+1] && l[index]<l[index+1]);
   }
 
 //+------------------------------------------------------------------+
@@ -224,6 +294,16 @@ bool CSupRes::Init(string symbol,ENUM_TIMEFRAMES timeframe,CSupResConfig &cfg)
   m_res_pinbar=0;
   m_sup_engulf=0;
   m_res_engulf=0;
+  m_sup_doji=0;
+  m_res_doji=0;
+  m_sup_maru_bull=0;
+  m_res_maru_bull=0;
+  m_sup_maru_bear=0;
+  m_res_maru_bear=0;
+  m_sup_insidebar=0;
+  m_res_insidebar=0;
+  m_sup_outsidebar=0;
+  m_res_outsidebar=0;
   m_sup_valid=false;
   m_res_valid=false;
 
@@ -302,12 +382,18 @@ bool CSupRes::IsReady()
 bool CSupRes::Update()
   {
    int bars=m_period>0?m_period:50;
-   double highs[],lows[];
+   double highs[],lows[],opens[],closes[];
    ArraySetAsSeries(highs,true);
    ArraySetAsSeries(lows,true);
+   ArraySetAsSeries(opens,true);
+   ArraySetAsSeries(closes,true);
    if(CopyHigh(m_symbol,m_timeframe,0,bars,highs)<=0)
       return false;
    if(CopyLow(m_symbol,m_timeframe,0,bars,lows)<=0)
+      return false;
+   if(CopyOpen(m_symbol,m_timeframe,0,bars,opens)<=0)
+      return false;
+   if(CopyClose(m_symbol,m_timeframe,0,bars,closes)<=0)
       return false;
 
    int hi_idx=ArrayMaximum(highs);
@@ -329,6 +415,16 @@ bool CSupRes::Update()
   m_res_pinbar=0;
   m_sup_engulf=0;
   m_res_engulf=0;
+  m_sup_doji=0;
+  m_res_doji=0;
+  m_sup_maru_bull=0;
+  m_res_maru_bull=0;
+  m_sup_maru_bear=0;
+  m_res_maru_bear=0;
+  m_sup_insidebar=0;
+  m_res_insidebar=0;
+  m_sup_outsidebar=0;
+  m_res_outsidebar=0;
 
   int lookback=MathMin(m_touch_lookback,bars-1);
   for(int i=1;i<=lookback;i++)
@@ -338,14 +434,24 @@ bool CSupRes::Update()
      if(sup_touch)
        {
         m_sup_touches++;
-        if(IsBullPinBar(i))   m_sup_pinbar++;
-        if(IsBullEngulf(i))   m_sup_engulf++;
+        if(IsBullPinBar(opens,closes,highs,lows,i))   m_sup_pinbar++;
+        if(IsBullEngulf(opens,closes,i))              m_sup_engulf++;
+        if(IsDoji(opens,closes,highs,lows,i))         m_sup_doji++;
+        if(IsBullMarubozu(opens,closes,highs,lows,i)) m_sup_maru_bull++;
+        if(IsBearMarubozu(opens,closes,highs,lows,i)) m_sup_maru_bear++;
+        if(IsInsideBar(highs,lows,i))                 m_sup_insidebar++;
+        if(IsOutsideBar(highs,lows,i))                m_sup_outsidebar++;
        }
      if(res_touch)
        {
         m_res_touches++;
-        if(IsBearPinBar(i))   m_res_pinbar++;
-        if(IsBearEngulf(i))   m_res_engulf++;
+        if(IsBearPinBar(opens,closes,highs,lows,i))   m_res_pinbar++;
+        if(IsBearEngulf(opens,closes,i))              m_res_engulf++;
+        if(IsDoji(opens,closes,highs,lows,i))         m_res_doji++;
+        if(IsBullMarubozu(opens,closes,highs,lows,i)) m_res_maru_bull++;
+        if(IsBearMarubozu(opens,closes,highs,lows,i)) m_res_maru_bear++;
+        if(IsInsideBar(highs,lows,i))                 m_res_insidebar++;
+        if(IsOutsideBar(highs,lows,i))                m_res_outsidebar++;
        }
     }
 
@@ -358,13 +464,17 @@ bool CSupRes::Update()
     }
   else if(m_validation==SUPRES_VALIDATE_PATTERNS)
     {
-     m_sup_valid=((m_sup_pinbar+m_sup_engulf)>0);
-     m_res_valid=((m_res_pinbar+m_res_engulf)>0);
+     int sup_pat=m_sup_pinbar+m_sup_engulf+m_sup_doji+m_sup_maru_bull+m_sup_maru_bear+m_sup_insidebar+m_sup_outsidebar;
+     int res_pat=m_res_pinbar+m_res_engulf+m_res_doji+m_res_maru_bull+m_res_maru_bear+m_res_insidebar+m_res_outsidebar;
+     m_sup_valid=(sup_pat>0);
+     m_res_valid=(res_pat>0);
     }
   else if(m_validation==SUPRES_VALIDATE_BOTH)
     {
-     m_sup_valid=(m_sup_touches>=m_min_touches && (m_sup_pinbar+m_sup_engulf)>0);
-     m_res_valid=(m_res_touches>=m_min_touches && (m_res_pinbar+m_res_engulf)>0);
+     int sup_pat=m_sup_pinbar+m_sup_engulf+m_sup_doji+m_sup_maru_bull+m_sup_maru_bear+m_sup_insidebar+m_sup_outsidebar;
+     int res_pat=m_res_pinbar+m_res_engulf+m_res_doji+m_res_maru_bull+m_res_maru_bear+m_res_insidebar+m_res_outsidebar;
+     m_sup_valid=(m_sup_touches>=m_min_touches && sup_pat>0);
+     m_res_valid=(m_res_touches>=m_min_touches && res_pat>0);
     }
 
    double close[];
