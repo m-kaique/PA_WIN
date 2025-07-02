@@ -184,6 +184,7 @@ public:
    int             touch_lookback;
   double          touch_tolerance;
   double          zone_range;
+  int             max_zones_to_draw;
   int             min_touches;
    ENUM_SUPRES_VALIDATION validation;
    CSupResConfig()
@@ -196,6 +197,7 @@ public:
       touch_lookback=20;
       touch_tolerance=0.0;
       zone_range=10.0;
+      max_zones_to_draw=3;
       min_touches=2;
       validation=SUPRES_VALIDATE_TOUCHES;
      }

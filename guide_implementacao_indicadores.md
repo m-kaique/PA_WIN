@@ -57,6 +57,7 @@ todos os campos disponíveis para o **SUPRES**:
    "touch_lookback": 20,
    "touch_tolerance": 5.0,
    "zone_range": 10.0,
+   "max_zones_to_draw": 3,
    "min_touches": 2,
    "validation": 2,
    "enabled": true
