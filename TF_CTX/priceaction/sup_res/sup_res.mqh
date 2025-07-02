@@ -9,6 +9,14 @@
 #include "sup_res_defs.mqh"
 #include "../../config_types.mqh"
 
+// Structure representing a support/resistance zone
+struct SRZone
+  {
+   double upper;   // upper price limit of the zone
+   double lower;   // lower price limit of the zone
+   int    touches; // number of touches inside the zone
+  };
+
 class CSupRes : public CPriceActionBase
   {
 private:
@@ -28,6 +36,7 @@ private:
   ENUM_TIMEFRAMES m_alert_tf;
   int             m_touch_lookback;
   double          m_touch_tolerance;
+  double          m_zone_range;      // max range to group touches as one zone
   int             m_min_touches;
   ENUM_SUPRES_VALIDATION m_validation;
   bool            m_sup_valid;
@@ -36,11 +45,17 @@ private:
   double          m_sup_val;
   double          m_res_val;
   bool            m_breakdown;
-   bool            m_breakup;
-   string          m_obj_sup;
-   string          m_obj_res;
+  bool            m_breakup;
+  string          m_obj_sup;
+  string          m_obj_res;
+  string          m_obj_sup_zone;
+  string          m_obj_res_zone;
+  SRZone          m_sup_zone;
+  SRZone          m_res_zone;
 
   void            DrawLine(string name,double price,color col,ENUM_LINE_STYLE st,int width);
+  void            DrawZone(string name,double lower,double upper,color col);
+  void            CalculateZone(const double &src[],int bars,double range,bool is_support,SRZone &zone);
   bool            IsBullPinBar(const double &o[],const double &c[],const double &h[],const double &l[],int index);
   bool            IsBearPinBar(const double &o[],const double &c[],const double &h[],const double &l[],int index);
   bool            IsBullEngulf(const double &o[],const double &c[],int index);
@@ -107,6 +122,7 @@ CSupRes::CSupRes()
   m_alert_tf=PERIOD_CURRENT;
   m_touch_lookback=20;
   m_touch_tolerance=0.0;
+  m_zone_range=10.0;
   m_min_touches=2;
   m_validation=SUPRES_VALIDATE_TOUCHES;
   m_sup_touches=0;
@@ -130,22 +146,30 @@ CSupRes::CSupRes()
   m_ready=false;
    m_sup_val=0.0;
    m_res_val=0.0;
-   m_breakdown=false;
-   m_breakup=false;
-   m_obj_sup="";
-   m_obj_res="";
-  }
+  m_breakdown=false;
+  m_breakup=false;
+  m_obj_sup="";
+  m_obj_res="";
+  m_obj_sup_zone="";
+  m_obj_res_zone="";
+  m_sup_zone.touches=0; m_sup_zone.lower=0; m_sup_zone.upper=0;
+  m_res_zone.touches=0; m_res_zone.lower=0; m_res_zone.upper=0;
+ }
 
 //+------------------------------------------------------------------+
 //| Destructor                                                        |
 //+------------------------------------------------------------------+
 CSupRes::~CSupRes()
   {
-   if(StringLen(m_obj_sup)>0)
-      ObjectDelete(0,m_obj_sup);
-   if(StringLen(m_obj_res)>0)
-      ObjectDelete(0,m_obj_res);
-  }
+  if(StringLen(m_obj_sup)>0)
+     ObjectDelete(0,m_obj_sup);
+  if(StringLen(m_obj_res)>0)
+     ObjectDelete(0,m_obj_res);
+  if(StringLen(m_obj_sup_zone)>0)
+     ObjectDelete(0,m_obj_sup_zone);
+  if(StringLen(m_obj_res_zone)>0)
+     ObjectDelete(0,m_obj_res_zone);
+ }
 
 //+------------------------------------------------------------------+
 //| Draw horizontal line                                              |
@@ -160,6 +184,24 @@ void CSupRes::DrawLine(string name,double price,color col,ENUM_LINE_STYLE st,int
    ObjectSetInteger(0,name,OBJPROP_STYLE,st);
    ObjectSetInteger(0,name,OBJPROP_WIDTH,width);
    ObjectSetInteger(0,name,OBJPROP_RAY_RIGHT,m_extend_right);
+  }
+
+//+------------------------------------------------------------------+
+//| Draw support/resistance zone                                      |
+//+------------------------------------------------------------------+
+void CSupRes::DrawZone(string name,double lower,double upper,color col)
+  {
+   datetime t1=iTime(m_symbol,m_timeframe,m_period-1);
+   datetime t2=iTime(m_symbol,m_timeframe,0);
+   if(ObjectFind(0,name)<0)
+      ObjectCreate(0,name,OBJ_RECTANGLE,0,t1,lower,t2,upper);
+   else
+     {
+      ObjectMove(0,name,0,t1,lower);
+      ObjectMove(0,name,1,t2,upper);
+     }
+   ObjectSetInteger(0,name,OBJPROP_COLOR,col);
+   ObjectSetInteger(0,name,OBJPROP_BACK,true);
   }
 
 //+------------------------------------------------------------------+
@@ -266,6 +308,52 @@ bool CSupRes::IsOutsideBar(const double &h[],const double &l[],int index)
   }
 
 //+------------------------------------------------------------------+
+//| Calculate zone from price array                                   |
+//+------------------------------------------------------------------+
+void CSupRes::CalculateZone(const double &src[],int bars,double range,bool is_support,SRZone &zone)
+  {
+   SRZone zones[];
+   ArrayResize(zones,0);
+   for(int i=1;i<bars;i++)
+     {
+      double price=src[i];
+      bool added=false;
+      for(int j=0;j<ArraySize(zones);j++)
+        {
+         if(price>=zones[j].lower-range && price<=zones[j].upper+range)
+           {
+            if(price<zones[j].lower) zones[j].lower=price;
+            if(price>zones[j].upper) zones[j].upper=price;
+            zones[j].touches++;
+            added=true;
+            break;
+           }
+        }
+      if(!added)
+        {
+         int pos=ArraySize(zones);
+         ArrayResize(zones,pos+1);
+         zones[pos].lower=price;
+         zones[pos].upper=price;
+         zones[pos].touches=1;
+        }
+     }
+   int best=-1;
+   for(int j=0;j<ArraySize(zones);j++)
+     {
+      if(best==-1 || zones[j].touches>zones[best].touches ||
+         (zones[j].touches==zones[best].touches && ((is_support && zones[j].lower<zones[best].lower) || (!is_support && zones[j].upper>zones[best].upper))))
+           best=j;
+     }
+   if(best>=0)
+     zone=zones[best];
+   else
+     {
+      zone.lower=0; zone.upper=0; zone.touches=0;
+     }
+  }
+
+//+------------------------------------------------------------------+
 //| Init using configuration                                          |
 //+------------------------------------------------------------------+
 bool CSupRes::Init(string symbol,ENUM_TIMEFRAMES timeframe,CSupResConfig &cfg)
@@ -286,6 +374,7 @@ bool CSupRes::Init(string symbol,ENUM_TIMEFRAMES timeframe,CSupResConfig &cfg)
   m_alert_tf=cfg.alert_tf;
   m_touch_lookback=cfg.touch_lookback;
   m_touch_tolerance=cfg.touch_tolerance;
+  m_zone_range=cfg.zone_range;
   m_min_touches=cfg.min_touches;
   m_validation=cfg.validation;
   m_sup_touches=0;
@@ -307,8 +396,10 @@ bool CSupRes::Init(string symbol,ENUM_TIMEFRAMES timeframe,CSupResConfig &cfg)
   m_sup_valid=false;
   m_res_valid=false;
 
-   m_obj_sup="SR_SUP_"+IntegerToString(GetTickCount());
-   m_obj_res="SR_RES_"+IntegerToString(GetTickCount());
+  m_obj_sup="SR_SUP_"+IntegerToString(GetTickCount());
+  m_obj_res="SR_RES_"+IntegerToString(GetTickCount());
+  m_obj_sup_zone="SR_SUP_ZONE_"+IntegerToString(GetTickCount());
+  m_obj_res_zone="SR_RES_ZONE_"+IntegerToString(GetTickCount());
 
    return Update();
   }
@@ -330,10 +421,7 @@ double CSupRes::GetSupportValue(int shift)
   {
    if(shift==0)
       return m_sup_val;
-   datetime t=iTime(m_symbol,m_alert_tf,shift);
-   if(t==0) return 0.0;
-   double val=ObjectGetValueByTime(0,m_obj_sup,t);
-   return val;
+   return m_sup_val; // for older interface shift ignored
   }
 
 //+------------------------------------------------------------------+
@@ -343,10 +431,7 @@ double CSupRes::GetResistanceValue(int shift)
   {
    if(shift==0)
       return m_res_val;
-   datetime t=iTime(m_symbol,m_alert_tf,shift);
-   if(t==0) return 0.0;
-   double val=ObjectGetValueByTime(0,m_obj_res,t);
-   return val;
+   return m_res_val; // shift ignored with zones
   }
 
 //+------------------------------------------------------------------+
@@ -396,17 +481,19 @@ bool CSupRes::Update()
    if(CopyClose(m_symbol,m_timeframe,0,bars,closes)<=0)
       return false;
 
-   int hi_idx=ArrayMaximum(highs);
-   int lo_idx=ArrayMinimum(lows);
-   m_res_val=highs[hi_idx];
-   m_sup_val=lows[lo_idx];
-  datetime hi_time=iTime(m_symbol,m_timeframe,hi_idx);
-  datetime lo_time=iTime(m_symbol,m_timeframe,lo_idx);
+  int hi_idx=ArrayMaximum(highs);
+  int lo_idx=ArrayMinimum(lows);
+  CalculateZone(highs,bars,m_zone_range,false,m_res_zone);
+  CalculateZone(lows,bars,m_zone_range,true,m_sup_zone);
+  m_res_val=m_res_zone.upper;
+  m_sup_val=m_sup_zone.lower;
+ datetime hi_time=iTime(m_symbol,m_timeframe,hi_idx);
+ datetime lo_time=iTime(m_symbol,m_timeframe,lo_idx);
 
-  if(m_draw_res)
-     DrawLine(m_obj_res,m_res_val,m_res_color,m_res_style,m_res_width);
-  if(m_draw_sup)
-     DrawLine(m_obj_sup,m_sup_val,m_sup_color,m_sup_style,m_sup_width);
+ if(m_draw_res)
+    DrawZone(m_obj_res_zone,m_res_zone.lower,m_res_zone.upper,m_res_color);
+ if(m_draw_sup)
+    DrawZone(m_obj_sup_zone,m_sup_zone.lower,m_sup_zone.upper,m_sup_color);
 
   // reset counters
   m_sup_touches=0;
@@ -429,8 +516,8 @@ bool CSupRes::Update()
   int lookback=MathMin(m_touch_lookback,bars-1);
   for(int i=1;i<=lookback;i++)
     {
-     bool sup_touch=(highs[i]>=m_sup_val-m_touch_tolerance && lows[i]<=m_sup_val+m_touch_tolerance);
-     bool res_touch=(highs[i]>=m_res_val-m_touch_tolerance && lows[i]<=m_res_val+m_touch_tolerance);
+     bool sup_touch=(highs[i]>=m_sup_zone.lower-m_touch_tolerance && lows[i]<=m_sup_zone.upper+m_touch_tolerance);
+     bool res_touch=(highs[i]>=m_res_zone.lower-m_touch_tolerance && lows[i]<=m_res_zone.upper+m_touch_tolerance);
      if(sup_touch)
        {
         m_sup_touches++;
@@ -481,8 +568,8 @@ bool CSupRes::Update()
    ArraySetAsSeries(close,true);
    if(CopyClose(m_symbol,m_alert_tf,0,2,close)>0)
      {
-      m_breakup=(close[1]>m_res_val);
-      m_breakdown=(close[1]<m_sup_val);
+      m_breakup=(close[1]>m_res_zone.upper);
+      m_breakdown=(close[1]<m_sup_zone.lower);
      }
    else
      {

@@ -182,8 +182,9 @@ public:
    bool            show_labels;
    ENUM_TIMEFRAMES alert_tf;
    int             touch_lookback;
-   double          touch_tolerance;
-   int             min_touches;
+  double          touch_tolerance;
+  double          zone_range;
+  int             min_touches;
    ENUM_SUPRES_VALIDATION validation;
    CSupResConfig()
      {
@@ -194,6 +195,7 @@ public:
       alert_tf=PERIOD_H1;
       touch_lookback=20;
       touch_tolerance=0.0;
+      zone_range=10.0;
       min_touches=2;
       validation=SUPRES_VALIDATE_TOUCHES;
      }
