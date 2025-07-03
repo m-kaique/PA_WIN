@@ -785,6 +785,83 @@ Esta seção detalha as principais funções e classes encontradas no código do
       - **Valor de retorno**: `bool` - `true` se o indicador estiver pronto, `false` caso contrário.
 
 
+### stochastic.mqh
+
+- **`CStochastic`**
+  - `Init(symbol, timeframe, kperiod, dperiod, slowing, method, price_field)` → `bool`
+  - `Init(symbol, timeframe, config)` → `bool`
+  - `Init(symbol, timeframe, period, method)` → `bool`
+  - `GetValue(shift=0)` → `double` (%K)
+  - `GetSignalValue(shift=0)` → `double` (%D)
+  - `CopyValues(shift, count, buffer[])` → `bool`
+  - `CopySignalValues(shift, count, buffer[])` → `bool`
+  - `IsReady()` → `bool`
+
+### volume.mqh
+
+- **`CVolume`**
+  - `Init(symbol, timeframe, shift, method)` → `bool`
+  - `Init(symbol, timeframe, config)` → `bool`
+  - `GetValue(shift=0)` → `double`
+  - `CopyValues(shift, count, buffer[])` → `bool`
+  - `IsReady()` → `bool`
+
+### bollinger.mqh
+
+- **`CBollinger`**
+  - `Init(symbol, timeframe, period, shift, deviation, price)` → `bool`
+  - `Init(symbol, timeframe, config)` → `bool`
+  - `Init(symbol, timeframe, period, method)` → `bool`
+  - `GetValue(shift=0)` → `double`
+  - `GetUpper(shift=0)` → `double`
+  - `GetLower(shift=0)` → `double`
+  - `CopyValues(shift, count, buffer[])` → `bool`
+  - `CopyUpper(shift, count, buffer[])` → `bool`
+  - `CopyLower(shift, count, buffer[])` → `bool`
+  - `IsReady()` → `bool`
+
+### vwap.mqh
+
+- **`CVWAP`**
+  - `Init(symbol, timeframe, period, method, calc_mode, session_tf, price_type, start_time, line_color, line_style, line_width, obj_prefix)` → `bool`
+  - `Init(symbol, timeframe, config)` → `bool`
+  - `Init(symbol, timeframe, period, method)` → `bool`
+  - `GetValue(shift=0)` → `double`
+  - `CopyValues(shift, count, buffer[])` → `bool`
+  - `IsReady()` → `bool`
+  - `Update()` → `bool`
+  - `SetCalcMode(mode)` → `bool`
+  - `SetPriceType(type)` → `bool`
+  - `SetSessionTimeframe(tf)` → `bool`
+  - `SetStartTime(start)` → `bool`
+
+### fibonacci.mqh
+
+- **`CFibonacci`**
+  - `Init(symbol, timeframe, bars, level1, level2, level3, level4, level5, level6, levels_color)` → `bool`
+  - `Init(symbol, timeframe, bars, level1, level2, level3, level4, level5, level6, levels_color, level_style, level_width, ext1, ext2, ext3, ext_color, ext_style, ext_width, parallel_color, parallel_style, parallel_width, show_labels, labels_color, labels_font_size, labels_font)` → `bool`
+  - `Init(symbol, timeframe, config)` → `bool`
+  - `Init(symbol, timeframe, period, method)` → `bool`
+  - `GetValue(shift=0)` → `double`
+  - `CopyValues(shift, count, buffer[])` → `bool`
+  - `IsReady()` → `bool`
+  - `Update()` → `bool`
+
+### trendline.mqh
+
+- **`CTrendLine`**
+  - `Init(symbol, timeframe, config)` → `bool`
+  - `Init(symbol, timeframe, period)` → `bool`
+  - `GetValue(shift=0)` → `double`
+  - `CopyValues(shift, count, buffer[])` → `bool`
+  - `IsReady()` → `bool`
+  - `Update()` → `bool`
+  - `GetLTAValue(shift=0)` → `double`
+  - `GetLTBValue(shift=0)` → `double`
+  - `IsLTAValid()` → `bool`
+  - `IsLTBValid()` → `bool`
+  - `IsBreakdown()` → `bool`
+  - `IsBreakup()` → `bool`
 
 
 ## 5. Parâmetros de Entrada
