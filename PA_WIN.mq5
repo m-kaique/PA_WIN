@@ -123,29 +123,36 @@ void ExecuteOnNewBar()
    Print("=== NOVO CANDLE ", EnumToString(m_control_tf), " ===");
    Print("Tempo do candle: ", TimeToString(m_last_bar_time, TIME_DATE | TIME_MINUTES));
 
-   string configured_symbol = "WIN$N"; // Usar símbolo fixo do JSON
+   // Processar todos os símbolos configurados no JSON
+   string symbols[];
+   g_config_manager.GetConfiguredSymbols(symbols);
 
-   // Atualizar automaticamente todos os contextos carregados do JSON
-   TF_CTX *contexts[];
-   ENUM_TIMEFRAMES tfs[];
-   int count = g_config_manager.GetSymbolContexts(configured_symbol, contexts, tfs);
-
-   if(count==0)
+   for(int s=0; s<ArraySize(symbols); s++)
    {
-      Print("AVISO: Nenhum contexto encontrado para símbolo: ", configured_symbol);
-      return;
-   }
+      string configured_symbol = symbols[s];
 
-   for(int i=0;i<count;i++)
-   {
-      TF_CTX *ctx = contexts[i];
-      ENUM_TIMEFRAMES tf = tfs[i];
+      TF_CTX *contexts[];
+      ENUM_TIMEFRAMES tfs[];
+      int count = g_config_manager.GetSymbolContexts(configured_symbol, contexts, tfs);
 
-      if(ctx==NULL)
+      if(count==0)
+      {
+         Print("AVISO: Nenhum contexto encontrado para símbolo: ", configured_symbol);
          continue;
+      }
 
-      Print("Atualizando Contexto: " + EnumToString(tfs[i]));
-      ctx.Update();
+      for(int i=0; i<count; i++)
+      {
+         TF_CTX *ctx = contexts[i];
+         ENUM_TIMEFRAMES tf = tfs[i];
+
+         if(ctx==NULL)
+            continue;
+
+         Print("Atualizando Contexto: " + configured_symbol + " " + EnumToString(tf));
+         ctx.Update();
+      }
+   }
 
       // if(tf==PERIOD_D1)
       // {

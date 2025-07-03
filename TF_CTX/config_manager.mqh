@@ -331,8 +331,11 @@ bool CConfigManager::CreateContexts()
             }
 
             // Criar novo contexto com lista de indicadores e priceactions
-            TF_CTX *ctx = new TF_CTX(tf, config.num_candles,
-                                    config.indicators, config.priceactions);
+            TF_CTX *ctx = new TF_CTX(symbol,
+                                    tf,
+                                    config.num_candles,
+                                    config.indicators,
+                                    config.priceactions);
             if (ctx == NULL)
             {
                 Print("ERRO: Falha ao criar contexto para ", symbol, " ", tf_str);

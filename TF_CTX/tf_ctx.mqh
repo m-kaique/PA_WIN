@@ -36,8 +36,11 @@ private:
   void CleanUp();
 
 public:
-  TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles,
-         CIndicatorConfig *&cfg[], CPriceActionConfig *&pa_cfg[]);
+  TF_CTX(string symbol,
+         ENUM_TIMEFRAMES timeframe,
+         int num_candles,
+         CIndicatorConfig *&cfg[],
+         CPriceActionConfig *&pa_cfg[]);
   ~TF_CTX();
 
   bool Init();
@@ -51,12 +54,15 @@ public:
 //+------------------------------------------------------------------+
 //| Construtor                                                       |
 //+------------------------------------------------------------------+
-TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles,
-               CIndicatorConfig *&cfg[], CPriceActionConfig *&pa_cfg[])
+TF_CTX::TF_CTX(string symbol,
+               ENUM_TIMEFRAMES timeframe,
+               int num_candles,
+               CIndicatorConfig *&cfg[],
+               CPriceActionConfig *&pa_cfg[])
 {
-  m_timeframe = timeframe;
+  m_timeframe  = timeframe;
   m_num_candles = num_candles;
-  m_symbol = Symbol();
+  m_symbol     = symbol;
   m_initialized = false;
 
   int sz = ArraySize(cfg);
