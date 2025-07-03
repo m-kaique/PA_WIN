@@ -170,7 +170,6 @@ void ExecuteOnNewBar()
       //    double lta = ctx.GetPriceActionValue("swing_lines",0);
       //    Print("LTA H1 atual: ", lta);
       // }
-   }
 }
 
 //+------------------------------------------------------------------+
