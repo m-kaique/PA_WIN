@@ -41,7 +41,7 @@ O Expert Advisor PA_WIN opera com uma arquitetura modular, centrada em um `CConf
 
 3.  **Lógica em Novo Candle (`ExecuteOnNewBar`):**
     *   Esta função é o coração da lógica de execução do EA em cada novo candle.
-    *   Atualmente, ela obtém o contexto `TF_CTX` para o símbolo fixo "WIN$N" no timeframe D1.
+    *   Agora os símbolos definidos no `config.json` são percorridos dinamicamente e todos os contextos correspondentes são atualizados.
      *   Chama o método `Update()` no contexto D1, o qual percorre todos os indicadores e executa `Update()` em cada um (herdado de `CIndicatorBase` ou sobrescrito), garantindo que fiquem sincronizados.
     *   Exibe os valores das EMAs 9 e 21 para o candle atual (shift 1) e o anterior (shift 0) para fins de depuração.
     *   A lógica de negociação real seria implementada aqui, utilizando os dados fornecidos pelos objetos `TF_CTX`.
@@ -61,8 +61,8 @@ graph TD
     F --> G{IsNewBar(m_control_tf)?};
     G -- Não --> F;
     G -- Sim --> H{ExecuteOnNewBar()};
-    H --> I{Obter TF_CTX para WIN$N/D1};
-    I --> J{Atualizar TF_CTX (D1_ctx.Update())};
+    H --> I{Obter TF_CTX(s) configurado(s)};
+    I --> J{Atualizar cada TF_CTX};
     J --> K[Executar Lógica de Negociação (ex: ler EMAs)];
     K --> F;
     F --> L{OnDeinit()};
@@ -139,7 +139,7 @@ Esta seção detalha as principais funções e classes encontradas no código do
 
 - **`ExecuteOnNewBar()`**
   - **Assinatura**: `void ExecuteOnNewBar()`
-  - **Descrição simplificada**: Contém a lógica a ser executada quando um novo candle é detectado. Agora os contextos configurados no JSON para o símbolo "WIN$N" são obtidos de forma dinâmica. Cada contexto é atualizado automaticamente e são impressas informações específicas, como as EMAs no timeframe D1 ou a linha de tendência do H1.
+  - **Descrição simplificada**: Contém a lógica a ser executada quando um novo candle é detectado. Todos os símbolos definidos em `config.json` têm seus contextos atualizados automaticamente e são impressas informações específicas, como as EMAs no timeframe D1 ou a linha de tendência do H1.
   - **Parâmetros**: Nenhum.
   - **Valor de retorno**: Nenhum.
 
