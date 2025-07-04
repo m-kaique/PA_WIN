@@ -82,9 +82,10 @@ CVWAP::CVWAP()
 //+------------------------------------------------------------------+
 CVWAP::~CVWAP()
   {
+   long chart_id=ChartID();
    if(m_chart_handle!=INVALID_HANDLE)
      {
-      ChartIndicatorDelete(0,0,m_chart_handle);
+      ChartIndicatorDelete(chart_id,0,m_chart_handle);
       IndicatorRelease(m_chart_handle);
       m_chart_handle=INVALID_HANDLE;
      }
@@ -381,9 +382,10 @@ bool CVWAP::Update()
 //+------------------------------------------------------------------+
 bool CVWAP::AttachToChart()
   {
+   long chart_id=ChartID();
    if(m_chart_handle!=INVALID_HANDLE)
      {
-      ChartIndicatorDelete(0,0,m_chart_handle);
+      ChartIndicatorDelete(chart_id,0,m_chart_handle);
       IndicatorRelease(m_chart_handle);
       m_chart_handle=INVALID_HANDLE;
      }
@@ -393,7 +395,7 @@ bool CVWAP::AttachToChart()
                           m_session_tf,m_price_type,m_start_time);
    if(m_chart_handle==INVALID_HANDLE)
       return false;
-   return ChartIndicatorAdd(0,0,m_chart_handle);
+   return ChartIndicatorAdd(chart_id,0,m_chart_handle);
   }
 
 #ifdef COMPILE_VWAP_INDICATOR
