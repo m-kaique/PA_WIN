@@ -9,6 +9,7 @@
 #include "../indicator_base.mqh"
 #include "../../config_types.mqh"
 #include "stochastic_defs.mqh"
+#include "../../bars_helper.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe para cálculo do Estocástico                               |
@@ -162,7 +163,8 @@ double CStochastic::GetBufferValue(int buffer_index, int shift)
    double buffer[];
    ArraySetAsSeries(buffer, true);
 
-   if(CopyBuffer(m_handle, buffer_index, shift, 1, buffer) <= 0)
+   int bars=ClampBars(m_handle,shift+1)-shift;
+   if(bars<=0 || CopyBuffer(m_handle, buffer_index, shift, bars, buffer) <= 0)
      {
       Print("ERRO: Falha ao copiar dados do Stochastic");
       return 0.0;
@@ -197,9 +199,15 @@ bool CStochastic::CopyValues(int shift, int count, double &buffer[])
       Print("ERRO: Handle do Stochastic inválido");
       return false;
      }
-   ArrayResize(buffer, count);
+   int bars=ClampBars(m_handle,shift+count)-shift;
+   if(bars<=0)
+     {
+      Print("ERRO: Falha ao copiar dados do Stochastic");
+      return false;
+     }
+   ArrayResize(buffer, bars);
    ArraySetAsSeries(buffer, true);
-   if(CopyBuffer(m_handle, 0, shift, count, buffer) <= 0)
+   if(CopyBuffer(m_handle, 0, shift, bars, buffer) <= 0)
      {
       Print("ERRO: Falha ao copiar dados do Stochastic");
       return false;
@@ -217,9 +225,15 @@ bool CStochastic::CopySignalValues(int shift, int count, double &buffer[])
       Print("ERRO: Handle do Stochastic inválido");
       return false;
      }
-   ArrayResize(buffer, count);
+   int bars=ClampBars(m_handle,shift+count)-shift;
+   if(bars<=0)
+     {
+      Print("ERRO: Falha ao copiar dados do Stochastic");
+      return false;
+     }
+   ArrayResize(buffer, bars);
    ArraySetAsSeries(buffer, true);
-   if(CopyBuffer(m_handle, 1, shift, count, buffer) <= 0)
+   if(CopyBuffer(m_handle, 1, shift, bars, buffer) <= 0)
      {
       Print("ERRO: Falha ao copiar dados do Stochastic");
       return false;
@@ -232,7 +246,7 @@ bool CStochastic::CopySignalValues(int shift, int count, double &buffer[])
 //+------------------------------------------------------------------+
 bool CStochastic::IsReady()
   {
-   return (BarsCalculated(m_handle) > 0);
+   return (ClampBars(m_handle,1) > 0);
   }
 
 //+------------------------------------------------------------------+

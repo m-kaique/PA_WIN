@@ -8,6 +8,7 @@
 #include "../priceaction_base.mqh"
 #include "sup_res_defs.mqh"
 #include "../../config_types.mqh"
+#include "../bars_helper.mqh"
 
 // Structure representing a support/resistance zone
 struct SRZone
@@ -560,7 +561,10 @@ bool CSupRes::IsReady()
 //+------------------------------------------------------------------+
 bool CSupRes::Update()
   {
-  int bars=m_period>0?m_period:50;
+  int bars_required=m_period>0?m_period:50;
+  int bars=ClampBars(m_symbol,m_timeframe,bars_required);
+  if(bars<=0)
+     return false;
   double highs[],lows[],opens[],closes[];
    ArraySetAsSeries(highs,true);
    ArraySetAsSeries(lows,true);
@@ -696,7 +700,8 @@ bool CSupRes::Update()
 
    double close[];
    ArraySetAsSeries(close,true);
-   if(CopyClose(m_symbol,m_alert_tf,0,2,close)>0)
+   int alert_bars=ClampBars(m_symbol,m_alert_tf,2);
+   if(alert_bars>=2 && CopyClose(m_symbol,m_alert_tf,0,alert_bars,close)>0)
      {
       m_breakup=false;
       double nearest_res=DBL_MAX;

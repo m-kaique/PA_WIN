@@ -8,6 +8,7 @@
 #include "../indicator_base.mqh"
 #include "../../config_types.mqh"
 #include "fibonacci_defs.mqh"
+#include "../../bars_helper.mqh"
 
 class CFibonacci : public CIndicatorBase
   {
@@ -268,14 +269,18 @@ bool CFibonacci::Update()
       double highs[];
       double lows[];
 
+      int bars=ClampBars(m_symbol,m_timeframe,m_bars);
+      if(bars<=0)
+         return(false);
+
       // Tratar arrays como séries antes de copiar valores
       ArraySetAsSeries(highs,true);
       ArraySetAsSeries(lows,true);
 
       // Copia os dados High/Low
-      if(CopyHigh(m_symbol,m_timeframe,0,m_bars,highs)<=0)
+      if(CopyHigh(m_symbol,m_timeframe,0,bars,highs)<=0)
          return(false);
-      if(CopyLow(m_symbol,m_timeframe,0,m_bars,lows)<=0)
+      if(CopyLow(m_symbol,m_timeframe,0,bars,lows)<=0)
          return(false);
 
       // Encontra índices de máximo e mínimo

@@ -8,6 +8,7 @@
 #include "../indicator_base.mqh"
 #include "vwap_defs.mqh"
 #include "../../config_types.mqh"
+#include "../../bars_helper.mqh"
 
 class CVWAP : public CIndicatorBase
   {
@@ -197,7 +198,7 @@ bool CVWAP::CopyValues(int shift,int count,double &buffer[])
 //+------------------------------------------------------------------+
 bool CVWAP::IsReady()
   {
-  return (Bars(m_symbol,m_timeframe) > 0);
+  return (ClampBars(m_symbol,m_timeframe,1) > 0);
   }
 
 //+------------------------------------------------------------------+
@@ -291,7 +292,7 @@ double CVWAP::TypicalPrice(int index)
 //+------------------------------------------------------------------+
 void CVWAP::ComputeAll()
   {
-   int bars=Bars(m_symbol,m_timeframe);
+   int bars=ClampBars(m_symbol,m_timeframe,0);
    if(bars<=0)
       return;
    ArrayResize(m_vwap_buffer,bars);
@@ -386,7 +387,7 @@ bool CVWAP::IsNewSession(int bar_index)
 //+------------------------------------------------------------------+
 void CVWAP::UpdateCurrentBar()
   {
-  int bars=Bars(m_symbol,m_timeframe);
+  int bars=ClampBars(m_symbol,m_timeframe,0);
   if(bars<=0)
       return;
 
@@ -445,7 +446,7 @@ bool CVWAP::Update()
    if(!IsReady())
       return(false);
 
-   int bars=Bars(m_symbol,m_timeframe);
+   int bars=ClampBars(m_symbol,m_timeframe,0);
    int current_size=ArraySize(m_vwap_buffer);
 
   if(bars<=current_size && current_size>0)

@@ -9,6 +9,7 @@
 #include "../indicator_base.mqh"
 #include "../../config_types.mqh"
 #include "ma_defs.mqh"
+#include "../../bars_helper.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe para cálculo de médias móveis                            |
@@ -134,13 +135,14 @@ double CMovingAverages::GetIndicatorValue(int handle, int shift = 0)
     
     double buffer[];
     ArraySetAsSeries(buffer, true);
-    
-    if(CopyBuffer(handle, 0, shift, 1, buffer) <= 0)
+
+    int bars=ClampBars(handle,shift+1)-shift;
+    if(bars<=0 || CopyBuffer(handle, 0, shift, bars, buffer) <= 0)
     {
         Print("ERRO: Falha ao copiar dados do indicador");
         return 0.0;
     }
-    
+
     return buffer[0];
 }
 
@@ -163,10 +165,16 @@ bool CMovingAverages::CopyValues(int shift, int count, double &buffer[])
         return false;
     }
 
-    ArrayResize(buffer, count);
+    int bars=ClampBars(m_handle,shift+count)-shift;
+    if(bars<=0)
+    {
+        Print("ERRO: Falha ao copiar dados do indicador");
+        return false;
+    }
+    ArrayResize(buffer, bars);
     ArraySetAsSeries(buffer, true);
 
-    if(CopyBuffer(m_handle, 0, shift, count, buffer) <= 0)
+    if(CopyBuffer(m_handle, 0, shift, bars, buffer) <= 0)
     {
         Print("ERRO: Falha ao copiar dados do indicador");
         return false;
@@ -180,5 +188,5 @@ bool CMovingAverages::CopyValues(int shift, int count, double &buffer[])
 //+------------------------------------------------------------------+
 bool CMovingAverages::IsReady()
 {
-    return (BarsCalculated(m_handle) > 0);
+    return (ClampBars(m_handle,1) > 0);
 }
