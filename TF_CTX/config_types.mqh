@@ -64,14 +64,11 @@ public:
    ENUM_TIMEFRAMES     session_tf;
    ENUM_VWAP_PRICE_TYPE price_type;
    datetime            start_time;
-   color               line_color;
-   ENUM_LINE_STYLE     line_style;
-   int                 line_width;
    CVWAPConfig()
      {
       period=0; method=MODE_SMA; calc_mode=VWAP_CALC_BAR;
       session_tf=PERIOD_D1; price_type=VWAP_PRICE_FINANCIAL_AVERAGE;
-      start_time=0; line_color=clrAqua; line_style=STYLE_SOLID; line_width=1;
+      start_time=0;
      }
   };
 
