@@ -18,10 +18,11 @@ private:
    ENUM_MA_METHOD  m_method;
    ENUM_VWAP_CALC_MODE m_calc_mode;
    ENUM_VWAP_PRICE_TYPE m_price_type;
-   ENUM_TIMEFRAMES     m_session_tf;
-   datetime            m_start_time;
-   datetime            m_last_calculated_time;
-   double              m_vwap_buffer[];
+  ENUM_TIMEFRAMES     m_session_tf;
+  datetime            m_start_time;
+  datetime            m_last_calculated_time;
+  double              m_vwap_buffer[];
+  int                 m_chart_handle;
    
    bool            IsNewSession(int bar_index);
    void            UpdateCurrentBar();
@@ -47,8 +48,10 @@ public:
                         int period, ENUM_MA_METHOD method) override;
    virtual double   GetValue(int shift=0) override;
    virtual bool     CopyValues(int shift,int count,double &buffer[]) override;
-   virtual bool     IsReady() override;
-   virtual bool     Update() override;
+  virtual bool     IsReady() override;
+  virtual bool     Update() override;
+
+  bool             AttachToChart();
 
    bool SetCalcMode(ENUM_VWAP_CALC_MODE mode){ m_calc_mode=mode; return true; }
    bool SetPriceType(ENUM_VWAP_PRICE_TYPE type){ m_price_type=type; return true; }
@@ -71,13 +74,20 @@ CVWAP::CVWAP()
    m_start_time=0;
    m_last_calculated_time=0;
    ArrayResize(m_vwap_buffer,0);
- }
+   m_chart_handle=INVALID_HANDLE;
+  }
 
 //+------------------------------------------------------------------+
 //| Destructor                                                       |
 //+------------------------------------------------------------------+
 CVWAP::~CVWAP()
   {
+   if(m_chart_handle!=INVALID_HANDLE)
+     {
+      ChartIndicatorDelete(0,0,m_chart_handle);
+      IndicatorRelease(m_chart_handle);
+      m_chart_handle=INVALID_HANDLE;
+     }
    ArrayResize(m_vwap_buffer,0);
    ArrayFree(m_vwap_buffer);
   }
@@ -102,9 +112,10 @@ bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
    m_price_type=price_type;
    m_session_tf=session_tf;
    m_start_time=start_time;
-   m_last_calculated_time=0;
-   ArrayResize(m_vwap_buffer,0);
-   return true;
+  m_last_calculated_time=0;
+  ArrayResize(m_vwap_buffer,0);
+  AttachToChart();
+  return true;
   }
 
 //+------------------------------------------------------------------+
@@ -363,6 +374,26 @@ bool CVWAP::Update()
 
   ComputeAll();
   return(true);
+  }
+
+//+------------------------------------------------------------------+
+//| Attach custom indicator to the chart                             |
+//+------------------------------------------------------------------+
+bool CVWAP::AttachToChart()
+  {
+   if(m_chart_handle!=INVALID_HANDLE)
+     {
+      ChartIndicatorDelete(0,0,m_chart_handle);
+      IndicatorRelease(m_chart_handle);
+      m_chart_handle=INVALID_HANDLE;
+     }
+
+   m_chart_handle=iCustom(m_symbol,m_timeframe,"vwap_indicator",
+                          m_period,m_method,m_calc_mode,
+                          m_session_tf,m_price_type,m_start_time);
+   if(m_chart_handle==INVALID_HANDLE)
+      return false;
+   return ChartIndicatorAdd(0,0,m_chart_handle);
   }
 
 #ifdef COMPILE_VWAP_INDICATOR
