@@ -1012,6 +1012,7 @@ Esta seção registra as principais alterações e versões dos componentes do E
  -   **Versao 6.00**: Permite definir a cor da linha VWAP via JSON.
  -   **Versao 7.00**: Suporte a estilo e largura de linha configuráveis via JSON.
  -   **Versao 8.00**: Adaptação completa para uso como indicador buffer, sem desenho automático de objetos.
+ -   **Versao 9.00**: Adicionado exemplo `vwap_indicator.mq5` que utiliza `OnInit` e `OnCalculate` para exibir a VWAP através de buffer.
 
 ### fibonacci.mqh
 
