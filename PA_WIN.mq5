@@ -49,7 +49,7 @@ int OnInit()
    }
 
    // Inicializar controle de novo candle com D1
-   m_control_tf = PERIOD_M5;
+   m_control_tf = PERIOD_CURRENT;
    m_last_bar_time = 0; // Forçar execução no primeiro tick
 
    Print("ConfigManager inicializado com sucesso");

@@ -45,6 +45,31 @@
                "method": "SMA",
                "enabled": true
             }
+         ],
+         "priceaction": [
+            {
+               "name": "sr_completo",
+               "type": "SUPRES",
+               "period": 50,
+               "draw_sup": true,
+               "draw_res": true,
+               "sup_color": "Blue",
+               "res_color": "Red",
+               "sup_style": "SOLID",
+               "res_style": "SOLID",
+               "sup_width": 1,
+               "res_width": 1,
+               "extend_right": true,
+               "show_labels": false,
+               "alert_tf": "H1",
+               "touch_lookback": 20,
+               "touch_tolerance": 5.0,
+               "zone_range": 10.0,
+               "max_zones_to_draw": 3,
+               "min_touches": 2,
+               "validation": 2,
+               "enabled": true
+            }
          ]
       },
       "H1": {
