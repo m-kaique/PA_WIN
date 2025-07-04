@@ -20,7 +20,7 @@ private:
    ENUM_LINE_STYLE m_style;
    int             m_width;
    string          m_obj_prefix;
-   string          m_line_names[];
+   string          m_obj_name;
    ENUM_VWAP_CALC_MODE m_calc_mode;
    ENUM_VWAP_PRICE_TYPE m_price_type;
    ENUM_TIMEFRAMES     m_session_tf;
@@ -81,7 +81,7 @@ CVWAP::CVWAP()
    m_style=STYLE_SOLID;
    m_width=1;
    m_obj_prefix="";
-   ArrayResize(m_line_names,0);
+   m_obj_name="";
    m_calc_mode=VWAP_CALC_BAR;
    m_price_type=VWAP_PRICE_FINANCIAL_AVERAGE;
    m_session_tf=PERIOD_D1;
@@ -98,7 +98,6 @@ CVWAP::~CVWAP()
    DeleteObjects();
    ArrayResize(m_vwap_buffer,0);
    ArrayFree(m_vwap_buffer);
-   ArrayResize(m_line_names,0);
   }
 
 //+------------------------------------------------------------------+
@@ -131,7 +130,6 @@ bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
    m_obj_prefix=obj_prefix;
    m_last_calculated_time=0;
    ArrayResize(m_vwap_buffer,0);
-   ArrayResize(m_line_names,0);
    return true;
   }
 
@@ -205,10 +203,8 @@ bool CVWAP::IsReady()
 //+------------------------------------------------------------------+
 void CVWAP::DeleteObjects()
   {
-   for(int i=0;i<ArraySize(m_line_names);i++)
-      if(ObjectFind(0,m_line_names[i])>=0)
-         ObjectDelete(0,m_line_names[i]);
-   ArrayResize(m_line_names,0);
+   if(StringLen(m_obj_name)>0 && ObjectFind(0,m_obj_name)>=0)
+      ObjectDelete(0,m_obj_name);
   }
 
 //+------------------------------------------------------------------+
@@ -223,44 +219,27 @@ void CVWAP::DrawLines(bool full_redraw)
       return;
      }
 
-   int needed=bars-1;
-   if(full_redraw)
+   if(ObjectFind(0,m_obj_name)<0 || full_redraw)
      {
       DeleteObjects();
-      ArrayResize(m_line_names,needed);
-      for(int i=0;i<needed;i++)
-        {
-         string name=(StringLen(m_obj_prefix)>0?m_obj_prefix:"VWAP_")+IntegerToString(i);
-         if(ObjectCreate(0,name,OBJ_TREND,0,0,0,0,0))
-           {
-            ObjectSetInteger(0,name,OBJPROP_RAY_RIGHT,false);
-            ObjectSetInteger(0,name,OBJPROP_RAY_LEFT,false);
-           }
-         m_line_names[i]=name;
-        }
-     }
-   else if(ArraySize(m_line_names)!=needed)
-     {
-      DrawLines(true);
-      return;
+      m_obj_name=(StringLen(m_obj_prefix)>0?m_obj_prefix:"VWAP_")+"LINE_"+IntegerToString(GetTickCount());
+      ObjectCreate(0,m_obj_name,OBJ_POLYLINE,0,0,0);
      }
 
-   for(int i=0;i<needed;i++)
-     {
-      double val1=m_vwap_buffer[i+1];
-      double val2=m_vwap_buffer[i];
-      datetime time1=iTime(m_symbol,m_timeframe,i+1);
-      datetime time2=iTime(m_symbol,m_timeframe,i);
-      string name=m_line_names[i];
+   int current_points=(int)ObjectGetInteger(0,m_obj_name,OBJPROP_POINTS);
+   if(current_points!=bars)
+      ObjectSetInteger(0,m_obj_name,OBJPROP_POINTS,bars);
 
-      ObjectSetInteger(0,name,OBJPROP_TIME,0,time1);
-      ObjectSetDouble(0,name,OBJPROP_PRICE,0,val1);
-      ObjectSetInteger(0,name,OBJPROP_TIME,1,time2);
-      ObjectSetDouble(0,name,OBJPROP_PRICE,1,val2);
-      ObjectSetInteger(0,name,OBJPROP_COLOR,m_color);
-      ObjectSetInteger(0,name,OBJPROP_STYLE,m_style);
-      ObjectSetInteger(0,name,OBJPROP_WIDTH,m_width);
+   for(int i=0,j=bars-1;j>=0;j--,i++)
+     {
+      datetime t=iTime(m_symbol,m_timeframe,j);
+      double val=m_vwap_buffer[j];
+      ObjectSetInteger(0,m_obj_name,OBJPROP_TIME,i,t);
+      ObjectSetDouble(0,m_obj_name,OBJPROP_PRICE,i,val);
      }
+   ObjectSetInteger(0,m_obj_name,OBJPROP_COLOR,m_color);
+   ObjectSetInteger(0,m_obj_name,OBJPROP_STYLE,m_style);
+   ObjectSetInteger(0,m_obj_name,OBJPROP_WIDTH,m_width);
   }
 
 //+------------------------------------------------------------------+
