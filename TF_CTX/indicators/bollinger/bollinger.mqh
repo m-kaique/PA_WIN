@@ -8,6 +8,7 @@
 #include "../indicator_base.mqh"
 #include "../../config_types.mqh"
 #include "bollinger_defs.mqh"
+#include "../../bars_helper.mqh"
 
 class CBollinger : public CIndicatorBase
   {
@@ -142,7 +143,8 @@ double CBollinger::GetBufferValue(int buffer_index,int shift)
       return 0.0;
    double buf[];
    ArraySetAsSeries(buf,true);
-   if(CopyBuffer(m_handle,buffer_index,shift,1,buf)<=0)
+   int bars=ClampBars(m_handle,shift+1)-shift;
+   if(bars<=0 || CopyBuffer(m_handle,buffer_index,shift,bars,buf)<=0)
       return 0.0;
    return buf[0];
   }
@@ -178,9 +180,12 @@ bool CBollinger::CopyValues(int shift,int count,double &buffer[])
   {
    if(m_handle==INVALID_HANDLE)
       return false;
-   ArrayResize(buffer,count);
+   int bars=ClampBars(m_handle,shift+count)-shift;
+   if(bars<=0)
+      return false;
+   ArrayResize(buffer,bars);
    ArraySetAsSeries(buffer,true);
-   return CopyBuffer(m_handle,2,shift,count,buffer)>0;
+   return CopyBuffer(m_handle,2,shift,bars,buffer)>0;
   }
 
 //+------------------------------------------------------------------+
@@ -190,9 +195,12 @@ bool CBollinger::CopyUpper(int shift,int count,double &buffer[])
   {
    if(m_handle==INVALID_HANDLE)
       return false;
-   ArrayResize(buffer,count);
+   int bars=ClampBars(m_handle,shift+count)-shift;
+   if(bars<=0)
+      return false;
+   ArrayResize(buffer,bars);
    ArraySetAsSeries(buffer,true);
-   return CopyBuffer(m_handle,0,shift,count,buffer)>0;
+   return CopyBuffer(m_handle,0,shift,bars,buffer)>0;
   }
 
 //+------------------------------------------------------------------+
@@ -202,9 +210,12 @@ bool CBollinger::CopyLower(int shift,int count,double &buffer[])
   {
    if(m_handle==INVALID_HANDLE)
       return false;
-   ArrayResize(buffer,count);
+   int bars=ClampBars(m_handle,shift+count)-shift;
+   if(bars<=0)
+      return false;
+   ArrayResize(buffer,bars);
    ArraySetAsSeries(buffer,true);
-   return CopyBuffer(m_handle,1,shift,count,buffer)>0;
+   return CopyBuffer(m_handle,1,shift,bars,buffer)>0;
   }
 
 //+------------------------------------------------------------------+
@@ -212,7 +223,7 @@ bool CBollinger::CopyLower(int shift,int count,double &buffer[])
 //+------------------------------------------------------------------+
 bool CBollinger::IsReady()
   {
-   return (BarsCalculated(m_handle)>0);
+   return (ClampBars(m_handle,1)>0);
   }
 
 #endif // __BOLLINGER_MQH__

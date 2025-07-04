@@ -8,6 +8,7 @@
 #include "../priceaction_base.mqh"
 #include "trendline_defs.mqh"
 #include "../../config_types.mqh"
+#include "../bars_helper.mqh"
 
 class CTrendLine : public CPriceActionBase
   {
@@ -228,7 +229,10 @@ bool CTrendLine::Update()
    if(m_fractal_handle==INVALID_HANDLE)
       return false;
 
-   int bars=m_period>0?m_period:50;
+   int bars_required=m_period>0?m_period:50;
+   int bars=ClampBars(m_symbol,m_fractal_tf,bars_required);
+   if(bars<=0)
+      return false;
    double up[],down[];
    ArraySetAsSeries(up,true);
    ArraySetAsSeries(down,true);
@@ -280,8 +284,10 @@ ArraySetAsSeries(close, true);
 ArraySetAsSeries(ct, true);
 
 
-  if(CopyClose(m_symbol,m_alert_tf,0,2,close)>0 &&
-     CopyTime(m_symbol,m_alert_tf,0,2,ct)>0)
+  int alert_bars=ClampBars(m_symbol,m_alert_tf,2);
+  if(alert_bars>=2 &&
+     CopyClose(m_symbol,m_alert_tf,0,alert_bars,close)>0 &&
+     CopyTime(m_symbol,m_alert_tf,0,alert_bars,ct)>0)
     {
      double sup=ObjectGetValueByTime(0,m_obj_lta,ct[1]);
      double res=ObjectGetValueByTime(0,m_obj_ltb,ct[1]);

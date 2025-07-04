@@ -9,6 +9,7 @@
 #include "../indicator_base.mqh"
 #include "../../config_types.mqh"
 #include "volume_defs.mqh"
+#include "../../bars_helper.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe para acesso ao volume                                     |
@@ -96,6 +97,6 @@ bool CVolume::CopyValues(int shift, int count, double &buffer[])
 //+------------------------------------------------------------------+
 bool CVolume::IsReady()
   {
-   return (Bars(m_symbol,m_timeframe) > m_base_shift);
+  return (ClampBars(m_symbol,m_timeframe,m_base_shift+1) > m_base_shift);
   }
 
