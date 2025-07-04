@@ -934,7 +934,7 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
        "enabled": true
     }
     ```
-    Compile o arquivo `Indicators/vwap_indicator.mq5` para gerar
+    Compile o arquivo `TF_CTX/indicators/vwap/vwap_indicator.mq5` para gerar
     `vwap_indicator.ex5` no diretório de indicadores. Esse
     arquivo é utilizado pelo EA para exibir automaticamente a linha
     da VWAP no gráfico.
