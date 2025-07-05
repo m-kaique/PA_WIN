@@ -47,7 +47,10 @@ private:
   double          m_res_val;
   bool            m_breakdown;
   bool            m_breakup;
-  string          m_zone_obj_names[];    // graphic object names for zones
+  string          m_res_obj_names[];     // fixed object names for resistance zones
+  string          m_sup_obj_names[];     // fixed object names for support zones
+  int             m_prev_res_zones;      // number of resistance zones drawn previously
+  int             m_prev_sup_zones;      // number of support zones drawn previously
   SRZone          m_price_zones[];       // all calculated zones
   SRZone          m_current_supports[];  // zones classified as supports
   SRZone          m_current_resistances[]; // zones classified as resistances
@@ -156,7 +159,8 @@ CSupRes::CSupRes()
    m_res_val=0.0;
   m_breakdown=false;
   m_breakup=false;
-  ArrayResize(m_zone_obj_names,0);
+  m_prev_res_zones=0;
+  m_prev_sup_zones=0;
   ArrayResize(m_price_zones,0);
   ArrayResize(m_current_supports,0);
   ArrayResize(m_current_resistances,0);
@@ -171,9 +175,12 @@ CSupRes::CSupRes()
 //+------------------------------------------------------------------+
 CSupRes::~CSupRes()
   {
-  for(int i=0;i<ArraySize(m_zone_obj_names);i++)
-     if(StringLen(m_zone_obj_names[i])>0)
-        ObjectDelete(0,m_zone_obj_names[i]);
+  for(int i=0;i<ArraySize(m_res_obj_names);i++)
+     if(StringLen(m_res_obj_names[i])>0)
+        ObjectDelete(0,m_res_obj_names[i]);
+  for(int i=0;i<ArraySize(m_sup_obj_names);i++)
+     if(StringLen(m_sup_obj_names[i])>0)
+        ObjectDelete(0,m_sup_obj_names[i]);
   }
 
 //+------------------------------------------------------------------+
@@ -484,7 +491,13 @@ bool CSupRes::Init(string symbol,ENUM_TIMEFRAMES timeframe,CSupResConfig &cfg)
   m_res_outsidebar=0;
   m_sup_valid=false;
   m_res_valid=false;
-  ArrayResize(m_zone_obj_names,0);
+  ArrayResize(m_res_obj_names,m_max_zones_to_draw);
+  ArrayResize(m_sup_obj_names,m_max_zones_to_draw);
+  for(int i=0;i<m_max_zones_to_draw;i++)
+    {
+     m_res_obj_names[i]="DYN_RES_"+IntegerToString(i);
+     m_sup_obj_names[i]="DYN_SUP_"+IntegerToString(i);
+    }
   int bars=m_period>0?m_period:50;
   ArrayResize(m_highs,bars);
   ArrayResize(m_lows,bars);
@@ -602,37 +615,28 @@ bool CSupRes::Update()
   // valores principais para compatibilidade
   m_res_val=(ArraySize(m_current_resistances)>0)?m_current_resistances[0].upper:0.0;
   m_sup_val=(ArraySize(m_current_supports)>0)?m_current_supports[0].lower:0.0;
-  datetime hi_time=iTime(m_symbol,m_timeframe,hi_idx);
-  datetime lo_time=iTime(m_symbol,m_timeframe,lo_idx);
 
-  // apagar objetos antigos
-  for(int i=0;i<ArraySize(m_zone_obj_names);i++)
-     if(StringLen(m_zone_obj_names[i])>0)
-        ObjectDelete(0,m_zone_obj_names[i]);
-  ArrayResize(m_zone_obj_names,0);
+  // draw/update resistance zones and reuse object names
+  int res_limit=MathMin(ArraySize(m_current_resistances),m_max_zones_to_draw);
+  if(m_draw_res)
+    {
+     for(int i=0;i<res_limit;i++)
+        DrawZone(m_res_obj_names[i],m_current_resistances[i].lower,m_current_resistances[i].upper,m_res_color);
+    }
+  for(int i=res_limit;i<m_prev_res_zones && i<m_max_zones_to_draw;i++)
+     ObjectDelete(0,m_res_obj_names[i]);
+  m_prev_res_zones=res_limit;
 
- if(m_draw_res)
-   {
-    int start=ArraySize(m_zone_obj_names);
-    for(int i=0;i<ArraySize(m_current_resistances);i++)
-      {
-       string name="DYN_RES_"+IntegerToString(i)+"_"+IntegerToString(GetTickCount());
-       DrawZone(name,m_current_resistances[i].lower,m_current_resistances[i].upper,m_res_color);
-       ArrayResize(m_zone_obj_names,start+i+1);
-       m_zone_obj_names[start+i]=name;
-      }
-   }
- if(m_draw_sup)
-   {
-    int start=ArraySize(m_zone_obj_names);
-    for(int i=0;i<ArraySize(m_current_supports);i++)
-      {
-       string name="DYN_SUP_"+IntegerToString(i)+"_"+IntegerToString(GetTickCount());
-       DrawZone(name,m_current_supports[i].lower,m_current_supports[i].upper,m_sup_color);
-       ArrayResize(m_zone_obj_names,start+i+1);
-       m_zone_obj_names[start+i]=name;
-      }
-   }
+  // draw/update support zones
+  int sup_limit=MathMin(ArraySize(m_current_supports),m_max_zones_to_draw);
+  if(m_draw_sup)
+    {
+     for(int i=0;i<sup_limit;i++)
+        DrawZone(m_sup_obj_names[i],m_current_supports[i].lower,m_current_supports[i].upper,m_sup_color);
+    }
+  for(int i=sup_limit;i<m_prev_sup_zones && i<m_max_zones_to_draw;i++)
+     ObjectDelete(0,m_sup_obj_names[i]);
+  m_prev_sup_zones=sup_limit;
 
   // reset counters
   m_sup_touches=0;
