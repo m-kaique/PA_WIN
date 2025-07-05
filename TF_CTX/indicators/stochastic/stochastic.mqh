@@ -4,7 +4,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, MetaQuotes Ltd."
 #property link      "https://www.mql5.com"
-#property version   "1.00"
+#property version   "1.01"
 
 #include "../indicator_base.mqh"
 #include "../../config_types.mqh"
@@ -50,10 +50,11 @@ public:
    virtual double  GetValue(int shift=0);      // %K por padrão
    double          GetSignalValue(int shift=0); // %D
 
-   virtual bool    CopyValues(int shift, int count, double &buffer[]);      // %K
-   bool            CopySignalValues(int shift, int count, double &buffer[]); // %D
+  virtual bool    CopyValues(int shift, int count, double &buffer[]);      // %K
+  bool            CopySignalValues(int shift, int count, double &buffer[]); // %D
 
-   virtual bool    IsReady();
+  virtual bool    IsReady();
+  virtual bool    Update() override;
   };
 
 //+------------------------------------------------------------------+
@@ -234,5 +235,20 @@ bool CStochastic::IsReady()
   {
    return (BarsCalculated(m_handle) > 0);
   }
+
+//+------------------------------------------------------------------+
+//| Validate handle and refresh buffers                               |
+//+------------------------------------------------------------------+
+bool CStochastic::Update()
+  {
+   if(m_handle==INVALID_HANDLE)
+      return CreateIndicatorHandle();
+
+   if(BarsCalculated(m_handle)<=0)
+      return false;
+
+   return true;
+  }
+
 
 //+------------------------------------------------------------------+

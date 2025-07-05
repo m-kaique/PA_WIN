@@ -45,9 +45,10 @@ public:
 
    virtual bool      CopyValues(int shift, int count, double &buffer[]); // middle
    bool              CopyUpper(int shift,int count,double &buffer[]);
-   bool              CopyLower(int shift,int count,double &buffer[]);
+  bool              CopyLower(int shift,int count,double &buffer[]);
 
    virtual bool      IsReady();
+   virtual bool      Update() override;
   };
 
 //+------------------------------------------------------------------+
@@ -213,6 +214,20 @@ bool CBollinger::CopyLower(int shift,int count,double &buffer[])
 bool CBollinger::IsReady()
   {
    return (BarsCalculated(m_handle)>0);
+  }
+
+//+------------------------------------------------------------------+
+//| Recreate handle if necessary                                      |
+//+------------------------------------------------------------------+
+bool CBollinger::Update()
+  {
+   if(m_handle==INVALID_HANDLE)
+      return CreateHandle();
+
+   if(BarsCalculated(m_handle)<=0)
+      return false;
+
+   return true;
   }
 
 #endif // __BOLLINGER_MQH__

@@ -994,6 +994,7 @@ Esta seção registra as principais alterações e versões dos componentes do E
 ### moving_averages.mqh
 
 -   **Versão 1.01**: Implementa indicadores de média móvel derivados de `CIndicatorBase`.
+-   **Versão 1.02**: Inclui método `Update()` para recriar o handle se necessário.
 
 
 
@@ -1001,14 +1002,17 @@ Esta seção registra as principais alterações e versões dos componentes do E
 ### stochastic.mqh
 
 -   **Versao 1.00**: Implementa o indicador Estocastico derivado de `CIndicatorBase`.
+-   **Versao 1.01**: Adiciona método `Update()` para validação do handle.
 
 ### volume.mqh
 
 -   **Versao 1.00**: Implementa o indicador de Volume derivado de `CIndicatorBase`.
+-   **Versao 1.01**: Implementa `Update()` para compatibilidade com a interface.
 
 ### bollinger.mqh
 
 -   **Versao 1.00**: Implementa o indicador de Bandas de Bollinger derivado de `CIndicatorBase`.
+-   **Versao 1.01**: Adiciona método `Update()` que recria o handle quando inválido.
 
 ### vwap.mqh
 
@@ -1019,6 +1023,7 @@ Esta seção registra as principais alterações e versões dos componentes do E
 -   **Versao 5.00**: Melhora a detecção de sessões e o cálculo da barra atual.
 -   **Versao 6.00**: Permite definir a cor da linha VWAP via JSON.
 -   **Versao 7.00**: Suporte a estilo e largura de linha configuráveis via JSON.
+-   **Versao 8.00**: `Update()` recalcula e redesenha a linha VWAP.
 
 ### vwap_indicator.mq5
 

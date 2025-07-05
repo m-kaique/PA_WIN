@@ -468,6 +468,14 @@ void CVWAP::UpdateCurrentBar()
 //+------------------------------------------------------------------+
 bool CVWAP::Update()
   {
+   if(m_handle==INVALID_HANDLE)
+      if(!CreateHandle())
+         return false;
+
+   ComputeAll();
+   UpdateCurrentBar();
+   DrawLines(true);
+
    return IsReady();
   }
 
