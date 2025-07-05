@@ -16,24 +16,17 @@ private:
    ENUM_TIMEFRAMES m_timeframe;
    int             m_period;
    ENUM_MA_METHOD  m_method;
-   color           m_color;
-   ENUM_LINE_STYLE m_style;
-   int             m_width;
-   string          m_obj_prefix;
-   string          m_line_names[];
    ENUM_VWAP_CALC_MODE m_calc_mode;
    ENUM_VWAP_PRICE_TYPE m_price_type;
-   ENUM_TIMEFRAMES     m_session_tf;
-   datetime            m_start_time;
-   datetime            m_last_calculated_time;
-   double              m_vwap_buffer[];
+  ENUM_TIMEFRAMES     m_session_tf;
+  datetime            m_start_time;
+  datetime            m_last_calculated_time;
+  double              m_vwap_buffer[];
+  int                 m_chart_handle;
    
    bool            IsNewSession(int bar_index);
    void            UpdateCurrentBar();
 
-   void            DeleteObjects();
-
-   void            DrawLines(bool full_redraw);
 
    double          TypicalPrice(int index);
    void            ComputeAll();
@@ -48,19 +41,17 @@ public:
                         ENUM_VWAP_CALC_MODE calc_mode,
                         ENUM_TIMEFRAMES session_tf,
                         ENUM_VWAP_PRICE_TYPE price_type,
-                        datetime start_time,
-                        color line_color,
-                        ENUM_LINE_STYLE line_style=STYLE_SOLID,
-                        int line_width=1,
-                        string obj_prefix="");
+                        datetime start_time);
   bool             Init(string symbol, ENUM_TIMEFRAMES timeframe,
                         CVWAPConfig &config);
   virtual bool     Init(string symbol, ENUM_TIMEFRAMES timeframe,
                         int period, ENUM_MA_METHOD method) override;
    virtual double   GetValue(int shift=0) override;
    virtual bool     CopyValues(int shift,int count,double &buffer[]) override;
-   virtual bool     IsReady() override;
-   virtual bool     Update() override;
+  virtual bool     IsReady() override;
+  virtual bool     Update() override;
+
+  bool             AttachToChart();
 
    bool SetCalcMode(ENUM_VWAP_CALC_MODE mode){ m_calc_mode=mode; return true; }
    bool SetPriceType(ENUM_VWAP_PRICE_TYPE type){ m_price_type=type; return true; }
@@ -77,28 +68,29 @@ CVWAP::CVWAP()
    m_timeframe=PERIOD_CURRENT;
    m_period=1;
    m_method=MODE_SMA;
-   m_color=clrAqua;
-   m_style=STYLE_SOLID;
-   m_width=1;
-   m_obj_prefix="";
-   ArrayResize(m_line_names,0);
    m_calc_mode=VWAP_CALC_BAR;
    m_price_type=VWAP_PRICE_FINANCIAL_AVERAGE;
    m_session_tf=PERIOD_D1;
    m_start_time=0;
    m_last_calculated_time=0;
    ArrayResize(m_vwap_buffer,0);
- }
+   m_chart_handle=INVALID_HANDLE;
+  }
 
 //+------------------------------------------------------------------+
 //| Destructor                                                       |
 //+------------------------------------------------------------------+
 CVWAP::~CVWAP()
   {
-   DeleteObjects();
+   long chart_id=ChartID();
+   if(m_chart_handle!=INVALID_HANDLE)
+     {
+      ChartIndicatorDelete(chart_id,0,m_chart_handle);
+      IndicatorRelease(m_chart_handle);
+      m_chart_handle=INVALID_HANDLE;
+     }
    ArrayResize(m_vwap_buffer,0);
    ArrayFree(m_vwap_buffer);
-   ArrayResize(m_line_names,0);
   }
 
 //+------------------------------------------------------------------+
@@ -109,11 +101,7 @@ bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                  ENUM_VWAP_CALC_MODE calc_mode,
                  ENUM_TIMEFRAMES session_tf,
                  ENUM_VWAP_PRICE_TYPE price_type,
-                 datetime start_time,
-                 color line_color,
-                 ENUM_LINE_STYLE line_style,
-                 int line_width,
-                 string obj_prefix)
+                 datetime start_time)
   {
    if(StringLen(symbol)==0)
       return false;
@@ -125,14 +113,10 @@ bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
    m_price_type=price_type;
    m_session_tf=session_tf;
    m_start_time=start_time;
-   m_color=line_color;
-   m_style=line_style;
-   m_width=line_width;
-   m_obj_prefix=obj_prefix;
-   m_last_calculated_time=0;
-   ArrayResize(m_vwap_buffer,0);
-   ArrayResize(m_line_names,0);
-   return true;
+  m_last_calculated_time=0;
+  ArrayResize(m_vwap_buffer,0);
+  AttachToChart();
+  return true;
   }
 
 //+------------------------------------------------------------------+
@@ -143,8 +127,7 @@ bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
   {
   return Init(symbol,timeframe,period,method,
               VWAP_CALC_BAR,PERIOD_D1,
-              VWAP_PRICE_FINANCIAL_AVERAGE,0,clrAqua,
-              STYLE_SOLID,1,"");
+              VWAP_PRICE_FINANCIAL_AVERAGE,0);
   }
 
 bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
@@ -152,8 +135,7 @@ bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
   {
    return Init(symbol, timeframe, config.period, config.method,
                config.calc_mode, config.session_tf, config.price_type,
-               config.start_time, config.line_color,
-               config.line_style, config.line_width, "");
+               config.start_time);
   }
 
 //+------------------------------------------------------------------+
@@ -198,69 +180,6 @@ bool CVWAP::CopyValues(int shift,int count,double &buffer[])
 bool CVWAP::IsReady()
   {
   return (Bars(m_symbol,m_timeframe) > 0);
-  }
-
-//+------------------------------------------------------------------+
-//| Delete previously drawn objects                                  |
-//+------------------------------------------------------------------+
-void CVWAP::DeleteObjects()
-  {
-   for(int i=0;i<ArraySize(m_line_names);i++)
-      if(ObjectFind(0,m_line_names[i])>=0)
-         ObjectDelete(0,m_line_names[i]);
-   ArrayResize(m_line_names,0);
-  }
-
-//+------------------------------------------------------------------+
-//| Draw VWAP lines on the chart                                      |
-//+------------------------------------------------------------------+
-void CVWAP::DrawLines(bool full_redraw)
-  {
-   int bars=ArraySize(m_vwap_buffer);
-   if(bars<2)
-     {
-      DeleteObjects();
-      return;
-     }
-
-   int needed=bars-1;
-   if(full_redraw)
-     {
-      DeleteObjects();
-      ArrayResize(m_line_names,needed);
-      for(int i=0;i<needed;i++)
-        {
-         string name=(StringLen(m_obj_prefix)>0?m_obj_prefix:"VWAP_")+IntegerToString(i);
-         if(ObjectCreate(0,name,OBJ_TREND,0,0,0,0,0))
-           {
-            ObjectSetInteger(0,name,OBJPROP_RAY_RIGHT,false);
-            ObjectSetInteger(0,name,OBJPROP_RAY_LEFT,false);
-           }
-         m_line_names[i]=name;
-        }
-     }
-   else if(ArraySize(m_line_names)!=needed)
-     {
-      DrawLines(true);
-      return;
-     }
-
-   for(int i=0;i<needed;i++)
-     {
-      double val1=m_vwap_buffer[i+1];
-      double val2=m_vwap_buffer[i];
-      datetime time1=iTime(m_symbol,m_timeframe,i+1);
-      datetime time2=iTime(m_symbol,m_timeframe,i);
-      string name=m_line_names[i];
-
-      ObjectSetInteger(0,name,OBJPROP_TIME,0,time1);
-      ObjectSetDouble(0,name,OBJPROP_PRICE,0,val1);
-      ObjectSetInteger(0,name,OBJPROP_TIME,1,time2);
-      ObjectSetDouble(0,name,OBJPROP_PRICE,1,val2);
-      ObjectSetInteger(0,name,OBJPROP_COLOR,m_color);
-      ObjectSetInteger(0,name,OBJPROP_STYLE,m_style);
-      ObjectSetInteger(0,name,OBJPROP_WIDTH,m_width);
-     }
   }
 
 //+------------------------------------------------------------------+
@@ -451,13 +370,88 @@ bool CVWAP::Update()
   if(bars<=current_size && current_size>0)
     {
     UpdateCurrentBar();
-    DrawLines(false);
      return(true);
     }
 
   ComputeAll();
-  DrawLines(true);
   return(true);
   }
 
+//+------------------------------------------------------------------+
+//| Attach custom indicator to the chart                             |
+//+------------------------------------------------------------------+
+bool CVWAP::AttachToChart()
+  {
+   long chart_id=ChartID();
+   if(m_chart_handle!=INVALID_HANDLE)
+     {
+      ChartIndicatorDelete(chart_id,0,m_chart_handle);
+      IndicatorRelease(m_chart_handle);
+      m_chart_handle=INVALID_HANDLE;
+     }
+
+   m_chart_handle=iCustom(m_symbol,m_timeframe,"vwap_indicator",
+                          m_period,m_method,m_calc_mode,
+                          m_session_tf,m_price_type,m_start_time);
+   if(m_chart_handle==INVALID_HANDLE)
+      return false;
+   return ChartIndicatorAdd(chart_id,0,m_chart_handle);
+  }
+
+#ifdef COMPILE_VWAP_INDICATOR
+#property indicator_chart_window
+#property indicator_buffers 1
+#property indicator_plots   1
+#property indicator_type1   DRAW_LINE
+#property indicator_color1  clrAqua
+#property indicator_label1  "VWAP"
+
+input int               InpPeriod     = 14;
+input ENUM_MA_METHOD    InpMethod     = MODE_SMA;
+input ENUM_VWAP_CALC_MODE InpCalcMode = VWAP_CALC_BAR;
+input ENUM_TIMEFRAMES   InpSessionTF  = PERIOD_D1;
+input ENUM_VWAP_PRICE_TYPE InpPriceType = VWAP_PRICE_FINANCIAL_AVERAGE;
+input datetime          InpStartTime  = 0;
+
+CVWAP g_vwap;
+double g_vwap_buffer[];
+double g_tmp_buffer[];
+
+int OnInit()
+  {
+   SetIndexBuffer(0,g_vwap_buffer,INDICATOR_DATA);
+   ArraySetAsSeries(g_vwap_buffer,true);
+   PlotIndexSetString(0,PLOT_LABEL,"VWAP");
+
+   g_vwap.Init(Symbol(),Period(),InpPeriod,InpMethod,
+               InpCalcMode,InpSessionTF,InpPriceType,InpStartTime);
+   return(INIT_SUCCEEDED);
+  }
+
+int OnCalculate(const int rates_total,
+                const int prev_calculated,
+                const datetime &time[],
+                const double &open[],
+                const double &high[],
+                const double &low[],
+                const double &close[],
+                const long &tick_volume[],
+                const long &volume[],
+                const int &spread[])
+  {
+   if(rates_total<=0)
+      return 0;
+
+   g_vwap.Update();
+
+   int bars=Bars(Symbol(),Period());
+   g_vwap.CopyValues(0,bars,g_tmp_buffer);
+   ArraySetAsSeries(g_tmp_buffer,true);
+   int to_copy=MathMin(rates_total,ArraySize(g_tmp_buffer));
+   for(int i=0;i<to_copy;i++)
+      g_vwap_buffer[i]=g_tmp_buffer[i];
+
+   return(rates_total);
+  }
+#endif // COMPILE_VWAP_INDICATOR
 #endif // __VWAP_MQH__

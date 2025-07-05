@@ -674,10 +674,6 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config, ENUM_TI
               p.price_type=StringToVWAPPriceType(ind["price_type"].ToStr());
               string start_str=ind["start_time"].ToStr();
               if(StringLen(start_str)>0) p.start_time=StringToTime(start_str);
-              col=ind["Color"].ToStr();
-              p.line_color=StringToColor(col);
-              p.line_style=StringToLineStyle(ind["Style"].ToStr());
-              p.line_width=(int)ind["Width"].ToInt();
               icfg=p;
              }
            else if(type=="BOLL")
