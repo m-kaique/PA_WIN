@@ -395,14 +395,56 @@ void CVWAP::UpdateCurrentBar()
 //+------------------------------------------------------------------+
 bool CVWAP::Update()
   {
+   // (re)create the indicator handle when necessary
    if(m_handle==INVALID_HANDLE)
       if(!CreateHandle())
          return false;
 
-   ComputeAll();
-   UpdateCurrentBar();
+   int bars=BarsCalculated(m_handle);
+   if(bars<=0)
+      return false;
 
-   return IsReady();
+   ArraySetAsSeries(m_vwap_buffer,true);
+
+   // First run or after parameter change - fetch all values
+   if(ArraySize(m_vwap_buffer)==0 || m_last_calculated_time==0)
+     {
+      ArrayResize(m_vwap_buffer,bars);
+      if(CopyBuffer(m_handle,0,0,bars,m_vwap_buffer)<=0)
+         return false;
+      m_last_calculated_time=iTime(m_symbol,m_timeframe,0);
+      return true;
+     }
+
+   datetime latest_time=iTime(m_symbol,m_timeframe,0);
+
+   // When a new bar is available, append only its value
+   if(latest_time!=m_last_calculated_time)
+     {
+      int old_size=ArraySize(m_vwap_buffer);
+      int add=bars-old_size;
+      if(add<1) add=1;
+      double tmp[];
+      ArraySetAsSeries(tmp,true);
+      if(CopyBuffer(m_handle,0,0,add,tmp)<=0)
+         return false;
+      ArrayResize(m_vwap_buffer,old_size+add);
+      for(int i=old_size-1;i>=0;i--)
+         m_vwap_buffer[i+add]=m_vwap_buffer[i];
+      for(int i=0;i<add;i++)
+         m_vwap_buffer[i]=tmp[i];
+      m_last_calculated_time=latest_time;
+      return true;
+     }
+
+   // Same bar - refresh the current value only
+   double cur[];
+   ArraySetAsSeries(cur,true);
+   if(CopyBuffer(m_handle,0,0,1,cur)<=0)
+      return false;
+   m_vwap_buffer[0]=cur[0];
+
+   return true;
   }
 
 #endif // __VWAP_MQH__
