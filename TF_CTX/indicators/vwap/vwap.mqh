@@ -27,6 +27,10 @@ private:
    datetime            m_start_time;
    datetime            m_last_calculated_time;
    double              m_vwap_buffer[];
+   int                 m_handle;
+
+   bool            CreateHandle();
+   void            ReleaseHandle();
    
    bool            IsNewSession(int bar_index);
    void            UpdateCurrentBar();
@@ -88,6 +92,7 @@ CVWAP::CVWAP()
    m_start_time=0;
    m_last_calculated_time=0;
    ArrayResize(m_vwap_buffer,0);
+   m_handle=INVALID_HANDLE;
  }
 
 //+------------------------------------------------------------------+
@@ -95,10 +100,30 @@ CVWAP::CVWAP()
 //+------------------------------------------------------------------+
 CVWAP::~CVWAP()
   {
-   DeleteObjects();
+   ReleaseHandle();
    ArrayResize(m_vwap_buffer,0);
    ArrayFree(m_vwap_buffer);
    ArrayResize(m_line_names,0);
+  }
+
+bool CVWAP::CreateHandle()
+  {
+   m_handle=iCustom(m_symbol,m_timeframe,"TF_CTX/indicators/vwap/vwap_indicator",m_period,m_calc_mode,m_session_tf,m_price_type,m_start_time);
+   if(m_handle==INVALID_HANDLE)
+     {
+      Print("ERRO: Falha ao criar handle do VWAP para ",m_symbol);
+      return false;
+     }
+   return true;
+  }
+
+void CVWAP::ReleaseHandle()
+  {
+   if(m_handle!=INVALID_HANDLE)
+     {
+      IndicatorRelease(m_handle);
+      m_handle=INVALID_HANDLE;
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -129,10 +154,11 @@ bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
    m_style=line_style;
    m_width=line_width;
    m_obj_prefix=obj_prefix;
-   m_last_calculated_time=0;
-   ArrayResize(m_vwap_buffer,0);
-   ArrayResize(m_line_names,0);
-   return true;
+  m_last_calculated_time=0;
+  ArrayResize(m_vwap_buffer,0);
+  ArrayResize(m_line_names,0);
+  ReleaseHandle();
+  return CreateHandle();
   }
 
 //+------------------------------------------------------------------+
@@ -171,9 +197,13 @@ double CVWAP::CalcVWAP(int shift)
 //+------------------------------------------------------------------+
 double CVWAP::GetValue(int shift)
   {
-   if(ArraySize(m_vwap_buffer)<=shift)
+   if(m_handle==INVALID_HANDLE)
       return EMPTY_VALUE;
-   return m_vwap_buffer[shift];
+   double buf[];
+   ArraySetAsSeries(buf,true);
+   if(CopyBuffer(m_handle,0,shift,1,buf)<=0)
+      return EMPTY_VALUE;
+   return buf[0];
   }
 
 //+------------------------------------------------------------------+
@@ -181,15 +211,11 @@ double CVWAP::GetValue(int shift)
 //+------------------------------------------------------------------+
 bool CVWAP::CopyValues(int shift,int count,double &buffer[])
   {
-   int available=ArraySize(m_vwap_buffer);
-   if(available<=shift)
+   if(m_handle==INVALID_HANDLE)
       return false;
-   int to_copy=MathMin(count,available-shift);
-   ArrayResize(buffer,to_copy);
+   ArrayResize(buffer,count);
    ArraySetAsSeries(buffer,true);
-   for(int j=0;j<to_copy;j++)
-      buffer[j]=m_vwap_buffer[shift+j];
-   return (to_copy>0);
+   return (CopyBuffer(m_handle,0,shift,count,buffer)>0);
   }
 
 //+------------------------------------------------------------------+
@@ -197,7 +223,7 @@ bool CVWAP::CopyValues(int shift,int count,double &buffer[])
 //+------------------------------------------------------------------+
 bool CVWAP::IsReady()
   {
-  return (Bars(m_symbol,m_timeframe) > 0);
+  return (m_handle!=INVALID_HANDLE && BarsCalculated(m_handle)>0);
   }
 
 //+------------------------------------------------------------------+
@@ -442,22 +468,7 @@ void CVWAP::UpdateCurrentBar()
 //+------------------------------------------------------------------+
 bool CVWAP::Update()
   {
-   if(!IsReady())
-      return(false);
-
-   int bars=Bars(m_symbol,m_timeframe);
-   int current_size=ArraySize(m_vwap_buffer);
-
-  if(bars<=current_size && current_size>0)
-    {
-    UpdateCurrentBar();
-    DrawLines(false);
-     return(true);
-    }
-
-  ComputeAll();
-  DrawLines(true);
-  return(true);
+   return IsReady();
   }
 
 #endif // __VWAP_MQH__
