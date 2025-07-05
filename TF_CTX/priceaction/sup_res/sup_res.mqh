@@ -51,6 +51,11 @@ private:
   SRZone          m_price_zones[];       // all calculated zones
   SRZone          m_current_supports[];  // zones classified as supports
   SRZone          m_current_resistances[]; // zones classified as resistances
+  // persistent buffers for price data
+  double          m_highs[];
+  double          m_lows[];
+  double          m_opens[];
+  double          m_closes[];
 
   void            DrawLine(string name,double price,color col,ENUM_LINE_STYLE st,int width);
   void            DrawZone(string name,double lower,double upper,color col);
@@ -155,6 +160,10 @@ CSupRes::CSupRes()
   ArrayResize(m_price_zones,0);
   ArrayResize(m_current_supports,0);
   ArrayResize(m_current_resistances,0);
+  ArrayResize(m_highs,0);
+  ArrayResize(m_lows,0);
+  ArrayResize(m_opens,0);
+  ArrayResize(m_closes,0);
 }
 
 //+------------------------------------------------------------------+
@@ -476,6 +485,15 @@ bool CSupRes::Init(string symbol,ENUM_TIMEFRAMES timeframe,CSupResConfig &cfg)
   m_sup_valid=false;
   m_res_valid=false;
   ArrayResize(m_zone_obj_names,0);
+  int bars=m_period>0?m_period:50;
+  ArrayResize(m_highs,bars);
+  ArrayResize(m_lows,bars);
+  ArrayResize(m_opens,bars);
+  ArrayResize(m_closes,bars);
+  ArraySetAsSeries(m_highs,true);
+  ArraySetAsSeries(m_lows,true);
+  ArraySetAsSeries(m_opens,true);
+  ArraySetAsSeries(m_closes,true);
 
   // tenta calcular as zonas iniciais; se falhar por falta de barras,
   // o objeto continua valido e a proxima chamada de Update tentara novamente
@@ -564,26 +582,21 @@ bool CSupRes::IsReady()
 bool CSupRes::Update()
   {
   int bars=m_period>0?m_period:50;
-  double highs[],lows[],opens[],closes[];
-   ArraySetAsSeries(highs,true);
-   ArraySetAsSeries(lows,true);
-   ArraySetAsSeries(opens,true);
-   ArraySetAsSeries(closes,true);
-   int got_high=CopyHigh(m_symbol,m_timeframe,0,bars,highs);
-   int got_low =CopyLow(m_symbol,m_timeframe,0,bars,lows);
-   int got_open=CopyOpen(m_symbol,m_timeframe,0,bars,opens);
-   int got_close=CopyClose(m_symbol,m_timeframe,0,bars,closes);
+   int got_high=CopyHigh(m_symbol,m_timeframe,0,bars,m_highs);
+   int got_low =CopyLow(m_symbol,m_timeframe,0,bars,m_lows);
+   int got_open=CopyOpen(m_symbol,m_timeframe,0,bars,m_opens);
+   int got_close=CopyClose(m_symbol,m_timeframe,0,bars,m_closes);
    if(got_high<bars || got_low<bars || got_open<bars || got_close<bars)
      {
       m_ready=false;       // aguardando mais barras
       return false;
      }
 
-  int hi_idx=ArrayMaximum(highs);
-  int lo_idx=ArrayMinimum(lows);
+  int hi_idx=ArrayMaximum(m_highs);
+  int lo_idx=ArrayMinimum(m_lows);
 
   // recalcular zonas unificadas
-  CalculatePriceZones(highs,lows,bars,m_zone_range);
+  CalculatePriceZones(m_highs,m_lows,bars,m_zone_range);
   ClassifyZones();
 
   // valores principais para compatibilidade
@@ -644,35 +657,35 @@ bool CSupRes::Update()
     {
      bool sup_touch=false;
      for(int z=0;z<ArraySize(m_current_supports);z++)
-        if(highs[i]>=m_current_supports[z].lower-m_touch_tolerance && lows[i]<=m_current_supports[z].upper+m_touch_tolerance)
+        if(m_highs[i]>=m_current_supports[z].lower-m_touch_tolerance && m_lows[i]<=m_current_supports[z].upper+m_touch_tolerance)
           { sup_touch=true; break; }
 
      bool res_touch=false;
      for(int z=0;z<ArraySize(m_current_resistances);z++)
-        if(highs[i]>=m_current_resistances[z].lower-m_touch_tolerance && lows[i]<=m_current_resistances[z].upper+m_touch_tolerance)
+        if(m_highs[i]>=m_current_resistances[z].lower-m_touch_tolerance && m_lows[i]<=m_current_resistances[z].upper+m_touch_tolerance)
           { res_touch=true; break; }
 
      if(sup_touch)
        {
         m_sup_touches++;
-        if(IsBullPinBar(opens,closes,highs,lows,i))   m_sup_pinbar++;
-        if(IsBullEngulf(opens,closes,i))              m_sup_engulf++;
-        if(IsDoji(opens,closes,highs,lows,i))         m_sup_doji++;
-        if(IsBullMarubozu(opens,closes,highs,lows,i)) m_sup_maru_bull++;
-        if(IsBearMarubozu(opens,closes,highs,lows,i)) m_sup_maru_bear++;
-        if(IsInsideBar(highs,lows,i))                 m_sup_insidebar++;
-        if(IsOutsideBar(highs,lows,i))                m_sup_outsidebar++;
+        if(IsBullPinBar(m_opens,m_closes,m_highs,m_lows,i))   m_sup_pinbar++;
+        if(IsBullEngulf(m_opens,m_closes,i))              m_sup_engulf++;
+        if(IsDoji(m_opens,m_closes,m_highs,m_lows,i))         m_sup_doji++;
+        if(IsBullMarubozu(m_opens,m_closes,m_highs,m_lows,i)) m_sup_maru_bull++;
+        if(IsBearMarubozu(m_opens,m_closes,m_highs,m_lows,i)) m_sup_maru_bear++;
+        if(IsInsideBar(m_highs,m_lows,i))                 m_sup_insidebar++;
+        if(IsOutsideBar(m_highs,m_lows,i))                m_sup_outsidebar++;
        }
      if(res_touch)
        {
         m_res_touches++;
-        if(IsBearPinBar(opens,closes,highs,lows,i))   m_res_pinbar++;
-        if(IsBearEngulf(opens,closes,i))              m_res_engulf++;
-        if(IsDoji(opens,closes,highs,lows,i))         m_res_doji++;
-        if(IsBullMarubozu(opens,closes,highs,lows,i)) m_res_maru_bull++;
-        if(IsBearMarubozu(opens,closes,highs,lows,i)) m_res_maru_bear++;
-        if(IsInsideBar(highs,lows,i))                 m_res_insidebar++;
-        if(IsOutsideBar(highs,lows,i))                m_res_outsidebar++;
+        if(IsBearPinBar(m_opens,m_closes,m_highs,m_lows,i))   m_res_pinbar++;
+        if(IsBearEngulf(m_opens,m_closes,i))              m_res_engulf++;
+        if(IsDoji(m_opens,m_closes,m_highs,m_lows,i))         m_res_doji++;
+        if(IsBullMarubozu(m_opens,m_closes,m_highs,m_lows,i)) m_res_maru_bull++;
+        if(IsBearMarubozu(m_opens,m_closes,m_highs,m_lows,i)) m_res_maru_bear++;
+        if(IsInsideBar(m_highs,m_lows,i))                 m_res_insidebar++;
+        if(IsOutsideBar(m_highs,m_lows,i))                m_res_outsidebar++;
        }
     }
 
@@ -698,16 +711,14 @@ bool CSupRes::Update()
      m_res_valid=(m_res_touches>=m_min_touches && res_pat>0);
     }
 
-   double close[];
-   ArraySetAsSeries(close,true);
-   if(CopyClose(m_symbol,m_alert_tf,0,2,close)>0)
-     {
+   if(CopyClose(m_symbol,m_alert_tf,0,2,m_closes)>0)
+    {
       m_breakup=false;
       double nearest_res=DBL_MAX;
       for(int z=0;z<ArraySize(m_current_resistances);z++)
          if(m_current_resistances[z].upper<nearest_res)
             nearest_res=m_current_resistances[z].upper;
-      if(nearest_res<DBL_MAX && close[1]>nearest_res)
+      if(nearest_res<DBL_MAX && m_closes[1]>nearest_res)
          m_breakup=true;
 
       m_breakdown=false;
@@ -715,7 +726,7 @@ bool CSupRes::Update()
       for(int z=0;z<ArraySize(m_current_supports);z++)
          if(m_current_supports[z].lower>nearest_sup)
             nearest_sup=m_current_supports[z].lower;
-      if(nearest_sup>-DBL_MAX && close[1]<nearest_sup)
+      if(nearest_sup>-DBL_MAX && m_closes[1]<nearest_sup)
          m_breakdown=true;
     }
    else

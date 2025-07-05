@@ -39,7 +39,13 @@ private:
    double          m_ltb_val;
 
    string          m_obj_lta;
-   string          m_obj_ltb;
+  string          m_obj_ltb;
+
+  // persistent buffers for price data
+  double          m_highs[];
+  double          m_lows[];
+  double          m_opens[];
+  double          m_closes[];
 
    bool            CreateHandle();
    void            ReleaseHandle();
@@ -93,9 +99,13 @@ CTrendLine::CTrendLine()
    m_fractal_handle=INVALID_HANDLE;
    m_ready=false;
    m_lta_val=0.0;
-   m_ltb_val=0.0;
-   m_obj_lta="";
-   m_obj_ltb="";
+  m_ltb_val=0.0;
+  m_obj_lta="";
+  m_obj_ltb="";
+  ArrayResize(m_highs,0);
+  ArrayResize(m_lows,0);
+  ArrayResize(m_opens,0);
+  ArrayResize(m_closes,0);
   }
 
 //+------------------------------------------------------------------+
@@ -160,8 +170,17 @@ bool CTrendLine::Init(string symbol,ENUM_TIMEFRAMES timeframe,CTrendLineConfig &
       m_obj_lta="TL_LTA_"+IntegerToString(GetTickCount());
       m_obj_ltb="TL_LTB_"+IntegerToString(GetTickCount());
      }
-   return ok;
-  }
+   int bars=m_period>0?m_period:50;
+   ArrayResize(m_highs,bars);
+   ArrayResize(m_lows,bars);
+   ArrayResize(m_opens,bars);
+   ArrayResize(m_closes,2); // only need last two closes
+   ArraySetAsSeries(m_highs,true);
+   ArraySetAsSeries(m_lows,true);
+   ArraySetAsSeries(m_opens,true);
+   ArraySetAsSeries(m_closes,true);
+  return ok;
+ }
 
 //+------------------------------------------------------------------+
 //| Default init                                                      |
@@ -272,21 +291,18 @@ bool CTrendLine::Update()
     }
 
 
-double close[];
 datetime ct[];
-ArrayResize(close, 2);
 ArrayResize(ct, 2);
-ArraySetAsSeries(close, true);
 ArraySetAsSeries(ct, true);
 
 
-  if(CopyClose(m_symbol,m_alert_tf,0,2,close)>0 &&
+  if(CopyClose(m_symbol,m_alert_tf,0,2,m_closes)>0 &&
      CopyTime(m_symbol,m_alert_tf,0,2,ct)>0)
     {
      double sup=ObjectGetValueByTime(0,m_obj_lta,ct[1]);
      double res=ObjectGetValueByTime(0,m_obj_ltb,ct[1]);
-     m_breakdown=(close[1]<sup);
-     m_breakup=(close[1]>res);
+     m_breakdown=(m_closes[1]<sup);
+     m_breakup=(m_closes[1]>res);
     }
   return m_ready;
  }
