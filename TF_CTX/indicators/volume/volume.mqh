@@ -4,7 +4,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, MetaQuotes Ltd."
 #property link      "https://www.mql5.com"
-#property version   "1.00"
+#property version   "1.01"
 
 #include "../indicator_base.mqh"
 #include "../../config_types.mqh"
@@ -29,9 +29,10 @@ public:
   bool             Init(string symbol, ENUM_TIMEFRAMES timeframe,
                         CVolumeConfig &config);
 
-   virtual double   GetValue(int shift=0);
-   virtual bool     CopyValues(int shift, int count, double &buffer[]);
-   virtual bool     IsReady();
+  virtual double   GetValue(int shift=0);
+  virtual bool     CopyValues(int shift, int count, double &buffer[]);
+  virtual bool     IsReady();
+  virtual bool     Update() override;
   };
 
 //+------------------------------------------------------------------+
@@ -97,5 +98,13 @@ bool CVolume::CopyValues(int shift, int count, double &buffer[])
 bool CVolume::IsReady()
   {
    return (Bars(m_symbol,m_timeframe) > m_base_shift);
+  }
+
+//+------------------------------------------------------------------+
+//| Atualizacao simples (sem handle)                                  |
+//+------------------------------------------------------------------+
+bool CVolume::Update()
+  {
+   return IsReady();
   }
 

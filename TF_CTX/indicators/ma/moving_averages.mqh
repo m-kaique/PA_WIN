@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, MetaQuotes Ltd."
 #property link      "https://www.mql5.com"
-#property version   "1.01"
+#property version   "1.02"
 #include "../indicator_base.mqh"
 #include "../../config_types.mqh"
 #include "ma_defs.mqh"
@@ -45,9 +45,12 @@ public:
 
     // Obter múltiplos valores da média móvel
     bool            CopyValues(int shift, int count, double &buffer[]);
-    
+
     // Verificar se os indicadores estão prontos
     bool            IsReady();
+
+    // Atualizar estado interno (recriar handle se necessario)
+    virtual bool    Update() override;
 };
 
 //+------------------------------------------------------------------+
@@ -181,4 +184,18 @@ bool CMovingAverages::CopyValues(int shift, int count, double &buffer[])
 bool CMovingAverages::IsReady()
 {
     return (BarsCalculated(m_handle) > 0);
+}
+
+//+------------------------------------------------------------------+
+//| Atualizar handle e buffers                                       |
+//+------------------------------------------------------------------+
+bool CMovingAverages::Update()
+{
+    if(m_handle==INVALID_HANDLE)
+        return CreateIndicatorHandles();
+
+    if(BarsCalculated(m_handle)<=0)
+        return false;
+
+    return true;
 }
