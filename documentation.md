@@ -93,7 +93,7 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
 - **`stochastic.mqh`**: Implementa a classe `CStochastic`, derivada de `CIndicatorBase`, responsável pelo cálculo do indicador Estocástico.
 - **`volume.mqh`**: Implementa a classe `CVolume`, derivada de `CIndicatorBase`, responsável por acessar valores de volume.
 - **`bollinger.mqh`**: Implementa a classe `CBollinger`, derivada de `CIndicatorBase`, responsável pelo cálculo das Bandas de Bollinger.
-- **`vwap.mqh`**: Implementa a classe `CVWAP`, derivada de `CIndicatorBase`, agora baseada no indicador `vwap_indicator.mq5` para cálculo e exibição automática do VWAP.
+ - **`vwap.mqh`**: Implementa a classe `CVWAP`, derivada de `CIndicatorBase`, agora baseada no indicador `vwap_indicator.mq5` para cálculo do VWAP, delegando a exibição exclusivamente a esse indicador.
 - **`vwap_indicator.mq5`**: Indicador personalizado chamado via `iCustom` que desenha a linha de VWAP automaticamente.
 - **`fibonacci.mqh`**: Implementa o indicador `CFibonacci`, capaz de desenhar níveis de retração e extensões de Fibonacci com total customização via JSON.
 - **Arquivos `*_defs.mqh`**: Cada indicador possui agora um arquivo de definições
@@ -1024,6 +1024,7 @@ Esta seção registra as principais alterações e versões dos componentes do E
 -   **Versao 6.00**: Permite definir a cor da linha VWAP via JSON.
 -   **Versao 7.00**: Suporte a estilo e largura de linha configuráveis via JSON.
 -   **Versao 8.00**: `Update()` recalcula e redesenha a linha VWAP.
+-   **Versao 9.00**: Remove o desenho manual da linha; a exibição fica a cargo do indicador `vwap_indicator.mq5`.
 
 ### vwap_indicator.mq5
 
