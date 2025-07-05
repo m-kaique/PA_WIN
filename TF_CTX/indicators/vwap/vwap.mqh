@@ -108,7 +108,7 @@ CVWAP::~CVWAP()
 
 bool CVWAP::CreateHandle()
   {
-   m_handle=iCustom(m_symbol,m_timeframe,"TF_CTX/indicators/vwap/vwap_indicator",m_period,m_calc_mode,m_session_tf,m_price_type,m_start_time);
+   m_handle=iCustom(m_symbol,m_timeframe,"TF_CTX/indicators/vwap/vwap_indicator.ex5",m_period,m_calc_mode,m_session_tf,m_price_type,m_start_time);
    if(m_handle==INVALID_HANDLE)
      {
       Print("ERRO: Falha ao criar handle do VWAP para ",m_symbol);
