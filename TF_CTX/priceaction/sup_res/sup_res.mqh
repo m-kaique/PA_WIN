@@ -477,7 +477,10 @@ bool CSupRes::Init(string symbol,ENUM_TIMEFRAMES timeframe,CSupResConfig &cfg)
   m_res_valid=false;
   ArrayResize(m_zone_obj_names,0);
 
-   return Update();
+  // tenta calcular as zonas iniciais; se falhar por falta de barras,
+  // o objeto continua valido e a proxima chamada de Update tentara novamente
+  Update();
+  return true;
   }
 
 //+------------------------------------------------------------------+
@@ -566,14 +569,15 @@ bool CSupRes::Update()
    ArraySetAsSeries(lows,true);
    ArraySetAsSeries(opens,true);
    ArraySetAsSeries(closes,true);
-   if(CopyHigh(m_symbol,m_timeframe,0,bars,highs)<=0)
+   int got_high=CopyHigh(m_symbol,m_timeframe,0,bars,highs);
+   int got_low =CopyLow(m_symbol,m_timeframe,0,bars,lows);
+   int got_open=CopyOpen(m_symbol,m_timeframe,0,bars,opens);
+   int got_close=CopyClose(m_symbol,m_timeframe,0,bars,closes);
+   if(got_high<bars || got_low<bars || got_open<bars || got_close<bars)
+     {
+      m_ready=false;       // aguardando mais barras
       return false;
-   if(CopyLow(m_symbol,m_timeframe,0,bars,lows)<=0)
-      return false;
-   if(CopyOpen(m_symbol,m_timeframe,0,bars,opens)<=0)
-      return false;
-   if(CopyClose(m_symbol,m_timeframe,0,bars,closes)<=0)
-      return false;
+     }
 
   int hi_idx=ArrayMaximum(highs);
   int lo_idx=ArrayMinimum(lows);
