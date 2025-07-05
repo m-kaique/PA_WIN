@@ -962,6 +962,20 @@ Exemplo de configuração para cálculo **PERIODIC**, sessão diária, com preç
     - `deviation`: multiplicador de desvio padrão.
     - `applied_price`: preço base (ex.: `CLOSE`, `OPEN`, `HIGH`, `LOW`, `MEDIAN`, `TYPICAL`, `WEIGHTED`).
 
+6.  **Estendendo Zonas de Suporte/Resistência para a Direita:**
+    Defina `extend_right` como `true` no bloco `SUPRES` para que as áreas permaneçam visíveis após o último candle:
+
+    ```json
+    {
+       "name": "sr_exemplo",
+       "type": "SUPRES",
+       "period": 50,
+       "extend_right": true,
+       "enabled": true
+    }
+    ```
+    Ao habilitar essa opção, as zonas de suporte e resistência serão desenhadas além do candle mais recente.
+
 **Observação Importante:** Para que o EA leia o `config.json`, o arquivo deve ser salvo na pasta `MQL5/Files` ou `Common/Files` do seu terminal MetaTrader 5. O parâmetro de entrada `JsonConfigFile` no EA deve corresponder ao nome do arquivo (ex: `config.json`).
 
 

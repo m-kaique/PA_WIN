@@ -205,6 +205,8 @@ void CSupRes::DrawZone(string name,double lower,double upper,color col)
   {
    datetime t1=iTime(m_symbol,m_timeframe,m_period-1);
    datetime t2=iTime(m_symbol,m_timeframe,0);
+   if(m_extend_right)
+      t2 += (datetime)(PeriodSeconds(m_timeframe)*m_period*10);
    if(ObjectFind(0,name)<0)
       ObjectCreate(0,name,OBJ_RECTANGLE,0,t1,lower,t2,upper);
    else
