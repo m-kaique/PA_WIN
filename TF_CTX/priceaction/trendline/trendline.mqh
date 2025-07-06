@@ -308,10 +308,17 @@ bool CTrendLine::Update()
      }
    else
      {
-      if(ObjectFind(0,m_obj_lta)>=0) ObjectDelete(0,m_obj_lta);
-      if(ObjectFind(0,m_obj_ltb)>=0) ObjectDelete(0,m_obj_ltb);
-      m_lta_val=0.0;
-      m_ltb_val=0.0;
+      datetime now=iTime(m_symbol,m_fractal_tf,0);
+      if(ObjectFind(0,m_obj_lta)>=0)
+        {
+         m_lta_val=ObjectGetValueByTime(0,m_obj_lta,now);
+         m_ready=true;
+        }
+      if(ObjectFind(0,m_obj_ltb)>=0)
+        {
+         m_ltb_val=ObjectGetValueByTime(0,m_obj_ltb,now);
+         m_ready=true;
+        }
      }
 
 
@@ -330,9 +337,22 @@ ArraySetAsSeries(ct, true);
         res=ObjectGetValueByTime(0,m_obj_ltb,ct[1]);
      m_breakdown=(sup!=0.0 && m_closes[1]<sup);
      m_breakup=(res!=0.0 && m_closes[1]>res);
+
+     if(m_breakdown && ObjectFind(0,m_obj_lta)>=0)
+       {
+        ObjectDelete(0,m_obj_lta);
+        m_lta_val=0.0;
+        m_ready=(ObjectFind(0,m_obj_ltb)>=0);
+       }
+     if(m_breakup && ObjectFind(0,m_obj_ltb)>=0)
+       {
+        ObjectDelete(0,m_obj_ltb);
+        m_ltb_val=0.0;
+        m_ready=(ObjectFind(0,m_obj_lta)>=0);
+       }
     }
   return m_ready;
- }
+}
 
 //+------------------------------------------------------------------+
 //| LTA value                                                         |
