@@ -10,6 +10,7 @@
 #property version "2.00"
 
 #include "TF_CTX/config_manager.mqh"
+#include "TF_CTX/analysis/trend_identifier.mqh"
 
 // Gerenciador de configuração
 CConfigManager *g_config_manager;
@@ -164,6 +165,23 @@ void ExecuteOnNewBar()
       //    Print("LTA H1 atual: ", lta);
       // }
    }
+
+   // Avaliar tendência geral utilizando os principais timeframes
+   TF_CTX *ctx_m15 = g_config_manager.GetContext(configured_symbol, PERIOD_M15);
+   TF_CTX *ctx_h1  = g_config_manager.GetContext(configured_symbol, PERIOD_H1);
+   TF_CTX *ctx_h4  = g_config_manager.GetContext(configured_symbol, PERIOD_H4);
+
+   CTrendIdentifier trend;
+   trend.Init(configured_symbol, ctx_m15, ctx_h1, ctx_h4);
+   ENUM_TREND_STATE trend_state = trend.Detect();
+
+   string trend_text = "NEUTRAL";
+   if(trend_state==TREND_BULLISH)
+      trend_text = "BULLISH";
+   else if(trend_state==TREND_BEARISH)
+      trend_text = "BEARISH";
+
+   Print("Tendência atual: ", trend_text);
 }
 
 //+------------------------------------------------------------------+
