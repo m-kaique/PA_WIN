@@ -74,6 +74,11 @@ private:
   bool            IsInsideBar(const double &h[],const double &l[],int index);
   bool            IsOutsideBar(const double &h[],const double &l[],int index);
 
+  void            CalculateZones(int bars);
+  void            DrawZones();
+  void            DetectPatterns(int bars);
+  void            EvaluateBreakouts();
+
 public:
                      CSupRes();
                     ~CSupRes();
@@ -592,6 +597,155 @@ bool CSupRes::IsReady()
   }
 
 //+------------------------------------------------------------------+
+//| Recalculate and classify price zones                              |
+//+------------------------------------------------------------------+
+void CSupRes::CalculateZones(int bars)
+  {
+   CalculatePriceZones(m_highs,m_lows,bars,m_zone_range);
+   ClassifyZones();
+   m_res_val=(ArraySize(m_current_resistances)>0)?m_current_resistances[0].upper:0.0;
+   m_sup_val=(ArraySize(m_current_supports)>0)?m_current_supports[0].lower:0.0;
+  }
+
+//+------------------------------------------------------------------+
+//| Draw support and resistance zones                                 |
+//+------------------------------------------------------------------+
+void CSupRes::DrawZones()
+  {
+   int res_limit=MathMin(ArraySize(m_current_resistances),m_max_zones_to_draw);
+   if(m_draw_res)
+     {
+      for(int i=0;i<res_limit;i++)
+         DrawZone(m_res_obj_names[i],m_current_resistances[i].lower,m_current_resistances[i].upper,m_res_color);
+     }
+   for(int i=res_limit;i<m_prev_res_zones && i<m_max_zones_to_draw;i++)
+      ObjectDelete(0,m_res_obj_names[i]);
+   m_prev_res_zones=res_limit;
+
+   int sup_limit=MathMin(ArraySize(m_current_supports),m_max_zones_to_draw);
+   if(m_draw_sup)
+     {
+      for(int i=0;i<sup_limit;i++)
+         DrawZone(m_sup_obj_names[i],m_current_supports[i].lower,m_current_supports[i].upper,m_sup_color);
+     }
+   for(int i=sup_limit;i<m_prev_sup_zones && i<m_max_zones_to_draw;i++)
+      ObjectDelete(0,m_sup_obj_names[i]);
+   m_prev_sup_zones=sup_limit;
+  }
+
+//+------------------------------------------------------------------+
+//| Count touches and candlestick patterns                             |
+//+------------------------------------------------------------------+
+void CSupRes::DetectPatterns(int bars)
+  {
+   m_sup_touches=0;
+   m_res_touches=0;
+   m_sup_pinbar=0;
+   m_res_pinbar=0;
+   m_sup_engulf=0;
+   m_res_engulf=0;
+   m_sup_doji=0;
+   m_res_doji=0;
+   m_sup_maru_bull=0;
+   m_res_maru_bull=0;
+   m_sup_maru_bear=0;
+   m_res_maru_bear=0;
+   m_sup_insidebar=0;
+   m_res_insidebar=0;
+   m_sup_outsidebar=0;
+   m_res_outsidebar=0;
+
+   int lookback=MathMin(m_touch_lookback,bars-1);
+   for(int i=1;i<=lookback;i++)
+     {
+      bool sup_touch=false;
+      for(int z=0;z<ArraySize(m_current_supports);z++)
+         if(m_highs[i]>=m_current_supports[z].lower-m_touch_tolerance && m_lows[i]<=m_current_supports[z].upper+m_touch_tolerance)
+           { sup_touch=true; break; }
+
+      bool res_touch=false;
+      for(int z=0;z<ArraySize(m_current_resistances);z++)
+         if(m_highs[i]>=m_current_resistances[z].lower-m_touch_tolerance && m_lows[i]<=m_current_resistances[z].upper+m_touch_tolerance)
+           { res_touch=true; break; }
+
+      if(sup_touch)
+        {
+         m_sup_touches++;
+         if(IsBullPinBar(m_opens,m_closes,m_highs,m_lows,i))   m_sup_pinbar++;
+         if(IsBullEngulf(m_opens,m_closes,i))              m_sup_engulf++;
+         if(IsDoji(m_opens,m_closes,m_highs,m_lows,i))         m_sup_doji++;
+         if(IsBullMarubozu(m_opens,m_closes,m_highs,m_lows,i)) m_sup_maru_bull++;
+         if(IsBearMarubozu(m_opens,m_closes,m_highs,m_lows,i)) m_sup_maru_bear++;
+         if(IsInsideBar(m_highs,m_lows,i))                 m_sup_insidebar++;
+         if(IsOutsideBar(m_highs,m_lows,i))                m_sup_outsidebar++;
+        }
+      if(res_touch)
+        {
+         m_res_touches++;
+         if(IsBearPinBar(m_opens,m_closes,m_highs,m_lows,i))   m_res_pinbar++;
+         if(IsBearEngulf(m_opens,m_closes,i))              m_res_engulf++;
+         if(IsDoji(m_opens,m_closes,m_highs,m_lows,i))         m_res_doji++;
+         if(IsBullMarubozu(m_opens,m_closes,m_highs,m_lows,i)) m_res_maru_bull++;
+         if(IsBearMarubozu(m_opens,m_closes,m_highs,m_lows,i)) m_res_maru_bear++;
+         if(IsInsideBar(m_highs,m_lows,i))                 m_res_insidebar++;
+         if(IsOutsideBar(m_highs,m_lows,i))                m_res_outsidebar++;
+        }
+     }
+
+   m_sup_valid=true;
+   m_res_valid=true;
+   if(m_validation==SUPRES_VALIDATE_TOUCHES)
+     {
+      m_sup_valid=(m_sup_touches>=m_min_touches);
+      m_res_valid=(m_res_touches>=m_min_touches);
+     }
+   else if(m_validation==SUPRES_VALIDATE_PATTERNS)
+     {
+      int sup_pat=m_sup_pinbar+m_sup_engulf+m_sup_doji+m_sup_maru_bull+m_sup_maru_bear+m_sup_insidebar+m_sup_outsidebar;
+      int res_pat=m_res_pinbar+m_res_engulf+m_res_doji+m_res_maru_bull+m_res_maru_bear+m_res_insidebar+m_res_outsidebar;
+      m_sup_valid=(sup_pat>0);
+      m_res_valid=(res_pat>0);
+     }
+   else if(m_validation==SUPRES_VALIDATE_BOTH)
+     {
+      int sup_pat=m_sup_pinbar+m_sup_engulf+m_sup_doji+m_sup_maru_bull+m_sup_maru_bear+m_sup_insidebar+m_sup_outsidebar;
+      int res_pat=m_res_pinbar+m_res_engulf+m_res_doji+m_res_maru_bull+m_res_maru_bear+m_res_insidebar+m_res_outsidebar;
+      m_sup_valid=(m_sup_touches>=m_min_touches && sup_pat>0);
+      m_res_valid=(m_res_touches>=m_min_touches && res_pat>0);
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| Evaluate breakout conditions                                       |
+//+------------------------------------------------------------------+
+void CSupRes::EvaluateBreakouts()
+  {
+   if(CopyClose(m_symbol,m_alert_tf,0,2,m_closes)>0)
+     {
+      m_breakup=false;
+      double nearest_res=DBL_MAX;
+      for(int z=0;z<ArraySize(m_current_resistances);z++)
+         if(m_current_resistances[z].upper<nearest_res)
+            nearest_res=m_current_resistances[z].upper;
+      if(nearest_res<DBL_MAX && m_closes[1]>nearest_res)
+         m_breakup=true;
+
+      m_breakdown=false;
+      double nearest_sup=-DBL_MAX;
+      for(int z=0;z<ArraySize(m_current_supports);z++)
+         if(m_current_supports[z].lower>nearest_sup)
+            nearest_sup=m_current_supports[z].lower;
+      if(nearest_sup>-DBL_MAX && m_closes[1]<nearest_sup)
+         m_breakdown=true;
+     }
+   else
+     {
+      m_breakup=false;
+      m_breakdown=false;
+     }
+  }
+
+//+------------------------------------------------------------------+
 //| Update support/resistance values                                  |
 //+------------------------------------------------------------------+
 bool CSupRes::Update()
@@ -610,139 +764,13 @@ bool CSupRes::Update()
   int hi_idx=ArrayMaximum(m_highs);
   int lo_idx=ArrayMinimum(m_lows);
 
-  // recalcular zonas unificadas
-  CalculatePriceZones(m_highs,m_lows,bars,m_zone_range);
-  ClassifyZones();
+  CalculateZones(bars);
+  DrawZones();
+  DetectPatterns(bars);
+  EvaluateBreakouts();
 
-  // valores principais para compatibilidade
-  m_res_val=(ArraySize(m_current_resistances)>0)?m_current_resistances[0].upper:0.0;
-  m_sup_val=(ArraySize(m_current_supports)>0)?m_current_supports[0].lower:0.0;
-
-  // draw/update resistance zones and reuse object names
-  int res_limit=MathMin(ArraySize(m_current_resistances),m_max_zones_to_draw);
-  if(m_draw_res)
-    {
-     for(int i=0;i<res_limit;i++)
-        DrawZone(m_res_obj_names[i],m_current_resistances[i].lower,m_current_resistances[i].upper,m_res_color);
-    }
-  for(int i=res_limit;i<m_prev_res_zones && i<m_max_zones_to_draw;i++)
-     ObjectDelete(0,m_res_obj_names[i]);
-  m_prev_res_zones=res_limit;
-
-  // draw/update support zones
-  int sup_limit=MathMin(ArraySize(m_current_supports),m_max_zones_to_draw);
-  if(m_draw_sup)
-    {
-     for(int i=0;i<sup_limit;i++)
-        DrawZone(m_sup_obj_names[i],m_current_supports[i].lower,m_current_supports[i].upper,m_sup_color);
-    }
-  for(int i=sup_limit;i<m_prev_sup_zones && i<m_max_zones_to_draw;i++)
-     ObjectDelete(0,m_sup_obj_names[i]);
-  m_prev_sup_zones=sup_limit;
-
-  // reset counters
-  m_sup_touches=0;
-  m_res_touches=0;
-  m_sup_pinbar=0;
-  m_res_pinbar=0;
-  m_sup_engulf=0;
-  m_res_engulf=0;
-  m_sup_doji=0;
-  m_res_doji=0;
-  m_sup_maru_bull=0;
-  m_res_maru_bull=0;
-  m_sup_maru_bear=0;
-  m_res_maru_bear=0;
-  m_sup_insidebar=0;
-  m_res_insidebar=0;
-  m_sup_outsidebar=0;
-  m_res_outsidebar=0;
-
-  int lookback=MathMin(m_touch_lookback,bars-1);
-  for(int i=1;i<=lookback;i++)
-    {
-     bool sup_touch=false;
-     for(int z=0;z<ArraySize(m_current_supports);z++)
-        if(m_highs[i]>=m_current_supports[z].lower-m_touch_tolerance && m_lows[i]<=m_current_supports[z].upper+m_touch_tolerance)
-          { sup_touch=true; break; }
-
-     bool res_touch=false;
-     for(int z=0;z<ArraySize(m_current_resistances);z++)
-        if(m_highs[i]>=m_current_resistances[z].lower-m_touch_tolerance && m_lows[i]<=m_current_resistances[z].upper+m_touch_tolerance)
-          { res_touch=true; break; }
-
-     if(sup_touch)
-       {
-        m_sup_touches++;
-        if(IsBullPinBar(m_opens,m_closes,m_highs,m_lows,i))   m_sup_pinbar++;
-        if(IsBullEngulf(m_opens,m_closes,i))              m_sup_engulf++;
-        if(IsDoji(m_opens,m_closes,m_highs,m_lows,i))         m_sup_doji++;
-        if(IsBullMarubozu(m_opens,m_closes,m_highs,m_lows,i)) m_sup_maru_bull++;
-        if(IsBearMarubozu(m_opens,m_closes,m_highs,m_lows,i)) m_sup_maru_bear++;
-        if(IsInsideBar(m_highs,m_lows,i))                 m_sup_insidebar++;
-        if(IsOutsideBar(m_highs,m_lows,i))                m_sup_outsidebar++;
-       }
-     if(res_touch)
-       {
-        m_res_touches++;
-        if(IsBearPinBar(m_opens,m_closes,m_highs,m_lows,i))   m_res_pinbar++;
-        if(IsBearEngulf(m_opens,m_closes,i))              m_res_engulf++;
-        if(IsDoji(m_opens,m_closes,m_highs,m_lows,i))         m_res_doji++;
-        if(IsBullMarubozu(m_opens,m_closes,m_highs,m_lows,i)) m_res_maru_bull++;
-        if(IsBearMarubozu(m_opens,m_closes,m_highs,m_lows,i)) m_res_maru_bear++;
-        if(IsInsideBar(m_highs,m_lows,i))                 m_res_insidebar++;
-        if(IsOutsideBar(m_highs,m_lows,i))                m_res_outsidebar++;
-       }
-    }
-
-  m_sup_valid=true;
-  m_res_valid=true;
-  if(m_validation==SUPRES_VALIDATE_TOUCHES)
-    {
-     m_sup_valid=(m_sup_touches>=m_min_touches);
-     m_res_valid=(m_res_touches>=m_min_touches);
-    }
-  else if(m_validation==SUPRES_VALIDATE_PATTERNS)
-    {
-     int sup_pat=m_sup_pinbar+m_sup_engulf+m_sup_doji+m_sup_maru_bull+m_sup_maru_bear+m_sup_insidebar+m_sup_outsidebar;
-     int res_pat=m_res_pinbar+m_res_engulf+m_res_doji+m_res_maru_bull+m_res_maru_bear+m_res_insidebar+m_res_outsidebar;
-     m_sup_valid=(sup_pat>0);
-     m_res_valid=(res_pat>0);
-    }
-  else if(m_validation==SUPRES_VALIDATE_BOTH)
-    {
-     int sup_pat=m_sup_pinbar+m_sup_engulf+m_sup_doji+m_sup_maru_bull+m_sup_maru_bear+m_sup_insidebar+m_sup_outsidebar;
-     int res_pat=m_res_pinbar+m_res_engulf+m_res_doji+m_res_maru_bull+m_res_maru_bear+m_res_insidebar+m_res_outsidebar;
-     m_sup_valid=(m_sup_touches>=m_min_touches && sup_pat>0);
-     m_res_valid=(m_res_touches>=m_min_touches && res_pat>0);
-    }
-
-   if(CopyClose(m_symbol,m_alert_tf,0,2,m_closes)>0)
-    {
-      m_breakup=false;
-      double nearest_res=DBL_MAX;
-      for(int z=0;z<ArraySize(m_current_resistances);z++)
-         if(m_current_resistances[z].upper<nearest_res)
-            nearest_res=m_current_resistances[z].upper;
-      if(nearest_res<DBL_MAX && m_closes[1]>nearest_res)
-         m_breakup=true;
-
-      m_breakdown=false;
-      double nearest_sup=-DBL_MAX;
-      for(int z=0;z<ArraySize(m_current_supports);z++)
-         if(m_current_supports[z].lower>nearest_sup)
-            nearest_sup=m_current_supports[z].lower;
-      if(nearest_sup>-DBL_MAX && m_closes[1]<nearest_sup)
-         m_breakdown=true;
-    }
-   else
-     {
-      m_breakup=false;
-      m_breakdown=false;
-     }
-
-   m_ready=true;
-   return true;
+  m_ready=true;
+  return true;
   }
 
 bool CSupRes::IsBreakdown(){ return m_breakdown; }
