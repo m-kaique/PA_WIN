@@ -41,10 +41,10 @@ O Expert Advisor PA_WIN opera com uma arquitetura modular, centrada em um `CConf
 
 3.  **Lógica em Novo Candle (`ExecuteOnNewBar`):**
     *   Esta função é o coração da lógica de execução do EA em cada novo candle.
-    *   Atualmente, ela obtém o contexto `TF_CTX` para o símbolo fixo "WIN$N" no timeframe D1.
-     *   Chama o método `Update()` no contexto D1, o qual percorre todos os indicadores e executa `Update()` em cada um (herdado de `CIndicatorBase` ou sobrescrito), garantindo que fiquem sincronizados.
-    *   Exibe os valores das EMAs 9 e 21 para o candle atual (shift 1) e o anterior (shift 0) para fins de depuração.
-    *   A lógica de negociação real seria implementada aqui, utilizando os dados fornecidos pelos objetos `TF_CTX`.
+    *   Todos os contextos configurados no JSON para o símbolo fixo "WIN$N" são obtidos dinamicamente.
+    *   Cada `TF_CTX` é atualizado individualmente, garantindo que os indicadores e price actions estejam sincronizados.
+    *   Após a atualização, o módulo `CTrendIdentifier` avalia os contextos dos timeframes M15, H1 e H4 para determinar se o mercado está em tendência de alta, baixa ou neutra.
+    *   O resultado da tendência é impresso para fins de depuração e pode ser utilizado pela estratégia de negociação.
 
 4.  **Desinicialização (`OnDeinit`):**
     *   Quando o EA é removido do gráfico ou o terminal é fechado, o destrutor do `CConfigManager` é chamado, liberando todos os recursos alocados (instâncias de `TF_CTX` e `CMovingAverages`).
@@ -96,6 +96,7 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
  - **`vwap.mqh`**: Implementa a classe `CVWAP`, derivada de `CIndicatorBase`, agora baseada no indicador `vwap_indicator.mq5` para cálculo do VWAP, delegando a exibição exclusivamente a esse indicador.
 - **`vwap_indicator.mq5`**: Indicador personalizado chamado via `iCustom` que desenha a linha de VWAP automaticamente.
 - **`fibonacci.mqh`**: Implementa o indicador `CFibonacci`, capaz de desenhar níveis de retração e extensões de Fibonacci com total customização via JSON.
+- **`trend_identifier.mqh`**: Módulo de análise que combina informações de diferentes timeframes para apontar se o mercado está em tendência de alta, baixa ou neutra. Agora contém comentários detalhando a lógica retirada do eBook *Identificação de Tendência para WINM25*.
 - **Arquivos `*_defs.mqh`**: Cada indicador possui agora um arquivo de definições
   específico (ex.: `ma_defs.mqh`, `stochastic_defs.mqh`, `bollinger_defs.mqh`) contendo as
   enumerações relacionadas a suas opções, padronizando a organização das
@@ -140,7 +141,7 @@ Esta seção detalha as principais funções e classes encontradas no código do
 
 - **`ExecuteOnNewBar()`**
   - **Assinatura**: `void ExecuteOnNewBar()`
-  - **Descrição simplificada**: Contém a lógica a ser executada quando um novo candle é detectado. Agora os contextos configurados no JSON para o símbolo "WIN$N" são obtidos de forma dinâmica. Cada contexto é atualizado automaticamente e são impressas informações específicas, como as EMAs no timeframe D1 ou a linha de tendência do H1.
+  - **Descrição simplificada**: Contém a lógica a ser executada quando um novo candle é detectado. Todos os contextos configurados para o símbolo "WIN$N" são atualizados e o módulo `CTrendIdentifier` determina se a tendência geral está de alta, baixa ou neutra.
   - **Parâmetros**: Nenhum.
   - **Valor de retorno**: Nenhum.
 
@@ -988,6 +989,7 @@ Esta seção registra as principais alterações e versões dos componentes do E
 ### PA_WIN.mq5
 
 -   **Versão 2.00 (22.06.2025)**: Atualizado para integrar o `ConfigManager` para gerenciamento de configurações externas via JSON.
+-   **Versão 2.01**: `ExecuteOnNewBar` passa a atualizar todos os contextos e utiliza `CTrendIdentifier` para indicar a tendência do mercado.
 
 ### JAson.mqh
 
@@ -1048,3 +1050,8 @@ Esta seção registra as principais alterações e versões dos componentes do E
 
 -   **Versao 1.00**: Implementa o indicador de retração de Fibonacci derivado de `CIndicatorBase`.
 -   **Versao 2.00**: Suporte a extensões, estilos configuráveis e rótulos personalizados via JSON.
+
+### trend_identifier.mqh
+
+-   **Versao 1.00**: Primeiro módulo para avaliar a direção predominante do mercado utilizando EMAs de múltiplos timeframes, VWAP e Bandas de Bollinger.
+-   **Versao 1.01**: Comentários explicativos baseados no eBook de tendência para WINM25.
