@@ -170,9 +170,10 @@ void ExecuteOnNewBar()
    TF_CTX *ctx_m15 = g_config_manager.GetContext(configured_symbol, PERIOD_M15);
    TF_CTX *ctx_h1  = g_config_manager.GetContext(configured_symbol, PERIOD_H1);
    TF_CTX *ctx_h4  = g_config_manager.GetContext(configured_symbol, PERIOD_H4);
+   TF_CTX *ctx_d1  = g_config_manager.GetContext(configured_symbol, PERIOD_D1);
 
    CTrendIdentifier trend;
-   trend.Init(configured_symbol, ctx_m15, ctx_h1, ctx_h4);
+   trend.Init(configured_symbol, ctx_m15, ctx_h1, ctx_h4, ctx_d1);
    ENUM_TREND_STATE trend_state = trend.Detect();
 
    string trend_text = "NEUTRAL";
