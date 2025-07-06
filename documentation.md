@@ -43,7 +43,7 @@ O Expert Advisor PA_WIN opera com uma arquitetura modular, centrada em um `CConf
     *   Esta função é o coração da lógica de execução do EA em cada novo candle.
     *   Todos os contextos configurados no JSON para o símbolo fixo "WIN$N" são obtidos dinamicamente.
     *   Cada `TF_CTX` é atualizado individualmente, garantindo que os indicadores e price actions estejam sincronizados.
-    *   Após a atualização, o módulo `CTrendIdentifier` avalia a estrutura de mercado do M5 e os contextos dos timeframes M15, H1, H4 e D1. A lógica considera agora o volume médio, as linhas de tendência e as zonas de suporte e resistência para confirmar a direção predominante.
+    *   Após a atualização, o módulo `CTrendIdentifier` avalia a estrutura de mercado do M5 por meio de pivôs com separação mínima, além dos contextos dos timeframes M15, H1, H4 e D1. A lógica considera o volume médio, as linhas de tendência e as zonas de suporte e resistência para confirmar a direção predominante.
     *   O resultado da tendência é impresso para fins de depuração e pode ser utilizado pela estratégia de negociação.
 
 4.  **Desinicialização (`OnDeinit`):**
@@ -96,7 +96,7 @@ Esta seção detalha cada arquivo que compõe o Expert Advisor, explicando seu p
  - **`vwap.mqh`**: Implementa a classe `CVWAP`, derivada de `CIndicatorBase`, agora baseada no indicador `vwap_indicator.mq5` para cálculo do VWAP, delegando a exibição exclusivamente a esse indicador.
 - **`vwap_indicator.mq5`**: Indicador personalizado chamado via `iCustom` que desenha a linha de VWAP automaticamente.
 - **`fibonacci.mqh`**: Implementa o indicador `CFibonacci`, capaz de desenhar níveis de retração e extensões de Fibonacci com total customização via JSON.
- - **`trend_identifier.mqh`**: Módulo de análise que combina a estrutura de mercado do M5 com EMAs, VWAP, Bandas de Bollinger, Volume e zonas de suporte/resistência. O volume é comparado à média recente para confirmar força ou exaustão, enquanto as linhas de tendência e as zonas de suporte e resistência dos timeframes maiores reforçam o contexto. Os comentários seguem o eBook *Identificação de Tendência para WINM25*.
+ - **`trend_identifier.mqh`**: Módulo de análise que combina a estrutura de mercado do M5 com EMAs, VWAP, Bandas de Bollinger, Volume e zonas de suporte/resistência. A leitura de estrutura utiliza pivôs identificados por fractais, respeitando uma janela e uma distância mínima ajustáveis. O volume é comparado à média recente para confirmar força ou exaustão, enquanto as linhas de tendência e as zonas de suporte e resistência dos timeframes maiores reforçam o contexto. Os comentários seguem o eBook *Identificação de Tendência para WINM25*.
 - **Arquivos `*_defs.mqh`**: Cada indicador possui agora um arquivo de definições
   específico (ex.: `ma_defs.mqh`, `stochastic_defs.mqh`, `bollinger_defs.mqh`) contendo as
   enumerações relacionadas a suas opções, padronizando a organização das
@@ -1058,3 +1058,4 @@ Esta seção registra as principais alterações e versões dos componentes do E
 -   **Versao 1.02**: Inclui checagem de estrutura de mercado do M5, volume e LTA do H1 na detecção de tendência.
 -   **Versao 1.03**: Volume analisado em relação à média recente para confirmar movimentos e detectar exaustão.
 -   **Versao 1.04**: Adiciona validação por zonas de suporte e resistência dos timeframes H4 e D1.
+-   **Versao 1.05**: Estrutura de mercado do M5 passa a usar pivôs via fractais com parâmetros de janela e separação mínima para reduzir ruídos.

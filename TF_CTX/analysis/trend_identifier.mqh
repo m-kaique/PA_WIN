@@ -28,39 +28,95 @@ private:
    TF_CTX *m_ctx_h4;
    TF_CTX *m_ctx_d1;
    string  m_symbol;
+   int     m_pivot_window;
+   int     m_pivot_sep;
+
+   ENUM_TREND_STATE   DetectM5Structure();
+
 public:
-                     CTrendIdentifier() { m_ctx_m15=NULL; m_ctx_h1=NULL; m_ctx_h4=NULL; m_ctx_d1=NULL; m_symbol=""; }
-   bool               Init(string symbol, TF_CTX *m15, TF_CTX *h1, TF_CTX *h4, TF_CTX *d1=NULL)
+                     CTrendIdentifier() { m_ctx_m15=NULL; m_ctx_h1=NULL; m_ctx_h4=NULL; m_ctx_d1=NULL; m_symbol=""; m_pivot_window=50; m_pivot_sep=3; }
+   bool               Init(string symbol, TF_CTX *m15, TF_CTX *h1, TF_CTX *h4, TF_CTX *d1=NULL, int pivot_window=50, int pivot_sep=3)
                        {
                         m_symbol=symbol;
                         m_ctx_m15=m15;
                         m_ctx_h1=h1;
                         m_ctx_h4=h4;
                         m_ctx_d1=d1;
+                        m_pivot_window=pivot_window;
+                        m_pivot_sep=pivot_sep;
                         return true;
                        }
-   ENUM_TREND_STATE   Detect();
+  ENUM_TREND_STATE   Detect();
   };
+
+//+------------------------------------------------------------------+
+//| Detecta estrutura de mercado no M5 utilizando pivôs               |
+//| Retorna TREND_BULLISH, TREND_BEARISH ou TREND_NEUTRAL             |
+//+------------------------------------------------------------------+
+ENUM_TREND_STATE CTrendIdentifier::DetectM5Structure()
+  {
+   int bars=m_pivot_window + m_pivot_sep + 10;
+   int handle=iFractals(m_symbol,PERIOD_M5);
+   if(handle==INVALID_HANDLE)
+      return TREND_NEUTRAL;
+
+   double up[],down[];
+   ArraySetAsSeries(up,true);
+   ArraySetAsSeries(down,true);
+   if(CopyBuffer(handle,0,0,bars,up)<=0 || CopyBuffer(handle,1,0,bars,down)<=0)
+     {
+      IndicatorRelease(handle);
+      return TREND_NEUTRAL;
+     }
+
+   int hidx[]; ArrayResize(hidx,0);
+   int lidx[]; ArrayResize(lidx,0);
+   for(int i=m_pivot_sep;i<bars;i++)
+     {
+      if(up[i]!=EMPTY_VALUE)
+        {
+         if(ArraySize(hidx)==0 || i-hidx[ArraySize(hidx)-1]>=m_pivot_sep)
+           {
+            int p=ArraySize(hidx); ArrayResize(hidx,p+1); hidx[p]=i;
+           }
+        }
+      if(down[i]!=EMPTY_VALUE)
+        {
+         if(ArraySize(lidx)==0 || i-lidx[ArraySize(lidx)-1]>=m_pivot_sep)
+           {
+            int p=ArraySize(lidx); ArrayResize(lidx,p+1); lidx[p]=i;
+           }
+        }
+      if(ArraySize(hidx)>=3 && ArraySize(lidx)>=3)
+         break;
+     }
+
+   IndicatorRelease(handle);
+
+   if(ArraySize(hidx)>=3 && ArraySize(lidx)>=3)
+     {
+      double h0=up[hidx[0]], h1=up[hidx[1]], h2=up[hidx[2]];
+      double l0=down[lidx[0]], l1=down[lidx[1]], l2=down[lidx[2]];
+      bool higher_highs=(h0>h1 && h1>h2);
+      bool lower_highs=(h0<h1 && h1<h2);
+      bool higher_lows=(l0>l1 && l1>l2);
+      bool lower_lows=(l0<l1 && l1<l2);
+      if(higher_highs && higher_lows) return TREND_BULLISH;
+      if(lower_highs && lower_lows) return TREND_BEARISH;
+     }
+   return TREND_NEUTRAL;
+  }
 
 ENUM_TREND_STATE CTrendIdentifier::Detect()
   {
    int up=0, down=0;
 
-   //--- Estrutura de mercado M5 (topos e fundos ascendentes)
-   // Observamos os dois candles anteriores para saber se o mercado
-   // vem fazendo máximas e mínimas mais altas (ou mais baixas).
-   // Essa sequência de topos e fundos é um dos pilares para
-   // confirmar tendência segundo o eBook.
-   double h0=iHigh(m_symbol,PERIOD_M5,0);
-   double h1=iHigh(m_symbol,PERIOD_M5,1);
-   double h2=iHigh(m_symbol,PERIOD_M5,2);
-   double l0=iLow(m_symbol,PERIOD_M5,0);
-   double l1=iLow(m_symbol,PERIOD_M5,1);
-   double l2=iLow(m_symbol,PERIOD_M5,2);
-   if(h0>h1 && h1>h2 && l0>l1 && l1>l2)
-      up++;   // sequência ascendente => viés de alta
-   else if(h0<h1 && h1<h2 && l0<l1 && l1<l2)
-      down++; // sequência descendente => viés de baixa
+   //--- Estrutura de mercado no M5 usando pivôs com separação mínima
+   ENUM_TREND_STATE m5_state=DetectM5Structure();
+   if(m5_state==TREND_BULLISH)
+      up++;
+   else if(m5_state==TREND_BEARISH)
+      down++;
 
    //--- M15 indicadores principais
    // A combinação de EMAs, VWAP, Bollinger e Volume no M15 serve para
