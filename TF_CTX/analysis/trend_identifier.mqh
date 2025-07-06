@@ -58,7 +58,8 @@ public:
 //+------------------------------------------------------------------+
 ENUM_TREND_STATE CTrendIdentifier::DetectM5Structure()
   {
-   int bars=m_pivot_window + m_pivot_sep + 10;
+   // Quantidade de barras a analisar: janela configurada mais uma margem
+   int bars=m_pivot_window+m_pivot_sep+10;
    int handle=iFractals(m_symbol,PERIOD_M5);
    if(handle==INVALID_HANDLE)
       return TREND_NEUTRAL;
@@ -72,9 +73,10 @@ ENUM_TREND_STATE CTrendIdentifier::DetectM5Structure()
       return TREND_NEUTRAL;
      }
 
+   // Vetores com as posições dos pivôs relevantes
    int hidx[]; ArrayResize(hidx,0);
    int lidx[]; ArrayResize(lidx,0);
-   for(int i=m_pivot_sep;i<bars;i++)
+   for(int i=m_pivot_sep;i<bars && i<=m_pivot_window+m_pivot_sep;i++)
      {
       if(up[i]!=EMPTY_VALUE)
         {
@@ -90,20 +92,22 @@ ENUM_TREND_STATE CTrendIdentifier::DetectM5Structure()
             int p=ArraySize(lidx); ArrayResize(lidx,p+1); lidx[p]=i;
            }
         }
-      if(ArraySize(hidx)>=3 && ArraySize(lidx)>=3)
-         break;
      }
 
    IndicatorRelease(handle);
 
-   if(ArraySize(hidx)>=3 && ArraySize(lidx)>=3)
+   // Verificar se há pelo menos três topos e três fundos válidos
+   int hs=ArraySize(hidx);
+   int ls=ArraySize(lidx);
+   if(hs>=3 && ls>=3)
      {
-      double h0=up[hidx[0]], h1=up[hidx[1]], h2=up[hidx[2]];
-      double l0=down[lidx[0]], l1=down[lidx[1]], l2=down[lidx[2]];
-      bool higher_highs=(h0>h1 && h1>h2);
-      bool lower_highs=(h0<h1 && h1<h2);
-      bool higher_lows=(l0>l1 && l1>l2);
-      bool lower_lows=(l0<l1 && l1<l2);
+      // Utiliza sempre os três pivôs mais recentes, ignorando micro-movimentos
+      double h2=up[hidx[hs-3]], h1=up[hidx[hs-2]], h0=up[hidx[hs-1]];
+      double l2=down[lidx[ls-3]], l1=down[lidx[ls-2]], l0=down[lidx[ls-1]];
+      bool higher_highs=(h2<h1 && h1<h0);
+      bool lower_highs=(h2>h1 && h1>h0);
+      bool higher_lows=(l2<l1 && l1<l0);
+      bool lower_lows=(l2>l1 && l1>l0);
       if(higher_highs && higher_lows) return TREND_BULLISH;
       if(lower_highs && lower_lows) return TREND_BEARISH;
      }
