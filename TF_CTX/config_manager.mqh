@@ -38,6 +38,8 @@ private:
     ENUM_VWAP_PRICE_TYPE StringToVWAPPriceType(string type_str);
     ENUM_LINE_STYLE StringToLineStyle(string style_str);
     color StringToColor(string color_str);
+    CIndicatorConfig *CreateIndicatorConfig(CJAVal *ind);
+    CPriceActionConfig *CreatePriceActionConfig(CJAVal *pa, ENUM_TIMEFRAMES tf);
     STimeframeConfig ParseTimeframeConfig(CJAVal *tf_config, ENUM_TIMEFRAMES tf);
     string CreateContextKey(string symbol, ENUM_TIMEFRAMES tf);
     bool TestJSONParsing();
@@ -553,6 +555,189 @@ color CConfigManager::StringToColor(string color_str)
 }
 
 //+------------------------------------------------------------------+
+//| Criar configuracao de indicador                                   |
+//+------------------------------------------------------------------+
+CIndicatorConfig *CConfigManager::CreateIndicatorConfig(CJAVal *ind)
+{
+    if(ind==NULL)
+        return NULL;
+
+    string type = ind["type"].ToStr();
+    string col = "";
+
+    if(type=="MA")
+    {
+        CMAConfig *p=new CMAConfig();
+        p.name=ind["name"].ToStr();
+        p.type=type;
+        p.enabled=ind["enabled"].ToBool();
+        p.period=(int)ind["period"].ToInt();
+        p.method=StringToMAMethod(ind["method"].ToStr());
+        return p;
+    }
+    else if(type=="STO")
+    {
+        CStochasticConfig *p=new CStochasticConfig();
+        p.name=ind["name"].ToStr();
+        p.type=type;
+        p.enabled=ind["enabled"].ToBool();
+        p.period=(int)ind["period"].ToInt();
+        p.dperiod=(int)ind["dperiod"].ToInt();
+        p.slowing=(int)ind["slowing"].ToInt();
+        p.method=StringToMAMethod(ind["method"].ToStr());
+        p.price_field=StringToPriceField(ind["price_field"].ToStr());
+        return p;
+    }
+    else if(type=="VOL")
+    {
+        CVolumeConfig *p=new CVolumeConfig();
+        p.name=ind["name"].ToStr();
+        p.type=type;
+        p.enabled=ind["enabled"].ToBool();
+        p.shift=(int)ind["shift"].ToInt();
+        return p;
+    }
+    else if(type=="VWAP")
+    {
+        CVWAPConfig *p=new CVWAPConfig();
+        p.name=ind["name"].ToStr();
+        p.type=type;
+        p.enabled=ind["enabled"].ToBool();
+        p.period=(int)ind["period"].ToInt();
+        p.method=StringToMAMethod(ind["method"].ToStr());
+        p.calc_mode=StringToVWAPCalcMode(ind["calc_mode"].ToStr());
+        p.session_tf=StringToTimeframe(ind["session_tf"].ToStr());
+        p.price_type=StringToVWAPPriceType(ind["price_type"].ToStr());
+        string start_str=ind["start_time"].ToStr();
+        if(StringLen(start_str)>0) p.start_time=StringToTime(start_str);
+        col=ind["Color"].ToStr();
+        p.line_color=StringToColor(col);
+        p.line_style=StringToLineStyle(ind["Style"].ToStr());
+        p.line_width=(int)ind["Width"].ToInt();
+        return p;
+    }
+    else if(type=="BOLL")
+    {
+        CBollingerConfig *p=new CBollingerConfig();
+        p.name=ind["name"].ToStr();
+        p.type=type;
+        p.enabled=ind["enabled"].ToBool();
+        p.period=(int)ind["period"].ToInt();
+        p.shift=(int)ind["shift"].ToInt();
+        p.deviation=ind["deviation"].ToDbl();
+        p.applied_price=StringToAppliedPrice(ind["applied_price"].ToStr());
+        return p;
+    }
+    else if(type=="FIBO")
+    {
+        CFiboConfig *p=new CFiboConfig();
+        p.name=ind["name"].ToStr();
+        p.type=type;
+        p.enabled=ind["enabled"].ToBool();
+        p.period=(int)ind["period"].ToInt();
+        p.level_1=ind["Level_1"].ToDbl();
+        p.level_2=ind["Level_2"].ToDbl();
+        p.level_3=ind["Level_3"].ToDbl();
+        p.level_4=ind["Level_4"].ToDbl();
+        p.level_5=ind["Level_5"].ToDbl();
+        p.level_6=ind["Level_6"].ToDbl();
+        col=ind["LevelsColor"].ToStr();
+        p.levels_color=StringToColor(col);
+        p.levels_style=StringToLineStyle(ind["LevelsStyle"].ToStr());
+        p.levels_width=(int)ind["LevelsWidth"].ToInt();
+        p.ext_1=ind["Ext_1"].ToDbl();
+        p.ext_2=ind["Ext_2"].ToDbl();
+        p.ext_3=ind["Ext_3"].ToDbl();
+        col=ind["ExtensionsColor"].ToStr();
+        p.extensions_color=StringToColor(col);
+        p.extensions_style=StringToLineStyle(ind["ExtensionsStyle"].ToStr());
+        p.extensions_width=(int)ind["ExtensionsWidth"].ToInt();
+        col=ind["ParallelColor"].ToStr();
+        p.parallel_color=StringToColor(col);
+        p.parallel_style=StringToLineStyle(ind["ParallelStyle"].ToStr());
+        p.parallel_width=(int)ind["ParallelWidth"].ToInt();
+        p.show_labels=ind["ShowLabels"].ToBool();
+        col=ind["LabelsColor"].ToStr();
+        p.labels_color=StringToColor(col);
+        p.labels_font_size=(int)ind["LabelsFontSize"].ToInt();
+        string font=ind["LabelsFont"].ToStr();
+        if(StringLen(font)>0) p.labels_font=font;
+        return p;
+    }
+
+    return NULL;
+}
+
+//+------------------------------------------------------------------+
+//| Criar configuracao de priceaction                                 |
+//+------------------------------------------------------------------+
+CPriceActionConfig *CConfigManager::CreatePriceActionConfig(CJAVal *pa, ENUM_TIMEFRAMES ctx_tf)
+{
+    if(pa==NULL)
+        return NULL;
+
+    string type = pa["type"].ToStr();
+
+    if(type=="TRENDLINE")
+    {
+        CTrendLineConfig *p=new CTrendLineConfig();
+        p.name=pa["name"].ToStr();
+        p.type=type;
+        p.enabled=pa["enabled"].ToBool();
+        p.period=(int)pa["period"].ToInt();
+        p.left=(int)pa["left"].ToInt();
+        p.right=(int)pa["right"].ToInt();
+        p.draw_lta=pa["draw_lta"].ToBool();
+        p.draw_ltb=pa["draw_ltb"].ToBool();
+        p.lta_color=StringToColor(pa["lta_color"].ToStr());
+        p.ltb_color=StringToColor(pa["ltb_color"].ToStr());
+        p.lta_style=StringToLineStyle(pa["lta_style"].ToStr());
+        p.ltb_style=StringToLineStyle(pa["ltb_style"].ToStr());
+        p.lta_width=(int)pa["lta_width"].ToInt();
+        p.ltb_width=(int)pa["ltb_width"].ToInt();
+        p.extend_right=pa["extend_right"].ToBool();
+        p.show_labels=pa["show_labels"].ToBool();
+        p.fractal_tf=StringToTimeframe(pa["fractal_tf"].ToStr());
+        p.detail_tf=StringToTimeframe(pa["detail_tf"].ToStr());
+        p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
+
+        if(p.fractal_tf==PERIOD_CURRENT) p.fractal_tf=ctx_tf;
+        if(p.detail_tf==PERIOD_CURRENT)  p.detail_tf=ctx_tf;
+        if(p.alert_tf==PERIOD_CURRENT)   p.alert_tf=ctx_tf;
+        return p;
+    }
+    else if(type=="SUPRES")
+    {
+        CSupResConfig *p=new CSupResConfig();
+        p.name=pa["name"].ToStr();
+        p.type=type;
+        p.enabled=pa["enabled"].ToBool();
+        p.period=(int)pa["period"].ToInt();
+        p.draw_sup=pa["draw_sup"].ToBool();
+        p.draw_res=pa["draw_res"].ToBool();
+        p.sup_color=StringToColor(pa["sup_color"].ToStr());
+        p.res_color=StringToColor(pa["res_color"].ToStr());
+        p.sup_style=StringToLineStyle(pa["sup_style"].ToStr());
+        p.res_style=StringToLineStyle(pa["res_style"].ToStr());
+        p.sup_width=(int)pa["sup_width"].ToInt();
+        p.res_width=(int)pa["res_width"].ToInt();
+        p.extend_right=pa["extend_right"].ToBool();
+        p.show_labels=pa["show_labels"].ToBool();
+        p.touch_lookback=(int)pa["touch_lookback"].ToInt();
+        p.touch_tolerance=pa["touch_tolerance"].ToDbl();
+        p.zone_range=pa["zone_range"].ToDbl();
+        p.max_zones_to_draw=(int)pa["max_zones_to_draw"].ToInt();
+        p.min_touches=(int)pa["min_touches"].ToInt();
+        p.validation=(ENUM_SUPRES_VALIDATION)pa["validation"].ToInt();
+        p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
+        if(p.alert_tf==PERIOD_CURRENT) p.alert_tf=ctx_tf;
+        return p;
+    }
+
+    return NULL;
+}
+
+//+------------------------------------------------------------------+
 //| Fazer parse da configuração do timeframe                        |
 //+------------------------------------------------------------------+
 STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config, ENUM_TIMEFRAMES ctx_tf)
@@ -582,111 +767,9 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config, ENUM_TI
     {
         for(int i=0;i<ind_array.Size();i++)
         {
-           CJAVal *ind = (*ind_array)[i];
-           if(ind==NULL) continue;
-
-           CIndicatorConfig *icfg=NULL;
-           string col="";
-           string type=ind["type"].ToStr();
-           if(type=="MA")
-             {
-              CMAConfig *p=new CMAConfig();
-              p.name=ind["name"].ToStr();
-              p.type=type;
-              p.enabled=ind["enabled"].ToBool();
-              p.period=(int)ind["period"].ToInt();
-              p.method=StringToMAMethod(ind["method"].ToStr());
-              icfg=p;
-             }
-           else if(type=="STO")
-             {
-              CStochasticConfig *p=new CStochasticConfig();
-              p.name=ind["name"].ToStr();
-              p.type=type;
-              p.enabled=ind["enabled"].ToBool();
-              p.period=(int)ind["period"].ToInt();
-              p.dperiod=(int)ind["dperiod"].ToInt();
-              p.slowing=(int)ind["slowing"].ToInt();
-              p.method=StringToMAMethod(ind["method"].ToStr());
-              p.price_field=StringToPriceField(ind["price_field"].ToStr());
-              icfg=p;
-             }
-           else if(type=="VOL")
-             {
-              CVolumeConfig *p=new CVolumeConfig();
-              p.name=ind["name"].ToStr();
-              p.type=type;
-              p.enabled=ind["enabled"].ToBool();
-              p.shift=(int)ind["shift"].ToInt();
-              icfg=p;
-             }
-           else if(type=="VWAP")
-             {
-              CVWAPConfig *p=new CVWAPConfig();
-              p.name=ind["name"].ToStr();
-              p.type=type;
-              p.enabled=ind["enabled"].ToBool();
-              p.period=(int)ind["period"].ToInt();
-              p.method=StringToMAMethod(ind["method"].ToStr());
-              p.calc_mode=StringToVWAPCalcMode(ind["calc_mode"].ToStr());
-              p.session_tf=StringToTimeframe(ind["session_tf"].ToStr());
-              p.price_type=StringToVWAPPriceType(ind["price_type"].ToStr());
-              string start_str=ind["start_time"].ToStr();
-              if(StringLen(start_str)>0) p.start_time=StringToTime(start_str);
-              col=ind["Color"].ToStr();
-              p.line_color=StringToColor(col);
-              p.line_style=StringToLineStyle(ind["Style"].ToStr());
-              p.line_width=(int)ind["Width"].ToInt();
-              icfg=p;
-             }
-           else if(type=="BOLL")
-             {
-              CBollingerConfig *p=new CBollingerConfig();
-              p.name=ind["name"].ToStr();
-              p.type=type;
-              p.enabled=ind["enabled"].ToBool();
-              p.period=(int)ind["period"].ToInt();
-              p.shift=(int)ind["shift"].ToInt();
-              p.deviation=ind["deviation"].ToDbl();
-              p.applied_price=StringToAppliedPrice(ind["applied_price"].ToStr());
-              icfg=p;
-             }
-           else if(type=="FIBO")
-             {
-              CFiboConfig *p=new CFiboConfig();
-              p.name=ind["name"].ToStr();
-              p.type=type;
-              p.enabled=ind["enabled"].ToBool();
-              p.period=(int)ind["period"].ToInt();
-              p.level_1=ind["Level_1"].ToDbl();
-              p.level_2=ind["Level_2"].ToDbl();
-              p.level_3=ind["Level_3"].ToDbl();
-              p.level_4=ind["Level_4"].ToDbl();
-              p.level_5=ind["Level_5"].ToDbl();
-              p.level_6=ind["Level_6"].ToDbl();
-              col=ind["LevelsColor"].ToStr();
-              p.levels_color=StringToColor(col);
-              p.levels_style=StringToLineStyle(ind["LevelsStyle"].ToStr());
-              p.levels_width=(int)ind["LevelsWidth"].ToInt();
-              p.ext_1=ind["Ext_1"].ToDbl();
-              p.ext_2=ind["Ext_2"].ToDbl();
-              p.ext_3=ind["Ext_3"].ToDbl();
-              col=ind["ExtensionsColor"].ToStr();
-              p.extensions_color=StringToColor(col);
-              p.extensions_style=StringToLineStyle(ind["ExtensionsStyle"].ToStr());
-              p.extensions_width=(int)ind["ExtensionsWidth"].ToInt();
-              col=ind["ParallelColor"].ToStr();
-              p.parallel_color=StringToColor(col);
-              p.parallel_style=StringToLineStyle(ind["ParallelStyle"].ToStr());
-              p.parallel_width=(int)ind["ParallelWidth"].ToInt();
-              p.show_labels=ind["ShowLabels"].ToBool();
-              col=ind["LabelsColor"].ToStr();
-              p.labels_color=StringToColor(col);
-              p.labels_font_size=(int)ind["LabelsFontSize"].ToInt();
-              string font=ind["LabelsFont"].ToStr();
-              if(StringLen(font)>0) p.labels_font=font;
-              icfg=p;
-             }
+            CIndicatorConfig *icfg = CreateIndicatorConfig((*ind_array)[i]);
+            if(icfg==NULL)
+                continue;
 
             int pos = ArraySize(config.indicators);
             ArrayResize(config.indicators,pos+1);
@@ -706,74 +789,14 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config, ENUM_TI
     {
         for(int i=0;i<pa_array.Size();i++)
         {
-           CJAVal *pa = (*pa_array)[i];
-           if(pa==NULL) continue;
+            CPriceActionConfig *pcfg = CreatePriceActionConfig((*pa_array)[i], ctx_tf);
+            if(pcfg==NULL)
+                continue;
 
-           CPriceActionConfig *pcfg=NULL;
-           string type=pa["type"].ToStr();
-          if(type=="TRENDLINE")
-            {
-              CTrendLineConfig *p=new CTrendLineConfig();
-              p.name=pa["name"].ToStr();
-              p.type=type;
-              p.enabled=pa["enabled"].ToBool();
-              p.period=(int)pa["period"].ToInt();
-              p.left=(int)pa["left"].ToInt();
-              p.right=(int)pa["right"].ToInt();
-              p.draw_lta=pa["draw_lta"].ToBool();
-              p.draw_ltb=pa["draw_ltb"].ToBool();
-              p.lta_color=StringToColor(pa["lta_color"].ToStr());
-              p.ltb_color=StringToColor(pa["ltb_color"].ToStr());
-              p.lta_style=StringToLineStyle(pa["lta_style"].ToStr());
-             p.ltb_style=StringToLineStyle(pa["ltb_style"].ToStr());
-             p.lta_width=(int)pa["lta_width"].ToInt();
-             p.ltb_width=(int)pa["ltb_width"].ToInt();
-             p.extend_right=pa["extend_right"].ToBool();
-             p.show_labels=pa["show_labels"].ToBool();
-             p.fractal_tf=StringToTimeframe(pa["fractal_tf"].ToStr());
-             p.detail_tf=StringToTimeframe(pa["detail_tf"].ToStr());
-             p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
-
-             if(p.fractal_tf==PERIOD_CURRENT) p.fractal_tf=ctx_tf;
-             if(p.detail_tf==PERIOD_CURRENT)  p.detail_tf=ctx_tf;
-             if(p.alert_tf==PERIOD_CURRENT)   p.alert_tf=ctx_tf;
-             pcfg=p;
-            }
-          else if(type=="SUPRES")
-            {
-             CSupResConfig *p=new CSupResConfig();
-             p.name=pa["name"].ToStr();
-             p.type=type;
-             p.enabled=pa["enabled"].ToBool();
-             p.period=(int)pa["period"].ToInt();
-             p.draw_sup=pa["draw_sup"].ToBool();
-             p.draw_res=pa["draw_res"].ToBool();
-             p.sup_color=StringToColor(pa["sup_color"].ToStr());
-             p.res_color=StringToColor(pa["res_color"].ToStr());
-             p.sup_style=StringToLineStyle(pa["sup_style"].ToStr());
-             p.res_style=StringToLineStyle(pa["res_style"].ToStr());
-             p.sup_width=(int)pa["sup_width"].ToInt();
-            p.res_width=(int)pa["res_width"].ToInt();
-            p.extend_right=pa["extend_right"].ToBool();
-            p.show_labels=pa["show_labels"].ToBool();
-            p.touch_lookback=(int)pa["touch_lookback"].ToInt();
-            p.touch_tolerance=pa["touch_tolerance"].ToDbl();
-            p.zone_range=pa["zone_range"].ToDbl();
-            p.max_zones_to_draw=(int)pa["max_zones_to_draw"].ToInt();
-            p.min_touches=(int)pa["min_touches"].ToInt();
-            p.validation=(ENUM_SUPRES_VALIDATION)pa["validation"].ToInt();
-            p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
-             if(p.alert_tf==PERIOD_CURRENT) p.alert_tf=ctx_tf;
-             pcfg=p;
-            }
-
-           if(pcfg!=NULL)
-             {
-              int pos=ArraySize(config.priceactions);
-              ArrayResize(config.priceactions,pos+1);
-              config.priceactions[pos]=pcfg;
-              Print("PriceAction lido: ", pcfg.name, " Tipo: ", pcfg.type, " Enabled: ", pcfg.enabled);
-             }
+            int pos=ArraySize(config.priceactions);
+            ArrayResize(config.priceactions,pos+1);
+            config.priceactions[pos]=pcfg;
+            Print("PriceAction lido: ", pcfg.name, " Tipo: ", pcfg.type, " Enabled: ", pcfg.enabled);
         }
     }
     else
