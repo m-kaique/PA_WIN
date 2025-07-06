@@ -563,7 +563,7 @@ Esta seção detalha as principais funções e classes encontradas no código do
       - **Valor de retorno**: `bool` - `true` se o carregamento e parsing forem bem-sucedidos, `false` caso contrário.
     - **`LoadConfigFromFile(string file_path)`**
       - **Assinatura**: `bool LoadConfigFromFile(string file_path)`
-      - **Descrição simplificada**: Tenta carregar o conteúdo JSON de um arquivo, verificando diferentes caminhos e codificações (ANSI, UTF-8).
+      - **Descrição simplificada**: Lê todo o conteúdo do arquivo JSON de uma só vez, tentando primeiro com codificação ANSI e depois em UTF‑8 caso necessário.
       - **Parâmetros**:
         - `file_path` (`string`): O caminho do arquivo JSON.
       - **Valor de retorno**: `bool` - `true` se o arquivo for lido e a configuração carregada com sucesso, `false` caso contrário.

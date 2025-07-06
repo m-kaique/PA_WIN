@@ -157,122 +157,26 @@ bool CConfigManager::LoadConfig(string json_content)
 //+------------------------------------------------------------------+
 bool CConfigManager::LoadConfigFromFile(string file_path)
 {
-    Print("Tentando abrir arquivo: ", file_path);
-    
-    // Primeiro tentar na pasta local do EA com encoding ANSI
+    // Tenta abrir o arquivo primeiro em ANSI e, em caso de falha, em UTF-8
     int file_handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_ANSI);
-    
+    if (file_handle == INVALID_HANDLE)
+        file_handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_COMMON | FILE_ANSI);
+    if (file_handle == INVALID_HANDLE)
+        file_handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_COMMON);
+
     if (file_handle == INVALID_HANDLE)
     {
-        Print("Arquivo não encontrado na pasta local, tentando pasta Common...");
-        // Tentar com FILE_COMMON e ANSI
-        file_handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_COMMON | FILE_ANSI);
-        if (file_handle == INVALID_HANDLE)
-        {
-            // Última tentativa com UTF-8
-            Print("Tentando com UTF-8...");
-            file_handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_COMMON);
-            if (file_handle == INVALID_HANDLE)
-            {
-                Print("ERRO: Arquivo não encontrado: ", file_path);
-                Print("Verificar se arquivo existe em:");
-                Print("1. Terminal_Data_Folder\\MQL5\\Files\\", file_path);
-                Print("2. Common_Data_Folder\\Files\\", file_path);
-                return false;
-            }
-            else
-            {
-                Print("Arquivo encontrado na pasta Common (UTF-8)");
-            }
-        }
-        else
-        {
-            Print("Arquivo encontrado na pasta Common (ANSI)");
-        }
-    }
-    else
-    {
-        Print("Arquivo encontrado na pasta local do EA (ANSI)");
-    }
-
-    // Obter tamanho do arquivo
-    ulong file_size = FileSize(file_handle);
-    Print("Tamanho do arquivo: ", file_size, " bytes");
-    
-    // Resetar posição do arquivo
-    FileSeek(file_handle, 0, SEEK_SET);
-    
-    // Ler arquivo linha por linha (método mais confiável)
-    string json_content = "";
-    int lines_read = 0;
-    
-    Print("Lendo arquivo linha por linha...");
-    while (!FileIsEnding(file_handle))
-    {
-        string line = FileReadString(file_handle);
-        if(StringLen(line) > 0)
-        {
-            json_content += line;
-            Print("Linha ", lines_read + 1, " (", StringLen(line), " chars): ", StringSubstr(line, 0, MathMin(60, StringLen(line))));
-        }
-        lines_read++;
-        
-        // Segurança para evitar loop infinito
-        if(lines_read > 1000)
-        {
-            Print("AVISO: Muitas linhas lidas, interrompendo");
-            break;
-        }
-    }
-    Print("Total de linhas lidas: ", lines_read);
-
-    FileClose(file_handle);
-    
-    Print("Arquivo JSON carregado:");
-    Print("- Caracteres totais: ", StringLen(json_content));
-    
-    if(StringLen(json_content) == 0)
-    {
-        Print("ERRO: Nenhum conteúdo lido do arquivo");
+        Print("ERRO: Arquivo não encontrado: ", file_path);
         return false;
     }
-    
-    // Verificar se temos caracteres válidos
-    string first_chars = StringSubstr(json_content, 0, MathMin(100, StringLen(json_content)));
-    Print("- Primeiros 100 caracteres: '", first_chars, "'");
-    
-    // Mostrar os últimos caracteres também
-    if(StringLen(json_content) > 100)
+
+    string json_content = FileReadString(file_handle, (int)FileSize(file_handle));
+    FileClose(file_handle);
+
+    if (StringLen(json_content) == 0)
     {
-        string last_chars = StringSubstr(json_content, StringLen(json_content) - 50);
-        Print("- Últimos 50 caracteres: '", last_chars, "'");
-    }
-    
-    // Verificar se começa com { (JSON válido)
-    if(StringLen(json_content) > 0)
-    {
-        ushort first_char = StringGetCharacter(json_content, 0);
-        ushort last_char = StringGetCharacter(json_content, StringLen(json_content) - 1);
-        Print("- Primeiro caractere (código): ", first_char, " '", CharToString((char)first_char), "'");
-        Print("- Último caractere (código): ", last_char, " '", CharToString((char)last_char), "'");
-        
-        if(first_char == '{' || first_char == 123)
-        {
-            Print("- Arquivo parece ser JSON válido");
-        }
-        else
-        {
-            Print("- AVISO: Arquivo não parece começar com '{' - possível problema de encoding");
-            
-            // Tentar encontrar o primeiro '{'
-            int brace_pos = StringFind(json_content, "{");
-            if(brace_pos >= 0)
-            {
-                json_content = StringSubstr(json_content, brace_pos);
-                Print("- JSON ajustado, novo tamanho: ", StringLen(json_content));
-                Print("- Novos primeiros 50 caracteres: '", StringSubstr(json_content, 0, 50), "'");
-            }
-        }
+        Print("ERRO: Arquivo vazio: ", file_path);
+        return false;
     }
 
     return LoadConfig(json_content);
