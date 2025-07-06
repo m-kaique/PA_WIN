@@ -174,7 +174,8 @@ void ExecuteOnNewBar()
 
    CTrendIdentifier trend;
    trend.Init(configured_symbol, ctx_m15, ctx_h1, ctx_h4, ctx_d1);
-   ENUM_TREND_STATE trend_state = trend.Detect();
+  ENUM_TREND_STATE trend_state = trend.Detect();
+  Print(trend.GetLog());
 
    string trend_text = "NEUTRAL";
    if(trend_state==TREND_BULLISH)
