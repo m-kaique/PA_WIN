@@ -256,21 +256,26 @@ bool CTrendLine::Update()
    if(CopyBuffer(m_fractal_handle,1,0,bars,down)<=0)
       return false;
 
-   int up1=-1,up2=-1,lo1=-1,lo2=-1;
+   int up1=-1,up2=-1,up3=-1;
+   int lo1=-1,lo2=-1,lo3=-1;
    for(int i=m_left;i<bars;i++)
      if(up[i]!=EMPTY_VALUE){ up1=i; break; }
    for(int i=up1+1;i<bars;i++)
      if(up[i]!=EMPTY_VALUE){ up2=i; break; }
+   for(int i=up2+1;i<bars;i++)
+     if(up[i]!=EMPTY_VALUE){ up3=i; break; }
    for(int i=m_left;i<bars;i++)
      if(down[i]!=EMPTY_VALUE){ lo1=i; break; }
    for(int i=lo1+1;i<bars;i++)
      if(down[i]!=EMPTY_VALUE){ lo2=i; break; }
+   for(int i=lo2+1;i<bars;i++)
+     if(down[i]!=EMPTY_VALUE){ lo3=i; break; }
 
    bool uptrend=false, downtrend=false;
-   if(lo1>0 && lo2>0 && down[lo1]>down[lo2])
-      uptrend=true;            // fundos ascendentes
-   if(up1>0 && up2>0 && up[up1]<up[up2])
-      downtrend=true;          // topos descendentes
+   if(lo1>0 && lo2>0 && lo3>0 && down[lo1]>down[lo2] && down[lo2]>down[lo3])
+      uptrend=true;            // dois fundos ascendentes
+   if(up1>0 && up2>0 && up3>0 && up[up1]<up[up2] && up[up2]<up[up3])
+      downtrend=true;          // dois topos descendentes
 
    m_ready=false;
    if(uptrend)
