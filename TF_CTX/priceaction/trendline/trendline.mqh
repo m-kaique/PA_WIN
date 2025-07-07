@@ -56,6 +56,10 @@ private:
   // persistent buffers for price data
   double          m_closes[];
 
+  // pivot indexes (most recent first)
+  int             m_pivot_highs[];
+  int             m_pivot_lows[];
+
   // regression parameters
   double          m_lta_slope;
   double          m_lta_intercept;
@@ -66,8 +70,11 @@ private:
 
    void            DrawLines(datetime t1,double p1,datetime t2,double p2,
                              ENUM_TRENDLINE_SIDE side);
-   void            CalculateRegression(const double &vals[],int bars,double &slope,
+  void            CalculateRegression(const double &vals[],int bars,double &slope,
                                      double &intercept,double &stdev);
+  bool            IsPivotLow(const double &lows[],int idx,int left,int right);
+  bool            IsPivotHigh(const double &highs[],int idx,int left,int right);
+  void            DetectPivots(const double &highs[],const double &lows[],int bars);
 
 public:
                      CTrendLine();
@@ -132,6 +139,8 @@ CTrendLine::CTrendLine()
   m_labels_font_size=8;
   m_labels_font="Arial";
   ArrayResize(m_closes,0);
+  ArrayResize(m_pivot_highs,0);
+  ArrayResize(m_pivot_lows,0);
   }
 
 //+------------------------------------------------------------------+
@@ -171,6 +180,8 @@ CTrendLine::~CTrendLine()
     }
   m_lta_val=0.0;
   m_ltb_val=0.0;
+  ArrayResize(m_pivot_highs,0);
+  ArrayResize(m_pivot_lows,0);
  }
 
 
@@ -220,6 +231,8 @@ bool CTrendLine::Init(string symbol,ENUM_TIMEFRAMES timeframe,CTrendLineConfig &
    int bars=m_period>0?m_period:50;
    ArrayResize(m_closes,2); // only need last two closes
    ArraySetAsSeries(m_closes,true);
+   ArrayResize(m_pivot_highs,0);
+   ArrayResize(m_pivot_lows,0);
   return ok;
  }
 
@@ -320,7 +333,59 @@ void CTrendLine::CalculateRegression(const double &vals[],int bars,double &slope
       double r=vals[j]-pred;
       res2+=r*r;
      }
-   stdev=MathSqrt(res2/bars);
+  stdev=MathSqrt(res2/bars);
+ }
+
+//+------------------------------------------------------------------+
+//| Detect if index is pivot low                                      |
+//+------------------------------------------------------------------+
+bool CTrendLine::IsPivotLow(const double &lows[],int idx,int left,int right)
+  {
+   for(int i=1;i<=left;i++)
+      if(idx-i<0 || lows[idx]>lows[idx-i])
+         return false;
+   for(int i=1;i<=right;i++)
+      if(idx+i>=ArraySize(lows) || lows[idx]>lows[idx+i])
+         return false;
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| Detect if index is pivot high                                     |
+//+------------------------------------------------------------------+
+bool CTrendLine::IsPivotHigh(const double &highs[],int idx,int left,int right)
+  {
+   for(int i=1;i<=left;i++)
+      if(idx-i<0 || highs[idx]<highs[idx-i])
+         return false;
+   for(int i=1;i<=right;i++)
+      if(idx+i>=ArraySize(highs) || highs[idx]<highs[idx+i])
+         return false;
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| Scan arrays and fill pivot indexes                                |
+//+------------------------------------------------------------------+
+void CTrendLine::DetectPivots(const double &highs[],const double &lows[],int bars)
+  {
+   ArrayResize(m_pivot_highs,0);
+   ArrayResize(m_pivot_lows,0);
+   for(int i=m_right;i<bars-m_left;i++)
+     {
+      if(IsPivotLow(lows,i,m_left,m_right))
+        {
+         int p=ArraySize(m_pivot_lows);
+         ArrayResize(m_pivot_lows,p+1);
+         m_pivot_lows[p]=i;            // stored most recent first due to loop order
+        }
+      if(IsPivotHigh(highs,i,m_left,m_right))
+        {
+         int p=ArraySize(m_pivot_highs);
+         ArrayResize(m_pivot_highs,p+1);
+         m_pivot_highs[p]=i;
+        }
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -330,75 +395,137 @@ bool CTrendLine::Update()
   {
    int bars=m_period>0?m_period:50;
 
-   double highs_reg[],lows_reg[];
-   datetime times_reg[];
-   ArraySetAsSeries(highs_reg,true);
-   ArraySetAsSeries(lows_reg,true);
-   ArraySetAsSeries(times_reg,true);
+   double highs[],lows[];
+   datetime times[];
+   ArraySetAsSeries(highs,true);
+   ArraySetAsSeries(lows,true);
+   ArraySetAsSeries(times,true);
 
-   if(CopyHigh(m_symbol,m_timeframe,0,bars,highs_reg)<=0)
+   if(CopyHigh(m_symbol,m_timeframe,0,bars,highs)<=0)
       return m_ready;
-   if(CopyLow(m_symbol,m_timeframe,0,bars,lows_reg)<=0)
+   if(CopyLow(m_symbol,m_timeframe,0,bars,lows)<=0)
       return m_ready;
-   if(CopyTime(m_symbol,m_timeframe,0,bars,times_reg)<=0)
+   if(CopyTime(m_symbol,m_timeframe,0,bars,times)<=0)
       return m_ready;
 
-   CalculateRegression(lows_reg,bars,m_lta_slope,m_lta_intercept,m_lta_stddev);
-   CalculateRegression(highs_reg,bars,m_ltb_slope,m_ltb_intercept,m_ltb_stddev);
+   DetectPivots(highs,lows,bars); // preencher indices de pivôs
 
-   datetime t_old=times_reg[bars-1];
-   datetime t_new=times_reg[0];
-   double lta_old=m_lta_intercept;
-   double lta_new=m_lta_intercept+m_lta_slope*(bars-1);
-   double ltb_old=m_ltb_intercept;
-   double ltb_new=m_ltb_intercept+m_ltb_slope*(bars-1);
+   datetime t_old=times[bars-1];
+   datetime t_new=times[0];
 
-   bool trending_up=(m_lta_slope>0.0 && m_ltb_slope>0.0);
-   bool trending_down=(m_lta_slope<0.0 && m_ltb_slope<0.0);
+   double lta_old=0.0,lta_new=0.0,ltb_old=0.0,ltb_new=0.0;
+   double ch_lta_old=0.0,ch_lta_new=0.0,ch_ltb_old=0.0,ch_ltb_new=0.0;
+   bool draw_up=false,draw_down=false;
 
-   bool draw_up = m_draw_lta && trending_up;
-   bool draw_down = m_draw_ltb && trending_down;
+   // --- Calcula LTA com dois últimos pivôs de fundo ascendentes ---
+   if(ArraySize(m_pivot_lows)>=2)
+     {
+      int idx2=m_pivot_lows[0];          // pivô mais recente
+      int idx1=m_pivot_lows[1];          // pivô anterior
+      double low2=lows[idx2];
+      double low1=lows[idx1];
+      if(low2>low1)                      // ascendentes
+        {
+         double x1=bars-1-idx1;
+         double x2=bars-1-idx2;
+         m_lta_slope=(low2-low1)/(x2-x1);
+         m_lta_intercept=low1-m_lta_slope*x1;
+         lta_old=m_lta_intercept+m_lta_slope*(bars-1);
+         lta_new=m_lta_intercept;
+         m_lta_val=lta_new;
+         draw_up=m_draw_lta;
 
-   m_lta_val=draw_up?lta_new:0.0;
-   m_ltb_val=draw_down?ltb_new:0.0;
+         // calcula linha paralela passando pelo topo relevante
+         double max_high=-1.0; int idx_high=-1;
+         for(int k=0;k<ArraySize(m_pivot_highs);k++)
+           {
+            int ph=m_pivot_highs[k];
+            if(ph>=idx2 && ph<=idx1)
+              {
+               double hp=highs[ph];
+               if(hp>max_high){ max_high=hp; idx_high=ph; }
+              }
+           }
+         if(idx_high>=0)
+           {
+            double xh=bars-1-idx_high;
+            double inter=max_high-m_lta_slope*xh;
+            ch_lta_old=inter+m_lta_slope*(bars-1);
+            ch_lta_new=inter;
+            m_lta_stddev=ch_lta_new-lta_new; // distancia usada no channel
+           }
+        }
+     }
 
+   // --- Calcula LTB com dois últimos pivôs de topo descendentes ---
+   if(ArraySize(m_pivot_highs)>=2)
+     {
+      int idx2=m_pivot_highs[0];
+      int idx1=m_pivot_highs[1];
+      double high2=highs[idx2];
+      double high1=highs[idx1];
+      if(high2<high1)
+        {
+         double x1=bars-1-idx1;
+         double x2=bars-1-idx2;
+         m_ltb_slope=(high2-high1)/(x2-x1);
+         m_ltb_intercept=high1-m_ltb_slope*x1;
+         ltb_old=m_ltb_intercept+m_ltb_slope*(bars-1);
+         ltb_new=m_ltb_intercept;
+         m_ltb_val=ltb_new;
+         draw_down=m_draw_ltb;
+
+         double min_low=DBL_MAX; int idx_low=-1;
+         for(int k=0;k<ArraySize(m_pivot_lows);k++)
+           {
+            int pl=m_pivot_lows[k];
+            if(pl>=idx2 && pl<=idx1)
+              {
+               double lp=lows[pl];
+               if(lp<min_low){ min_low=lp; idx_low=pl; }
+              }
+           }
+         if(idx_low>=0)
+           {
+            double xl=bars-1-idx_low;
+            double inter=min_low-m_ltb_slope*xl;
+            ch_ltb_old=inter+m_ltb_slope*(bars-1);
+            ch_ltb_new=inter;
+            m_ltb_stddev=ltb_new-ch_ltb_new;
+           }
+        }
+     }
+
+   // --- Desenho das linhas principais ---
    if(draw_up)
       DrawLines(t_old,lta_old,t_new,lta_new,TRENDLINE_LTA);
    else if(ObjectFind(0,m_obj_lta)>=0)
-     {
-      ObjectDelete(0,m_obj_lta);
-      m_lta_val=0.0;
-     }
+        { ObjectDelete(0,m_obj_lta); m_lta_val=0.0; }
 
    if(draw_down)
       DrawLines(t_old,ltb_old,t_new,ltb_new,TRENDLINE_LTB);
    else if(ObjectFind(0,m_obj_ltb)>=0)
-     {
-      ObjectDelete(0,m_obj_ltb);
-      m_ltb_val=0.0;
-     }
+        { ObjectDelete(0,m_obj_ltb); m_ltb_val=0.0; }
 
+   // --- Desenho dos canais paralelos ---
    if(m_draw_channel)
      {
-      // LTA channel
-      if(draw_up)
+      if(draw_up && ch_lta_new!=0.0)
         {
          string obj=m_obj_lta_ch;
-         double ch_old=lta_old+m_lta_stddev;
-         double ch_new=lta_new+m_lta_stddev;
          bool ex=(ObjectFind(0,obj)>=0);
          if(!ex)
-            ObjectCreate(0,obj,OBJ_TREND,0,t_old,ch_old,t_new,ch_new);
+            ObjectCreate(0,obj,OBJ_TREND,0,t_old,ch_lta_old,t_new,ch_lta_new);
          else
            {
             datetime ot1=ObjectGetInteger(0,obj,OBJPROP_TIME,0);
             double   op1=ObjectGetDouble(0,obj,OBJPROP_PRICE,0);
             datetime ot2=ObjectGetInteger(0,obj,OBJPROP_TIME,1);
             double   op2=ObjectGetDouble(0,obj,OBJPROP_PRICE,1);
-            if(ot1!=t_old || op1!=ch_old)
-               ObjectMove(0,obj,0,t_old,ch_old);
-            if(ot2!=t_new || op2!=ch_new)
-               ObjectMove(0,obj,1,t_new,ch_new);
+            if(ot1!=t_old || op1!=ch_lta_old)
+               ObjectMove(0,obj,0,t_old,ch_lta_old);
+            if(ot2!=t_new || op2!=ch_lta_new)
+               ObjectMove(0,obj,1,t_new,ch_lta_new);
            }
          ObjectSetInteger(0,obj,OBJPROP_COLOR,m_channel_color);
          ObjectSetInteger(0,obj,OBJPROP_STYLE,m_channel_style);
@@ -406,29 +533,24 @@ bool CTrendLine::Update()
          ObjectSetInteger(0,obj,OBJPROP_RAY_RIGHT,m_extend_right);
         }
       else if(ObjectFind(0,m_obj_lta_ch)>=0)
-        {
-         ObjectDelete(0,m_obj_lta_ch);
-        }
+            ObjectDelete(0,m_obj_lta_ch);
 
-      // LTB channel
-      if(draw_down)
+      if(draw_down && ch_ltb_new!=0.0)
         {
          string obj=m_obj_ltb_ch;
-         double ch_old=ltb_old-m_ltb_stddev;
-         double ch_new=ltb_new-m_ltb_stddev;
          bool ex=(ObjectFind(0,obj)>=0);
          if(!ex)
-            ObjectCreate(0,obj,OBJ_TREND,0,t_old,ch_old,t_new,ch_new);
+            ObjectCreate(0,obj,OBJ_TREND,0,t_old,ch_ltb_old,t_new,ch_ltb_new);
          else
            {
             datetime ot3=ObjectGetInteger(0,obj,OBJPROP_TIME,0);
             double   op3=ObjectGetDouble(0,obj,OBJPROP_PRICE,0);
             datetime ot4=ObjectGetInteger(0,obj,OBJPROP_TIME,1);
             double   op4=ObjectGetDouble(0,obj,OBJPROP_PRICE,1);
-            if(ot3!=t_old || op3!=ch_old)
-               ObjectMove(0,obj,0,t_old,ch_old);
-            if(ot4!=t_new || op4!=ch_new)
-               ObjectMove(0,obj,1,t_new,ch_new);
+            if(ot3!=t_old || op3!=ch_ltb_old)
+               ObjectMove(0,obj,0,t_old,ch_ltb_old);
+            if(ot4!=t_new || op4!=ch_ltb_new)
+               ObjectMove(0,obj,1,t_new,ch_ltb_new);
            }
          ObjectSetInteger(0,obj,OBJPROP_COLOR,m_channel_color);
          ObjectSetInteger(0,obj,OBJPROP_STYLE,m_channel_style);
@@ -436,9 +558,7 @@ bool CTrendLine::Update()
          ObjectSetInteger(0,obj,OBJPROP_RAY_RIGHT,m_extend_right);
         }
       else if(ObjectFind(0,m_obj_ltb_ch)>=0)
-        {
-         ObjectDelete(0,m_obj_ltb_ch);
-        }
+            ObjectDelete(0,m_obj_ltb_ch);
      }
 
    if(CopyClose(m_symbol,m_alert_tf,0,2,m_closes)<=0)
