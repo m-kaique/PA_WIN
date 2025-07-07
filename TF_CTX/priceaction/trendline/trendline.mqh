@@ -323,10 +323,10 @@ void CTrendLine::DrawLines(datetime t1,double p1,datetime t2,double p2,ENUM_TREN
       ObjectCreate(0,name,OBJ_TREND,0,t1,p1,t2,p2);
    else
      {
-      datetime ct1=ObjectGetInteger(0,name,OBJPROP_TIME1);
-      double   cp1=ObjectGetDouble(0,name,OBJPROP_PRICE1);
-      datetime ct2=ObjectGetInteger(0,name,OBJPROP_TIME2);
-      double   cp2=ObjectGetDouble(0,name,OBJPROP_PRICE2);
+      datetime ct1=ObjectGetInteger(0,name,OBJPROP_TIME,0);
+      double   cp1=ObjectGetDouble(0,name,OBJPROP_PRICE,0);
+      datetime ct2=ObjectGetInteger(0,name,OBJPROP_TIME,1);
+      double   cp2=ObjectGetDouble(0,name,OBJPROP_PRICE,1);
       if(ct1!=t1 || cp1!=p1)
          ObjectMove(0,name,0,t1,p1);
       if(ct2!=t2 || cp2!=p2)
@@ -366,8 +366,8 @@ bool CTrendLine::Update()
      if(down[i]!=EMPTY_VALUE){ lo2=i; break; }
 
    m_ready=false;
-   datetime up_t1,up_t2,lo_t1,lo_t2;
-   double up_p1,up_p2,lo_p1,lo_p2;
+   datetime up_t1=0,up_t2=0,lo_t1=0,lo_t2=0;
+   double   up_p1=0.0,up_p2=0.0,lo_p1=0.0,lo_p2=0.0;
 
    if(up1>0 && up2>0)
      {
@@ -457,10 +457,10 @@ bool CTrendLine::Update()
          ObjectCreate(0,obj,OBJ_TREND,0,up_t2,ch2,up_t1,up_p1);
       else
         {
-         datetime ot1=ObjectGetInteger(0,obj,OBJPROP_TIME1);
-         double   op1=ObjectGetDouble(0,obj,OBJPROP_PRICE1);
-         datetime ot2=ObjectGetInteger(0,obj,OBJPROP_TIME2);
-         double   op2=ObjectGetDouble(0,obj,OBJPROP_PRICE2);
+         datetime ot1=ObjectGetInteger(0,obj,OBJPROP_TIME,0);
+         double   op1=ObjectGetDouble(0,obj,OBJPROP_PRICE,0);
+         datetime ot2=ObjectGetInteger(0,obj,OBJPROP_TIME,1);
+         double   op2=ObjectGetDouble(0,obj,OBJPROP_PRICE,1);
          if(ot1!=up_t2 || op1!=ch2)
             ObjectMove(0,obj,0,up_t2,ch2);
          if(ot2!=up_t1 || op2!=up_p1)
@@ -482,10 +482,10 @@ bool CTrendLine::Update()
          ObjectCreate(0,obj,OBJ_TREND,0,lo_t2,ch_lo,lo_t1,lo_p1);
       else
         {
-         datetime ot3=ObjectGetInteger(0,obj,OBJPROP_TIME1);
-         double   op3=ObjectGetDouble(0,obj,OBJPROP_PRICE1);
-         datetime ot4=ObjectGetInteger(0,obj,OBJPROP_TIME2);
-         double   op4=ObjectGetDouble(0,obj,OBJPROP_PRICE2);
+         datetime ot3=ObjectGetInteger(0,obj,OBJPROP_TIME,0);
+         double   op3=ObjectGetDouble(0,obj,OBJPROP_PRICE,0);
+         datetime ot4=ObjectGetInteger(0,obj,OBJPROP_TIME,1);
+         double   op4=ObjectGetDouble(0,obj,OBJPROP_PRICE,1);
          if(ot3!=lo_t2 || op3!=ch_lo)
             ObjectMove(0,obj,0,lo_t2,ch_lo);
          if(ot4!=lo_t1 || op4!=lo_p1)
@@ -535,35 +535,41 @@ ArraySetAsSeries(ct,true);
 
      if(m_show_labels)
        {
-        string text="LTA("+IntegerToString(m_lta_touches)+")";
-        if(ObjectFind(0,m_lbl_lta)<0)
-           ObjectCreate(0,m_lbl_lta,OBJ_TEXT,0,lo_t1,lo_p1);
-        else
+        if(lo_t1>0 && lo_p1!=0.0)
           {
-           datetime lt=ObjectGetInteger(0,m_lbl_lta,OBJPROP_TIME);
-           double   lp=ObjectGetDouble(0,m_lbl_lta,OBJPROP_PRICE);
-           if(lt!=lo_t1 || lp!=lo_p1)
-              ObjectMove(0,m_lbl_lta,0,lo_t1,lo_p1);
+           string text="LTA("+IntegerToString(m_lta_touches)+")";
+           if(ObjectFind(0,m_lbl_lta)<0)
+              ObjectCreate(0,m_lbl_lta,OBJ_TEXT,0,lo_t1,lo_p1);
+           else
+             {
+              datetime lt=(datetime)ObjectGetInteger(0,m_lbl_lta,OBJPROP_TIME);
+              double   lp=ObjectGetDouble(0,m_lbl_lta,OBJPROP_PRICE);
+              if(lt!=lo_t1 || lp!=lo_p1)
+                 ObjectMove(0,m_lbl_lta,0,lo_t1,lo_p1);
+             }
+           ObjectSetString(0,m_lbl_lta,OBJPROP_TEXT,text);
+           ObjectSetInteger(0,m_lbl_lta,OBJPROP_COLOR,m_labels_color);
+           ObjectSetInteger(0,m_lbl_lta,OBJPROP_FONTSIZE,m_labels_font_size);
+           ObjectSetString(0,m_lbl_lta,OBJPROP_FONT,m_labels_font);
           }
-        ObjectSetString(0,m_lbl_lta,OBJPROP_TEXT,text);
-        ObjectSetInteger(0,m_lbl_lta,OBJPROP_COLOR,m_labels_color);
-        ObjectSetInteger(0,m_lbl_lta,OBJPROP_FONTSIZE,m_labels_font_size);
-        ObjectSetString(0,m_lbl_lta,OBJPROP_FONT,m_labels_font);
 
-        text="LTB("+IntegerToString(m_ltb_touches)+")";
-        if(ObjectFind(0,m_lbl_ltb)<0)
-           ObjectCreate(0,m_lbl_ltb,OBJ_TEXT,0,up_t1,up_p1);
-        else
+        if(up_t1>0 && up_p1!=0.0)
           {
-           datetime lt2=ObjectGetInteger(0,m_lbl_ltb,OBJPROP_TIME);
-           double   lp2=ObjectGetDouble(0,m_lbl_ltb,OBJPROP_PRICE);
-           if(lt2!=up_t1 || lp2!=up_p1)
-              ObjectMove(0,m_lbl_ltb,0,up_t1,up_p1);
+           string text2="LTB("+IntegerToString(m_ltb_touches)+")";
+           if(ObjectFind(0,m_lbl_ltb)<0)
+              ObjectCreate(0,m_lbl_ltb,OBJ_TEXT,0,up_t1,up_p1);
+           else
+             {
+              datetime lt2=(datetime)ObjectGetInteger(0,m_lbl_ltb,OBJPROP_TIME);
+              double   lp2=ObjectGetDouble(0,m_lbl_ltb,OBJPROP_PRICE);
+              if(lt2!=up_t1 || lp2!=up_p1)
+                 ObjectMove(0,m_lbl_ltb,0,up_t1,up_p1);
+             }
+           ObjectSetString(0,m_lbl_ltb,OBJPROP_TEXT,text2);
+           ObjectSetInteger(0,m_lbl_ltb,OBJPROP_COLOR,m_labels_color);
+           ObjectSetInteger(0,m_lbl_ltb,OBJPROP_FONTSIZE,m_labels_font_size);
+           ObjectSetString(0,m_lbl_ltb,OBJPROP_FONT,m_labels_font);
           }
-        ObjectSetString(0,m_lbl_ltb,OBJPROP_TEXT,text);
-        ObjectSetInteger(0,m_lbl_ltb,OBJPROP_COLOR,m_labels_color);
-        ObjectSetInteger(0,m_lbl_ltb,OBJPROP_FONTSIZE,m_labels_font_size);
-        ObjectSetString(0,m_lbl_ltb,OBJPROP_FONT,m_labels_font);
        }
     }
   return m_ready;
