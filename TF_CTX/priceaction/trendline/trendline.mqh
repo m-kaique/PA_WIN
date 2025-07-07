@@ -8,6 +8,7 @@
 #include "../priceaction_base.mqh"
 #include "trendline_defs.mqh"
 #include "../../config_types.mqh"
+#include "../../utils/chart_utils.mqh"
 
 class CTrendLine : public CPriceActionBase
   {
@@ -224,19 +225,22 @@ bool CTrendLine::IsReady()
 //+------------------------------------------------------------------+
 void CTrendLine::DrawLines(datetime t1,double p1,datetime t2,double p2,ENUM_TRENDLINE_SIDE side)
   {
+   long chart_id=FindChartByTF(m_symbol,m_detail_tf);
+   if(chart_id==-1)
+      chart_id=0;
    string name=(side==TRENDLINE_LTA)?m_obj_lta:m_obj_ltb;
    color col=(side==TRENDLINE_LTA)?m_lta_color:m_ltb_color;
    ENUM_LINE_STYLE st=(side==TRENDLINE_LTA)?m_lta_style:m_ltb_style;
    int width=(side==TRENDLINE_LTA)?m_lta_width:m_ltb_width;
-   if(ObjectFind(0,name)<0)
-      ObjectCreate(0,name,OBJ_TREND,0,t1,p1,t2,p2);
+   if(ObjectFind(chart_id,name)<0)
+      ObjectCreate(chart_id,name,OBJ_TREND,0,t1,p1,t2,p2);
    else
-      ObjectMove(0,name,0,t1,p1);
-   ObjectMove(0,name,1,t2,p2);
-   ObjectSetInteger(0,name,OBJPROP_RAY_RIGHT,m_extend_right);
-   ObjectSetInteger(0,name,OBJPROP_COLOR,col);
-   ObjectSetInteger(0,name,OBJPROP_STYLE,st);
-   ObjectSetInteger(0,name,OBJPROP_WIDTH,width);
+      ObjectMove(chart_id,name,0,t1,p1);
+   ObjectMove(chart_id,name,1,t2,p2);
+   ObjectSetInteger(chart_id,name,OBJPROP_RAY_RIGHT,m_extend_right);
+   ObjectSetInteger(chart_id,name,OBJPROP_COLOR,col);
+   ObjectSetInteger(chart_id,name,OBJPROP_STYLE,st);
+   ObjectSetInteger(chart_id,name,OBJPROP_WIDTH,width);
   }
 
 //+------------------------------------------------------------------+
