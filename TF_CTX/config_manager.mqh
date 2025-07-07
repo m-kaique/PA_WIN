@@ -696,10 +696,21 @@ CPriceActionConfig *CConfigManager::CreatePriceActionConfig(CJAVal *pa, ENUM_TIM
         p.lta_width=(int)pa["lta_width"].ToInt();
         p.ltb_width=(int)pa["ltb_width"].ToInt();
         p.extend_right=pa["extend_right"].ToBool();
-        p.show_labels=pa["show_labels"].ToBool();
-        p.fractal_tf=StringToTimeframe(pa["fractal_tf"].ToStr());
-        p.detail_tf=StringToTimeframe(pa["detail_tf"].ToStr());
-        p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
+       p.show_labels=pa["show_labels"].ToBool();
+       p.fractal_tf=StringToTimeframe(pa["fractal_tf"].ToStr());
+       p.detail_tf=StringToTimeframe(pa["detail_tf"].ToStr());
+       p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
+       p.min_touches=(int)pa["min_touches"].ToInt();
+       p.touch_tolerance=pa["touch_tolerance"].ToDbl();
+       p.breakout_confirm_bars=(int)pa["breakout_confirm_bars"].ToInt();
+       p.draw_channel=pa["draw_channel"].ToBool();
+       p.channel_color=StringToColor(pa["channel_color"].ToStr());
+       p.channel_style=StringToLineStyle(pa["channel_style"].ToStr());
+       p.channel_width=(int)pa["channel_width"].ToInt();
+       p.detail_bars=(int)pa["detail_bars"].ToInt();
+       p.labels_color=StringToColor(pa["labels_color"].ToStr());
+       p.labels_font_size=(int)pa["labels_font_size"].ToInt();
+       p.labels_font=pa["labels_font"].ToStr();
 
         if(p.fractal_tf==PERIOD_CURRENT) p.fractal_tf=ctx_tf;
         if(p.detail_tf==PERIOD_CURRENT)  p.detail_tf=ctx_tf;

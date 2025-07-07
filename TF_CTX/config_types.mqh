@@ -153,8 +153,20 @@ public:
    bool   extend_right;
    bool   show_labels;
    ENUM_TIMEFRAMES fractal_tf;
-   ENUM_TIMEFRAMES detail_tf;
-   ENUM_TIMEFRAMES alert_tf;
+  ENUM_TIMEFRAMES detail_tf;
+  ENUM_TIMEFRAMES alert_tf;
+  // New configuration options
+  int    min_touches;          // minimum touches to validate a line
+  double touch_tolerance;      // tolerance in price units when counting touches
+  int    breakout_confirm_bars;// consecutive closes required for breakout
+  bool   draw_channel;         // draw parallel channel line
+  color  channel_color;
+  ENUM_LINE_STYLE channel_style;
+  int    channel_width;
+  int    detail_bars;          // bars to look ahead on detail timeframe
+  color  labels_color;
+  int    labels_font_size;
+  string labels_font;
   CTrendLineConfig()
     {
       period=20; left=3; right=3; draw_lta=true; draw_ltb=true;
@@ -162,6 +174,10 @@ public:
       lta_style=STYLE_SOLID; ltb_style=STYLE_SOLID;
       lta_width=1; ltb_width=1; extend_right=true; show_labels=false;
       fractal_tf=PERIOD_H4; detail_tf=PERIOD_H1; alert_tf=PERIOD_H1;
+      min_touches=2; touch_tolerance=0.0; breakout_confirm_bars=2;
+      draw_channel=false; channel_color=clrSilver;
+      channel_style=STYLE_DOT; channel_width=1; detail_bars=10;
+      labels_color=clrWhite; labels_font_size=8; labels_font="Arial";
     }
   };
 
