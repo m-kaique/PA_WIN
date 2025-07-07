@@ -256,7 +256,8 @@ bool CTrendLine::Update()
    if(CopyBuffer(m_fractal_handle,1,0,bars,down)<=0)
       return false;
 
-   int up1=-1,up2=-1,lo1=-1,lo2=-1;
+   int up1=-1,up2=-1;
+   int lo1=-1,lo2=-1;
    for(int i=m_left;i<bars;i++)
      if(up[i]!=EMPTY_VALUE){ up1=i; break; }
    for(int i=up1+1;i<bars;i++)
@@ -266,29 +267,55 @@ bool CTrendLine::Update()
    for(int i=lo1+1;i<bars;i++)
      if(down[i]!=EMPTY_VALUE){ lo2=i; break; }
 
+   bool uptrend=false, downtrend=false;
+   if(lo1>0 && lo2>0 && down[lo1]>down[lo2])
+      uptrend=true;            // dois fundos ascendentes
+   if(up1>0 && up2>0 && up[up1]<up[up2])
+      downtrend=true;          // dois topos descendentes
+
    m_ready=false;
-   if(up1>0 && up2>0)
+   if(uptrend)
      {
-      datetime t1=iTime(m_symbol,m_fractal_tf,up1);
-      datetime t2=iTime(m_symbol,m_fractal_tf,up2);
-      double p1=up[up1];
-      double p2=up[up2];
-      m_ltb_val=p1 + (p1-p2)/(t1-t2)*(t1-iTime(m_symbol,m_fractal_tf,0));
-      if(m_draw_ltb)
-         DrawLines(t2,p2,t1,p1,TRENDLINE_LTB);
+      datetime t_recent=iTime(m_symbol,m_fractal_tf,lo1);
+      datetime t_prev  =iTime(m_symbol,m_fractal_tf,lo2);
+      double   p_recent=down[lo1];
+      double   p_prev  =down[lo2];
+      m_lta_val=p_recent + (p_recent-p_prev)/(t_recent-t_prev)*(t_recent-iTime(m_symbol,m_fractal_tf,0));
+      if(m_draw_lta)
+         DrawLines(t_prev,p_prev,t_recent,p_recent,TRENDLINE_LTA);
+      if(m_draw_ltb && ObjectFind(0,m_obj_ltb)>=0)
+         ObjectDelete(0,m_obj_ltb);
+      m_ltb_val=0.0;
       m_ready=true;
      }
-  if(lo1>0 && lo2>0)
-    {
-      datetime t1=iTime(m_symbol,m_fractal_tf,lo1);
-      datetime t2=iTime(m_symbol,m_fractal_tf,lo2);
-      double p1=down[lo1];
-      double p2=down[lo2];
-      m_lta_val=p1 + (p1-p2)/(t1-t2)*(t1-iTime(m_symbol,m_fractal_tf,0));
-      if(m_draw_lta)
-         DrawLines(t2,p2,t1,p1,TRENDLINE_LTA);
+   else if(downtrend)
+     {
+      datetime t_recent=iTime(m_symbol,m_fractal_tf,up1);
+      datetime t_prev  =iTime(m_symbol,m_fractal_tf,up2);
+      double   p_recent=up[up1];
+      double   p_prev  =up[up2];
+      m_ltb_val=p_recent + (p_recent-p_prev)/(t_recent-t_prev)*(t_recent-iTime(m_symbol,m_fractal_tf,0));
+      if(m_draw_ltb)
+         DrawLines(t_prev,p_prev,t_recent,p_recent,TRENDLINE_LTB);
+      if(m_draw_lta && ObjectFind(0,m_obj_lta)>=0)
+         ObjectDelete(0,m_obj_lta);
+      m_lta_val=0.0;
       m_ready=true;
-    }
+     }
+   else
+     {
+      datetime now=iTime(m_symbol,m_fractal_tf,0);
+      if(ObjectFind(0,m_obj_lta)>=0)
+        {
+         m_lta_val=ObjectGetValueByTime(0,m_obj_lta,now);
+         m_ready=true;
+        }
+      if(ObjectFind(0,m_obj_ltb)>=0)
+        {
+         m_ltb_val=ObjectGetValueByTime(0,m_obj_ltb,now);
+         m_ready=true;
+        }
+     }
 
 
 datetime ct[];
@@ -299,13 +326,29 @@ ArraySetAsSeries(ct, true);
   if(CopyClose(m_symbol,m_alert_tf,0,2,m_closes)>0 &&
      CopyTime(m_symbol,m_alert_tf,0,2,ct)>0)
     {
-     double sup=ObjectGetValueByTime(0,m_obj_lta,ct[1]);
-     double res=ObjectGetValueByTime(0,m_obj_ltb,ct[1]);
-     m_breakdown=(m_closes[1]<sup);
-     m_breakup=(m_closes[1]>res);
+     double sup=0.0,res=0.0;
+     if(ObjectFind(0,m_obj_lta)>=0)
+        sup=ObjectGetValueByTime(0,m_obj_lta,ct[1]);
+     if(ObjectFind(0,m_obj_ltb)>=0)
+        res=ObjectGetValueByTime(0,m_obj_ltb,ct[1]);
+     m_breakdown=(sup!=0.0 && m_closes[1]<sup);
+     m_breakup=(res!=0.0 && m_closes[1]>res);
+
+     if(m_breakdown && ObjectFind(0,m_obj_lta)>=0)
+       {
+        ObjectDelete(0,m_obj_lta);
+        m_lta_val=0.0;
+        m_ready=(ObjectFind(0,m_obj_ltb)>=0);
+       }
+     if(m_breakup && ObjectFind(0,m_obj_ltb)>=0)
+       {
+        ObjectDelete(0,m_obj_ltb);
+        m_ltb_val=0.0;
+        m_ready=(ObjectFind(0,m_obj_lta)>=0);
+       }
     }
   return m_ready;
- }
+}
 
 //+------------------------------------------------------------------+
 //| LTA value                                                         |
