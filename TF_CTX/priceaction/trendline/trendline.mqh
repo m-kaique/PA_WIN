@@ -27,9 +27,9 @@ private:
    int             m_ltb_width;
    bool            m_extend_right;
   bool            m_show_labels;
-  ENUM_TIMEFRAMES m_fractal_tf;
-  ENUM_TIMEFRAMES m_detail_tf;
-  ENUM_TIMEFRAMES m_alert_tf;
+   ENUM_TIMEFRAMES m_fractal_tf;
+   ENUM_TIMEFRAMES m_detail_tf;
+   ENUM_TIMEFRAMES m_alert_tf;
   bool            m_breakdown;
   bool            m_breakup;
 
@@ -67,10 +67,20 @@ private:
   double          m_opens[];
   double          m_closes[];
 
+  // regression parameters
+  double          m_lta_slope;
+  double          m_lta_intercept;
+  double          m_lta_stddev;
+  double          m_ltb_slope;
+  double          m_ltb_intercept;
+  double          m_ltb_stddev;
+
    bool            CreateHandle();
    void            ReleaseHandle();
-   void            DrawLines(datetime t1,double p1,datetime t2,double p2,
+  void            DrawLines(datetime t1,double p1,datetime t2,double p2,
                              ENUM_TRENDLINE_SIDE side);
+  void            CalculateRegression(const double &vals[],int bars,double &slope,
+                                      double &intercept,double &stdev);
 
 public:
                      CTrendLine();
@@ -193,8 +203,8 @@ CTrendLine::~CTrendLine()
 //+------------------------------------------------------------------+
 bool CTrendLine::CreateHandle()
   {
-  m_fractal_handle=iFractals(m_symbol,m_fractal_tf);
-   return(m_fractal_handle!=INVALID_HANDLE);
+   m_fractal_handle=INVALID_HANDLE;
+   return true;
   }
 
 //+------------------------------------------------------------------+
@@ -306,7 +316,7 @@ bool CTrendLine::CopyValues(int shift,int count,double &buffer[])
 //+------------------------------------------------------------------+
 bool CTrendLine::IsReady()
   {
-   return(m_fractal_handle!=INVALID_HANDLE && m_ready);
+   return m_ready;
   }
 
 //+------------------------------------------------------------------+
@@ -335,7 +345,41 @@ void CTrendLine::DrawLines(datetime t1,double p1,datetime t2,double p2,ENUM_TREN
    ObjectSetInteger(0,name,OBJPROP_RAY_RIGHT,m_extend_right);
    ObjectSetInteger(0,name,OBJPROP_COLOR,col);
    ObjectSetInteger(0,name,OBJPROP_STYLE,st);
-   ObjectSetInteger(0,name,OBJPROP_WIDTH,width);
+  ObjectSetInteger(0,name,OBJPROP_WIDTH,width);
+  }
+
+//+------------------------------------------------------------------+
+//| Calculate linear regression parameters                            |
+//+------------------------------------------------------------------+
+void CTrendLine::CalculateRegression(const double &vals[],int bars,double &slope,
+                                     double &intercept,double &stdev)
+  {
+   double sumx=0.0,sumy=0.0,sumxx=0.0,sumxy=0.0;
+   for(int i=0;i<bars;i++)
+     {
+      double x=bars-1-i;
+      double y=vals[i];
+      sumx+=x;
+      sumy+=y;
+      sumxx+=x*x;
+      sumxy+=x*y;
+     }
+   double denom=bars*sumxx-sumx*sumx;
+   if(denom!=0.0)
+      slope=(bars*sumxy-sumx*sumy)/denom;
+   else
+      slope=0.0;
+   intercept=(sumy-slope*sumx)/bars;
+
+   double res2=0.0;
+   for(int j=0;j<bars;j++)
+     {
+      double x=bars-1-j;
+      double pred=intercept+slope*x;
+      double r=vals[j]-pred;
+      res2+=r*r;
+     }
+   stdev=MathSqrt(res2/bars);
   }
 
 //+------------------------------------------------------------------+
@@ -343,153 +387,79 @@ void CTrendLine::DrawLines(datetime t1,double p1,datetime t2,double p2,ENUM_TREN
 //+------------------------------------------------------------------+
 bool CTrendLine::Update()
   {
-   if(m_fractal_handle==INVALID_HANDLE)
-      return false;
-
    int bars=m_period>0?m_period:50;
-   double up[],down[];
-   ArraySetAsSeries(up,true);
-   ArraySetAsSeries(down,true);
-   if(CopyBuffer(m_fractal_handle,0,0,bars,up)<=0)
-      return false;
-   if(CopyBuffer(m_fractal_handle,1,0,bars,down)<=0)
-      return false;
 
-   int up1=-1,up2=-1,lo1=-1,lo2=-1;
-   for(int i=m_left;i<bars;i++)
-     if(up[i]!=EMPTY_VALUE){ up1=i; break; }
-   for(int i=up1+1;i<bars;i++)
-     if(up[i]!=EMPTY_VALUE){ up2=i; break; }
-   for(int i=m_left;i<bars;i++)
-     if(down[i]!=EMPTY_VALUE){ lo1=i; break; }
-   for(int i=lo1+1;i<bars;i++)
-     if(down[i]!=EMPTY_VALUE){ lo2=i; break; }
+   double highs_reg[],lows_reg[];
+   datetime times_reg[];
+   ArraySetAsSeries(highs_reg,true);
+   ArraySetAsSeries(lows_reg,true);
+   ArraySetAsSeries(times_reg,true);
 
-   m_ready=false;
-   datetime up_t1=0,up_t2=0,lo_t1=0,lo_t2=0;
-   double   up_p1=0.0,up_p2=0.0,lo_p1=0.0,lo_p2=0.0;
+   if(CopyHigh(m_symbol,m_timeframe,0,bars,highs_reg)<=0)
+      return m_ready;
+   if(CopyLow(m_symbol,m_timeframe,0,bars,lows_reg)<=0)
+      return m_ready;
+   if(CopyTime(m_symbol,m_timeframe,0,bars,times_reg)<=0)
+      return m_ready;
 
-   if(up1>0 && up2>0)
+   CalculateRegression(lows_reg,bars,m_lta_slope,m_lta_intercept,m_lta_stddev);
+   CalculateRegression(highs_reg,bars,m_ltb_slope,m_ltb_intercept,m_ltb_stddev);
+
+   datetime t_old=times_reg[bars-1];
+   datetime t_new=times_reg[0];
+   double lta_old=m_lta_intercept;
+   double lta_new=m_lta_intercept+m_lta_slope*(bars-1);
+   double ltb_old=m_ltb_intercept;
+   double ltb_new=m_ltb_intercept+m_ltb_slope*(bars-1);
+
+   m_lta_val=lta_new;
+   m_ltb_val=ltb_new;
+
+   if(m_draw_lta)
+      DrawLines(t_old,lta_old,t_new,lta_new,TRENDLINE_LTA);
+   if(m_draw_ltb)
+      DrawLines(t_old,ltb_old,t_new,ltb_new,TRENDLINE_LTB);
+
+   if(m_draw_channel)
      {
-      up_t1=iTime(m_symbol,m_fractal_tf,up1);
-      up_t2=iTime(m_symbol,m_fractal_tf,up2);
-      up_p1=up[up1];
-      up_p2=up[up2];
-      if(m_detail_bars>0)
-        {
-         int start1=iBarShift(m_symbol,m_detail_tf,up_t1,true);
-         int start2=iBarShift(m_symbol,m_detail_tf,up_t2,true);
-         if(start1>=0 && start2>=0)
-           {
-            double h1[],h2[]; datetime ht1[],ht2[];
-            ArraySetAsSeries(h1,true); ArraySetAsSeries(h2,true);
-            ArraySetAsSeries(ht1,true); ArraySetAsSeries(ht2,true);
-            if(CopyHigh(m_symbol,m_detail_tf,start1,m_detail_bars,h1)>0 &&
-               CopyTime(m_symbol,m_detail_tf,start1,m_detail_bars,ht1)>0)
-               {
-                int idx=ArrayMaximum(h1);
-                if(idx>=0 && idx<ArraySize(ht1)) { up_p1=h1[idx]; up_t1=ht1[idx]; }
-               }
-            if(CopyHigh(m_symbol,m_detail_tf,start2,m_detail_bars,h2)>0 &&
-               CopyTime(m_symbol,m_detail_tf,start2,m_detail_bars,ht2)>0)
-               {
-                int idx=ArrayMaximum(h2);
-                if(idx>=0 && idx<ArraySize(ht2)) { up_p2=h2[idx]; up_t2=ht2[idx]; }
-               }
-           }
-        }
-      if(up_t1!=up_t2)
-         m_ltb_val=up_p1 + (up_p1-up_p2)/(up_t1-up_t2)*(up_t1-iTime(m_symbol,m_fractal_tf,0));
-      else
-         m_ltb_val=up_p1;
-      if(m_draw_ltb)
-         DrawLines(up_t2,up_p2,up_t1,up_p1,TRENDLINE_LTB);
-      m_ready=true;
-     }
-   if(lo1>0 && lo2>0)
-     {
-      lo_t1=iTime(m_symbol,m_fractal_tf,lo1);
-      lo_t2=iTime(m_symbol,m_fractal_tf,lo2);
-      lo_p1=down[lo1];
-      lo_p2=down[lo2];
-      if(m_detail_bars>0)
-        {
-         int start1=iBarShift(m_symbol,m_detail_tf,lo_t1,true);
-         int start2=iBarShift(m_symbol,m_detail_tf,lo_t2,true);
-         if(start1>=0 && start2>=0)
-           {
-            double l1[],l2[]; datetime lt1[],lt2[];
-            ArraySetAsSeries(l1,true); ArraySetAsSeries(l2,true);
-            ArraySetAsSeries(lt1,true); ArraySetAsSeries(lt2,true);
-            if(CopyLow(m_symbol,m_detail_tf,start1,m_detail_bars,l1)>0 &&
-               CopyTime(m_symbol,m_detail_tf,start1,m_detail_bars,lt1)>0)
-               {
-                int idx=ArrayMinimum(l1);
-                if(idx>=0 && idx<ArraySize(lt1)) { lo_p1=l1[idx]; lo_t1=lt1[idx]; }
-               }
-            if(CopyLow(m_symbol,m_detail_tf,start2,m_detail_bars,l2)>0 &&
-               CopyTime(m_symbol,m_detail_tf,start2,m_detail_bars,lt2)>0)
-               {
-                int idx=ArrayMinimum(l2);
-                if(idx>=0 && idx<ArraySize(lt2)) { lo_p2=l2[idx]; lo_t2=lt2[idx]; }
-               }
-           }
-        }
-      if(lo_t1!=lo_t2)
-         m_lta_val=lo_p1 + (lo_p1-lo_p2)/(lo_t1-lo_t2)*(lo_t1-iTime(m_symbol,m_fractal_tf,0));
-      else
-         m_lta_val=lo_p1;
-      if(m_draw_lta)
-         DrawLines(lo_t2,lo_p2,lo_t1,lo_p1,TRENDLINE_LTA);
-      m_ready=true;
-     }
-
-   if(m_draw_channel && up1>0 && up2>0 && lo1>0 && lo2>0)
-     {
-      double slope_lta=0.0;
-      if(lo_t1!=lo_t2)
-         slope_lta=(lo_p1-lo_p2)/(lo_t1-lo_t2);
-      double inter_up=up_p1 - slope_lta*up_t1;
-      double ch2=slope_lta*up_t2 + inter_up;
       string obj=m_obj_lta_ch;
+      double ch_old=lta_old+m_lta_stddev;
+      double ch_new=lta_new+m_lta_stddev;
       bool ex=(ObjectFind(0,obj)>=0);
       if(!ex)
-         ObjectCreate(0,obj,OBJ_TREND,0,up_t2,ch2,up_t1,up_p1);
+         ObjectCreate(0,obj,OBJ_TREND,0,t_old,ch_old,t_new,ch_new);
       else
         {
          datetime ot1=ObjectGetInteger(0,obj,OBJPROP_TIME,0);
          double   op1=ObjectGetDouble(0,obj,OBJPROP_PRICE,0);
          datetime ot2=ObjectGetInteger(0,obj,OBJPROP_TIME,1);
          double   op2=ObjectGetDouble(0,obj,OBJPROP_PRICE,1);
-         if(ot1!=up_t2 || op1!=ch2)
-            ObjectMove(0,obj,0,up_t2,ch2);
-         if(ot2!=up_t1 || op2!=up_p1)
-            ObjectMove(0,obj,1,up_t1,up_p1);
+         if(ot1!=t_old || op1!=ch_old)
+            ObjectMove(0,obj,0,t_old,ch_old);
+         if(ot2!=t_new || op2!=ch_new)
+            ObjectMove(0,obj,1,t_new,ch_new);
         }
       ObjectSetInteger(0,obj,OBJPROP_COLOR,m_channel_color);
       ObjectSetInteger(0,obj,OBJPROP_STYLE,m_channel_style);
       ObjectSetInteger(0,obj,OBJPROP_WIDTH,m_channel_width);
       ObjectSetInteger(0,obj,OBJPROP_RAY_RIGHT,m_extend_right);
 
-      double slope_ltb=0.0;
-      if(up_t1!=up_t2)
-         slope_ltb=(up_p1-up_p2)/(up_t1-up_t2);
-      double inter_lo=lo_p1 - slope_ltb*lo_t1;
-      double ch_lo=slope_ltb*lo_t2 + inter_lo;
       obj=m_obj_ltb_ch;
+      ch_old=ltb_old-m_ltb_stddev;
+      ch_new=ltb_new-m_ltb_stddev;
       ex=(ObjectFind(0,obj)>=0);
       if(!ex)
-         ObjectCreate(0,obj,OBJ_TREND,0,lo_t2,ch_lo,lo_t1,lo_p1);
+         ObjectCreate(0,obj,OBJ_TREND,0,t_old,ch_old,t_new,ch_new);
       else
         {
          datetime ot3=ObjectGetInteger(0,obj,OBJPROP_TIME,0);
          double   op3=ObjectGetDouble(0,obj,OBJPROP_PRICE,0);
          datetime ot4=ObjectGetInteger(0,obj,OBJPROP_TIME,1);
          double   op4=ObjectGetDouble(0,obj,OBJPROP_PRICE,1);
-         if(ot3!=lo_t2 || op3!=ch_lo)
-            ObjectMove(0,obj,0,lo_t2,ch_lo);
-         if(ot4!=lo_t1 || op4!=lo_p1)
-            ObjectMove(0,obj,1,lo_t1,lo_p1);
+         if(ot3!=t_old || op3!=ch_old)
+            ObjectMove(0,obj,0,t_old,ch_old);
+         if(ot4!=t_new || op4!=ch_new)
+            ObjectMove(0,obj,1,t_new,ch_new);
         }
       ObjectSetInteger(0,obj,OBJPROP_COLOR,m_channel_color);
       ObjectSetInteger(0,obj,OBJPROP_STYLE,m_channel_style);
@@ -497,10 +467,9 @@ bool CTrendLine::Update()
       ObjectSetInteger(0,obj,OBJPROP_RAY_RIGHT,m_extend_right);
      }
 
-
-datetime ct[];
-ArrayResize(ct,2);
-ArraySetAsSeries(ct,true);
+   datetime ct[];
+   ArrayResize(ct,2);
+   ArraySetAsSeries(ct,true);
 
   if(CopyHigh(m_symbol,m_alert_tf,0,2,m_highs)<=0)
      return m_ready;
@@ -511,83 +480,70 @@ ArraySetAsSeries(ct,true);
   if(CopyTime(m_symbol,m_alert_tf,0,2,ct)<=0)
      return m_ready;
 
-  if(ObjectFind(0,m_obj_lta)>=0 && ObjectFind(0,m_obj_ltb)>=0)
+  double sup=GetLTAValue(1);
+  double res=GetLTBValue(1);
+
+  if(m_highs[1]>=sup-m_touch_tolerance && m_lows[1]<=sup+m_touch_tolerance)
+     m_lta_touches++;
+  if(m_highs[1]>=res-m_touch_tolerance && m_lows[1]<=res+m_touch_tolerance)
+     m_ltb_touches++;
+
+  if(m_closes[1]<sup)
+     m_breakdown_count++;
+  else
+     m_breakdown_count=0;
+  if(m_closes[1]>res)
+     m_breakup_count++;
+  else
+     m_breakup_count=0;
+
+  m_breakdown=(m_breakdown_count>=m_breakout_confirm_bars);
+  m_breakup=(m_breakup_count>=m_breakout_confirm_bars);
+
+  if(m_show_labels)
     {
-     double sup=ObjectGetValueByTime(0,m_obj_lta,ct[1]);
-     double res=ObjectGetValueByTime(0,m_obj_ltb,ct[1]);
-
-     if(m_highs[1]>=sup-m_touch_tolerance && m_lows[1]<=sup+m_touch_tolerance)
-        m_lta_touches++;
-     if(m_highs[1]>=res-m_touch_tolerance && m_lows[1]<=res+m_touch_tolerance)
-        m_ltb_touches++;
-
-     if(m_closes[1]<sup)
-        m_breakdown_count++;
+     string text="LTA("+IntegerToString(m_lta_touches)+")";
+     if(ObjectFind(0,m_lbl_lta)<0)
+        ObjectCreate(0,m_lbl_lta,OBJ_TEXT,0,t_new,lta_new);
      else
-        m_breakdown_count=0;
-     if(m_closes[1]>res)
-        m_breakup_count++;
-     else
-        m_breakup_count=0;
-
-     m_breakdown=(m_breakdown_count>=m_breakout_confirm_bars);
-     m_breakup=(m_breakup_count>=m_breakout_confirm_bars);
-
-     if(m_show_labels)
        {
-        if(lo_t1>0 && lo_p1!=0.0)
-          {
-           string text="LTA("+IntegerToString(m_lta_touches)+")";
-           if(ObjectFind(0,m_lbl_lta)<0)
-              ObjectCreate(0,m_lbl_lta,OBJ_TEXT,0,lo_t1,lo_p1);
-           else
-             {
-              datetime lt=(datetime)ObjectGetInteger(0,m_lbl_lta,OBJPROP_TIME);
-              double   lp=ObjectGetDouble(0,m_lbl_lta,OBJPROP_PRICE);
-              if(lt!=lo_t1 || lp!=lo_p1)
-                 ObjectMove(0,m_lbl_lta,0,lo_t1,lo_p1);
-             }
-           ObjectSetString(0,m_lbl_lta,OBJPROP_TEXT,text);
-           ObjectSetInteger(0,m_lbl_lta,OBJPROP_COLOR,m_labels_color);
-           ObjectSetInteger(0,m_lbl_lta,OBJPROP_FONTSIZE,m_labels_font_size);
-           ObjectSetString(0,m_lbl_lta,OBJPROP_FONT,m_labels_font);
-          }
-
-        if(up_t1>0 && up_p1!=0.0)
-          {
-           string text2="LTB("+IntegerToString(m_ltb_touches)+")";
-           if(ObjectFind(0,m_lbl_ltb)<0)
-              ObjectCreate(0,m_lbl_ltb,OBJ_TEXT,0,up_t1,up_p1);
-           else
-             {
-              datetime lt2=(datetime)ObjectGetInteger(0,m_lbl_ltb,OBJPROP_TIME);
-              double   lp2=ObjectGetDouble(0,m_lbl_ltb,OBJPROP_PRICE);
-              if(lt2!=up_t1 || lp2!=up_p1)
-                 ObjectMove(0,m_lbl_ltb,0,up_t1,up_p1);
-             }
-           ObjectSetString(0,m_lbl_ltb,OBJPROP_TEXT,text2);
-           ObjectSetInteger(0,m_lbl_ltb,OBJPROP_COLOR,m_labels_color);
-           ObjectSetInteger(0,m_lbl_ltb,OBJPROP_FONTSIZE,m_labels_font_size);
-           ObjectSetString(0,m_lbl_ltb,OBJPROP_FONT,m_labels_font);
-          }
+        datetime lt=(datetime)ObjectGetInteger(0,m_lbl_lta,OBJPROP_TIME);
+        double   lp=ObjectGetDouble(0,m_lbl_lta,OBJPROP_PRICE);
+        if(lt!=t_new || lp!=lta_new)
+           ObjectMove(0,m_lbl_lta,0,t_new,lta_new);
        }
+     ObjectSetString(0,m_lbl_lta,OBJPROP_TEXT,text);
+     ObjectSetInteger(0,m_lbl_lta,OBJPROP_COLOR,m_labels_color);
+     ObjectSetInteger(0,m_lbl_lta,OBJPROP_FONTSIZE,m_labels_font_size);
+     ObjectSetString(0,m_lbl_lta,OBJPROP_FONT,m_labels_font);
+
+     string text2="LTB("+IntegerToString(m_ltb_touches)+")";
+     if(ObjectFind(0,m_lbl_ltb)<0)
+        ObjectCreate(0,m_lbl_ltb,OBJ_TEXT,0,t_new,ltb_new);
+     else
+       {
+        datetime lt2=(datetime)ObjectGetInteger(0,m_lbl_ltb,OBJPROP_TIME);
+        double   lp2=ObjectGetDouble(0,m_lbl_ltb,OBJPROP_PRICE);
+        if(lt2!=t_new || lp2!=ltb_new)
+           ObjectMove(0,m_lbl_ltb,0,t_new,ltb_new);
+       }
+     ObjectSetString(0,m_lbl_ltb,OBJPROP_TEXT,text2);
+     ObjectSetInteger(0,m_lbl_ltb,OBJPROP_COLOR,m_labels_color);
+     ObjectSetInteger(0,m_lbl_ltb,OBJPROP_FONTSIZE,m_labels_font_size);
+     ObjectSetString(0,m_lbl_ltb,OBJPROP_FONT,m_labels_font);
     }
+  m_ready=true;
   return m_ready;
- }
+}
 
 //+------------------------------------------------------------------+
 //| LTA value                                                         |
 //+------------------------------------------------------------------+
 double CTrendLine::GetLTAValue(int shift)
   {
-   if(shift==0)
-      return m_lta_val;
-   datetime t=iTime(m_symbol,m_alert_tf,shift);
-   if(t==0) return 0.0;
-   double val=0.0;
-   if(ObjectFind(0,m_obj_lta)>=0)
-      val=ObjectGetValueByTime(0,m_obj_lta,t);
-   return val;
+   int bars=m_period>0?m_period:50;
+   double x=bars-1-shift;
+   return m_lta_intercept+m_lta_slope*x;
   }
 
 //+------------------------------------------------------------------+
@@ -595,14 +551,9 @@ double CTrendLine::GetLTAValue(int shift)
 //+------------------------------------------------------------------+
 double CTrendLine::GetLTBValue(int shift)
   {
-   if(shift==0)
-      return m_ltb_val;
-   datetime t=iTime(m_symbol,m_alert_tf,shift);
-   if(t==0) return 0.0;
-   double val=0.0;
-   if(ObjectFind(0,m_obj_ltb)>=0)
-      val=ObjectGetValueByTime(0,m_obj_ltb,t);
-   return val;
+   int bars=m_period>0?m_period:50;
+   double x=bars-1-shift;
+   return m_ltb_intercept+m_ltb_slope*x;
   }
 
 //+------------------------------------------------------------------+
