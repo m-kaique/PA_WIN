@@ -16,12 +16,13 @@ private:
    string          m_symbol;
    ENUM_TIMEFRAMES m_tf;
    int             m_lookback;
-   datetime        m_last_bar;
-   bool            m_ready;
+  datetime        m_last_bar;
+  bool            m_ready;
+  string          m_last_summary;
 
    void   AddLevel(SAnalysisLevel &levels[],double price,double tolerance);
    void   DetectLevels(const double &values[],int bars,double tolerance,SAnalysisLevel &out[]);
-   void   PrintLevels(string title,SAnalysisLevel &levels[]);
+   string LevelsToString(string title,SAnalysisLevel &levels[]);
    string FormatPrice(double price);
 
 public:
@@ -32,8 +33,10 @@ public:
    virtual bool    Init(string symbol,ENUM_TIMEFRAMES timeframe,int period);
    virtual double  GetValue(int shift=0);
    virtual bool    CopyValues(int shift,int count,double &buffer[]);
-   virtual bool    Update();
-   virtual bool    IsReady();
+  virtual bool    Update();
+  virtual bool    IsReady();
+  string          GetSummary();
+  void            PrintSummary();
   };
 
 
@@ -43,10 +46,11 @@ public:
 CD1Analysis::CD1Analysis()
   {
    m_symbol="";
-   m_tf=PERIOD_D1;
-   m_lookback=50;
-   m_last_bar=0;
-   m_ready=false;
+  m_tf=PERIOD_D1;
+  m_lookback=50;
+  m_last_bar=0;
+  m_ready=false;
+  m_last_summary="";
   }
 
 //+------------------------------------------------------------------+
@@ -94,15 +98,15 @@ void CD1Analysis::DetectLevels(const double &values[],int bars,double tolerance,
   }
 
 //+------------------------------------------------------------------+
-//| Print levels helper                                               |
+//| Levels to string helper                                           |
 //+------------------------------------------------------------------+
-void CD1Analysis::PrintLevels(string title,SAnalysisLevel &levels[])
+string CD1Analysis::LevelsToString(string title,SAnalysisLevel &levels[])
   {
    string msg=title+":";
    for(int i=0;i<ArraySize(levels);i++)
       if(levels[i].count>=2)
          msg+=" "+FormatPrice(levels[i].price)+"("+IntegerToString(levels[i].count)+")";
-   Print(msg);
+   return msg;
   }
 
 //+------------------------------------------------------------------+
@@ -112,10 +116,11 @@ bool CD1Analysis::Init(string symbol,ENUM_TIMEFRAMES timeframe,CD1AnalysisConfig
   {
    m_symbol=symbol;
    m_tf=timeframe;
-   m_lookback=cfg.lookback>0?cfg.lookback:50;
-   m_last_bar=0;
-   m_ready=true;
-   return true;
+  m_lookback=cfg.lookback>0?cfg.lookback:50;
+  m_last_bar=0;
+  m_ready=true;
+  m_last_summary="";
+  return true;
   }
 
 bool CD1Analysis::Init(string symbol,ENUM_TIMEFRAMES timeframe,int period)
@@ -141,6 +146,17 @@ bool CD1Analysis::IsReady()
    return m_ready;
   }
 
+string CD1Analysis::GetSummary()
+  {
+   return m_last_summary;
+  }
+
+void CD1Analysis::PrintSummary()
+  {
+   if(m_last_summary!="")
+      Print(m_last_summary);
+  }
+
 //+------------------------------------------------------------------+
 //| Main update - executed on new D1 bar                              |
 //+------------------------------------------------------------------+
@@ -151,7 +167,6 @@ bool CD1Analysis::Update()
       return true;
    m_last_bar=t;
 
-   Print("=== D1 Analysis ",TimeToString(m_last_bar,TIME_DATE)," ===");
 
    double highs[];
    double lows[];
@@ -186,19 +201,20 @@ bool CD1Analysis::Update()
    SAnalysisLevel lows_lvls[];
    DetectLevels(lows,m_lookback,tolerance,lows_lvls);
 
-   Print("Tendencia D1: ",trend);
-   Print("Fibonacci 23.6: ",FormatPrice(fib23)," 38.2: ",FormatPrice(fib38)," 50: ",FormatPrice(fib50)," 61.8: ",FormatPrice(fib61));
-   PrintLevels("Resistencias",levels);
-   PrintLevels("Suportes",lows_lvls);
+   m_last_summary="=== D1 Analysis "+TimeToString(m_last_bar,TIME_DATE)+" ===\n";
+   m_last_summary+="Tendencia D1: "+trend+"\n";
+   m_last_summary+="Fibonacci 23.6: "+FormatPrice(fib23)+" 38.2: "+FormatPrice(fib38)+" 50: "+FormatPrice(fib50)+" 61.8: "+FormatPrice(fib61)+"\n";
+   m_last_summary+=LevelsToString("Resistencias",levels)+"\n";
+   m_last_summary+=LevelsToString("Suportes",lows_lvls)+"\n";
 
    double close1=iClose(m_symbol,m_tf,1);
    double close0=iClose(m_symbol,m_tf,0);
    for(int i=0;i<ArraySize(levels);i++)
      if(levels[i].count>=2 && close1>levels[i].price && close0>levels[i].price)
-        Print("Resistencia ",FormatPrice(levels[i].price)," virou suporte (inversao)");
+        m_last_summary+="Resistencia "+FormatPrice(levels[i].price)+" virou suporte (inversao)\n";
    for(int i=0;i<ArraySize(lows_lvls);i++)
      if(lows_lvls[i].count>=2 && close1<lows_lvls[i].price && close0<lows_lvls[i].price)
-        Print("Suporte ",FormatPrice(lows_lvls[i].price)," virou resistencia (inversao)");
+        m_last_summary+="Suporte "+FormatPrice(lows_lvls[i].price)+" virou resistencia (inversao)\n";
 
    return true;
   }
