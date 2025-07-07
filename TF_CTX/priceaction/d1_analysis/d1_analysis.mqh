@@ -151,6 +151,8 @@ bool CD1Analysis::Update()
       return true;
    m_last_bar=t;
 
+   Print("=== D1 Analysis ",TimeToString(m_last_bar,TIME_DATE)," ===");
+
    double highs[];
    double lows[];
    ArraySetAsSeries(highs,true);
