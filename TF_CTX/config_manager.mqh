@@ -706,9 +706,9 @@ CPriceActionConfig *CConfigManager::CreatePriceActionConfig(CJAVal *pa, ENUM_TIM
         if(p.alert_tf==PERIOD_CURRENT)   p.alert_tf=ctx_tf;
         return p;
     }
-    else if(type=="SUPRES")
-    {
-        CSupResConfig *p=new CSupResConfig();
+   else if(type=="SUPRES")
+   {
+       CSupResConfig *p=new CSupResConfig();
         p.name=pa["name"].ToStr();
         p.type=type;
         p.enabled=pa["enabled"].ToBool();
@@ -730,7 +730,16 @@ CPriceActionConfig *CConfigManager::CreatePriceActionConfig(CJAVal *pa, ENUM_TIM
         p.min_touches=(int)pa["min_touches"].ToInt();
         p.validation=(ENUM_SUPRES_VALIDATION)pa["validation"].ToInt();
         p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
-        if(p.alert_tf==PERIOD_CURRENT) p.alert_tf=ctx_tf;
+       if(p.alert_tf==PERIOD_CURRENT) p.alert_tf=ctx_tf;
+       return p;
+   }
+    else if(type=="D1ANALYSIS")
+    {
+        CD1AnalysisConfig *p=new CD1AnalysisConfig();
+        p.name=pa["name"].ToStr();
+        p.type=type;
+        p.enabled=pa["enabled"].ToBool();
+        p.lookback=(int)pa["lookback"].ToInt();
         return p;
     }
 

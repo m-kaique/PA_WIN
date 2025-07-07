@@ -203,6 +203,14 @@ public:
      }
   };
 
+//--- D1 Analysis configuration
+class CD1AnalysisConfig : public CPriceActionConfig
+  {
+public:
+   int lookback;
+   CD1AnalysisConfig(){ lookback=50; }
+  };
+
 //--- Timeframe configuration
 struct STimeframeConfig
   {

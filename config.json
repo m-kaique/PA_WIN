@@ -32,6 +32,14 @@
                "LabelsFont": "Arial",
                "enabled": true
             }
+         ],
+         "priceaction": [
+            {
+               "name": "d1_ctx_analysis",
+               "type": "D1ANALYSIS",
+               "lookback": 50,
+               "enabled": true
+            }
          ]
       },
       "H4": {
