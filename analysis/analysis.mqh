@@ -12,6 +12,7 @@ struct SD1Context
    double  fib_extensions[3];    // 127%, 161.8%, 261.8%
    SRZone   supports[];          // zonas de suporte detectadas
    SRZone   resistances[];       // zonas de resistência detectadas
+   bool     bullish_move;        // true se o movimento de referência é de alta
   };
 
 /*
@@ -37,10 +38,11 @@ bool AnalyzeD1(string symbol, SD1Context &ctx)
    if(high==0 || low==0)
       return false;
 
-   double open=iOpen(symbol,PERIOD_D1,1);
-   double close=iClose(symbol,PERIOD_D1,1);
-   bool bullish=(close>=open);
-   double range=MathAbs(high-low);
+  double open=iOpen(symbol,PERIOD_D1,1);
+  double close=iClose(symbol,PERIOD_D1,1);
+  bool bullish=(close>=open);
+  double range=MathAbs(high-low);
+  ctx.bullish_move=bullish;
 
    if(bullish)
      {
@@ -77,12 +79,11 @@ bool AnalyzeD1(string symbol, SD1Context &ctx)
    if(!sr.IsReady())
       sr.Update();
    sr.GetSupportZones(ctx.supports);
-   sr.GetResistanceZones(ctx.resistances);
+  sr.GetResistanceZones(ctx.resistances);
 
-   return true;
+  return true;
   }
 
-//+------------------------------------------------------------------+
 //| Market trend enumeration                                         |
 //+------------------------------------------------------------------+
 enum ENUM_MARKET_TREND
@@ -112,6 +113,35 @@ string MarketTrendToString(ENUM_MARKET_TREND trend)
       case MARKET_TREND_BEARISH:  return "BEARISH";
       default:                    return "SIDEWAYS";
      }
+  }
+
+//+------------------------------------------------------------------+
+//| Avaliar tendência atual baseada no D1                            |
+//+------------------------------------------------------------------+
+ENUM_MARKET_TREND EvaluateD1Trend(string symbol,const SD1Context &ctx)
+  {
+   double close_today=iClose(symbol,PERIOD_D1,0);
+   if(close_today==0)
+      return MARKET_TREND_SIDEWAYS;
+
+   double fib61=ctx.fib_retracements[3]; // nível de 61.8%
+
+   if(ctx.bullish_move)
+     {
+      if(close_today>fib61)
+         return MARKET_TREND_BULLISH;
+      if(close_today<fib61)
+         return MARKET_TREND_BEARISH;
+     }
+   else
+     {
+      if(close_today<fib61)
+         return MARKET_TREND_BEARISH;
+      if(close_today>fib61)
+         return MARKET_TREND_BULLISH;
+     }
+
+   return MARKET_TREND_SIDEWAYS;
   }
 
 //+------------------------------------------------------------------+

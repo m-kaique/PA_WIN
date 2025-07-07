@@ -160,7 +160,10 @@ void ExecuteOnNewBar()
 
       int sup_count=ArraySize(d1_ctx.supports);
       int res_count=ArraySize(d1_ctx.resistances);
-      Print("D1 Contexto -> ", fib_msg, " | Suportes:", sup_count, " Resistencias:", res_count);
+      ENUM_MARKET_TREND d1_trend=EvaluateD1Trend(configured_symbol,d1_ctx);
+      Print("D1 Contexto -> ", fib_msg, " | Suportes:", sup_count,
+            " Resistencias:", res_count,
+            " | Tendencia:", MarketTrendToString(d1_trend));
      }
    else
      {
