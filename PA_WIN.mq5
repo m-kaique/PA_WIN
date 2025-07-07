@@ -10,6 +10,7 @@
 #property version "2.00"
 
 #include "TF_CTX/config_manager.mqh"
+#include "analysis/analysis.mqh"
 
 // Gerenciador de configuração
 CConfigManager *g_config_manager;
@@ -146,6 +147,25 @@ void ExecuteOnNewBar()
       // Print("Atualizando Contexto: " + EnumToString(tfs[i]));
       ctx.Update();
    }
+
+   // Exibir resultado da análise de contexto do D1
+   SD1Context d1_ctx;
+   if(AnalyzeD1(configured_symbol, d1_ctx))
+     {
+      string fib_msg = "FIBO:";
+      for(int i=0;i<ArraySize(d1_ctx.fib_retracements);i++)
+         fib_msg += " " + DoubleToString(d1_ctx.fib_retracements[i],2);
+      for(int i=0;i<ArraySize(d1_ctx.fib_extensions);i++)
+         fib_msg += " " + DoubleToString(d1_ctx.fib_extensions[i],2);
+
+      int sup_count=ArraySize(d1_ctx.supports);
+      int res_count=ArraySize(d1_ctx.resistances);
+      Print("D1 Contexto -> ", fib_msg, " | Suportes:", sup_count, " Resistencias:", res_count);
+     }
+   else
+     {
+      Print("Falha ao obter contexto do D1 para ", configured_symbol);
+     }
 }
 
 //+------------------------------------------------------------------+
