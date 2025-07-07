@@ -400,59 +400,92 @@ bool CTrendLine::Update()
    double ltb_old=m_ltb_intercept;
    double ltb_new=m_ltb_intercept+m_ltb_slope*(bars-1);
 
-   m_lta_val=lta_new;
-   m_ltb_val=ltb_new;
+   bool trending_up=(m_lta_slope>0.0 && m_ltb_slope>0.0);
+   bool trending_down=(m_lta_slope<0.0 && m_ltb_slope<0.0);
 
-   if(m_draw_lta)
+   bool draw_up = m_draw_lta && trending_up;
+   bool draw_down = m_draw_ltb && trending_down;
+
+   m_lta_val=draw_up?lta_new:0.0;
+   m_ltb_val=draw_down?ltb_new:0.0;
+
+   if(draw_up)
       DrawLines(t_old,lta_old,t_new,lta_new,TRENDLINE_LTA);
-   if(m_draw_ltb)
+   else if(ObjectFind(0,m_obj_lta)>=0)
+     {
+      ObjectDelete(0,m_obj_lta);
+      m_lta_val=0.0;
+     }
+
+   if(draw_down)
       DrawLines(t_old,ltb_old,t_new,ltb_new,TRENDLINE_LTB);
+   else if(ObjectFind(0,m_obj_ltb)>=0)
+     {
+      ObjectDelete(0,m_obj_ltb);
+      m_ltb_val=0.0;
+     }
 
    if(m_draw_channel)
      {
-      string obj=m_obj_lta_ch;
-      double ch_old=lta_old+m_lta_stddev;
-      double ch_new=lta_new+m_lta_stddev;
-      bool ex=(ObjectFind(0,obj)>=0);
-      if(!ex)
-         ObjectCreate(0,obj,OBJ_TREND,0,t_old,ch_old,t_new,ch_new);
-      else
+      // LTA channel
+      if(draw_up)
         {
-         datetime ot1=ObjectGetInteger(0,obj,OBJPROP_TIME,0);
-         double   op1=ObjectGetDouble(0,obj,OBJPROP_PRICE,0);
-         datetime ot2=ObjectGetInteger(0,obj,OBJPROP_TIME,1);
-         double   op2=ObjectGetDouble(0,obj,OBJPROP_PRICE,1);
-         if(ot1!=t_old || op1!=ch_old)
-            ObjectMove(0,obj,0,t_old,ch_old);
-         if(ot2!=t_new || op2!=ch_new)
-            ObjectMove(0,obj,1,t_new,ch_new);
+         string obj=m_obj_lta_ch;
+         double ch_old=lta_old+m_lta_stddev;
+         double ch_new=lta_new+m_lta_stddev;
+         bool ex=(ObjectFind(0,obj)>=0);
+         if(!ex)
+            ObjectCreate(0,obj,OBJ_TREND,0,t_old,ch_old,t_new,ch_new);
+         else
+           {
+            datetime ot1=ObjectGetInteger(0,obj,OBJPROP_TIME,0);
+            double   op1=ObjectGetDouble(0,obj,OBJPROP_PRICE,0);
+            datetime ot2=ObjectGetInteger(0,obj,OBJPROP_TIME,1);
+            double   op2=ObjectGetDouble(0,obj,OBJPROP_PRICE,1);
+            if(ot1!=t_old || op1!=ch_old)
+               ObjectMove(0,obj,0,t_old,ch_old);
+            if(ot2!=t_new || op2!=ch_new)
+               ObjectMove(0,obj,1,t_new,ch_new);
+           }
+         ObjectSetInteger(0,obj,OBJPROP_COLOR,m_channel_color);
+         ObjectSetInteger(0,obj,OBJPROP_STYLE,m_channel_style);
+         ObjectSetInteger(0,obj,OBJPROP_WIDTH,m_channel_width);
+         ObjectSetInteger(0,obj,OBJPROP_RAY_RIGHT,m_extend_right);
         }
-      ObjectSetInteger(0,obj,OBJPROP_COLOR,m_channel_color);
-      ObjectSetInteger(0,obj,OBJPROP_STYLE,m_channel_style);
-      ObjectSetInteger(0,obj,OBJPROP_WIDTH,m_channel_width);
-      ObjectSetInteger(0,obj,OBJPROP_RAY_RIGHT,m_extend_right);
+      else if(ObjectFind(0,m_obj_lta_ch)>=0)
+        {
+         ObjectDelete(0,m_obj_lta_ch);
+        }
 
-      obj=m_obj_ltb_ch;
-      ch_old=ltb_old-m_ltb_stddev;
-      ch_new=ltb_new-m_ltb_stddev;
-      ex=(ObjectFind(0,obj)>=0);
-      if(!ex)
-         ObjectCreate(0,obj,OBJ_TREND,0,t_old,ch_old,t_new,ch_new);
-      else
+      // LTB channel
+      if(draw_down)
         {
-         datetime ot3=ObjectGetInteger(0,obj,OBJPROP_TIME,0);
-         double   op3=ObjectGetDouble(0,obj,OBJPROP_PRICE,0);
-         datetime ot4=ObjectGetInteger(0,obj,OBJPROP_TIME,1);
-         double   op4=ObjectGetDouble(0,obj,OBJPROP_PRICE,1);
-         if(ot3!=t_old || op3!=ch_old)
-            ObjectMove(0,obj,0,t_old,ch_old);
-         if(ot4!=t_new || op4!=ch_new)
-            ObjectMove(0,obj,1,t_new,ch_new);
+         string obj=m_obj_ltb_ch;
+         double ch_old=ltb_old-m_ltb_stddev;
+         double ch_new=ltb_new-m_ltb_stddev;
+         bool ex=(ObjectFind(0,obj)>=0);
+         if(!ex)
+            ObjectCreate(0,obj,OBJ_TREND,0,t_old,ch_old,t_new,ch_new);
+         else
+           {
+            datetime ot3=ObjectGetInteger(0,obj,OBJPROP_TIME,0);
+            double   op3=ObjectGetDouble(0,obj,OBJPROP_PRICE,0);
+            datetime ot4=ObjectGetInteger(0,obj,OBJPROP_TIME,1);
+            double   op4=ObjectGetDouble(0,obj,OBJPROP_PRICE,1);
+            if(ot3!=t_old || op3!=ch_old)
+               ObjectMove(0,obj,0,t_old,ch_old);
+            if(ot4!=t_new || op4!=ch_new)
+               ObjectMove(0,obj,1,t_new,ch_new);
+           }
+         ObjectSetInteger(0,obj,OBJPROP_COLOR,m_channel_color);
+         ObjectSetInteger(0,obj,OBJPROP_STYLE,m_channel_style);
+         ObjectSetInteger(0,obj,OBJPROP_WIDTH,m_channel_width);
+         ObjectSetInteger(0,obj,OBJPROP_RAY_RIGHT,m_extend_right);
         }
-      ObjectSetInteger(0,obj,OBJPROP_COLOR,m_channel_color);
-      ObjectSetInteger(0,obj,OBJPROP_STYLE,m_channel_style);
-      ObjectSetInteger(0,obj,OBJPROP_WIDTH,m_channel_width);
-      ObjectSetInteger(0,obj,OBJPROP_RAY_RIGHT,m_extend_right);
+      else if(ObjectFind(0,m_obj_ltb_ch)>=0)
+        {
+         ObjectDelete(0,m_obj_ltb_ch);
+        }
      }
 
    datetime ct[];
@@ -486,35 +519,45 @@ bool CTrendLine::Update()
 
   if(m_show_labels)
     {
-     string text="LTA";
-     if(ObjectFind(0,m_lbl_lta)<0)
-        ObjectCreate(0,m_lbl_lta,OBJ_TEXT,0,t_new,lta_new);
-     else
+     if(draw_up)
        {
-        datetime lt=(datetime)ObjectGetInteger(0,m_lbl_lta,OBJPROP_TIME);
-        double   lp=ObjectGetDouble(0,m_lbl_lta,OBJPROP_PRICE);
-        if(lt!=t_new || lp!=lta_new)
-           ObjectMove(0,m_lbl_lta,0,t_new,lta_new);
+        string text="LTA";
+        if(ObjectFind(0,m_lbl_lta)<0)
+           ObjectCreate(0,m_lbl_lta,OBJ_TEXT,0,t_new,lta_new);
+        else
+          {
+           datetime lt=(datetime)ObjectGetInteger(0,m_lbl_lta,OBJPROP_TIME);
+           double   lp=ObjectGetDouble(0,m_lbl_lta,OBJPROP_PRICE);
+           if(lt!=t_new || lp!=lta_new)
+              ObjectMove(0,m_lbl_lta,0,t_new,lta_new);
+          }
+        ObjectSetString(0,m_lbl_lta,OBJPROP_TEXT,text);
+        ObjectSetInteger(0,m_lbl_lta,OBJPROP_COLOR,m_labels_color);
+        ObjectSetInteger(0,m_lbl_lta,OBJPROP_FONTSIZE,m_labels_font_size);
+        ObjectSetString(0,m_lbl_lta,OBJPROP_FONT,m_labels_font);
        }
-     ObjectSetString(0,m_lbl_lta,OBJPROP_TEXT,text);
-     ObjectSetInteger(0,m_lbl_lta,OBJPROP_COLOR,m_labels_color);
-     ObjectSetInteger(0,m_lbl_lta,OBJPROP_FONTSIZE,m_labels_font_size);
-     ObjectSetString(0,m_lbl_lta,OBJPROP_FONT,m_labels_font);
+     else if(ObjectFind(0,m_lbl_lta)>=0)
+        ObjectDelete(0,m_lbl_lta);
 
-     string text2="LTB";
-     if(ObjectFind(0,m_lbl_ltb)<0)
-        ObjectCreate(0,m_lbl_ltb,OBJ_TEXT,0,t_new,ltb_new);
-     else
+     if(draw_down)
        {
-        datetime lt2=(datetime)ObjectGetInteger(0,m_lbl_ltb,OBJPROP_TIME);
-        double   lp2=ObjectGetDouble(0,m_lbl_ltb,OBJPROP_PRICE);
-        if(lt2!=t_new || lp2!=ltb_new)
-           ObjectMove(0,m_lbl_ltb,0,t_new,ltb_new);
+        string text2="LTB";
+        if(ObjectFind(0,m_lbl_ltb)<0)
+           ObjectCreate(0,m_lbl_ltb,OBJ_TEXT,0,t_new,ltb_new);
+        else
+          {
+           datetime lt2=(datetime)ObjectGetInteger(0,m_lbl_ltb,OBJPROP_TIME);
+           double   lp2=ObjectGetDouble(0,m_lbl_ltb,OBJPROP_PRICE);
+           if(lt2!=t_new || lp2!=ltb_new)
+              ObjectMove(0,m_lbl_ltb,0,t_new,ltb_new);
+          }
+        ObjectSetString(0,m_lbl_ltb,OBJPROP_TEXT,text2);
+        ObjectSetInteger(0,m_lbl_ltb,OBJPROP_COLOR,m_labels_color);
+        ObjectSetInteger(0,m_lbl_ltb,OBJPROP_FONTSIZE,m_labels_font_size);
+        ObjectSetString(0,m_lbl_ltb,OBJPROP_FONT,m_labels_font);
        }
-     ObjectSetString(0,m_lbl_ltb,OBJPROP_TEXT,text2);
-     ObjectSetInteger(0,m_lbl_ltb,OBJPROP_COLOR,m_labels_color);
-     ObjectSetInteger(0,m_lbl_ltb,OBJPROP_FONTSIZE,m_labels_font_size);
-     ObjectSetString(0,m_lbl_ltb,OBJPROP_FONT,m_labels_font);
+     else if(ObjectFind(0,m_lbl_ltb)>=0)
+        ObjectDelete(0,m_lbl_ltb);
     }
   m_ready=true;
   return m_ready;
@@ -527,6 +570,8 @@ double CTrendLine::GetLTAValue(int shift)
   {
    int bars=m_period>0?m_period:50;
    double x=bars-1-shift;
+   if(m_lta_val==0.0)
+      return 0.0;
    return m_lta_intercept+m_lta_slope*x;
   }
 
@@ -537,6 +582,8 @@ double CTrendLine::GetLTBValue(int shift)
   {
    int bars=m_period>0?m_period:50;
    double x=bars-1-shift;
+   if(m_ltb_val==0.0)
+      return 0.0;
    return m_ltb_intercept+m_ltb_slope*x;
   }
 
