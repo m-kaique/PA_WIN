@@ -60,6 +60,8 @@ ENUM_TREND_STATE CTrendIdentifier::DetectM5Structure()
   {
    // Quantidade de barras a analisar: janela configurada mais uma margem
    int bars=m_pivot_window+m_pivot_sep+10;
+   if(bars<10)
+      bars=10;
    int handle=iFractals(m_symbol,PERIOD_M5);
    if(handle==INVALID_HANDLE)
       return TREND_NEUTRAL;
@@ -67,7 +69,8 @@ ENUM_TREND_STATE CTrendIdentifier::DetectM5Structure()
    double up[],down[];
    ArraySetAsSeries(up,true);
    ArraySetAsSeries(down,true);
-   if(CopyBuffer(handle,0,0,bars,up)<=0 || CopyBuffer(handle,1,0,bars,down)<=0)
+   if(CopyBuffer(handle,0,0,bars,up)!=bars ||
+      CopyBuffer(handle,1,0,bars,down)!=bars)
      {
       IndicatorRelease(handle);
       return TREND_NEUTRAL;

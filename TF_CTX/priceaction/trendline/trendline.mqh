@@ -57,11 +57,11 @@ public:
                     ~CTrendLine();
 
    bool            Init(string symbol,ENUM_TIMEFRAMES timeframe,CTrendLineConfig &cfg);
-   virtual bool    Init(string symbol,ENUM_TIMEFRAMES timeframe,int period);
-   virtual double  GetValue(int shift=0); // returns LTA value
-   virtual bool    CopyValues(int shift,int count,double &buffer[]);
-   virtual bool    IsReady();
-   virtual bool    Update();
+   virtual bool    Init(string symbol,ENUM_TIMEFRAMES timeframe,int period) override;
+   virtual double  GetValue(int shift=0) override; // returns LTA value
+   virtual bool    CopyValues(int shift,int count,double &buffer[]) override;
+   virtual bool    IsReady() override;
+   virtual bool    Update() override;
 
    double          GetLTAValue(int shift=0);
    double          GetLTBValue(int shift=0);
@@ -167,8 +167,9 @@ bool CTrendLine::Init(string symbol,ENUM_TIMEFRAMES timeframe,CTrendLineConfig &
    bool ok=CreateHandle();
    if(ok)
      {
-      m_obj_lta="TL_LTA_"+IntegerToString(GetTickCount());
-      m_obj_ltb="TL_LTB_"+IntegerToString(GetTickCount());
+      string uid=IntegerToString(GetTickCount())+"_"+IntegerToString((int)TimeCurrent());
+      m_obj_lta=StringFormat("TL_LTA_%s_%d_%s",m_symbol,m_timeframe,uid);
+      m_obj_ltb=StringFormat("TL_LTB_%s_%d_%s",m_symbol,m_timeframe,uid);
      }
    int bars=m_period>0?m_period:50;
    ArrayResize(m_highs,bars);
@@ -280,7 +281,9 @@ bool CTrendLine::Update()
       datetime t_prev  =iTime(m_symbol,m_fractal_tf,lo2);
       double   p_recent=down[lo1];
       double   p_prev  =down[lo2];
-      m_lta_val=p_recent + (p_recent-p_prev)/(t_recent-t_prev)*(t_recent-iTime(m_symbol,m_fractal_tf,0));
+      double   diff=t_recent-t_prev;
+      if(diff==0) diff=1; // evitar divisao por zero
+      m_lta_val=p_recent + (p_recent-p_prev)/diff*(t_recent-iTime(m_symbol,m_fractal_tf,0));
       if(m_draw_lta)
          DrawLines(t_prev,p_prev,t_recent,p_recent,TRENDLINE_LTA);
       if(m_draw_ltb && ObjectFind(0,m_obj_ltb)>=0)
@@ -294,7 +297,9 @@ bool CTrendLine::Update()
       datetime t_prev  =iTime(m_symbol,m_fractal_tf,up2);
       double   p_recent=up[up1];
       double   p_prev  =up[up2];
-      m_ltb_val=p_recent + (p_recent-p_prev)/(t_recent-t_prev)*(t_recent-iTime(m_symbol,m_fractal_tf,0));
+      double   diff=t_recent-t_prev;
+      if(diff==0) diff=1;
+      m_ltb_val=p_recent + (p_recent-p_prev)/diff*(t_recent-iTime(m_symbol,m_fractal_tf,0));
       if(m_draw_ltb)
          DrawLines(t_prev,p_prev,t_recent,p_recent,TRENDLINE_LTB);
       if(m_draw_lta && ObjectFind(0,m_obj_lta)>=0)
@@ -323,8 +328,8 @@ ArrayResize(ct, 2);
 ArraySetAsSeries(ct, true);
 
 
-  if(CopyClose(m_symbol,m_alert_tf,0,2,m_closes)>0 &&
-     CopyTime(m_symbol,m_alert_tf,0,2,ct)>0)
+  if(CopyClose(m_symbol,m_alert_tf,0,2,m_closes)==2 &&
+     CopyTime(m_symbol,m_alert_tf,0,2,ct)==2)
     {
      double sup=0.0,res=0.0;
      if(ObjectFind(0,m_obj_lta)>=0)
@@ -359,6 +364,7 @@ double CTrendLine::GetLTAValue(int shift)
       return m_lta_val;
    datetime t=iTime(m_symbol,m_alert_tf,shift);
    if(t==0) return 0.0;
+   if(ObjectFind(0,m_obj_lta)<0) return 0.0;
    double val=ObjectGetValueByTime(0,m_obj_lta,t);
    return val;
   }
@@ -372,6 +378,7 @@ double CTrendLine::GetLTBValue(int shift)
       return m_ltb_val;
    datetime t=iTime(m_symbol,m_alert_tf,shift);
    if(t==0) return 0.0;
+   if(ObjectFind(0,m_obj_ltb)<0) return 0.0;
    double val=ObjectGetValueByTime(0,m_obj_ltb,t);
    return val;
   }
@@ -379,8 +386,8 @@ double CTrendLine::GetLTBValue(int shift)
 //+------------------------------------------------------------------+
 //| Valid flags                                                       |
 //+------------------------------------------------------------------+
-bool CTrendLine::IsLTAValid(){ return (m_lta_val!=0.0); }
-bool CTrendLine::IsLTBValid(){ return (m_ltb_val!=0.0); }
+bool CTrendLine::IsLTAValid(){ return (ObjectFind(0,m_obj_lta)>=0 && m_lta_val!=0.0); }
+bool CTrendLine::IsLTBValid(){ return (ObjectFind(0,m_obj_ltb)>=0 && m_ltb_val!=0.0); }
 bool CTrendLine::IsBreakdown(){ return m_breakdown; }
 bool CTrendLine::IsBreakup(){ return m_breakup; }
 
