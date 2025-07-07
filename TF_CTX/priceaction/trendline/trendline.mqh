@@ -45,10 +45,6 @@ private:
   string          m_lbl_lta;
   string          m_lbl_ltb;
 
-  int             m_lta_touches;
-  int             m_ltb_touches;
-  int             m_min_touches;
-  double          m_touch_tolerance;
   int             m_breakout_confirm_bars;
   int             m_breakup_count;
   int             m_breakdown_count;
@@ -137,10 +133,6 @@ CTrendLine::CTrendLine()
   m_obj_ltb_ch="";
   m_lbl_lta="";
   m_lbl_ltb="";
-  m_lta_touches=0;
-  m_ltb_touches=0;
-  m_min_touches=2;
-  m_touch_tolerance=0.0;
   m_breakout_confirm_bars=2;
   m_breakup_count=0;
   m_breakdown_count=0;
@@ -242,8 +234,6 @@ bool CTrendLine::Init(string symbol,ENUM_TIMEFRAMES timeframe,CTrendLineConfig &
   m_fractal_tf=cfg.fractal_tf;
   m_detail_tf=cfg.detail_tf;
   m_alert_tf=cfg.alert_tf;
-  m_min_touches=cfg.min_touches;
-  m_touch_tolerance=cfg.touch_tolerance;
   m_breakout_confirm_bars=cfg.breakout_confirm_bars;
   m_draw_channel=cfg.draw_channel;
   m_channel_color=cfg.channel_color;
@@ -253,8 +243,6 @@ bool CTrendLine::Init(string symbol,ENUM_TIMEFRAMES timeframe,CTrendLineConfig &
   m_labels_color=cfg.labels_color;
   m_labels_font_size=cfg.labels_font_size;
   m_labels_font=cfg.labels_font;
-  m_lta_touches=0;
-  m_ltb_touches=0;
   m_breakup_count=0;
   m_breakdown_count=0;
 
@@ -483,10 +471,6 @@ bool CTrendLine::Update()
   double sup=GetLTAValue(1);
   double res=GetLTBValue(1);
 
-  if(m_highs[1]>=sup-m_touch_tolerance && m_lows[1]<=sup+m_touch_tolerance)
-     m_lta_touches++;
-  if(m_highs[1]>=res-m_touch_tolerance && m_lows[1]<=res+m_touch_tolerance)
-     m_ltb_touches++;
 
   if(m_closes[1]<sup)
      m_breakdown_count++;
@@ -502,7 +486,7 @@ bool CTrendLine::Update()
 
   if(m_show_labels)
     {
-     string text="LTA("+IntegerToString(m_lta_touches)+")";
+     string text="LTA";
      if(ObjectFind(0,m_lbl_lta)<0)
         ObjectCreate(0,m_lbl_lta,OBJ_TEXT,0,t_new,lta_new);
      else
@@ -517,7 +501,7 @@ bool CTrendLine::Update()
      ObjectSetInteger(0,m_lbl_lta,OBJPROP_FONTSIZE,m_labels_font_size);
      ObjectSetString(0,m_lbl_lta,OBJPROP_FONT,m_labels_font);
 
-     string text2="LTB("+IntegerToString(m_ltb_touches)+")";
+     string text2="LTB";
      if(ObjectFind(0,m_lbl_ltb)<0)
         ObjectCreate(0,m_lbl_ltb,OBJ_TEXT,0,t_new,ltb_new);
      else
@@ -559,8 +543,8 @@ double CTrendLine::GetLTBValue(int shift)
 //+------------------------------------------------------------------+
 //| Valid flags                                                       |
 //+------------------------------------------------------------------+
-bool CTrendLine::IsLTAValid(){ return (m_lta_touches>=m_min_touches); }
-bool CTrendLine::IsLTBValid(){ return (m_ltb_touches>=m_min_touches); }
+bool CTrendLine::IsLTAValid(){ return m_lta_val!=0.0; }
+bool CTrendLine::IsLTBValid(){ return m_ltb_val!=0.0; }
 bool CTrendLine::IsBreakdown(){ return m_breakdown; }
 bool CTrendLine::IsBreakup(){ return m_breakup; }
 

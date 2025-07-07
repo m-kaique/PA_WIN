@@ -104,8 +104,6 @@
                "ltb_width": 1,
                "extend_right": true,
                "show_labels": true,
-               "min_touches": 2,
-               "touch_tolerance": 0.0,
                "breakout_confirm_bars": 2,
                "draw_channel": false,
                "channel_color": "Silver",

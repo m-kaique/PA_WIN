@@ -700,8 +700,6 @@ CPriceActionConfig *CConfigManager::CreatePriceActionConfig(CJAVal *pa, ENUM_TIM
        p.fractal_tf=StringToTimeframe(pa["fractal_tf"].ToStr());
        p.detail_tf=StringToTimeframe(pa["detail_tf"].ToStr());
        p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
-       p.min_touches=(int)pa["min_touches"].ToInt();
-       p.touch_tolerance=pa["touch_tolerance"].ToDbl();
        p.breakout_confirm_bars=(int)pa["breakout_confirm_bars"].ToInt();
        p.draw_channel=pa["draw_channel"].ToBool();
        p.channel_color=StringToColor(pa["channel_color"].ToStr());
