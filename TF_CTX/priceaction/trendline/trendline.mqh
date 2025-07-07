@@ -430,8 +430,9 @@ bool CTrendLine::Update()
          double x2=bars-1-idx2;
          m_lta_slope=(low2-low1)/(x2-x1);
          m_lta_intercept=low1-m_lta_slope*x1;
-         lta_old=m_lta_intercept+m_lta_slope*(bars-1);
-         lta_new=m_lta_intercept;
+         // value at older bar (x=0) and most recent bar (x=bars-1)
+         lta_old=m_lta_intercept;
+         lta_new=m_lta_intercept+m_lta_slope*(bars-1);
          m_lta_val=lta_new;
          draw_up=m_draw_lta;
 
@@ -450,9 +451,10 @@ bool CTrendLine::Update()
            {
             double xh=bars-1-idx_high;
             double inter=max_high-m_lta_slope*xh;
-            ch_lta_old=inter+m_lta_slope*(bars-1);
-            ch_lta_new=inter;
-            m_lta_stddev=ch_lta_new-lta_new; // distancia usada no channel
+            ch_lta_old=inter;
+            ch_lta_new=inter+m_lta_slope*(bars-1);
+            // distance between channel and main line
+            m_lta_stddev=ch_lta_new-lta_new;
            }
         }
      }
@@ -470,8 +472,8 @@ bool CTrendLine::Update()
          double x2=bars-1-idx2;
          m_ltb_slope=(high2-high1)/(x2-x1);
          m_ltb_intercept=high1-m_ltb_slope*x1;
-         ltb_old=m_ltb_intercept+m_ltb_slope*(bars-1);
-         ltb_new=m_ltb_intercept;
+         ltb_old=m_ltb_intercept;
+         ltb_new=m_ltb_intercept+m_ltb_slope*(bars-1);
          m_ltb_val=ltb_new;
          draw_down=m_draw_ltb;
 
@@ -489,8 +491,8 @@ bool CTrendLine::Update()
            {
             double xl=bars-1-idx_low;
             double inter=min_low-m_ltb_slope*xl;
-            ch_ltb_old=inter+m_ltb_slope*(bars-1);
-            ch_ltb_new=inter;
+            ch_ltb_old=inter;
+            ch_ltb_new=inter+m_ltb_slope*(bars-1);
             m_ltb_stddev=ltb_new-ch_ltb_new;
            }
         }
