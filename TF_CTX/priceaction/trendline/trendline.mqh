@@ -391,17 +391,20 @@ void CTrendLine::UpdateTrendlineLTB()
   if(FindNewPivotsLTB(idx_new,idx_old,p_new,p_old))
     {
       int id_old=idx_old; int id_new=idx_new;
-      double slope=CalcSlope(id_old,p_old,id_new,p_new);
-      double angle=MathArctan2(p_new-p_old,id_new-id_old)*180.0/M_PI;
+      double open_old=iOpen(m_symbol,m_timeframe,id_old);
+      double close_old=iClose(m_symbol,m_timeframe,id_old);
+      double base_old=(MathAbs(open_old-p_old)<MathAbs(close_old-p_old)?open_old:close_old);
+      double slope=CalcSlope(id_old,base_old,id_new,p_new);
+      double angle=MathArctan2(p_new-base_old,id_new-id_old)*180.0/M_PI;
       if(angle<0) angle=-angle;
       if(m_draw_ltb && slope<0 && angle>=MIN_TRENDLINE_ANGLE)
         {
          datetime t1=iTime(m_symbol,m_timeframe,id_old);
          datetime t2=iTime(m_symbol,m_timeframe,id_new);
-         DrawLines(t1,p_old,t2,p_new,TRENDLINE_LTB);
+         DrawLines(t1,base_old,t2,p_new,TRENDLINE_LTB);
          m_ltb_active=true;
          m_ltb_angle=angle;
-         m_ltb_t1=t1; m_ltb_t2=t2; m_ltb_p1=p_old; m_ltb_p2=p_new;
+         m_ltb_t1=t1; m_ltb_t2=t2; m_ltb_p1=base_old; m_ltb_p2=p_new;
          m_ltb_val=p_new - slope*id_new;
         }
     }
@@ -424,17 +427,20 @@ void CTrendLine::UpdateTrendlineLTA()
   if(FindNewPivotsLTA(idx_new,idx_old,p_new,p_old))
     {
       int id_old=idx_old; int id_new=idx_new;
-      double slope=CalcSlope(id_old,p_old,id_new,p_new);
-      double angle=MathArctan2(p_new-p_old,id_new-id_old)*180.0/M_PI;
+      double open_old=iOpen(m_symbol,m_timeframe,id_old);
+      double close_old=iClose(m_symbol,m_timeframe,id_old);
+      double base_old=(MathAbs(open_old-p_old)<MathAbs(close_old-p_old)?open_old:close_old);
+      double slope=CalcSlope(id_old,base_old,id_new,p_new);
+      double angle=MathArctan2(p_new-base_old,id_new-id_old)*180.0/M_PI;
       if(angle<0) angle=-angle;
       if(m_draw_lta && slope>0 && angle>=MIN_TRENDLINE_ANGLE)
         {
          datetime t1=iTime(m_symbol,m_timeframe,id_old);
          datetime t2=iTime(m_symbol,m_timeframe,id_new);
-         DrawLines(t1,p_old,t2,p_new,TRENDLINE_LTA);
+         DrawLines(t1,base_old,t2,p_new,TRENDLINE_LTA);
          m_lta_active=true;
          m_lta_angle=angle;
-         m_lta_t1=t1; m_lta_t2=t2; m_lta_p1=p_old; m_lta_p2=p_new;
+         m_lta_t1=t1; m_lta_t2=t2; m_lta_p1=base_old; m_lta_p2=p_new;
          m_lta_val=p_new - slope*id_new;
         }
     }
