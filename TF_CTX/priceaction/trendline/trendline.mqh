@@ -49,8 +49,31 @@ private:
   double m_opens[];
   double m_closes[];
 
+  // informações da LTA ativa
+  bool     m_lta_active;
+  datetime m_lta_t1; // pivô mais antigo
+  datetime m_lta_t2; // pivô mais recente
+  double   m_lta_p1;
+  double   m_lta_p2;
+  datetime m_lta_last_break;
+
+  // informações da LTB ativa
+  bool     m_ltb_active;
+  datetime m_ltb_t1;
+  datetime m_ltb_t2;
+  double   m_ltb_p1;
+  double   m_ltb_p2;
+  datetime m_ltb_last_break;
+
   void DrawLines(datetime t1, double p1, datetime t2, double p2,
                  ENUM_TRENDLINE_SIDE side);
+  void RemoveLine(ENUM_TRENDLINE_SIDE side);
+  bool CheckBreakLTA();
+  bool CheckBreakLTB();
+  bool FindNewPivotsLTA(int &idx1,int &idx2,double &p1,double &p2);
+  bool FindNewPivotsLTB(int &idx1,int &idx2,double &p1,double &p2);
+  void UpdateTrendlineLTA();
+  void UpdateTrendlineLTB();
   //+------------------------------------------------------------------+
   //| Calcula o slope entre dois pontos usando índices de barra         |
   //+------------------------------------------------------------------+
@@ -114,6 +137,9 @@ CTrendLine::CTrendLine()
   ArrayResize(m_lows, 0);
   ArrayResize(m_opens, 0);
   ArrayResize(m_closes, 0);
+  m_lta_active=false; m_ltb_active=false;
+  m_lta_t1=0; m_lta_t2=0; m_lta_p1=0.0; m_lta_p2=0.0; m_lta_last_break=0;
+  m_ltb_t1=0; m_ltb_t2=0; m_ltb_p1=0.0; m_ltb_p2=0.0; m_ltb_last_break=0;
 }
 
 //+------------------------------------------------------------------+
@@ -164,6 +190,9 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
   ArraySetAsSeries(m_closes, true);
   m_lta_angle = 0.0;
   m_ltb_angle = 0.0;
+  m_lta_active=false; m_ltb_active=false;
+  m_lta_t1=0; m_lta_t2=0; m_lta_p1=0.0; m_lta_p2=0.0; m_lta_last_break=0;
+  m_ltb_t1=0; m_ltb_t2=0; m_ltb_p1=0.0; m_ltb_p2=0.0; m_ltb_last_break=0;
   return ok;
 }
 
@@ -224,6 +253,193 @@ void CTrendLine::DrawLines(datetime t1, double p1, datetime t2, double p2, ENUM_
   ObjectSetInteger(0, name, OBJPROP_WIDTH, width);
 }
 
+void CTrendLine::RemoveLine(ENUM_TRENDLINE_SIDE side)
+{
+  string name = (side == TRENDLINE_LTA) ? m_obj_lta : m_obj_ltb;
+  if(ObjectFind(0,name) >= 0)
+     ObjectDelete(0,name);
+}
+
+bool CTrendLine::CheckBreakLTA()
+{
+  if(!m_lta_active)
+     return false;
+  datetime t=iTime(m_symbol,m_alert_tf,1);
+  if(t==0)
+     return false;
+  double val=ObjectGetValueByTime(0,m_obj_lta,t);
+  if(iClose(m_symbol,m_alert_tf,1) < val)
+    {
+      RemoveLine(TRENDLINE_LTA);
+      m_lta_active=false;
+      m_lta_last_break=t;
+      m_lta_val=0.0;
+      m_lta_angle=0.0;
+      return true;
+    }
+  return false;
+}
+
+bool CTrendLine::CheckBreakLTB()
+{
+  if(!m_ltb_active)
+     return false;
+  datetime t=iTime(m_symbol,m_alert_tf,1);
+  if(t==0)
+     return false;
+  double val=ObjectGetValueByTime(0,m_obj_ltb,t);
+  if(iClose(m_symbol,m_alert_tf,1) > val)
+    {
+      RemoveLine(TRENDLINE_LTB);
+      m_ltb_active=false;
+      m_ltb_last_break=t;
+      m_ltb_val=0.0;
+      m_ltb_angle=0.0;
+      return true;
+    }
+  return false;
+}
+
+bool CTrendLine::FindNewPivotsLTB(int &idx_recent,int &idx_old,double &p_recent,double &p_old)
+{
+  int bars = m_period > 0 ? m_period : 50;
+  idx_recent=-1; idx_old=-1;
+  for(int i=m_pivot_right; i<bars-m_pivot_left; i++)
+  {
+     bool isHigh=true;
+     for(int j=1;j<=m_pivot_left && isHigh;j++)
+        if(m_highs[i]<=m_highs[i+j]) isHigh=false;
+     for(int j=1;j<=m_pivot_right && isHigh;j++)
+        if(m_highs[i]<m_highs[i-j]) isHigh=false;
+     if(isHigh)
+       {
+        datetime tt=iTime(m_symbol,m_timeframe,i);
+        if(tt<=m_ltb_last_break) continue;
+        idx_recent=i; p_recent=m_highs[i];
+        break;
+       }
+  }
+  for(int i=idx_recent+m_pivot_right+1; i<bars-m_pivot_left; i++)
+  {
+     bool isHigh=true;
+     for(int j=1;j<=m_pivot_left && isHigh;j++)
+        if(m_highs[i]<=m_highs[i+j]) isHigh=false;
+     for(int j=1;j<=m_pivot_right && isHigh;j++)
+        if(m_highs[i]<m_highs[i-j]) isHigh=false;
+     if(isHigh)
+       {
+        datetime tt=iTime(m_symbol,m_timeframe,i);
+        if(tt<=m_ltb_last_break) continue;
+        idx_old=i; p_old=m_highs[i];
+        break;
+       }
+  }
+  return (idx_recent>0 && idx_old>0);
+}
+
+bool CTrendLine::FindNewPivotsLTA(int &idx_recent,int &idx_old,double &p_recent,double &p_old)
+{
+  int bars = m_period > 0 ? m_period : 50;
+  idx_recent=-1; idx_old=-1;
+  for(int i=m_pivot_right; i<bars-m_pivot_left; i++)
+  {
+     bool isLow=true;
+     for(int j=1;j<=m_pivot_left && isLow;j++)
+        if(m_lows[i]>=m_lows[i+j]) isLow=false;
+     for(int j=1;j<=m_pivot_right && isLow;j++)
+        if(m_lows[i]>m_lows[i-j]) isLow=false;
+     if(isLow)
+       {
+        datetime tt=iTime(m_symbol,m_timeframe,i);
+        if(tt<=m_lta_last_break) continue;
+        idx_recent=i; p_recent=m_lows[i];
+        break;
+       }
+  }
+  for(int i=idx_recent+m_pivot_right+1; i<bars-m_pivot_left; i++)
+  {
+     bool isLow=true;
+     for(int j=1;j<=m_pivot_left && isLow;j++)
+        if(m_lows[i]>=m_lows[i+j]) isLow=false;
+     for(int j=1;j<=m_pivot_right && isLow;j++)
+        if(m_lows[i]>m_lows[i-j]) isLow=false;
+     if(isLow)
+       {
+        datetime tt=iTime(m_symbol,m_timeframe,i);
+        if(tt<=m_lta_last_break) continue;
+        idx_old=i; p_old=m_lows[i];
+        break;
+       }
+  }
+  return (idx_recent>0 && idx_old>0);
+}
+
+void CTrendLine::UpdateTrendlineLTB()
+{
+  if(m_ltb_active)
+  {
+     if(CheckBreakLTB())
+        return;
+     int idx_old=iBarShift(m_symbol,m_timeframe,m_ltb_t1,true);
+     int idx_new=iBarShift(m_symbol,m_timeframe,m_ltb_t2,true);
+     double slope=CalcSlope(idx_old,m_ltb_p1,idx_new,m_ltb_p2);
+     m_ltb_val=m_ltb_p2 - slope*idx_new;
+     return;
+  }
+
+  int idx_new,idx_old; double p_new,p_old;
+  if(FindNewPivotsLTB(idx_new,idx_old,p_new,p_old))
+    {
+      int id_old=idx_old; int id_new=idx_new;
+      double slope=CalcSlope(id_old,p_old,id_new,p_new);
+      double angle=MathArctan2(p_new-p_old,id_new-id_old)*180.0/M_PI;
+      if(angle<0) angle=-angle;
+      if(m_draw_ltb && slope<0 && angle>=MIN_TRENDLINE_ANGLE)
+        {
+         datetime t1=iTime(m_symbol,m_timeframe,id_old);
+         datetime t2=iTime(m_symbol,m_timeframe,id_new);
+         DrawLines(t1,p_old,t2,p_new,TRENDLINE_LTB);
+         m_ltb_active=true;
+         m_ltb_angle=angle;
+         m_ltb_t1=t1; m_ltb_t2=t2; m_ltb_p1=p_old; m_ltb_p2=p_new;
+         m_ltb_val=p_new - slope*id_new;
+        }
+    }
+}
+
+void CTrendLine::UpdateTrendlineLTA()
+{
+  if(m_lta_active)
+  {
+     if(CheckBreakLTA())
+        return;
+     int idx_old=iBarShift(m_symbol,m_timeframe,m_lta_t1,true);
+     int idx_new=iBarShift(m_symbol,m_timeframe,m_lta_t2,true);
+     double slope=CalcSlope(idx_old,m_lta_p1,idx_new,m_lta_p2);
+     m_lta_val=m_lta_p2 - slope*idx_new;
+     return;
+  }
+
+  int idx_new,idx_old; double p_new,p_old;
+  if(FindNewPivotsLTA(idx_new,idx_old,p_new,p_old))
+    {
+      int id_old=idx_old; int id_new=idx_new;
+      double slope=CalcSlope(id_old,p_old,id_new,p_new);
+      double angle=MathArctan2(p_new-p_old,id_new-id_old)*180.0/M_PI;
+      if(angle<0) angle=-angle;
+      if(m_draw_lta && slope>0 && angle>=MIN_TRENDLINE_ANGLE)
+        {
+         datetime t1=iTime(m_symbol,m_timeframe,id_old);
+         datetime t2=iTime(m_symbol,m_timeframe,id_new);
+         DrawLines(t1,p_old,t2,p_new,TRENDLINE_LTA);
+         m_lta_active=true;
+         m_lta_angle=angle;
+         m_lta_t1=t1; m_lta_t2=t2; m_lta_p1=p_old; m_lta_p2=p_new;
+         m_lta_val=p_new - slope*id_new;
+        }
+    }
+}
+
 //+------------------------------------------------------------------+
 //| Update trend line values                                          |
 //+------------------------------------------------------------------+
@@ -238,109 +454,30 @@ bool CTrendLine::Update()
       return false;
      }
 
-   int up1=-1, up2=-1, lo1=-1, lo2=-1;
-
-   for(int i=m_pivot_right; i<bars-m_pivot_left; i++)
-     {
-      bool isHigh=true;
-      for(int j=1;j<=m_pivot_left && isHigh;j++)
-         if(m_highs[i]<=m_highs[i+j]) isHigh=false;
-      for(int j=1;j<=m_pivot_right && isHigh;j++)
-         if(m_highs[i]<m_highs[i-j]) isHigh=false;
-      if(isHigh){ up1=i; break; }
-     }
-
-   for(int i=up1+m_pivot_right+1; i<bars-m_pivot_left; i++)
-     {
-      bool isHigh=true;
-      for(int j=1;j<=m_pivot_left && isHigh;j++)
-         if(m_highs[i]<=m_highs[i+j]) isHigh=false;
-      for(int j=1;j<=m_pivot_right && isHigh;j++)
-         if(m_highs[i]<m_highs[i-j]) isHigh=false;
-      if(isHigh){ up2=i; break; }
-     }
-
-   for(int i=m_pivot_right; i<bars-m_pivot_left; i++)
-     {
-      bool isLow=true;
-      for(int j=1;j<=m_pivot_left && isLow;j++)
-         if(m_lows[i]>=m_lows[i+j]) isLow=false;
-      for(int j=1;j<=m_pivot_right && isLow;j++)
-         if(m_lows[i]>m_lows[i-j]) isLow=false;
-      if(isLow){ lo1=i; break; }
-     }
-
-   for(int i=lo1+m_pivot_right+1; i<bars-m_pivot_left; i++)
-     {
-      bool isLow=true;
-      for(int j=1;j<=m_pivot_left && isLow;j++)
-         if(m_lows[i]>=m_lows[i+j]) isLow=false;
-      for(int j=1;j<=m_pivot_right && isLow;j++)
-         if(m_lows[i]>m_lows[i-j]) isLow=false;
-      if(isLow){ lo2=i; break; }
-     }
-
-  m_ready=false;
-  m_lta_val=0.0;
-  m_ltb_val=0.0;
-  m_lta_angle=0.0;
-  m_ltb_angle=0.0;
-
-  if(up1>0 && up2>0)
-    {
-      datetime t1=iTime(m_symbol,m_timeframe,up1);
-      datetime t2=iTime(m_symbol,m_timeframe,up2);
-      double p1=m_highs[up1];
-      double p2=m_highs[up2];
-      double ltb_slope=CalcSlope(up2,p2,up1,p1);
-      m_ltb_angle=MathArctan2(p2-p1,up2-up1)*180.0/M_PI;
-      if(m_ltb_angle<0) m_ltb_angle=-m_ltb_angle;
-      if(m_draw_ltb && ltb_slope<0 && m_ltb_angle>=MIN_TRENDLINE_ANGLE)
-        {
-         m_ltb_val=p1 - ltb_slope*up1;
-         DrawLines(t2,p2,t1,p1,TRENDLINE_LTB);
-         m_ready=true;
-        }
-      else if(ObjectFind(0,m_obj_ltb)>=0)
-        {
-         ObjectDelete(0,m_obj_ltb);
-        }
-    }
-
-  if(lo1>0 && lo2>0)
-    {
-      datetime t1=iTime(m_symbol,m_timeframe,lo1);
-      datetime t2=iTime(m_symbol,m_timeframe,lo2);
-      double p1=m_lows[lo1];
-      double p2=m_lows[lo2];
-      double lta_slope=CalcSlope(lo2,p2,lo1,p1);
-      m_lta_angle=MathArctan2(p2-p1,lo2-lo1)*180.0/M_PI;
-      if(m_lta_angle<0) m_lta_angle=-m_lta_angle;
-      if(m_draw_lta && lta_slope>0 && m_lta_angle>=MIN_TRENDLINE_ANGLE)
-        {
-         m_lta_val=p1 - lta_slope*lo1;
-         DrawLines(t2,p2,t1,p1,TRENDLINE_LTA);
-         m_ready=true;
-        }
-      else if(ObjectFind(0,m_obj_lta)>=0)
-        {
-         ObjectDelete(0,m_obj_lta);
-        }
-    }
+   UpdateTrendlineLTB();
+   UpdateTrendlineLTA();
 
    datetime ct[];
    ArrayResize(ct,2);
    ArraySetAsSeries(ct,true);
-
-   if(CopyClose(m_symbol,m_alert_tf,0,2,m_closes) > 0 &&
-      CopyTime(m_symbol,m_alert_tf,0,2,ct) > 0)
+   m_breakdown=false;
+   m_breakup=false;
+   if(CopyClose(m_symbol,m_alert_tf,0,2,m_closes)>0 &&
+      CopyTime(m_symbol,m_alert_tf,0,2,ct)>0)
      {
-      double sup=ObjectGetValueByTime(0,m_obj_lta,ct[1]);
-      double res=ObjectGetValueByTime(0,m_obj_ltb,ct[1]);
-      m_breakdown=(m_closes[1] < sup);
-      m_breakup  =(m_closes[1] > res);
+      if(m_lta_active)
+        {
+         double sup=ObjectGetValueByTime(0,m_obj_lta,ct[1]);
+         m_breakdown=(m_closes[1]<sup);
+        }
+      if(m_ltb_active)
+        {
+         double res=ObjectGetValueByTime(0,m_obj_ltb,ct[1]);
+         m_breakup=(m_closes[1]>res);
+        }
      }
 
+   m_ready=(m_lta_active || m_ltb_active);
    return m_ready;
   }
 
