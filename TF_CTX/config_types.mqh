@@ -140,8 +140,8 @@ class CTrendLineConfig : public CPriceActionConfig
   {
 public:
    int    period;
-   int    left;
-   int    right;
+   int    pivot_left;
+   int    pivot_right;
    bool   draw_lta;
    bool   draw_ltb;
    color  lta_color;
@@ -152,16 +152,14 @@ public:
    int    ltb_width;
    bool   extend_right;
    bool   show_labels;
-   ENUM_TIMEFRAMES fractal_tf;
-   ENUM_TIMEFRAMES detail_tf;
    ENUM_TIMEFRAMES alert_tf;
   CTrendLineConfig()
     {
-      period=20; left=3; right=3; draw_lta=true; draw_ltb=true;
+      period=20; pivot_left=3; pivot_right=3; draw_lta=true; draw_ltb=true;
       lta_color=clrGreen; ltb_color=clrRed;
       lta_style=STYLE_SOLID; ltb_style=STYLE_SOLID;
       lta_width=1; ltb_width=1; extend_right=true; show_labels=false;
-      fractal_tf=PERIOD_H4; detail_tf=PERIOD_H1; alert_tf=PERIOD_H1;
+      alert_tf=PERIOD_H1;
     }
   };
 
