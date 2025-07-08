@@ -52,13 +52,13 @@ private:
   void DrawLines(datetime t1, double p1, datetime t2, double p2,
                  ENUM_TRENDLINE_SIDE side);
   //+------------------------------------------------------------------+
-  //| Calcula o slope entre dois pontos de tempo/preço                  |
+  //| Calcula o slope entre dois pontos usando índices de barra         |
   //+------------------------------------------------------------------+
-  double CTrendLine::CalcSlope(datetime t1, double p1, datetime t2, double p2)
+  double CTrendLine::CalcSlope(int idx1, double p1, int idx2, double p2)
   {
-    if (t1 == t2)
+    if (idx1 == idx2)
       return 0.0;
-    return (p2 - p1) / (double)(t2 - t1);
+    return (p2 - p1) / (double)(idx1 - idx2);
   }
 
 public:
@@ -292,11 +292,12 @@ bool CTrendLine::Update()
       datetime t2=iTime(m_symbol,m_timeframe,up2);
       double p1=m_highs[up1];
       double p2=m_highs[up2];
-      double ltb_slope=CalcSlope(t2,p2,t1,p1);
-      m_ltb_angle=MathArctan(MathAbs(ltb_slope))*180.0/M_PI;
+      double ltb_slope=CalcSlope(up2,p2,up1,p1);
+      m_ltb_angle=MathArctan2(p2-p1,up2-up1)*180.0/M_PI;
+      if(m_ltb_angle<0) m_ltb_angle=-m_ltb_angle;
       if(m_draw_ltb && ltb_slope<0 && m_ltb_angle>=MIN_TRENDLINE_ANGLE)
         {
-         m_ltb_val=p1 + (p1-p2)/(t1-t2)*(t1 - iTime(m_symbol,m_timeframe,0));
+         m_ltb_val=p1 - ltb_slope*up1;
          DrawLines(t2,p2,t1,p1,TRENDLINE_LTB);
          m_ready=true;
         }
@@ -312,11 +313,12 @@ bool CTrendLine::Update()
       datetime t2=iTime(m_symbol,m_timeframe,lo2);
       double p1=m_lows[lo1];
       double p2=m_lows[lo2];
-      double lta_slope=CalcSlope(t2,p2,t1,p1);
-      m_lta_angle=MathArctan(MathAbs(lta_slope))*180.0/M_PI;
+      double lta_slope=CalcSlope(lo2,p2,lo1,p1);
+      m_lta_angle=MathArctan2(p2-p1,lo2-lo1)*180.0/M_PI;
+      if(m_lta_angle<0) m_lta_angle=-m_lta_angle;
       if(m_draw_lta && lta_slope>0 && m_lta_angle>=MIN_TRENDLINE_ANGLE)
         {
-         m_lta_val=p1 + (p1-p2)/(t1-t2)*(t1 - iTime(m_symbol,m_timeframe,0));
+         m_lta_val=p1 - lta_slope*lo1;
          DrawLines(t2,p2,t1,p1,TRENDLINE_LTA);
          m_ready=true;
         }
