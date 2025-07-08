@@ -89,10 +89,8 @@
                "name": "swing_lines",
                "type": "TRENDLINE",
                "period": 20,
-               "left": 3,
-               "right": 3,
-               "fractal_tf": "H1",
-               "detail_tf": "M15",
+               "pivot_left": 3,
+               "pivot_right": 3,
                "alert_tf": "M3",
                "draw_lta": true,
                "draw_ltb": true,
@@ -103,7 +101,6 @@
                "lta_width": 1,
                "ltb_width": 1,
                "extend_right": true,
-               "show_labels": true,
                "enabled": true
             }
          ]
