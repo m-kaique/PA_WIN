@@ -9,6 +9,9 @@
 #include "trendline_defs.mqh"
 #include "../../config_types.mqh"
 
+// mínimo de ângulo para que uma linha de tendência seja considerada válida
+#define MIN_TRENDLINE_ANGLE 20.0
+
 class CTrendLine : public CPriceActionBase
 {
 private:
@@ -34,6 +37,8 @@ private:
   bool m_ready;
   double m_lta_val;
   double m_ltb_val;
+  double m_lta_angle;
+  double m_ltb_angle;
 
   string m_obj_lta;
   string m_obj_ltb;
@@ -101,6 +106,8 @@ CTrendLine::CTrendLine()
   m_ready = false;
   m_lta_val = 0.0;
   m_ltb_val = 0.0;
+  m_lta_angle = 0.0;
+  m_ltb_angle = 0.0;
   m_obj_lta = "";
   m_obj_ltb = "";
   ArrayResize(m_highs, 0);
@@ -155,6 +162,8 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
   ArraySetAsSeries(m_lows, true);
   ArraySetAsSeries(m_opens, true);
   ArraySetAsSeries(m_closes, true);
+  m_lta_angle = 0.0;
+  m_ltb_angle = 0.0;
   return ok;
 }
 
@@ -271,43 +280,51 @@ bool CTrendLine::Update()
       if(isLow){ lo2=i; break; }
      }
 
-   m_ready=false;
+  m_ready=false;
+  m_lta_val=0.0;
+  m_ltb_val=0.0;
+  m_lta_angle=0.0;
+  m_ltb_angle=0.0;
 
-   if(up1>0 && up2>0)
-     {
+  if(up1>0 && up2>0)
+    {
       datetime t1=iTime(m_symbol,m_timeframe,up1);
       datetime t2=iTime(m_symbol,m_timeframe,up2);
       double p1=m_highs[up1];
       double p2=m_highs[up2];
       double ltb_slope=CalcSlope(t2,p2,t1,p1);
-
-      m_ltb_val=p1 + (p1-p2)/(t1-t2)*(t1 - iTime(m_symbol,m_timeframe,0));
-
-      if(m_draw_ltb && ltb_slope<0)
+      m_ltb_angle=MathArctan(MathAbs(ltb_slope))*180.0/M_PI;
+      if(m_draw_ltb && ltb_slope<0 && m_ltb_angle>=MIN_TRENDLINE_ANGLE)
+        {
+         m_ltb_val=p1 + (p1-p2)/(t1-t2)*(t1 - iTime(m_symbol,m_timeframe,0));
          DrawLines(t2,p2,t1,p1,TRENDLINE_LTB);
+         m_ready=true;
+        }
       else if(ObjectFind(0,m_obj_ltb)>=0)
+        {
          ObjectDelete(0,m_obj_ltb);
+        }
+    }
 
-      m_ready=true;
-     }
-
-   if(lo1>0 && lo2>0)
-     {
+  if(lo1>0 && lo2>0)
+    {
       datetime t1=iTime(m_symbol,m_timeframe,lo1);
       datetime t2=iTime(m_symbol,m_timeframe,lo2);
       double p1=m_lows[lo1];
       double p2=m_lows[lo2];
       double lta_slope=CalcSlope(t2,p2,t1,p1);
-
-      m_lta_val=p1 + (p1-p2)/(t1-t2)*(t1 - iTime(m_symbol,m_timeframe,0));
-
-      if(m_draw_lta && lta_slope>0)
+      m_lta_angle=MathArctan(MathAbs(lta_slope))*180.0/M_PI;
+      if(m_draw_lta && lta_slope>0 && m_lta_angle>=MIN_TRENDLINE_ANGLE)
+        {
+         m_lta_val=p1 + (p1-p2)/(t1-t2)*(t1 - iTime(m_symbol,m_timeframe,0));
          DrawLines(t2,p2,t1,p1,TRENDLINE_LTA);
+         m_ready=true;
+        }
       else if(ObjectFind(0,m_obj_lta)>=0)
+        {
          ObjectDelete(0,m_obj_lta);
-
-      m_ready=true;
-     }
+        }
+    }
 
    datetime ct[];
    ArrayResize(ct,2);
@@ -356,8 +373,8 @@ double CTrendLine::GetLTBValue(int shift)
 //+------------------------------------------------------------------+
 //| Valid flags                                                       |
 //+------------------------------------------------------------------+
-bool CTrendLine::IsLTAValid() { return (m_lta_val != 0.0); }
-bool CTrendLine::IsLTBValid() { return (m_ltb_val != 0.0); }
+bool CTrendLine::IsLTAValid() { return (m_lta_val != 0.0 && m_lta_angle >= MIN_TRENDLINE_ANGLE); }
+bool CTrendLine::IsLTBValid() { return (m_ltb_val != 0.0 && m_ltb_angle >= MIN_TRENDLINE_ANGLE); }
 bool CTrendLine::IsBreakdown() { return m_breakdown; }
 bool CTrendLine::IsBreakup() { return m_breakup; }
 
