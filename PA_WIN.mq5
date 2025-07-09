@@ -123,38 +123,44 @@ void ExecuteOnNewBar()
    Print("=== NOVO CANDLE ", EnumToString(m_control_tf), " ===");
    Print("Tempo do candle: ", TimeToString(m_last_bar_time, TIME_DATE | TIME_MINUTES));
 
-   string configured_symbol = "WIN$N"; // Usar símbolo fixo do JSON
+   string symbols[];
+   g_config_manager.GetConfiguredSymbols(symbols);
 
-   // Atualizar automaticamente todos os contextos carregados do JSON
-   TF_CTX *contexts[];
-   ENUM_TIMEFRAMES tfs[];
-   int count = g_config_manager.GetSymbolContexts(configured_symbol, contexts, tfs);
-
-   if(count==0)
+   for(int s=0; s<ArraySize(symbols); s++)
    {
-      Print("AVISO: Nenhum contexto encontrado para símbolo: ", configured_symbol);
-      return;
-   }
+      string sym = symbols[s];
 
-   for(int i=0;i<count;i++)
-   {
-      TF_CTX *ctx = contexts[i];
-      ENUM_TIMEFRAMES tf = tfs[i];
+      // Atualizar automaticamente todos os contextos carregados do JSON
+      TF_CTX *contexts[];
+      ENUM_TIMEFRAMES tfs[];
+      int count = g_config_manager.GetSymbolContexts(sym, contexts, tfs);
 
-      if(ctx==NULL)
-         continue;
-      // Print("Atualizando Contexto: " + EnumToString(tfs[i]));
-      ctx.Update();
-
-      if(tf==PERIOD_H1)
+      if(count==0)
       {
-         CPriceActionBase *pa = ctx.GetPriceAction("swing_lines");
-         if(pa!=NULL)
+         Print("AVISO: Nenhum contexto encontrado para símbolo: ", sym);
+         continue;
+      }
+
+      for(int i=0;i<count;i++)
+      {
+         TF_CTX *ctx = contexts[i];
+         ENUM_TIMEFRAMES tf = tfs[i];
+
+         if(ctx==NULL)
+            continue;
+         // Print("Atualizando Contexto: " + EnumToString(tfs[i]));
+         ctx.Update();
+
+         if(tf==PERIOD_H1)
          {
-            CTrendLine *tl = (CTrendLine*)pa;
-            string pos = tl.GetPricePositionString();
-            if(pos!="")
-               Print("Posicao do preco em H1: ",pos);
+            CPriceActionBase *pa = ctx.GetPriceAction("swing_lines");
+            if(pa!=NULL)
+            {
+               CTrendLine *tl = (CTrendLine*)pa;
+               string pos = tl.GetPricePositionString();
+               if(pos!="")
+                  Print("Posicao do preco em H1: ",pos);
+            }
          }
       }
    }
