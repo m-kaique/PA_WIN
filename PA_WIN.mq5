@@ -145,6 +145,18 @@ void ExecuteOnNewBar()
          continue;
       // Print("Atualizando Contexto: " + EnumToString(tfs[i]));
       ctx.Update();
+
+      if(tf==PERIOD_H1)
+      {
+         CPriceActionBase *pa = ctx.GetPriceAction("swing_lines");
+         if(pa!=NULL)
+         {
+            CTrendLine *tl = (CTrendLine*)pa;
+            string pos = tl.GetPricePositionString();
+            if(pos!="")
+               Print("Posicao do preco em H1: ",pos);
+         }
+      }
    }
 }
 
