@@ -74,6 +74,12 @@ private:
   bool            IsInsideBar(const double &h[],const double &l[],int index);
   bool            IsOutsideBar(const double &h[],const double &l[],int index);
 
+  void            DeleteObjects(string &names[]);
+
+  void            ResetCounters();
+  bool            TouchesAnyZone(const SRZone &zones[],int index);
+  void            UpdatePatternCounters(bool is_support,int index);
+
   void            CalculateZones(int bars);
   void            DrawZones();
   void            DetectPatterns(int bars);
@@ -180,12 +186,8 @@ CSupRes::CSupRes()
 //+------------------------------------------------------------------+
 CSupRes::~CSupRes()
   {
-  for(int i=0;i<ArraySize(m_res_obj_names);i++)
-     if(StringLen(m_res_obj_names[i])>0)
-        ObjectDelete(0,m_res_obj_names[i]);
-  for(int i=0;i<ArraySize(m_sup_obj_names);i++)
-     if(StringLen(m_sup_obj_names[i])>0)
-        ObjectDelete(0,m_sup_obj_names[i]);
+  DeleteObjects(m_res_obj_names);
+  DeleteObjects(m_sup_obj_names);
   }
 
 //+------------------------------------------------------------------+
@@ -220,7 +222,81 @@ void CSupRes::DrawZone(string name,double lower,double upper,color col)
       ObjectMove(0,name,1,t2,upper);
      }
    ObjectSetInteger(0,name,OBJPROP_COLOR,col);
-   ObjectSetInteger(0,name,OBJPROP_BACK,true);
+  ObjectSetInteger(0,name,OBJPROP_BACK,true);
+  }
+
+//+------------------------------------------------------------------+
+//| Delete graphical objects helper                                   |
+//+------------------------------------------------------------------+
+void CSupRes::DeleteObjects(string &names[])
+  {
+   for(int i=0;i<ArraySize(names);i++)
+      if(StringLen(names[i])>0)
+         ObjectDelete(0,names[i]);
+  }
+
+//+------------------------------------------------------------------+
+//| Reset pattern counters                                            |
+//+------------------------------------------------------------------+
+void CSupRes::ResetCounters()
+  {
+   m_sup_touches=0;
+   m_res_touches=0;
+   m_sup_pinbar=0;
+   m_res_pinbar=0;
+   m_sup_engulf=0;
+   m_res_engulf=0;
+   m_sup_doji=0;
+   m_res_doji=0;
+   m_sup_maru_bull=0;
+   m_res_maru_bull=0;
+   m_sup_maru_bear=0;
+   m_res_maru_bear=0;
+   m_sup_insidebar=0;
+   m_res_insidebar=0;
+   m_sup_outsidebar=0;
+   m_res_outsidebar=0;
+  }
+
+//+------------------------------------------------------------------+
+//| Check if candle touches any zone                                  |
+//+------------------------------------------------------------------+
+bool CSupRes::TouchesAnyZone(const SRZone &zones[],int index)
+  {
+   for(int z=0;z<ArraySize(zones);z++)
+      if(m_highs[index]>=zones[z].lower-m_touch_tolerance &&
+         m_lows[index] <=zones[z].upper+m_touch_tolerance)
+         return true;
+   return false;
+  }
+
+//+------------------------------------------------------------------+
+//| Update pattern counters for a candle                              |
+//+------------------------------------------------------------------+
+void CSupRes::UpdatePatternCounters(bool is_support,int index)
+  {
+   if(is_support)
+     {
+      m_sup_touches++;
+      if(IsBullPinBar(m_opens,m_closes,m_highs,m_lows,index))   m_sup_pinbar++;
+      if(IsBullEngulf(m_opens,m_closes,index))                  m_sup_engulf++;
+      if(IsDoji(m_opens,m_closes,m_highs,m_lows,index))         m_sup_doji++;
+      if(IsBullMarubozu(m_opens,m_closes,m_highs,m_lows,index)) m_sup_maru_bull++;
+      if(IsBearMarubozu(m_opens,m_closes,m_highs,m_lows,index)) m_sup_maru_bear++;
+      if(IsInsideBar(m_highs,m_lows,index))                     m_sup_insidebar++;
+      if(IsOutsideBar(m_highs,m_lows,index))                    m_sup_outsidebar++;
+     }
+   else
+     {
+      m_res_touches++;
+      if(IsBearPinBar(m_opens,m_closes,m_highs,m_lows,index))   m_res_pinbar++;
+      if(IsBearEngulf(m_opens,m_closes,index))                  m_res_engulf++;
+      if(IsDoji(m_opens,m_closes,m_highs,m_lows,index))         m_res_doji++;
+      if(IsBullMarubozu(m_opens,m_closes,m_highs,m_lows,index)) m_res_maru_bull++;
+      if(IsBearMarubozu(m_opens,m_closes,m_highs,m_lows,index)) m_res_maru_bear++;
+      if(IsInsideBar(m_highs,m_lows,index))                     m_res_insidebar++;
+      if(IsOutsideBar(m_highs,m_lows,index))                    m_res_outsidebar++;
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -638,58 +714,15 @@ void CSupRes::DrawZones()
 //+------------------------------------------------------------------+
 void CSupRes::DetectPatterns(int bars)
   {
-   m_sup_touches=0;
-   m_res_touches=0;
-   m_sup_pinbar=0;
-   m_res_pinbar=0;
-   m_sup_engulf=0;
-   m_res_engulf=0;
-   m_sup_doji=0;
-   m_res_doji=0;
-   m_sup_maru_bull=0;
-   m_res_maru_bull=0;
-   m_sup_maru_bear=0;
-   m_res_maru_bear=0;
-   m_sup_insidebar=0;
-   m_res_insidebar=0;
-   m_sup_outsidebar=0;
-   m_res_outsidebar=0;
+   ResetCounters();
 
    int lookback=MathMin(m_touch_lookback,bars-1);
    for(int i=1;i<=lookback;i++)
      {
-      bool sup_touch=false;
-      for(int z=0;z<ArraySize(m_current_supports);z++)
-         if(m_highs[i]>=m_current_supports[z].lower-m_touch_tolerance && m_lows[i]<=m_current_supports[z].upper+m_touch_tolerance)
-           { sup_touch=true; break; }
-
-      bool res_touch=false;
-      for(int z=0;z<ArraySize(m_current_resistances);z++)
-         if(m_highs[i]>=m_current_resistances[z].lower-m_touch_tolerance && m_lows[i]<=m_current_resistances[z].upper+m_touch_tolerance)
-           { res_touch=true; break; }
-
-      if(sup_touch)
-        {
-         m_sup_touches++;
-         if(IsBullPinBar(m_opens,m_closes,m_highs,m_lows,i))   m_sup_pinbar++;
-         if(IsBullEngulf(m_opens,m_closes,i))              m_sup_engulf++;
-         if(IsDoji(m_opens,m_closes,m_highs,m_lows,i))         m_sup_doji++;
-         if(IsBullMarubozu(m_opens,m_closes,m_highs,m_lows,i)) m_sup_maru_bull++;
-         if(IsBearMarubozu(m_opens,m_closes,m_highs,m_lows,i)) m_sup_maru_bear++;
-         if(IsInsideBar(m_highs,m_lows,i))                 m_sup_insidebar++;
-         if(IsOutsideBar(m_highs,m_lows,i))                m_sup_outsidebar++;
-        }
-      if(res_touch)
-        {
-         m_res_touches++;
-         if(IsBearPinBar(m_opens,m_closes,m_highs,m_lows,i))   m_res_pinbar++;
-         if(IsBearEngulf(m_opens,m_closes,i))              m_res_engulf++;
-         if(IsDoji(m_opens,m_closes,m_highs,m_lows,i))         m_res_doji++;
-         if(IsBullMarubozu(m_opens,m_closes,m_highs,m_lows,i)) m_res_maru_bull++;
-         if(IsBearMarubozu(m_opens,m_closes,m_highs,m_lows,i)) m_res_maru_bear++;
-         if(IsInsideBar(m_highs,m_lows,i))                 m_res_insidebar++;
-         if(IsOutsideBar(m_highs,m_lows,i))                m_res_outsidebar++;
-        }
+      if(TouchesAnyZone(m_current_supports,i))
+         UpdatePatternCounters(true,i);
+      if(TouchesAnyZone(m_current_resistances,i))
+         UpdatePatternCounters(false,i);
      }
 
    m_sup_valid=true;
