@@ -116,23 +116,17 @@ bool IsNewBar(ENUM_TIMEFRAMES timeframe)
 }
 
 //+------------------------------------------------------------------+
-//| Executar lógica apenas em novo candle                           |
+//| Atualizar todos os contextos de um símbolo                       |
 //+------------------------------------------------------------------+
-void ExecuteOnNewBar()
+void UpdateSymbolContexts(string symbol)
 {
-   Print("=== NOVO CANDLE ", EnumToString(m_control_tf), " ===");
-   Print("Tempo do candle: ", TimeToString(m_last_bar_time, TIME_DATE | TIME_MINUTES));
-
-   string configured_symbol = "WIN$N"; // Usar símbolo fixo do JSON
-
-   // Atualizar automaticamente todos os contextos carregados do JSON
    TF_CTX *contexts[];
    ENUM_TIMEFRAMES tfs[];
-   int count = g_config_manager.GetSymbolContexts(configured_symbol, contexts, tfs);
+   int count = g_config_manager.GetSymbolContexts(symbol, contexts, tfs);
 
    if(count==0)
    {
-      Print("AVISO: Nenhum contexto encontrado para símbolo: ", configured_symbol);
+      Print("AVISO: Nenhum contexto encontrado para símbolo: ", symbol);
       return;
    }
 
@@ -143,7 +137,6 @@ void ExecuteOnNewBar()
 
       if(ctx==NULL)
          continue;
-      // Print("Atualizando Contexto: " + EnumToString(tfs[i]));
       ctx.Update();
 
       if(tf==PERIOD_H1)
@@ -157,6 +150,23 @@ void ExecuteOnNewBar()
                Print("Posicao do preco em H1: ",pos);
          }
       }
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Executar lógica apenas em novo candle                           |
+//+------------------------------------------------------------------+
+void ExecuteOnNewBar()
+{
+   Print("=== NOVO CANDLE ", EnumToString(m_control_tf), " ===");
+   Print("Tempo do candle: ", TimeToString(m_last_bar_time, TIME_DATE | TIME_MINUTES));
+
+   string symbols[];
+   g_config_manager.GetConfiguredSymbols(symbols);
+
+   for(int i=0; i<ArraySize(symbols); i++)
+   {
+      UpdateSymbolContexts(symbols[i]);
    }
 }
 
