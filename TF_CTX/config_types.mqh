@@ -148,10 +148,11 @@ public:
    color  ltb_color;
    ENUM_LINE_STYLE lta_style;
    ENUM_LINE_STYLE ltb_style;
-   int    lta_width;
-   int    ltb_width;
-   bool   extend_right;
-   ENUM_TIMEFRAMES alert_tf;
+  int    lta_width;
+  int    ltb_width;
+  bool   extend_right;
+  ENUM_TIMEFRAMES alert_tf;
+  double min_angle;
   CTrendLineConfig()
     {
       period=20; pivot_left=3; pivot_right=3; draw_lta=true; draw_ltb=true;
@@ -159,6 +160,7 @@ public:
       lta_style=STYLE_SOLID; ltb_style=STYLE_SOLID;
       lta_width=1; ltb_width=1; extend_right=true;
       alert_tf=PERIOD_H1;
+      min_angle=20.0;
     }
   };
 

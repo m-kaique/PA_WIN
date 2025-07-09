@@ -10,7 +10,7 @@
 #include "../../config_types.mqh"
 
 // mínimo de ângulo para que uma linha de tendência seja considerada válida
-#define MIN_TRENDLINE_ANGLE 20.0
+// o valor é carregado a partir da configuração JSON
 
 class CTrendLine : public CPriceActionBase
 {
@@ -42,6 +42,8 @@ private:
   double m_ltb_angle;
   double m_lta2_angle;
   double m_ltb2_angle;
+  // valor mínimo do ângulo de tendência
+  double m_min_angle;
 
   string m_obj_lta;
   string m_obj_ltb;
@@ -90,6 +92,12 @@ private:
                         double &slope,double &slope2,double &angle,double &angle2);
   void ResetLTA();
   void ResetLTB();
+  string GetObjectName(ENUM_TRENDLINE_SIDE side);
+  void   GetDrawSettings(ENUM_TRENDLINE_SIDE side,color &col,ENUM_LINE_STYLE &st,int &width);
+  bool   CheckBreak(ENUM_TRENDLINE_SIDE side);
+  bool   IsPivot(const double &buffer[],int index,int left,int right,bool isHigh);
+  int    GetBarsCount();
+  double GetLineValue(int shift,ENUM_TRENDLINE_SIDE side,double current);
   //+------------------------------------------------------------------+
   //| Calcula o slope entre dois pontos usando índices de barra         |
   //+------------------------------------------------------------------+
@@ -156,6 +164,7 @@ CTrendLine::CTrendLine()
   m_ltb_angle = 0.0;
   m_lta2_angle = 0.0;
   m_ltb2_angle = 0.0;
+  m_min_angle = 20.0;
   m_obj_lta = "";
   m_obj_ltb = "";
   m_obj_lta2 = "";
@@ -174,14 +183,10 @@ CTrendLine::CTrendLine()
 //+------------------------------------------------------------------+
 CTrendLine::~CTrendLine()
 {
-  if (StringLen(m_obj_lta) > 0)
-    ObjectDelete(0, m_obj_lta);
-  if (StringLen(m_obj_ltb) > 0)
-    ObjectDelete(0, m_obj_ltb);
-  if (StringLen(m_obj_lta2) > 0)
-    ObjectDelete(0, m_obj_lta2);
-  if (StringLen(m_obj_ltb2) > 0)
-    ObjectDelete(0, m_obj_ltb2);
+  RemoveLine(TRENDLINE_LTA);
+  RemoveLine(TRENDLINE_LTB);
+  RemoveLine(TRENDLINE_LTA2);
+  RemoveLine(TRENDLINE_LTB2);
 }
 
 
@@ -205,13 +210,14 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
   m_ltb_width = cfg.ltb_width;
   m_extend_right = cfg.extend_right;
   m_alert_tf = cfg.alert_tf;
+  m_min_angle = cfg.min_angle;
 
   bool ok = true;
   m_obj_lta = "TL_LTA_" + IntegerToString(GetTickCount());
   m_obj_ltb = "TL_LTB_" + IntegerToString(GetTickCount());
   m_obj_lta2 = "TL_LTA2_" + IntegerToString(GetTickCount());
   m_obj_ltb2 = "TL_LTB2_" + IntegerToString(GetTickCount());
-  int bars = m_period > 0 ? m_period : 50;
+  int bars = GetBarsCount();
   ArrayResize(m_highs, bars);
   ArrayResize(m_lows, bars);
   ArrayResize(m_closes, 2); // only need last two closes
@@ -269,23 +275,9 @@ bool CTrendLine::IsReady()
 //+------------------------------------------------------------------+
 void CTrendLine::DrawLines(datetime t1, double p1, datetime t2, double p2, ENUM_TRENDLINE_SIDE side)
 {
-  string name;
-  color col;
-  ENUM_LINE_STYLE st;
-  int width;
-  switch(side)
-  {
-    case TRENDLINE_LTA:
-      name=m_obj_lta; col=m_lta_color; st=m_lta_style; width=m_lta_width; break;
-    case TRENDLINE_LTB:
-      name=m_obj_ltb; col=m_ltb_color; st=m_ltb_style; width=m_ltb_width; break;
-    case TRENDLINE_LTA2:
-      name=m_obj_lta2; col=m_lta_color; st=m_lta_style; width=m_lta_width; break;
-    case TRENDLINE_LTB2:
-      name=m_obj_ltb2; col=m_ltb_color; st=m_ltb_style; width=m_ltb_width; break;
-    default:
-      name=""; col=clrWhite; st=STYLE_SOLID; width=1; break;
-  }
+  string name=GetObjectName(side);
+  color col; ENUM_LINE_STYLE st; int width;
+  GetDrawSettings(side,col,st,width);
   if (ObjectFind(0, name) < 0)
     ObjectCreate(0, name, OBJ_TREND, 0, t1, p1, t2, p2);
   else
@@ -299,87 +291,43 @@ void CTrendLine::DrawLines(datetime t1, double p1, datetime t2, double p2, ENUM_
 
 void CTrendLine::RemoveLine(ENUM_TRENDLINE_SIDE side)
 {
-  string name="";
-  switch(side)
-  {
-    case TRENDLINE_LTA:  name=m_obj_lta;  break;
-    case TRENDLINE_LTB:  name=m_obj_ltb;  break;
-    case TRENDLINE_LTA2: name=m_obj_lta2; break;
-    case TRENDLINE_LTB2: name=m_obj_ltb2; break;
-    default:             name="";         break;
-  }
+  string name=GetObjectName(side);
   if(ObjectFind(0,name) >= 0)
      ObjectDelete(0,name);
 }
 
 bool CTrendLine::CheckBreakLTA()
 {
-  if(!m_lta_active)
-     return false;
-  datetime t=iTime(m_symbol,m_alert_tf,1);
-  if(t==0)
-     return false;
-  double val=ObjectGetValueByTime(0,m_obj_lta,t);
-  if(iClose(m_symbol,m_alert_tf,1) < val)
-    {
-      ResetLTA();
-      m_lta_last_break=t;
-      return true;
-    }
-  return false;
+  return CheckBreak(TRENDLINE_LTA);
 }
 
 bool CTrendLine::CheckBreakLTB()
 {
-  if(!m_ltb_active)
-     return false;
-  datetime t=iTime(m_symbol,m_alert_tf,1);
-  if(t==0)
-     return false;
-  double val=ObjectGetValueByTime(0,m_obj_ltb,t);
-  if(iClose(m_symbol,m_alert_tf,1) > val)
-    {
-      ResetLTB();
-      m_ltb_last_break=t;
-      return true;
-    }
-  return false;
+  return CheckBreak(TRENDLINE_LTB);
 }
 
 bool CTrendLine::FindNewPivots(const double &buffer[],int &idx_recent,int &idx_old,double &p_recent,double &p_old,
                                int left,int right,datetime last_break,bool isHigh)
 {
-  int bars=m_period>0?m_period:50;
+  int bars=GetBarsCount();
   idx_recent=-1; idx_old=-1;
   for(int i=right; i<bars-left; i++)
   {
-     bool pivot=true;
-     for(int j=1;j<=left && pivot;j++)
-        if(isHigh?buffer[i]<=buffer[i+j]:buffer[i]>=buffer[i+j]) pivot=false;
-     for(int j=1;j<=right && pivot;j++)
-        if(isHigh?buffer[i]<buffer[i-j]:buffer[i]>buffer[i-j]) pivot=false;
-     if(pivot)
-       {
-        datetime tt=iTime(m_symbol,m_timeframe,i);
-        if(tt<=last_break) continue;
-        idx_recent=i; p_recent=buffer[i];
-        break;
-       }
+     if(!IsPivot(buffer,i,left,right,isHigh))
+        continue;
+     datetime tt=iTime(m_symbol,m_timeframe,i);
+     if(tt<=last_break) continue;
+     idx_recent=i; p_recent=buffer[i];
+     break;
   }
   for(int i=idx_recent+right+1; i<bars-left; i++)
   {
-     bool pivot=true;
-     for(int j=1;j<=left && pivot;j++)
-        if(isHigh?buffer[i]<=buffer[i+j]:buffer[i]>=buffer[i+j]) pivot=false;
-     for(int j=1;j<=right && pivot;j++)
-        if(isHigh?buffer[i]<buffer[i-j]:buffer[i]>buffer[i-j]) pivot=false;
-     if(pivot)
-       {
-        datetime tt=iTime(m_symbol,m_timeframe,i);
-        if(tt<=last_break) continue;
-        idx_old=i; p_old=buffer[i];
-        break;
-       }
+     if(!IsPivot(buffer,i,left,right,isHigh))
+        continue;
+     datetime tt=iTime(m_symbol,m_timeframe,i);
+     if(tt<=last_break) continue;
+     idx_old=i; p_old=buffer[i];
+     break;
   }
   return (idx_recent>0 && idx_old>0);
 }
@@ -426,6 +374,87 @@ void CTrendLine::ResetLTB()
   m_ltb_angle=0.0; m_ltb2_angle=0.0;
 }
 
+string CTrendLine::GetObjectName(ENUM_TRENDLINE_SIDE side)
+{
+  switch(side)
+  {
+    case TRENDLINE_LTA:  return m_obj_lta;
+    case TRENDLINE_LTB:  return m_obj_ltb;
+    case TRENDLINE_LTA2: return m_obj_lta2;
+    case TRENDLINE_LTB2: return m_obj_ltb2;
+    default:             return "";
+  }
+}
+
+void CTrendLine::GetDrawSettings(ENUM_TRENDLINE_SIDE side,color &col,ENUM_LINE_STYLE &st,int &width)
+{
+  switch(side)
+  {
+    case TRENDLINE_LTA:
+    case TRENDLINE_LTA2:
+      col=m_lta_color; st=m_lta_style; width=m_lta_width; break;
+    case TRENDLINE_LTB:
+    case TRENDLINE_LTB2:
+      col=m_ltb_color; st=m_ltb_style; width=m_ltb_width; break;
+    default:
+      col=clrWhite; st=STYLE_SOLID; width=1; break;
+  }
+}
+
+bool CTrendLine::IsPivot(const double &buffer[],int index,int left,int right,bool isHigh)
+{
+  for(int j=1;j<=left;j++)
+     if(isHigh?buffer[index]<=buffer[index+j]:buffer[index]>=buffer[index+j])
+        return false;
+  for(int j=1;j<=right;j++)
+     if(isHigh?buffer[index]<buffer[index-j]:buffer[index]>buffer[index-j])
+        return false;
+  return true;
+}
+
+int CTrendLine::GetBarsCount()
+{
+  return (m_period>0)?m_period:50;
+}
+
+double CTrendLine::GetLineValue(int shift,ENUM_TRENDLINE_SIDE side,double current)
+{
+  if(shift==0)
+     return current;
+  datetime t=iTime(m_symbol,m_alert_tf,shift);
+  if(t==0)
+     return 0.0;
+  string name=GetObjectName(side);
+  return ObjectGetValueByTime(0,name,t);
+}
+
+bool CTrendLine::CheckBreak(ENUM_TRENDLINE_SIDE side)
+{
+  bool active=(side==TRENDLINE_LTA)?m_lta_active:m_ltb_active;
+  if(!active)
+     return false;
+  datetime t=iTime(m_symbol,m_alert_tf,1);
+  if(t==0)
+     return false;
+  string name=GetObjectName(side);
+  double val=ObjectGetValueByTime(0,name,t);
+  double close=iClose(m_symbol,m_alert_tf,1);
+  bool broke=(side==TRENDLINE_LTA)?(close<val):(close>val);
+  if(!broke)
+     return false;
+  if(side==TRENDLINE_LTA)
+    {
+      ResetLTA();
+      m_lta_last_break=t;
+    }
+  else
+    {
+      ResetLTB();
+      m_ltb_last_break=t;
+    }
+  return true;
+}
+
 
 void CTrendLine::UpdateTrendlineLTB()
 {
@@ -451,7 +480,7 @@ void CTrendLine::UpdateTrendlineLTB()
       CalculateBases(id_old,id_new,p_old,p_new,base_old,base_new);
       double slope,slope2,angle,angle2;
       CalculateMetrics(id_old,id_new,base_old,p_old,p_new,base_new,slope,slope2,angle,angle2);
-      if(m_draw_ltb && slope<0 && angle>=MIN_TRENDLINE_ANGLE)
+      if(m_draw_ltb && slope<0 && angle>=m_min_angle)
         {
          datetime t1=iTime(m_symbol,m_timeframe,id_old);
          datetime t2=iTime(m_symbol,m_timeframe,id_new);
@@ -493,7 +522,7 @@ void CTrendLine::UpdateTrendlineLTA()
       CalculateBases(id_old,id_new,p_old,p_new,base_old,base_new);
       double slope,slope2,angle,angle2;
       CalculateMetrics(id_old,id_new,base_old,p_old,p_new,base_new,slope,slope2,angle,angle2);
-      if(m_draw_lta && slope>0 && angle>=MIN_TRENDLINE_ANGLE)
+      if(m_draw_lta && slope>0 && angle>=m_min_angle)
         {
          datetime t1=iTime(m_symbol,m_timeframe,id_old);
          datetime t2=iTime(m_symbol,m_timeframe,id_new);
@@ -516,7 +545,7 @@ void CTrendLine::UpdateTrendlineLTA()
 //+------------------------------------------------------------------+
 bool CTrendLine::Update()
   {
-   int bars = m_period > 0 ? m_period : 50;
+   int bars = GetBarsCount();
    int got_high = CopyHigh(m_symbol, m_timeframe, 0, bars, m_highs);
    int got_low  = CopyLow(m_symbol, m_timeframe, 0, bars, m_lows);
    if(got_high < bars || got_low < bars)
@@ -557,13 +586,7 @@ bool CTrendLine::Update()
 //+------------------------------------------------------------------+
 double CTrendLine::GetLTAValue(int shift)
 {
-  if (shift == 0)
-    return m_lta_val;
-  datetime t = iTime(m_symbol, m_alert_tf, shift);
-  if (t == 0)
-    return 0.0;
-  double val = ObjectGetValueByTime(0, m_obj_lta, t);
-  return val;
+  return GetLineValue(shift,TRENDLINE_LTA,m_lta_val);
 }
 
 //+------------------------------------------------------------------+
@@ -571,13 +594,7 @@ double CTrendLine::GetLTAValue(int shift)
 //+------------------------------------------------------------------+
 double CTrendLine::GetLTBValue(int shift)
 {
-  if (shift == 0)
-    return m_ltb_val;
-  datetime t = iTime(m_symbol, m_alert_tf, shift);
-  if (t == 0)
-    return 0.0;
-  double val = ObjectGetValueByTime(0, m_obj_ltb, t);
-  return val;
+  return GetLineValue(shift,TRENDLINE_LTB,m_ltb_val);
 }
 
 //+------------------------------------------------------------------+
@@ -585,13 +602,7 @@ double CTrendLine::GetLTBValue(int shift)
 //+------------------------------------------------------------------+
 double CTrendLine::GetLTA2Value(int shift)
 {
-  if(shift==0)
-     return m_lta2_val;
-  datetime t=iTime(m_symbol,m_alert_tf,shift);
-  if(t==0)
-     return 0.0;
-  double val=ObjectGetValueByTime(0,m_obj_lta2,t);
-  return val;
+  return GetLineValue(shift,TRENDLINE_LTA2,m_lta2_val);
 }
 
 //+------------------------------------------------------------------+
@@ -599,22 +610,16 @@ double CTrendLine::GetLTA2Value(int shift)
 //+------------------------------------------------------------------+
 double CTrendLine::GetLTB2Value(int shift)
 {
-  if(shift==0)
-     return m_ltb2_val;
-  datetime t=iTime(m_symbol,m_alert_tf,shift);
-  if(t==0)
-     return 0.0;
-  double val=ObjectGetValueByTime(0,m_obj_ltb2,t);
-  return val;
+  return GetLineValue(shift,TRENDLINE_LTB2,m_ltb2_val);
 }
 
 //+------------------------------------------------------------------+
 //| Valid flags                                                       |
 //+------------------------------------------------------------------+
-bool CTrendLine::IsLTAValid() { return (m_lta_val != 0.0 && m_lta_angle >= MIN_TRENDLINE_ANGLE); }
-bool CTrendLine::IsLTBValid() { return (m_ltb_val != 0.0 && m_ltb_angle >= MIN_TRENDLINE_ANGLE); }
-bool CTrendLine::IsLTA2Valid() { return (m_lta2_val != 0.0 && m_lta2_angle >= MIN_TRENDLINE_ANGLE); }
-bool CTrendLine::IsLTB2Valid() { return (m_ltb2_val != 0.0 && m_ltb2_angle >= MIN_TRENDLINE_ANGLE); }
+bool CTrendLine::IsLTAValid() { return (m_lta_val != 0.0 && m_lta_angle >= m_min_angle); }
+bool CTrendLine::IsLTBValid() { return (m_ltb_val != 0.0 && m_ltb_angle >= m_min_angle); }
+bool CTrendLine::IsLTA2Valid() { return (m_lta2_val != 0.0 && m_lta2_angle >= m_min_angle); }
+bool CTrendLine::IsLTB2Valid() { return (m_ltb2_val != 0.0 && m_ltb2_angle >= m_min_angle); }
 bool CTrendLine::IsBreakdown() { return m_breakdown; }
 bool CTrendLine::IsBreakup() { return m_breakup; }
 

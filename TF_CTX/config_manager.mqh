@@ -712,6 +712,7 @@ CPriceActionConfig *CConfigManager::CreatePriceActionConfig(CJAVal *pa, ENUM_TIM
         p.ltb_width=(int)pa["ltb_width"].ToInt();
         p.extend_right=pa["extend_right"].ToBool();
         p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
+        p.min_angle=pa["min_angle"].ToDbl();
 
         if(p.alert_tf==PERIOD_CURRENT)   p.alert_tf=ctx_tf;
         return p;
