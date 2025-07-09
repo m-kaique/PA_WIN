@@ -45,6 +45,7 @@ public:
   double GetIndicatorValue(string name, int shift = 0);
   bool CopyIndicatorValues(string name, int shift, int count, double &buffer[]);
   double GetPriceActionValue(string name,int shift=0);
+  CPriceActionBase* GetPriceAction(string name);
   bool CopyPriceActionValues(string name,int shift,int count,double &buffer[]);
 };
 
@@ -228,6 +229,17 @@ double TF_CTX::GetPriceActionValue(string name,int shift)
       return m_priceactions[i].GetValue(shift);
   Print("PriceAction nao encontrado: ",name);
   return 0.0;
+}
+
+//+------------------------------------------------------------------+
+//| Obter ponteiro para a price action                               |
+//+------------------------------------------------------------------+
+CPriceActionBase* TF_CTX::GetPriceAction(string name)
+{
+  for(int i=0;i<ArraySize(m_pa_names);i++)
+    if(m_pa_names[i]==name)
+      return m_priceactions[i];
+  return NULL;
 }
 
 //+------------------------------------------------------------------+

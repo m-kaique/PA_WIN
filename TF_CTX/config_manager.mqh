@@ -685,8 +685,8 @@ CPriceActionConfig *CConfigManager::CreatePriceActionConfig(CJAVal *pa, ENUM_TIM
         p.type=type;
         p.enabled=pa["enabled"].ToBool();
         p.period=(int)pa["period"].ToInt();
-        p.left=(int)pa["left"].ToInt();
-        p.right=(int)pa["right"].ToInt();
+        p.pivot_left=(int)pa["pivot_left"].ToInt();
+        p.pivot_right=(int)pa["pivot_right"].ToInt();
         p.draw_lta=pa["draw_lta"].ToBool();
         p.draw_ltb=pa["draw_ltb"].ToBool();
         p.lta_color=StringToColor(pa["lta_color"].ToStr());
@@ -696,13 +696,8 @@ CPriceActionConfig *CConfigManager::CreatePriceActionConfig(CJAVal *pa, ENUM_TIM
         p.lta_width=(int)pa["lta_width"].ToInt();
         p.ltb_width=(int)pa["ltb_width"].ToInt();
         p.extend_right=pa["extend_right"].ToBool();
-        p.show_labels=pa["show_labels"].ToBool();
-        p.fractal_tf=StringToTimeframe(pa["fractal_tf"].ToStr());
-        p.detail_tf=StringToTimeframe(pa["detail_tf"].ToStr());
         p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
 
-        if(p.fractal_tf==PERIOD_CURRENT) p.fractal_tf=ctx_tf;
-        if(p.detail_tf==PERIOD_CURRENT)  p.detail_tf=ctx_tf;
         if(p.alert_tf==PERIOD_CURRENT)   p.alert_tf=ctx_tf;
         return p;
     }
