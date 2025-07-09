@@ -74,7 +74,7 @@ private:
   bool            IsInsideBar(const double &h[],const double &l[],int index);
   bool            IsOutsideBar(const double &h[],const double &l[],int index);
 
-  void            DeleteObjects(string names[]);
+  void            DeleteObjects(string &names[]);
 
   void            ResetCounters();
   bool            TouchesAnyZone(const SRZone &zones[],int index);
@@ -228,7 +228,7 @@ void CSupRes::DrawZone(string name,double lower,double upper,color col)
 //+------------------------------------------------------------------+
 //| Delete graphical objects helper                                   |
 //+------------------------------------------------------------------+
-void CSupRes::DeleteObjects(string names[])
+void CSupRes::DeleteObjects(string &names[])
   {
    for(int i=0;i<ArraySize(names);i++)
       if(StringLen(names[i])>0)
