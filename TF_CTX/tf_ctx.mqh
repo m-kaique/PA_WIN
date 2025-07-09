@@ -32,6 +32,12 @@ private:
   CPriceActionBase  *m_priceactions[];
   string m_pa_names[];
 
+  bool CreateIndicators();
+  bool CreatePriceActions();
+  void AddIndicator(CIndicatorBase *ind,string name);
+  void AddPriceAction(CPriceActionBase *pa,string name);
+  int  FindByName(string name,string &arr[]);
+  bool IsValidTimeframe(ENUM_TIMEFRAMES tf);
   bool ValidateParameters();
   void CleanUp();
 
@@ -85,6 +91,90 @@ TF_CTX::~TF_CTX()
 }
 
 //+------------------------------------------------------------------+
+//| Helper methods                                                   |
+//+------------------------------------------------------------------+
+void TF_CTX::AddIndicator(CIndicatorBase *ind,string name)
+{
+  int pos = ArraySize(m_indicators);
+  ArrayResize(m_indicators,pos+1);
+  ArrayResize(m_names,pos+1);
+  m_indicators[pos]=ind;
+  m_names[pos]=name;
+}
+
+void TF_CTX::AddPriceAction(CPriceActionBase *pa,string name)
+{
+  int pos = ArraySize(m_priceactions);
+  ArrayResize(m_priceactions,pos+1);
+  ArrayResize(m_pa_names,pos+1);
+  m_priceactions[pos]=pa;
+  m_pa_names[pos]=name;
+}
+
+int TF_CTX::FindByName(string name,string &arr[])
+{
+  for(int i=0;i<ArraySize(arr);i++)
+    if(arr[i]==name)
+      return i;
+  return -1;
+}
+
+bool TF_CTX::IsValidTimeframe(ENUM_TIMEFRAMES tf)
+{
+  return (tf>=PERIOD_M1 && tf<=PERIOD_MN1);
+}
+
+bool TF_CTX::CreateIndicators()
+{
+  CIndicatorFactory *factory=CIndicatorFactory::Instance();
+  for(int i=0;i<ArraySize(m_cfg);i++)
+  {
+    CIndicatorConfig *cfg=m_cfg[i];
+    if(cfg==NULL || !cfg.enabled)
+      continue;
+
+    if(!factory.IsRegistered(cfg.type))
+    {
+      Print("Tipo de indicador nao suportado: ",cfg.type);
+      continue;
+    }
+    CIndicatorBase *ind=factory.Create(cfg.type,m_symbol,m_timeframe,cfg);
+    if(ind==NULL)
+    {
+      Print("ERRO: Falha ao inicializar indicador ",cfg.name);
+      return false;
+    }
+    AddIndicator(ind,cfg.name);
+  }
+  return true;
+}
+
+bool TF_CTX::CreatePriceActions()
+{
+  CPriceActionFactory *factory=CPriceActionFactory::Instance();
+  for(int i=0;i<ArraySize(m_pa_cfg);i++)
+  {
+    CPriceActionConfig *cfg=m_pa_cfg[i];
+    if(cfg==NULL || !cfg.enabled)
+      continue;
+
+    if(!factory.IsRegistered(cfg.type))
+    {
+      Print("Tipo de priceaction nao suportado: ",cfg.type);
+      continue;
+    }
+    CPriceActionBase *pa=factory.Create(cfg.type,m_symbol,m_timeframe,cfg);
+    if(pa==NULL)
+    {
+      Print("ERRO: Falha ao inicializar priceaction ",cfg.name);
+      return false;
+    }
+    AddPriceAction(pa,cfg.name);
+  }
+  return true;
+}
+
+//+------------------------------------------------------------------+
 //| Inicialização                                                    |
 //+------------------------------------------------------------------+
 bool TF_CTX::Init()
@@ -92,55 +182,16 @@ bool TF_CTX::Init()
   if (!ValidateParameters())
     return false;
 
-  for (int i = 0; i < ArraySize(m_cfg); i++)
+  if(!CreateIndicators())
   {
-    if (m_cfg[i]==NULL || !m_cfg[i].enabled)
-      continue;
-
-    CIndicatorFactory *factory=CIndicatorFactory::Instance();
-    if(!factory.IsRegistered(m_cfg[i].type))
-    {
-      Print("Tipo de indicador nao suportado: ", m_cfg[i].type);
-      continue;
-    }
-    CIndicatorBase *ind=factory.Create(m_cfg[i].type,m_symbol,m_timeframe,m_cfg[i]);
-    if(ind==NULL)
-    {
-      Print("ERRO: Falha ao inicializar indicador ", m_cfg[i].name);
-      CleanUp();
-      return false;
-    }
-    int pos = ArraySize(m_indicators);
-    ArrayResize(m_indicators,pos+1);
-    ArrayResize(m_names,pos+1);
-    m_indicators[pos]=ind;
-    m_names[pos]=m_cfg[i].name;
+    CleanUp();
+    return false;
   }
 
-  // Inicializar priceactions
-  for(int i=0;i<ArraySize(m_pa_cfg);i++)
+  if(!CreatePriceActions())
   {
-    if(m_pa_cfg[i]==NULL || !m_pa_cfg[i].enabled)
-      continue;
-
-    CPriceActionFactory *pafactory=CPriceActionFactory::Instance();
-    if(!pafactory.IsRegistered(m_pa_cfg[i].type))
-    {
-      Print("Tipo de priceaction nao suportado: ", m_pa_cfg[i].type);
-      continue;
-    }
-    CPriceActionBase *pa=pafactory.Create(m_pa_cfg[i].type,m_symbol,m_timeframe,m_pa_cfg[i]);
-    if(pa==NULL)
-    {
-      Print("ERRO: Falha ao inicializar priceaction ", m_pa_cfg[i].name);
-      CleanUp();
-      return false;
-    }
-    int ppos=ArraySize(m_priceactions);
-    ArrayResize(m_priceactions,ppos+1);
-    ArrayResize(m_pa_names,ppos+1);
-    m_priceactions[ppos]=pa;
-    m_pa_names[ppos]=m_pa_cfg[i].name;
+    CleanUp();
+    return false;
   }
 
   m_initialized = true;
@@ -152,7 +203,7 @@ bool TF_CTX::Init()
 //+------------------------------------------------------------------+
 bool TF_CTX::ValidateParameters()
 {
-  if (m_timeframe < PERIOD_M1 || m_timeframe > PERIOD_MN1)
+  if (!IsValidTimeframe(m_timeframe))
   {
     Print("ERRO: TimeFrame invalido: ", EnumToString(m_timeframe));
     return false;
@@ -200,9 +251,9 @@ void TF_CTX::CleanUp()
 //+------------------------------------------------------------------+
 double TF_CTX::GetIndicatorValue(string name, int shift)
 {
-  for (int i = 0; i < ArraySize(m_names); i++)
-    if (m_names[i] == name && m_indicators[i] != NULL)
-      return m_indicators[i].GetValue(shift);
+  int idx=FindByName(name,m_names);
+  if(idx>=0 && m_indicators[idx]!=NULL)
+    return m_indicators[idx].GetValue(shift);
   Print("Indicador nao encontrado: ", name);
   return 0.0;
 }
@@ -212,9 +263,9 @@ double TF_CTX::GetIndicatorValue(string name, int shift)
 //+------------------------------------------------------------------+
 bool TF_CTX::CopyIndicatorValues(string name, int shift, int count, double &buffer[])
 {
-  for (int i = 0; i < ArraySize(m_names); i++)
-    if (m_names[i] == name && m_indicators[i] != NULL)
-      return m_indicators[i].CopyValues(shift, count, buffer);
+  int idx=FindByName(name,m_names);
+  if(idx>=0 && m_indicators[idx]!=NULL)
+    return m_indicators[idx].CopyValues(shift, count, buffer);
   Print("Indicador nao encontrado: ", name);
   return false;
 }
@@ -224,9 +275,9 @@ bool TF_CTX::CopyIndicatorValues(string name, int shift, int count, double &buff
 //+------------------------------------------------------------------+
 double TF_CTX::GetPriceActionValue(string name,int shift)
 {
-  for(int i=0;i<ArraySize(m_pa_names);i++)
-    if(m_pa_names[i]==name && m_priceactions[i]!=NULL)
-      return m_priceactions[i].GetValue(shift);
+  int idx=FindByName(name,m_pa_names);
+  if(idx>=0 && m_priceactions[idx]!=NULL)
+    return m_priceactions[idx].GetValue(shift);
   Print("PriceAction nao encontrado: ",name);
   return 0.0;
 }
@@ -236,9 +287,9 @@ double TF_CTX::GetPriceActionValue(string name,int shift)
 //+------------------------------------------------------------------+
 CPriceActionBase* TF_CTX::GetPriceAction(string name)
 {
-  for(int i=0;i<ArraySize(m_pa_names);i++)
-    if(m_pa_names[i]==name)
-      return m_priceactions[i];
+  int idx=FindByName(name,m_pa_names);
+  if(idx>=0)
+    return m_priceactions[idx];
   return NULL;
 }
 
@@ -247,9 +298,9 @@ CPriceActionBase* TF_CTX::GetPriceAction(string name)
 //+------------------------------------------------------------------+
 bool TF_CTX::CopyPriceActionValues(string name,int shift,int count,double &buffer[])
 {
-  for(int i=0;i<ArraySize(m_pa_names);i++)
-    if(m_pa_names[i]==name && m_priceactions[i]!=NULL)
-      return m_priceactions[i].CopyValues(shift,count,buffer);
+  int idx=FindByName(name,m_pa_names);
+  if(idx>=0 && m_priceactions[idx]!=NULL)
+    return m_priceactions[idx].CopyValues(shift,count,buffer);
   Print("PriceAction nao encontrado: ",name);
   return false;
 }
