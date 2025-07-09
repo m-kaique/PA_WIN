@@ -38,6 +38,9 @@ private:
     ENUM_VWAP_PRICE_TYPE StringToVWAPPriceType(string type_str);
     ENUM_LINE_STYLE StringToLineStyle(string style_str);
     color StringToColor(string color_str);
+    int OpenConfigFile(string file_path);
+    void FillIndicatorBase(CIndicatorConfig &cfg, CJAVal *node, string type);
+    void FillPriceActionBase(CPriceActionConfig &cfg, CJAVal *node, string type);
     CIndicatorConfig *CreateIndicatorConfig(CJAVal *ind);
     CPriceActionConfig *CreatePriceActionConfig(CJAVal *pa, ENUM_TIMEFRAMES tf);
     STimeframeConfig ParseTimeframeConfig(CJAVal *tf_config, ENUM_TIMEFRAMES tf);
@@ -158,42 +161,10 @@ bool CConfigManager::LoadConfig(string json_content)
 bool CConfigManager::LoadConfigFromFile(string file_path)
 {
     Print("Tentando abrir arquivo: ", file_path);
-    
-    // Primeiro tentar na pasta local do EA com encoding ANSI
-    int file_handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_ANSI);
-    
-    if (file_handle == INVALID_HANDLE)
-    {
-        Print("Arquivo não encontrado na pasta local, tentando pasta Common...");
-        // Tentar com FILE_COMMON e ANSI
-        file_handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_COMMON | FILE_ANSI);
-        if (file_handle == INVALID_HANDLE)
-        {
-            // Última tentativa com UTF-8
-            Print("Tentando com UTF-8...");
-            file_handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_COMMON);
-            if (file_handle == INVALID_HANDLE)
-            {
-                Print("ERRO: Arquivo não encontrado: ", file_path);
-                Print("Verificar se arquivo existe em:");
-                Print("1. Terminal_Data_Folder\\MQL5\\Files\\", file_path);
-                Print("2. Common_Data_Folder\\Files\\", file_path);
-                return false;
-            }
-            else
-            {
-                Print("Arquivo encontrado na pasta Common (UTF-8)");
-            }
-        }
-        else
-        {
-            Print("Arquivo encontrado na pasta Common (ANSI)");
-        }
-    }
-    else
-    {
-        Print("Arquivo encontrado na pasta local do EA (ANSI)");
-    }
+
+    int file_handle = OpenConfigFile(file_path);
+    if(file_handle == INVALID_HANDLE)
+        return false;
 
     // Obter tamanho do arquivo
     ulong file_size = FileSize(file_handle);
@@ -555,6 +526,64 @@ color CConfigManager::StringToColor(string color_str)
 }
 
 //+------------------------------------------------------------------+
+//| Abrir arquivo de configuração com tentativas em diferentes       |
+//| pastas e encodings                                               |
+//+------------------------------------------------------------------+
+int CConfigManager::OpenConfigFile(string file_path)
+{
+    int handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_ANSI);
+    if(handle != INVALID_HANDLE)
+    {
+        Print("Arquivo encontrado na pasta local do EA (ANSI)");
+        return handle;
+    }
+
+    Print("Arquivo não encontrado na pasta local, tentando pasta Common...");
+    handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_COMMON | FILE_ANSI);
+    if(handle != INVALID_HANDLE)
+    {
+        Print("Arquivo encontrado na pasta Common (ANSI)");
+        return handle;
+    }
+
+    Print("Tentando com UTF-8...");
+    handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_COMMON);
+    if(handle == INVALID_HANDLE)
+    {
+        Print("ERRO: Arquivo não encontrado: ", file_path);
+        Print("Verificar se arquivo existe em:");
+        Print("1. Terminal_Data_Folder\\MQL5\\Files\\", file_path);
+        Print("2. Common_Data_Folder\\Files\\", file_path);
+    }
+    else
+    {
+        Print("Arquivo encontrado na pasta Common (UTF-8)");
+    }
+
+    return handle;
+}
+
+//+------------------------------------------------------------------+
+//| Preencher campos basicos de um indicador                          |
+//+------------------------------------------------------------------+
+void CConfigManager::FillIndicatorBase(CIndicatorConfig &cfg, CJAVal *node, string type)
+{
+    cfg.name = (*node)["name"].ToStr();
+    cfg.type = type;
+    cfg.enabled = (*node)["enabled"].ToBool();
+}
+
+//+------------------------------------------------------------------+
+//| Preencher campos basicos de uma priceaction                      |
+//+------------------------------------------------------------------+
+void CConfigManager::FillPriceActionBase(CPriceActionConfig &cfg, CJAVal *node, string type)
+{
+    cfg.name = (*node)["name"].ToStr();
+    cfg.type = type;
+    cfg.enabled = (*node)["enabled"].ToBool();
+}
+
+//+------------------------------------------------------------------+
 //| Criar configuracao de indicador                                   |
 //+------------------------------------------------------------------+
 CIndicatorConfig *CConfigManager::CreateIndicatorConfig(CJAVal *ind)
@@ -568,9 +597,7 @@ CIndicatorConfig *CConfigManager::CreateIndicatorConfig(CJAVal *ind)
     if(type=="MA")
     {
         CMAConfig *p=new CMAConfig();
-        p.name=ind["name"].ToStr();
-        p.type=type;
-        p.enabled=ind["enabled"].ToBool();
+        FillIndicatorBase(*p, ind, type);
         p.period=(int)ind["period"].ToInt();
         p.method=StringToMAMethod(ind["method"].ToStr());
         return p;
@@ -578,9 +605,7 @@ CIndicatorConfig *CConfigManager::CreateIndicatorConfig(CJAVal *ind)
     else if(type=="STO")
     {
         CStochasticConfig *p=new CStochasticConfig();
-        p.name=ind["name"].ToStr();
-        p.type=type;
-        p.enabled=ind["enabled"].ToBool();
+        FillIndicatorBase(*p, ind, type);
         p.period=(int)ind["period"].ToInt();
         p.dperiod=(int)ind["dperiod"].ToInt();
         p.slowing=(int)ind["slowing"].ToInt();
@@ -591,18 +616,14 @@ CIndicatorConfig *CConfigManager::CreateIndicatorConfig(CJAVal *ind)
     else if(type=="VOL")
     {
         CVolumeConfig *p=new CVolumeConfig();
-        p.name=ind["name"].ToStr();
-        p.type=type;
-        p.enabled=ind["enabled"].ToBool();
+        FillIndicatorBase(*p, ind, type);
         p.shift=(int)ind["shift"].ToInt();
         return p;
     }
     else if(type=="VWAP")
     {
         CVWAPConfig *p=new CVWAPConfig();
-        p.name=ind["name"].ToStr();
-        p.type=type;
-        p.enabled=ind["enabled"].ToBool();
+        FillIndicatorBase(*p, ind, type);
         p.period=(int)ind["period"].ToInt();
         p.method=StringToMAMethod(ind["method"].ToStr());
         p.calc_mode=StringToVWAPCalcMode(ind["calc_mode"].ToStr());
@@ -619,9 +640,7 @@ CIndicatorConfig *CConfigManager::CreateIndicatorConfig(CJAVal *ind)
     else if(type=="BOLL")
     {
         CBollingerConfig *p=new CBollingerConfig();
-        p.name=ind["name"].ToStr();
-        p.type=type;
-        p.enabled=ind["enabled"].ToBool();
+        FillIndicatorBase(*p, ind, type);
         p.period=(int)ind["period"].ToInt();
         p.shift=(int)ind["shift"].ToInt();
         p.deviation=ind["deviation"].ToDbl();
@@ -631,9 +650,7 @@ CIndicatorConfig *CConfigManager::CreateIndicatorConfig(CJAVal *ind)
     else if(type=="FIBO")
     {
         CFiboConfig *p=new CFiboConfig();
-        p.name=ind["name"].ToStr();
-        p.type=type;
-        p.enabled=ind["enabled"].ToBool();
+        FillIndicatorBase(*p, ind, type);
         p.period=(int)ind["period"].ToInt();
         p.level_1=ind["Level_1"].ToDbl();
         p.level_2=ind["Level_2"].ToDbl();
@@ -681,9 +698,7 @@ CPriceActionConfig *CConfigManager::CreatePriceActionConfig(CJAVal *pa, ENUM_TIM
     if(type=="TRENDLINE")
     {
         CTrendLineConfig *p=new CTrendLineConfig();
-        p.name=pa["name"].ToStr();
-        p.type=type;
-        p.enabled=pa["enabled"].ToBool();
+        FillPriceActionBase(*p, pa, type);
         p.period=(int)pa["period"].ToInt();
         p.pivot_left=(int)pa["pivot_left"].ToInt();
         p.pivot_right=(int)pa["pivot_right"].ToInt();
@@ -704,9 +719,7 @@ CPriceActionConfig *CConfigManager::CreatePriceActionConfig(CJAVal *pa, ENUM_TIM
     else if(type=="SUPRES")
     {
         CSupResConfig *p=new CSupResConfig();
-        p.name=pa["name"].ToStr();
-        p.type=type;
-        p.enabled=pa["enabled"].ToBool();
+        FillPriceActionBase(*p, pa, type);
         p.period=(int)pa["period"].ToInt();
         p.draw_sup=pa["draw_sup"].ToBool();
         p.draw_res=pa["draw_res"].ToBool();
