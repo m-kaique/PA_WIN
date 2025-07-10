@@ -100,9 +100,29 @@
                "ltb_style": "SOLID",
                "lta_width": 1,
                "ltb_width": 1,
-               "extend_right": true,
-               "min_angle": 20.0,
-               "enabled": true
+                "extend_right": true,
+                "min_angle": 20.0,
+                "trendline_candles_lookback": 9,
+                "trendline_status_flags": {
+                    "enable_body_cross": true,
+                    "enable_between_ltas": true,
+                    "enable_between_ltbs": true,
+                    "enable_distance_points": true
+                },
+                "trendline_context_analysis": {
+                    "enabled": true,
+                    "lookback": 9,
+                    "trend_threshold": 0.7,
+                    "consolidation_threshold": 0.6
+                },
+                "trendline_advanced_features": {
+                    "detect_fakeout": true,
+                    "count_touches": true,
+                    "touch_tolerance_points": 5,
+                    "status_evaluate_mode": "close_only",
+                    "register_resets": true
+                },
+                "enabled": true
             }
          ]
       },

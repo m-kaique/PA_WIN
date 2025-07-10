@@ -1127,6 +1127,9 @@ if(pa != NULL) {
     if(tl.IsBreakup()) {
         // lógica específica
     }
+    // consultar status do candle atual
+    CTrendLine::SCandleTrendInfo info = tl.GetCandleInfo(1);
+    double dist = tl.GetDistanceToLine(1, TRENDLINE_LTA);
 }
 ``` |
 | `SUPRES`         | `CSupRes`       | ```cpp
@@ -1140,4 +1143,14 @@ if(pa != NULL) {
 > **Nota:** Sempre verifique se o ponteiro retornado é `NULL` antes de realizar
 > o casting. Quando o nome não é encontrado, `GetIndicator`/`GetPriceAction`
 > retornam `NULL` e os métodos de valor retornam `0.0`.
+
+#### Novos Métodos em `CTrendLine`
+
+* `SCandleTrendInfo GetCandleInfo(int shift)` – retorna a estrutura com o
+  status do candle em relação às trendlines (cruzamento de corpo,
+  posicionamento entre linhas e fakeouts quando habilitado).
+* `double GetDistanceToLine(int shift, ENUM_TRENDLINE_SIDE side)` –
+  informa a distância em pontos até a trendline indicada.
+
+Essas análises são ativadas configurando o bloco `trendline_*` no arquivo JSON.
 

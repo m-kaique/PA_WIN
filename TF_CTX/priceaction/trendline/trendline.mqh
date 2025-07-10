@@ -75,7 +75,45 @@ private:
   double   m_ltb_p2;   // maxima do segundo topo
   double   m_ltb2_p1;  // maxima do primeiro topo
   double   m_ltb2_p2;  // corpo do segundo topo
-  datetime m_ltb_last_break;
+    datetime m_ltb_last_break;
+
+    int     m_candles_lookback;
+    TrendlineStatusFlags   m_status_flags;
+    TrendlineContextConfig m_context_cfg;
+    TrendlineAdvancedFeatures m_adv_features;
+
+    // structure to hold candle analysis information
+    struct SCandleTrendInfo
+      {
+       bool body_cross_lta;
+       bool body_cross_ltb;
+       bool between_ltas;
+       bool between_ltbs;
+       bool on_lta_upper;
+       bool on_lta_lower;
+       bool on_ltb_upper;
+       bool on_ltb_lower;
+       double dist_close_lta;
+       double dist_close_ltb;
+       double dist_close_lta2;
+       double dist_close_ltb2;
+       bool fakeout_lta;
+       bool fakeout_ltb;
+      };
+    SCandleTrendInfo m_candle_info[];
+    int              m_lta_resets;
+    int              m_ltb_resets;
+
+    // Estrutura completa com dados do candle e análise de tendência
+    struct SCandleFullInfo
+      {
+       datetime time;
+       double   open;
+       double   high;
+       double   low;
+       double   close;
+       SCandleTrendInfo trend;
+      };
 
   void DrawLines(datetime t1, double p1, datetime t2, double p2,
                  ENUM_TRENDLINE_SIDE side);
@@ -96,8 +134,13 @@ private:
   void   GetDrawSettings(ENUM_TRENDLINE_SIDE side,color &col,ENUM_LINE_STYLE &st,int &width);
   bool   CheckBreak(ENUM_TRENDLINE_SIDE side);
   bool   IsPivot(const double &buffer[],int index,int left,int right,bool isHigh);
-  int    GetBarsCount();
-  double GetLineValue(int shift,ENUM_TRENDLINE_SIDE side,double current);
+    int    GetBarsCount();
+    double GetLineValue(int shift,ENUM_TRENDLINE_SIDE side,double current);
+
+    void   UpdateCandleAnalysis();
+    SCandleTrendInfo GetCandleInfo(int shift);
+    double GetDistanceToLine(int shift,ENUM_TRENDLINE_SIDE side);
+    SCandleFullInfo  GetCandleFullInfo(int shift);
   //+------------------------------------------------------------------+
   //| Calcula o slope entre dois pontos usando índices de barra         |
   //+------------------------------------------------------------------+
@@ -175,8 +218,16 @@ CTrendLine::CTrendLine()
   ResetLTA();
   ResetLTB();
   m_lta_last_break=0;
-  m_ltb_last_break=0;
-}
+    m_ltb_last_break=0;
+    m_candles_lookback=9;
+    m_lta_resets=0;
+    m_ltb_resets=0;
+    ArrayResize(m_candle_info,0);
+    // default advanced configs
+    TrendlineStatusFlags tmp_flags; m_status_flags=tmp_flags;
+    TrendlineContextConfig tmp_ctx; m_context_cfg=tmp_ctx;
+    TrendlineAdvancedFeatures tmp_adv; m_adv_features=tmp_adv;
+  }
 
 //+------------------------------------------------------------------+
 //| Destructor                                                        |
@@ -208,9 +259,13 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
   m_ltb_style = cfg.ltb_style;
   m_lta_width = cfg.lta_width;
   m_ltb_width = cfg.ltb_width;
-  m_extend_right = cfg.extend_right;
-  m_alert_tf = cfg.alert_tf;
-  m_min_angle = cfg.min_angle;
+    m_extend_right = cfg.extend_right;
+    m_alert_tf = cfg.alert_tf;
+    m_min_angle = cfg.min_angle;
+    m_candles_lookback = cfg.candles_lookback;
+    m_status_flags = cfg.status_flags;
+    m_context_cfg  = cfg.context_analysis;
+    m_adv_features = cfg.advanced_features;
 
   bool ok = true;
   m_obj_lta = "TL_LTA_" + IntegerToString(GetTickCount());
@@ -221,17 +276,20 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
   ArrayResize(m_highs, bars);
   ArrayResize(m_lows, bars);
   ArrayResize(m_closes, 2); // only need last two closes
-  ArraySetAsSeries(m_highs, true);
-  ArraySetAsSeries(m_lows, true);
-  ArraySetAsSeries(m_closes, true);
+    ArraySetAsSeries(m_highs, true);
+    ArraySetAsSeries(m_lows, true);
+    ArraySetAsSeries(m_closes, true);
+    ArrayResize(m_candle_info,m_candles_lookback);
+    ArraySetAsSeries(m_candle_info,true);
   m_lta_angle = 0.0;   m_lta2_angle = 0.0;
   m_ltb_angle = 0.0;   m_ltb2_angle = 0.0;
   ResetLTA();
   ResetLTB();
   m_lta_last_break=0;
-  m_ltb_last_break=0;
-  return ok;
-}
+    m_ltb_last_break=0;
+    UpdateCandleAnalysis();
+    return ok;
+  }
 
 //+------------------------------------------------------------------+
 //| Default init                                                      |
@@ -562,9 +620,9 @@ bool CTrendLine::Update()
    ArraySetAsSeries(ct,true);
    m_breakdown=false;
    m_breakup=false;
-   if(CopyClose(m_symbol,m_alert_tf,0,2,m_closes)>0 &&
-      CopyTime(m_symbol,m_alert_tf,0,2,ct)>0)
-     {
+    if(CopyClose(m_symbol,m_alert_tf,0,2,m_closes)>0 &&
+       CopyTime(m_symbol,m_alert_tf,0,2,ct)>0)
+      {
       if(m_lta_active)
         {
          double sup=ObjectGetValueByTime(0,m_obj_lta,ct[1]);
@@ -575,11 +633,13 @@ bool CTrendLine::Update()
          double res=ObjectGetValueByTime(0,m_obj_ltb,ct[1]);
          m_breakup=(m_closes[1]>res);
         }
-     }
+      }
 
-   m_ready=(m_lta_active || m_ltb_active);
-   return m_ready;
-  }
+    m_ready=(m_lta_active || m_ltb_active);
+    if(m_ready)
+       UpdateCandleAnalysis();
+    return m_ready;
+   }
 
 //+------------------------------------------------------------------+
 //| LTA value                                                         |
@@ -668,6 +728,94 @@ string CTrendLine::GetPricePositionString()
     case TREND_BELOW_LTB: return "Below LTB";
     default:              return "Unknown";
   }
+}
+
+//+------------------------------------------------------------------+
+//| Atualiza análise dos candles mais recentes                        |
+//+------------------------------------------------------------------+
+void CTrendLine::UpdateCandleAnalysis()
+{
+  int bars=MathMin(GetBarsCount(),m_candles_lookback);
+  ArrayResize(m_candle_info,bars);
+  ArraySetAsSeries(m_candle_info,true);
+  for(int i=0;i<bars;i++)
+    {
+      double o=iOpen(m_symbol,m_timeframe,i);
+      double c=iClose(m_symbol,m_timeframe,i);
+      double h=iHigh(m_symbol,m_timeframe,i);
+      double l=iLow(m_symbol,m_timeframe,i);
+      SCandleTrendInfo info; ZeroMemory(info);
+      if(IsLTAValid())
+        {
+          double val=GetLineValue(i,TRENDLINE_LTA,m_lta_val);
+          info.dist_close_lta=c-val;
+          info.body_cross_lta=((o-val)*(c-val)<=0);
+          info.on_lta_upper=(o>val && c<val);
+          info.on_lta_lower=(o<val && c>val);
+          if(m_adv_features.detect_fakeout)
+            info.fakeout_lta=((h>val && c<val) || (l<val && c>val));
+        }
+      if(IsLTBValid())
+        {
+          double val=GetLineValue(i,TRENDLINE_LTB,m_ltb_val);
+          info.dist_close_ltb=c-val;
+          info.body_cross_ltb=((o-val)*(c-val)<=0);
+          info.on_ltb_upper=(o>val && c<val);
+          info.on_ltb_lower=(o<val && c>val);
+          if(m_adv_features.detect_fakeout)
+            info.fakeout_ltb=((h>val && c<val) || (l<val && c>val));
+        }
+      if(IsLTAValid() && IsLTA2Valid())
+        {
+          double v1=GetLineValue(i,TRENDLINE_LTA,m_lta_val);
+          double v2=GetLineValue(i,TRENDLINE_LTA2,m_lta2_val);
+          double upper=MathMax(v1,v2),lower=MathMin(v1,v2);
+          info.between_ltas=(o>lower && o<upper && c>lower && c<upper);
+        }
+      if(IsLTBValid() && IsLTB2Valid())
+        {
+          double v1=GetLineValue(i,TRENDLINE_LTB,m_ltb_val);
+          double v2=GetLineValue(i,TRENDLINE_LTB2,m_ltb2_val);
+          double upper=MathMax(v1,v2),lower=MathMin(v1,v2);
+          info.between_ltbs=(o>lower && o<upper && c>lower && c<upper);
+        }
+      m_candle_info[i]=info;
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Recupera informacoes de um candle                                 |
+//+------------------------------------------------------------------+
+CTrendLine::SCandleTrendInfo CTrendLine::GetCandleInfo(int shift)
+{
+  if(shift<ArraySize(m_candle_info))
+     return m_candle_info[shift];
+  SCandleTrendInfo empty; ZeroMemory(empty); return empty;
+}
+
+double CTrendLine::GetDistanceToLine(int shift,ENUM_TRENDLINE_SIDE side)
+{
+  if(side==TRENDLINE_LTA)
+     return GetCandleInfo(shift).dist_close_lta;
+  if(side==TRENDLINE_LTB)
+     return GetCandleInfo(shift).dist_close_ltb;
+  if(side==TRENDLINE_LTA2)
+     return GetCandleInfo(shift).dist_close_lta2;
+  if(side==TRENDLINE_LTB2)
+     return GetCandleInfo(shift).dist_close_ltb2;
+  return 0.0;
+}
+
+CTrendLine::SCandleFullInfo CTrendLine::GetCandleFullInfo(int shift)
+{
+  SCandleFullInfo info; ZeroMemory(info);
+  info.time  = iTime(m_symbol,m_timeframe,shift);
+  info.open  = iOpen(m_symbol,m_timeframe,shift);
+  info.high  = iHigh(m_symbol,m_timeframe,shift);
+  info.low   = iLow(m_symbol,m_timeframe,shift);
+  info.close = iClose(m_symbol,m_timeframe,shift);
+  info.trend = GetCandleInfo(shift);
+  return info;
 }
 
 #endif // __TRENDLINE_MQH__

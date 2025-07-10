@@ -135,6 +135,54 @@ public:
    virtual ~CPriceActionConfig(){}
   };
 
+//--- Additional structs for TrendLine advanced options
+struct TrendlineStatusFlags
+  {
+   bool enable_body_cross;
+   bool enable_between_ltas;
+   bool enable_between_ltbs;
+   bool enable_distance_points;
+   TrendlineStatusFlags()
+     {
+      enable_body_cross=true;
+      enable_between_ltas=true;
+      enable_between_ltbs=true;
+      enable_distance_points=true;
+     }
+  };
+
+struct TrendlineContextConfig
+  {
+   bool   enabled;
+   int    lookback;
+   double trend_threshold;
+   double consolidation_threshold;
+   TrendlineContextConfig()
+     {
+      enabled=false;
+      lookback=9;
+      trend_threshold=0.7;
+      consolidation_threshold=0.6;
+     }
+  };
+
+struct TrendlineAdvancedFeatures
+  {
+   bool   detect_fakeout;
+   bool   count_touches;
+   double touch_tolerance_points;
+   string status_evaluate_mode;
+   bool   register_resets;
+   TrendlineAdvancedFeatures()
+     {
+      detect_fakeout=false;
+      count_touches=false;
+      touch_tolerance_points=0.0;
+      status_evaluate_mode="close_only";
+      register_resets=false;
+     }
+  };
+
 //--- TrendLine configuration
 class CTrendLineConfig : public CPriceActionConfig
   {
@@ -153,6 +201,10 @@ public:
   bool   extend_right;
   ENUM_TIMEFRAMES alert_tf;
   double min_angle;
+  int    candles_lookback;
+  TrendlineStatusFlags   status_flags;
+  TrendlineContextConfig context_analysis;
+  TrendlineAdvancedFeatures advanced_features;
   CTrendLineConfig()
     {
       period=20; pivot_left=3; pivot_right=3; draw_lta=true; draw_ltb=true;
@@ -161,6 +213,7 @@ public:
       lta_width=1; ltb_width=1; extend_right=true;
       alert_tf=PERIOD_H1;
       min_angle=20.0;
+      candles_lookback=9;
     }
   };
 

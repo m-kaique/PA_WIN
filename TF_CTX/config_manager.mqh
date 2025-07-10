@@ -712,7 +712,37 @@ CPriceActionConfig *CConfigManager::CreatePriceActionConfig(CJAVal *pa, ENUM_TIM
         p.ltb_width=(int)pa["ltb_width"].ToInt();
         p.extend_right=pa["extend_right"].ToBool();
         p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
-        p.min_angle=pa["min_angle"].ToDbl();
+      p.min_angle=pa["min_angle"].ToDbl();
+
+      p.candles_lookback=(int)pa["trendline_candles_lookback"].ToInt();
+      CJAVal *flags=pa["trendline_status_flags"];
+      if(flags!=NULL)
+        {
+         p.status_flags.enable_body_cross=flags["enable_body_cross"].ToBool();
+         p.status_flags.enable_between_ltas=flags["enable_between_ltas"].ToBool();
+         p.status_flags.enable_between_ltbs=flags["enable_between_ltbs"].ToBool();
+         p.status_flags.enable_distance_points=flags["enable_distance_points"].ToBool();
+        }
+
+      CJAVal *ctx=pa["trendline_context_analysis"];
+      if(ctx!=NULL)
+        {
+         p.context_analysis.enabled=ctx["enabled"].ToBool();
+         p.context_analysis.lookback=(int)ctx["lookback"].ToInt();
+         p.context_analysis.trend_threshold=ctx["trend_threshold"].ToDbl();
+         p.context_analysis.consolidation_threshold=ctx["consolidation_threshold"].ToDbl();
+        }
+
+      CJAVal *adv=pa["trendline_advanced_features"];
+      if(adv!=NULL)
+        {
+         p.advanced_features.detect_fakeout=adv["detect_fakeout"].ToBool();
+         p.advanced_features.count_touches=adv["count_touches"].ToBool();
+         p.advanced_features.touch_tolerance_points=adv["touch_tolerance_points"].ToDbl();
+         string mode=adv["status_evaluate_mode"].ToStr();
+         if(StringLen(mode)>0) p.advanced_features.status_evaluate_mode=mode;
+         p.advanced_features.register_resets=adv["register_resets"].ToBool();
+        }
 
         if(p.alert_tf==PERIOD_CURRENT)   p.alert_tf=ctx_tf;
         return p;

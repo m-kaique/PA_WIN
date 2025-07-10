@@ -148,6 +148,15 @@ void UpdateSymbolContexts(string symbol)
             string pos = tl.GetPricePositionString();
             if(pos!="")
                Print("Posicao do preco em H1: ",pos);
+
+            CTrendLine::SCandleFullInfo cd = tl.GetCandleFullInfo(1);
+            PrintFormat("Candle[1] %s O:%f H:%f L:%f C:%f body_cross_lta=%d body_cross_ltb=%d between_ltas=%d between_ltbs=%d",
+                        TimeToString(cd.time,TIME_DATE|TIME_MINUTES),
+                        cd.open,cd.high,cd.low,cd.close,
+                        cd.trend.body_cross_lta,
+                        cd.trend.body_cross_ltb,
+                        cd.trend.between_ltas,
+                        cd.trend.between_ltbs);
          }
       }
    }
