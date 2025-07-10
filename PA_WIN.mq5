@@ -10,6 +10,7 @@
 #property version "2.00"
 
 #include "TF_CTX/config_manager.mqh"
+#include "TF_CTX/priceaction/d1_analysis/d1_analysis.mqh"
 
 // Gerenciador de configuração
 CConfigManager *g_config_manager;
@@ -145,6 +146,15 @@ void ExecuteOnNewBar()
          continue;
       // Print("Atualizando Contexto: " + EnumToString(tfs[i]));
       ctx.Update();
+      if(tf==PERIOD_D1)
+        {
+         CPriceActionBase *pa=ctx.GetPriceAction("d1_ctx_analysis");
+         if(pa!=NULL)
+           {
+            CD1Analysis *an=(CD1Analysis*)pa;
+            an.PrintSummary();
+           }
+        }
    }
 }
 

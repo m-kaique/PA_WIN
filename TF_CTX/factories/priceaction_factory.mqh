@@ -3,6 +3,7 @@
 
 #include "../priceaction/trendline/trendline.mqh"
 #include "../priceaction/sup_res/sup_res.mqh"
+#include "../priceaction/d1_analysis/d1_analysis.mqh"
 #include "../config_types.mqh"
 
 // Creator function signature
@@ -28,6 +29,7 @@ private:
   void RegisterDefaults();
   static CPriceActionBase* CreateTrendLine(string symbol, ENUM_TIMEFRAMES tf, CPriceActionConfig *cfg);
   static CPriceActionBase* CreateSupRes(string symbol, ENUM_TIMEFRAMES tf, CPriceActionConfig *cfg);
+  static CPriceActionBase* CreateD1Analysis(string symbol, ENUM_TIMEFRAMES tf, CPriceActionConfig *cfg);
 
 public:
    static CPriceActionFactory* Instance()
@@ -73,6 +75,7 @@ void CPriceActionFactory::RegisterDefaults()
   {
    Register("TRENDLINE", CreateTrendLine);
    Register("SUPRES",   CreateSupRes);
+   Register("D1ANALYSIS", CreateD1Analysis);
   }
 
 CPriceActionBase* CPriceActionFactory::CreateTrendLine(string symbol, ENUM_TIMEFRAMES tf, CPriceActionConfig *cfg)
@@ -93,6 +96,18 @@ CPriceActionBase* CPriceActionFactory::CreateSupRes(string symbol, ENUM_TIMEFRAM
    if(c==NULL)
       return NULL;
    CSupRes *pa = new CSupRes();
+   if(pa!=NULL && pa.Init(symbol, tf, *c))
+      return pa;
+   delete pa;
+   return NULL;
+  }
+
+CPriceActionBase* CPriceActionFactory::CreateD1Analysis(string symbol, ENUM_TIMEFRAMES tf, CPriceActionConfig *cfg)
+  {
+   CD1AnalysisConfig *c = (CD1AnalysisConfig*)cfg;
+   if(c==NULL)
+      return NULL;
+   CD1Analysis *pa = new CD1Analysis();
    if(pa!=NULL && pa.Init(symbol, tf, *c))
       return pa;
    delete pa;
