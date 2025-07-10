@@ -82,8 +82,6 @@ private:
     TrendlineContextConfig m_context_cfg;
     TrendlineAdvancedFeatures m_adv_features;
 
-    // buffer to store candle analysis
-    SCandleTrendInfo m_candle_info[];
     int              m_lta_resets;
     int              m_ltb_resets;
 
@@ -149,7 +147,8 @@ public:
      double   low;
      double   close;
      SCandleTrendInfo trend;
-    };
+  };
+  SCandleTrendInfo m_candle_info[];
   CTrendLine();
   ~CTrendLine();
 
