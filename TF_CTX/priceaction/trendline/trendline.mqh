@@ -82,38 +82,11 @@ private:
     TrendlineContextConfig m_context_cfg;
     TrendlineAdvancedFeatures m_adv_features;
 
-    // structure to hold candle analysis information
-    struct SCandleTrendInfo
-      {
-       bool body_cross_lta;
-       bool body_cross_ltb;
-       bool between_ltas;
-       bool between_ltbs;
-       bool on_lta_upper;
-       bool on_lta_lower;
-       bool on_ltb_upper;
-       bool on_ltb_lower;
-       double dist_close_lta;
-       double dist_close_ltb;
-       double dist_close_lta2;
-       double dist_close_ltb2;
-       bool fakeout_lta;
-       bool fakeout_ltb;
-      };
+    // buffer to store candle analysis
     SCandleTrendInfo m_candle_info[];
     int              m_lta_resets;
     int              m_ltb_resets;
 
-    // Estrutura completa com dados do candle e análise de tendência
-    struct SCandleFullInfo
-      {
-       datetime time;
-       double   open;
-       double   high;
-       double   low;
-       double   close;
-       SCandleTrendInfo trend;
-      };
 
   void DrawLines(datetime t1, double p1, datetime t2, double p2,
                  ENUM_TRENDLINE_SIDE side);
@@ -138,9 +111,6 @@ private:
     double GetLineValue(int shift,ENUM_TRENDLINE_SIDE side,double current);
 
     void   UpdateCandleAnalysis();
-    SCandleTrendInfo GetCandleInfo(int shift);
-    double GetDistanceToLine(int shift,ENUM_TRENDLINE_SIDE side);
-    SCandleFullInfo  GetCandleFullInfo(int shift);
   //+------------------------------------------------------------------+
   //| Calcula o slope entre dois pontos usando índices de barra         |
   //+------------------------------------------------------------------+
@@ -152,6 +122,34 @@ private:
   }
 
 public:
+  // Informações detalhadas de candles em relação às linhas
+  struct SCandleTrendInfo
+    {
+     bool body_cross_lta;
+     bool body_cross_ltb;
+     bool between_ltas;
+     bool between_ltbs;
+     bool on_lta_upper;
+     bool on_lta_lower;
+     bool on_ltb_upper;
+     bool on_ltb_lower;
+     double dist_close_lta;
+     double dist_close_ltb;
+     double dist_close_lta2;
+     double dist_close_ltb2;
+     bool fakeout_lta;
+     bool fakeout_ltb;
+    };
+
+  struct SCandleFullInfo
+    {
+     datetime time;
+     double   open;
+     double   high;
+     double   low;
+     double   close;
+     SCandleTrendInfo trend;
+    };
   CTrendLine();
   ~CTrendLine();
 
@@ -174,6 +172,9 @@ public:
   bool IsBreakup();
   ENUM_TREND_POSITION GetPricePosition();
   string GetPricePositionString();
+  SCandleTrendInfo GetCandleInfo(int shift);
+  double GetDistanceToLine(int shift,ENUM_TRENDLINE_SIDE side);
+  SCandleFullInfo  GetCandleFullInfo(int shift);
 };
 
 //+------------------------------------------------------------------+
