@@ -29,7 +29,13 @@ private:
 
    bool            CreateHandle();
    void            ReleaseHandle();
-   
+
+   // Helpers for VWAP calculation
+   bool            ShouldReset(int bar_index,datetime bar_time,int bars,bool &skip);
+   double          CalculateBarVWAP(int index,int bars);
+   int             FindSessionStart(int bars);
+   void            UpdateAccumulation(bool reset,double price,long volume,double &cum_pv,double &cum_vol);
+
    bool            IsNewSession(int bar_index);
    void            UpdateCurrentBar();
 
@@ -115,6 +121,75 @@ void CVWAP::ReleaseHandle()
       IndicatorRelease(m_handle);
       m_handle=INVALID_HANDLE;
      }
+  }
+
+//+------------------------------------------------------------------+
+//| Helpers                                                          |
+//+------------------------------------------------------------------+
+void CVWAP::UpdateAccumulation(bool reset,double price,long volume,double &cum_pv,double &cum_vol)
+  {
+   if(reset)
+     {
+      cum_pv=price*volume;
+      cum_vol=(double)volume;
+     }
+   else
+     {
+      cum_pv+=price*volume;
+      cum_vol+=(double)volume;
+     }
+  }
+
+double CVWAP::CalculateBarVWAP(int index,int bars)
+  {
+   double sum_pv=0.0;
+   double sum_vol=0.0;
+   int start_bar=MathMin(index+m_period-1,bars-1);
+   for(int j=start_bar;j>=index;j--)
+     {
+      double p=TypicalPrice(j);
+      long v=iVolume(m_symbol,m_timeframe,j);
+      sum_pv+=p*v;
+      sum_vol+=(double)v;
+     }
+   return (sum_vol!=0)?sum_pv/sum_vol:EMPTY_VALUE;
+  }
+
+bool CVWAP::ShouldReset(int bar_index,datetime bar_time,int bars,bool &skip)
+  {
+   skip=false;
+   if(m_calc_mode==VWAP_CALC_PERIODIC)
+      return IsNewSession(bar_index);
+   if(m_calc_mode==VWAP_CALC_FROM_DATE)
+     {
+      if(bar_time<m_start_time)
+        {
+         skip=true;
+         return false;
+        }
+      if(bar_index==bars-1 || iTime(m_symbol,m_timeframe,bar_index+1)<m_start_time)
+         return true;
+     }
+   return false;
+  }
+
+int CVWAP::FindSessionStart(int bars)
+  {
+   int session_start=0;
+   for(int j=1;j<bars;j++)
+     {
+      if(m_calc_mode==VWAP_CALC_PERIODIC && IsNewSession(j-1))
+        {
+         session_start=j-1;
+         break;
+        }
+      if(m_calc_mode==VWAP_CALC_FROM_DATE && iTime(m_symbol,m_timeframe,j)<m_start_time)
+        {
+         session_start=j-1;
+         break;
+        }
+     }
+   return session_start;
   }
 
 //+------------------------------------------------------------------+
@@ -257,51 +332,23 @@ void CVWAP::ComputeAll()
      {
       datetime bar_time=iTime(m_symbol,m_timeframe,i);
       double price=TypicalPrice(i);
-      long volume=iVolume(m_symbol,m_timeframe,i);
+      long   volume=iVolume(m_symbol,m_timeframe,i);
 
-      bool reset=false;
-      if(m_calc_mode==VWAP_CALC_PERIODIC)
+      if(m_calc_mode==VWAP_CALC_BAR)
         {
-         if(IsNewSession(i))
-            reset=true;
-        }
-      else if(m_calc_mode==VWAP_CALC_FROM_DATE)
-        {
-         if(bar_time<m_start_time)
-           {
-            m_vwap_buffer[i]=EMPTY_VALUE;
-            continue;
-           }
-         if(i==bars-1 || iTime(m_symbol,m_timeframe,i+1)<m_start_time)
-            reset=true;
-        }
-      else if(m_calc_mode==VWAP_CALC_BAR)
-        {
-         double sum_pv=0.0;
-         double sum_vol=0.0;
-         int start_bar=MathMin(i + m_period - 1, bars - 1);
-         for(int j=start_bar;j>=i;j--)
-           {
-            double p=TypicalPrice(j);
-            long v=iVolume(m_symbol,m_timeframe,j);
-            sum_pv+=p*v;
-            sum_vol+=(double)v;
-           }
-         m_vwap_buffer[i]=(sum_vol!=0)?sum_pv/sum_vol:EMPTY_VALUE;
+         m_vwap_buffer[i]=CalculateBarVWAP(i,bars);
          continue;
         }
 
-      if(reset)
+      bool skip=false;
+      bool reset=ShouldReset(i,bar_time,bars,skip);
+      if(skip)
         {
-         cum_pv=price*volume;
-         cum_vol=(double)volume;
-        }
-      else
-        {
-         cum_pv+=price*volume;
-         cum_vol+=(double)volume;
+         m_vwap_buffer[i]=EMPTY_VALUE;
+         continue;
         }
 
+      UpdateAccumulation(reset,price,volume,cum_pv,cum_vol);
       m_vwap_buffer[i]=(cum_vol!=0)?cum_pv/cum_vol:EMPTY_VALUE;
      }
   }
@@ -348,34 +395,11 @@ void CVWAP::UpdateCurrentBar()
 
   if(m_calc_mode==VWAP_CALC_BAR)
     {
-      double sum_pv=0.0;
-      double sum_vol=0.0;
-      int start_bar=MathMin(m_period-1,bars-1);
-      for(int j=start_bar;j>=0;j--)
-        {
-         double p=TypicalPrice(j);
-         long v=iVolume(m_symbol,m_timeframe,j);
-         sum_pv+=p*v;
-         sum_vol+=(double)v;
-        }
-      m_vwap_buffer[0]=(sum_vol!=0)?sum_pv/sum_vol:EMPTY_VALUE;
-      return;
+     m_vwap_buffer[0]=CalculateBarVWAP(0,bars);
+     return;
     }
 
-  int session_start=0;
-  for(int j=1;j<bars;j++)
-    {
-     if(m_calc_mode==VWAP_CALC_PERIODIC && IsNewSession(j-1))
-       {
-        session_start=j-1;
-        break;
-       }
-     if(m_calc_mode==VWAP_CALC_FROM_DATE && iTime(m_symbol,m_timeframe,j)<m_start_time)
-       {
-        session_start=j-1;
-        break;
-       }
-    }
+  int session_start=FindSessionStart(bars);
 
   double cum_pv=0.0;
   double cum_vol=0.0;
@@ -384,7 +408,7 @@ void CVWAP::UpdateCurrentBar()
      double p=TypicalPrice(j);
      long v=iVolume(m_symbol,m_timeframe,j);
      cum_pv+=p*v;
-       cum_vol+=(double)v;
+     cum_vol+=(double)v;
     }
 
   m_vwap_buffer[0]=(cum_vol!=0)?cum_pv/cum_vol:EMPTY_VALUE;
