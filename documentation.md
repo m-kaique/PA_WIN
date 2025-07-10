@@ -9,6 +9,7 @@
 6. [Dependências Externas](#6-dependências-externas)
 7. [Exemplos de Configuração e Uso](#7-exemplos-de-configuração-e-uso)
 8. [Changelog / Registro de Versões](#8-changelog--registro-de-versões)
+9. [Acesso a Instâncias via Contexto](#9-acesso-a-instâncias-via-contexto)
 
 
 
@@ -1048,3 +1049,95 @@ Esta seção registra as principais alterações e versões dos componentes do E
 
 -   **Versao 1.00**: Implementa o indicador de retração de Fibonacci derivado de `CIndicatorBase`.
 -   **Versao 2.00**: Suporte a extensões, estilos configuráveis e rótulos personalizados via JSON.
+
+## 9. Acesso a Instâncias via Contexto
+
+O contexto (`TF_CTX`), normalmente referenciado pela variável `ctx`, armazena e
+gerencia todas as instâncias de indicadores e PriceActions configuradas no
+`config.json`. Essas instâncias são registradas pelo **nome** definido no
+arquivo de configuração e podem ser recuperadas a qualquer momento.
+
+### Funcionamento Interno
+
+1. Durante `Init()`, o contexto utiliza as fábricas
+   `IndicatorFactory` e `PriceActionFactory` para criar os objetos
+   correspondentes ao tipo especificado.
+2. Os nomes informados na configuração são armazenados em listas internas que
+   permitem buscar o objeto desejado rapidamente.
+3. Os métodos `GetIndicator` e `GetPriceAction` retornam ponteiros para as
+   instâncias registradas. Caso o nome não exista, o retorno é `NULL`.
+4. Para obter apenas valores numéricos sem manipular a instância, podem ser
+   utilizados `GetIndicatorValue()` e `GetPriceActionValue()`.
+
+### Indicadores Registrados
+
+| Nome de Registro | Classe             | Exemplo de Uso |
+|------------------|--------------------|----------------|
+| `MA`             | `CMovingAverages`  | ```cpp
+CIndicatorBase *ind = ctx.GetIndicator("ema50");
+if(ind != NULL) {
+    CMovingAverages *ma = (CMovingAverages*)ind;
+    double val = ma.GetValue();
+}
+``` |
+| `STO`            | `CStochastic`      | ```cpp
+CIndicatorBase *ind = ctx.GetIndicator("sto14");
+if(ind != NULL) {
+    CStochastic *sto = (CStochastic*)ind;
+    double val = sto.GetValue();
+}
+``` |
+| `VOL`            | `CVolume`          | ```cpp
+CIndicatorBase *ind = ctx.GetIndicator("vol0");
+if(ind != NULL) {
+    CVolume *vol = (CVolume*)ind;
+    double v = vol.GetValue();
+}
+``` |
+| `VWAP`           | `CVWAP`            | ```cpp
+CIndicatorBase *ind = ctx.GetIndicator("vwap_diario_fin");
+if(ind != NULL) {
+    CVWAP *vwap = (CVWAP*)ind;
+    double val = vwap.GetValue();
+}
+``` |
+| `BOLL`           | `CBollinger`       | ```cpp
+CIndicatorBase *ind = ctx.GetIndicator("boll20");
+if(ind != NULL) {
+    CBollinger *b = (CBollinger*)ind;
+    double val = b.GetValue();
+}
+``` |
+| `FIBO`           | `CFibonacci`       | ```cpp
+CIndicatorBase *ind = ctx.GetIndicator("fibo_complete");
+if(ind != NULL) {
+    CFibonacci *fb = (CFibonacci*)ind;
+    double lvl = fb.GetValue();
+}
+``` |
+
+### PriceActions Registradas
+
+| Nome de Registro | Classe          | Exemplo de Uso |
+|------------------|-----------------|----------------|
+| `TRENDLINE`      | `CTrendLine`    | ```cpp
+CPriceActionBase *pa = ctx.GetPriceAction("swing_lines");
+if(pa != NULL) {
+    CTrendLine *tl = (CTrendLine*)pa;
+    if(tl.IsBreakup()) {
+        // lógica específica
+    }
+}
+``` |
+| `SUPRES`         | `CSupRes`       | ```cpp
+CPriceActionBase *pa = ctx.GetPriceAction("sr_completo");
+if(pa != NULL) {
+    CSupRes *sr = (CSupRes*)pa;
+    double sup = sr.GetSupportValue();
+}
+``` |
+
+> **Nota:** Sempre verifique se o ponteiro retornado é `NULL` antes de realizar
+> o casting. Quando o nome não é encontrado, `GetIndicator`/`GetPriceAction`
+> retornam `NULL` e os métodos de valor retornam `0.0`.
+
