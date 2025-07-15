@@ -83,9 +83,6 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick()
 {
-   // Verificar se há um novo candle no período especificado
-   if (!IsNewBar(m_control_tf))
-      return; // Sair se não for um novo candle
 
    // Verificar se o gerenciador está inicializado
    if (g_config_manager == NULL || !g_config_manager.IsInitialized())
@@ -94,7 +91,7 @@ void OnTick()
       return;
    }
 
-   // Executar lógica apenas em novo candle
+   // Executar lógica apenas em novos candles
    ExecuteOnNewBar();
 }
 
@@ -116,6 +113,78 @@ bool IsNewBar(ENUM_TIMEFRAMES timeframe)
 }
 
 //+------------------------------------------------------------------+
+//| Informações sobre a TrendLine de um TF                           |
+//+------------------------------------------------------------------+
+void CheckCtxTrendLine(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
+{
+   if (tf == PERIOD_H1)
+   {
+      CPriceActionBase *pa = ctx.GetPriceAction("swing_lines");
+      if (pa != NULL)
+      {
+         CTrendLine *tl = (CTrendLine *)pa;
+         string pos = tl.GetPricePositionString();
+         if (pos != "")
+            Print("Posicao do preco em H1: ", pos);
+
+         CTrendLine::SCandleFullInfo cd = tl.GetCandleFullInfo(1);
+
+         // Cabeçalho da análise do candle
+         Print("========== ANÁLISE CANDLE[1] - H1 ==========");
+
+         // Informações de cruzamento do corpo
+         Print("CRUZAMENTOS DO CORPO:");
+         PrintFormat("  • LTA: %s | LTA2: %s",
+                     cd.trend.body_cross_lta ? "SIM" : "NÃO",
+                     cd.trend.body_cross_lta2 ? "SIM" : "NÃO");
+         PrintFormat("  • LTB: %s | LTB2: %s",
+                     cd.trend.body_cross_ltb ? "SIM" : "NÃO",
+                     cd.trend.body_cross_ltb2 ? "SIM" : "NÃO");
+
+         // Posicionamento entre linhas
+         Print("POSICIONAMENTO:");
+         PrintFormat("  • Entre LTAs: %s",
+                     cd.trend.between_ltas ? "SIM" : "NÃO");
+         PrintFormat("  • Entre LTBs: %s",
+                     cd.trend.between_ltbs ? "SIM" : "NÃO");
+
+         // Posicionamento nas linhas
+         Print("POSIÇÃO NAS LINHAS:");
+         PrintFormat("  • LTA Superior: %s | LTA Inferior: %s",
+                     cd.trend.on_lta_upper ? "SIM" : "NÃO",
+                     cd.trend.on_lta_lower ? "SIM" : "NÃO");
+         PrintFormat("  • LTA2 Superior: %s | LTA2 Inferior: %s",
+                     cd.trend.on_lta2_upper ? "SIM" : "NÃO",
+                     cd.trend.on_lta2_lower ? "SIM" : "NÃO");
+         PrintFormat("  • LTB Superior: %s | LTB Inferior: %s",
+                     cd.trend.on_ltb_upper ? "SIM" : "NÃO",
+                     cd.trend.on_ltb_lower ? "SIM" : "NÃO");
+         PrintFormat("  • LTB2 Superior: %s | LTB2 Inferior: %s",
+                     cd.trend.on_ltb2_upper ? "SIM" : "NÃO",
+                     cd.trend.on_ltb2_lower ? "SIM" : "NÃO");
+
+         // Distâncias
+         Print("DISTÂNCIAS DO FECHAMENTO:");
+         PrintFormat("  • LTA: %.5f | LTA2: %.5f",
+                     cd.trend.dist_close_lta, cd.trend.dist_close_lta2);
+         PrintFormat("  • LTB: %.5f | LTB2: %.5f",
+                     cd.trend.dist_close_ltb, cd.trend.dist_close_ltb2);
+
+         // Fakeouts
+         Print("FAKEOUTS:");
+         PrintFormat("  • LTA: %s | LTA2: %s",
+                     cd.trend.fakeout_lta ? "SIM" : "NÃO",
+                     cd.trend.fakeout_lta2 ? "SIM" : "NÃO");
+         PrintFormat("  • LTB: %s | LTB2: %s",
+                     cd.trend.fakeout_ltb ? "SIM" : "NÃO",
+                     cd.trend.fakeout_ltb2 ? "SIM" : "NÃO");
+
+         Print("==========================================");
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
 //| Atualizar todos os contextos de um símbolo                       |
 //+------------------------------------------------------------------+
 void UpdateSymbolContexts(string symbol)
@@ -128,78 +197,23 @@ void UpdateSymbolContexts(string symbol)
       Print("AVISO: Nenhum contexto encontrado para símbolo: ", symbol);
       return;
    }
+
    for (int i = 0; i < count; i++)
    {
       TF_CTX *ctx = contexts[i];
       ENUM_TIMEFRAMES tf = tfs[i];
       if (ctx == NULL)
          continue;
-      ctx.Update();
-      if (tf == PERIOD_H1)
+
+      if (ctx.HasNewBar())
       {
-         CPriceActionBase *pa = ctx.GetPriceAction("swing_lines");
-         if (pa != NULL)
-         {
-            CTrendLine *tl = (CTrendLine *)pa;
-            string pos = tl.GetPricePositionString();
-            if (pos != "")
-               Print("Posicao do preco em H1: ", pos);
-           
-            CTrendLine::SCandleFullInfo cd = tl.GetCandleFullInfo(1);
-           
-            // Cabeçalho da análise do candle
-            Print("========== ANÁLISE CANDLE[1] - H1 ==========");
-           
-            // Informações de cruzamento do corpo
-            Print("CRUZAMENTOS DO CORPO:");
-            PrintFormat("  • LTA: %s | LTA2: %s",
-                       cd.trend.body_cross_lta ? "SIM" : "NÃO",
-                       cd.trend.body_cross_lta2 ? "SIM" : "NÃO");
-            PrintFormat("  • LTB: %s | LTB2: %s",
-                       cd.trend.body_cross_ltb ? "SIM" : "NÃO",
-                       cd.trend.body_cross_ltb2 ? "SIM" : "NÃO");
-           
-            // Posicionamento entre linhas
-            Print("POSICIONAMENTO:");
-            PrintFormat("  • Entre LTAs: %s",
-                       cd.trend.between_ltas ? "SIM" : "NÃO");
-            PrintFormat("  • Entre LTBs: %s",
-                       cd.trend.between_ltbs ? "SIM" : "NÃO");
-           
-            // Posicionamento nas linhas
-            Print("POSIÇÃO NAS LINHAS:");
-            PrintFormat("  • LTA Superior: %s | LTA Inferior: %s",
-                       cd.trend.on_lta_upper ? "SIM" : "NÃO",
-                       cd.trend.on_lta_lower ? "SIM" : "NÃO");
-            PrintFormat("  • LTA2 Superior: %s | LTA2 Inferior: %s",
-                       cd.trend.on_lta2_upper ? "SIM" : "NÃO",
-                       cd.trend.on_lta2_lower ? "SIM" : "NÃO");
-            PrintFormat("  • LTB Superior: %s | LTB Inferior: %s",
-                       cd.trend.on_ltb_upper ? "SIM" : "NÃO",
-                       cd.trend.on_ltb_lower ? "SIM" : "NÃO");
-            PrintFormat("  • LTB2 Superior: %s | LTB2 Inferior: %s",
-                       cd.trend.on_ltb2_upper ? "SIM" : "NÃO",
-                       cd.trend.on_ltb2_lower ? "SIM" : "NÃO");
-           
-            // Distâncias
-            Print("DISTÂNCIAS DO FECHAMENTO:");
-            PrintFormat("  • LTA: %.5f | LTA2: %.5f",
-                       cd.trend.dist_close_lta, cd.trend.dist_close_lta2);
-            PrintFormat("  • LTB: %.5f | LTB2: %.5f",
-                       cd.trend.dist_close_ltb, cd.trend.dist_close_ltb2);
-           
-            // Fakeouts
-            Print("FAKEOUTS:");
-            PrintFormat("  • LTA: %s | LTA2: %s",
-                       cd.trend.fakeout_lta ? "SIM" : "NÃO",
-                       cd.trend.fakeout_lta2 ? "SIM" : "NÃO");
-            PrintFormat("  • LTB: %s | LTB2: %s",
-                       cd.trend.fakeout_ltb ? "SIM" : "NÃO",
-                       cd.trend.fakeout_ltb2 ? "SIM" : "NÃO");
-           
-            Print("==========================================");
-         }
+         ctx.Update();
+         Print("Contexto atualizado: ", symbol, " ", EnumToString(tf));
       }
+
+      // -  -  -  -  -  -  -
+      //CheckCtxTrendLine(tf, ctx);
+      // -  -  -  -  -  -  -
    }
 }
 
@@ -208,9 +222,6 @@ void UpdateSymbolContexts(string symbol)
 //+------------------------------------------------------------------+
 void ExecuteOnNewBar()
 {
-   Print("=== NOVO CANDLE ", EnumToString(m_control_tf), " ===");
-   Print("Tempo do candle: ", TimeToString(m_last_bar_time, TIME_DATE | TIME_MINUTES));
-
    string symbols[];
    g_config_manager.GetConfiguredSymbols(symbols);
 
