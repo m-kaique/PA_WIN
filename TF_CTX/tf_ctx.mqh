@@ -52,6 +52,7 @@ public:
   bool CopyIndicatorValues(string name, int shift, int count, double &buffer[]);
   double GetPriceActionValue(string name, int shift = 0);
   CPriceActionBase *GetPriceAction(string name);
+  CIndicatorBase *GetIndicator(string name);
   bool CopyPriceActionValues(string name, int shift, int count, double &buffer[]);
   bool HasNewBar();
 };
@@ -292,6 +293,17 @@ CPriceActionBase *TF_CTX::GetPriceAction(string name)
   int idx = FindByName(name, m_pa_names);
   if (idx >= 0)
     return m_priceactions[idx];
+  return NULL;
+}
+
+//+------------------------------------------------------------------+
+//| Obter ponteiro para o Indicador                                  |
+//+------------------------------------------------------------------+
+CIndicatorBase *TF_CTX::GetIndicator(string name)
+{
+  int idx = FindByName(name, m_names);
+  if (idx >= 0)
+    return m_indicators[idx];
   return NULL;
 }
 

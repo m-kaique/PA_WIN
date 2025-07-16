@@ -4,8 +4,8 @@
 //|                                             https://www.mql5.com |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, MetaQuotes Ltd."
-#property link      "https://www.mql5.com"
-#property version   "1.02"
+#property link "https://www.mql5.com"
+#property version "1.02"
 #include "../indicator_base.mqh"
 #include "../../config_types.mqh"
 #include "ma_defs.mqh"
@@ -16,41 +16,65 @@
 class CMovingAverages : public CIndicatorBase
 {
 private:
-    string          m_symbol;        // Símbolo
-    ENUM_TIMEFRAMES m_timeframe;     // TimeFrame
-    int             m_period;        // Período para cálculo das médias
-    ENUM_MA_METHOD  m_method;        // Método da média móvel
-    
+    string m_symbol;             // Símbolo
+    ENUM_TIMEFRAMES m_timeframe; // TimeFrame
+    int m_period;                // Período para cálculo das médias
+    ENUM_MA_METHOD m_method;     // Método da média móvel
+
     // Handle do indicador
-    int             m_handle;
-    
+    int m_handle;
+
     // Métodos privados
-    bool            CreateIndicatorHandles();
-    void            ReleaseIndicatorHandles();
-    double          GetIndicatorValue(int handle, int shift = 0);
+    bool CreateIndicatorHandles();
+    void ReleaseIndicatorHandles();
+    double GetIndicatorValue(int handle, int shift = 0);
+
+    SSlopeResult GetAdvancedSlope(ENUM_SLOPE_METHOD method, int lookback, double threshold_high, double threshold_low);
+
+    // Métodos privados para cálculo de inclinação avançada
+    SSlopeResult CalculateLinearRegressionSlope(double &ma_values[], int lookback);
+    SSlopeResult CalculateSimpleDifference(double &ma_values[], int lookback);
+    SSlopeResult CalculatePercentageChange(double &ma_values[], int lookback);
+    SSlopeResult CalculateDiscreteDerivative(double &ma_values[]);
+    SSlopeResult CalculateAngleDegrees(double &ma_values[], int lookback);
+
+    string GetTrendClassification(double slope_value, double strong_threshold, double weak_threshold);
+
+    // Métodos privados para validação cruzada
+    SSlopeValidation AnalyzeMethodsConsensus(SSlopeValidation &validation, bool use_weighted_analysis);
+    double CalculateConfidenceScore(SSlopeValidation &validation);
+    double CalculateConsensusStrength(SSlopeValidation &validation);
+    double CalculateWeightedSlope(SSlopeValidation &validation, double &weights[]);
+    string DetermineRiskLevel(SSlopeValidation &validation);
 
 public:
     // Construtor
-                    CMovingAverages();
-    
+    CMovingAverages();
+
     // Destrutor
-                   ~CMovingAverages();
-    
+    ~CMovingAverages();
+
     // Inicialização
-    bool            Init(string symbol, ENUM_TIMEFRAMES timeframe, int period, ENUM_MA_METHOD method);
-    bool            Init(string symbol, ENUM_TIMEFRAMES timeframe, CMAConfig &config);
-    
+    bool Init(string symbol, ENUM_TIMEFRAMES timeframe, int period, ENUM_MA_METHOD method);
+    bool Init(string symbol, ENUM_TIMEFRAMES timeframe, CMAConfig &config);
+
     // Método para obter valor da média móvel
-    double          GetValue(int shift = 0);
+    double GetValue(int shift = 0);
 
     // Obter múltiplos valores da média móvel
-    bool            CopyValues(int shift, int count, double &buffer[]);
+    bool CopyValues(int shift, int count, double &buffer[]);
 
     // Verificar se os indicadores estão prontos
-    bool            IsReady();
+    bool IsReady();
 
     // Atualizar estado interno (recriar handle se necessario)
-    virtual bool    Update() override;
+    virtual bool Update() override;
+
+    SSlopeValidation GetSlopeValidation(int lookback, double threshold_high, double threshold_low, bool use_weighted_analysis);
+    string GetSlopeAnalysisReport(SSlopeValidation &validation);
+    void DebugSlopeValidation(SSlopeValidation &validation);
+    SSlopeValidation GetSimpleSlopeValidation(int lookback);
+    double CalculateDirectionalConsensus(SSlopeValidation &validation);
 };
 
 //+------------------------------------------------------------------+
@@ -62,7 +86,7 @@ CMovingAverages::CMovingAverages()
     m_timeframe = PERIOD_CURRENT;
     m_period = 0;
     m_method = MODE_SMA;
-    
+
     // Inicializar handle como inválido
     m_handle = INVALID_HANDLE;
 }
@@ -84,9 +108,9 @@ bool CMovingAverages::Init(string symbol, ENUM_TIMEFRAMES timeframe, int period,
     m_timeframe = timeframe;
     m_period = period;
     m_method = method;
-    
+
     ReleaseIndicatorHandles(); // Limpar handles anteriores se existirem
-    
+
     return CreateIndicatorHandles();
 }
 
@@ -102,12 +126,12 @@ bool CMovingAverages::CreateIndicatorHandles()
 {
     // Criar handle para média móvel com método especificado
     m_handle = iMA(m_symbol, m_timeframe, m_period, 0, m_method, PRICE_CLOSE);
-    if(m_handle == INVALID_HANDLE)
+    if (m_handle == INVALID_HANDLE)
     {
         Print("ERRO: Falha ao criar handle ", EnumToString(m_method), " ", m_period, " para ", m_symbol);
         return false;
     }
-    
+
     Print("Indicador ", EnumToString(m_method), " inicializado para ", m_symbol, " - ", EnumToString(m_timeframe), " - Período: ", m_period);
     return true;
 }
@@ -117,7 +141,7 @@ bool CMovingAverages::CreateIndicatorHandles()
 //+------------------------------------------------------------------+
 void CMovingAverages::ReleaseIndicatorHandles()
 {
-    if(m_handle != INVALID_HANDLE)
+    if (m_handle != INVALID_HANDLE)
     {
         IndicatorRelease(m_handle);
         m_handle = INVALID_HANDLE;
@@ -129,21 +153,21 @@ void CMovingAverages::ReleaseIndicatorHandles()
 //+------------------------------------------------------------------+
 double CMovingAverages::GetIndicatorValue(int handle, int shift = 0)
 {
-    if(handle == INVALID_HANDLE)
+    if (handle == INVALID_HANDLE)
     {
         Print("ERRO: Handle do indicador inválido");
         return 0.0;
     }
-    
+
     double buffer[];
     ArraySetAsSeries(buffer, true);
-    
-    if(CopyBuffer(handle, 0, shift, 1, buffer) <= 0)
+
+    if (CopyBuffer(handle, 0, shift, 1, buffer) <= 0)
     {
         Print("ERRO: Falha ao copiar dados do indicador");
         return 0.0;
     }
-    
+
     return buffer[0];
 }
 
@@ -160,7 +184,7 @@ double CMovingAverages::GetValue(int shift = 0)
 //+------------------------------------------------------------------+
 bool CMovingAverages::CopyValues(int shift, int count, double &buffer[])
 {
-    if(m_handle == INVALID_HANDLE)
+    if (m_handle == INVALID_HANDLE)
     {
         Print("ERRO: Handle do indicador inválido");
         return false;
@@ -169,7 +193,7 @@ bool CMovingAverages::CopyValues(int shift, int count, double &buffer[])
     ArrayResize(buffer, count);
     ArraySetAsSeries(buffer, true);
 
-    if(CopyBuffer(m_handle, 0, shift, count, buffer) <= 0)
+    if (CopyBuffer(m_handle, 0, shift, count, buffer) <= 0)
     {
         Print("ERRO: Falha ao copiar dados do indicador");
         return false;
@@ -191,11 +215,651 @@ bool CMovingAverages::IsReady()
 //+------------------------------------------------------------------+
 bool CMovingAverages::Update()
 {
-    if(m_handle==INVALID_HANDLE)
+    if (m_handle == INVALID_HANDLE)
         return CreateIndicatorHandles();
 
-    if(BarsCalculated(m_handle)<=0)
+    if (BarsCalculated(m_handle) <= 0)
         return false;
 
     return true;
+}
+
+// SESSÃO A SEGUIR É RESPONSÁVEL PELOS CÁLCULOS DE SLOPE e CONFLUÊNCIAS ENTRE OS RESULTADOS
+
+//+------------------------------------------------------------------+
+//| Calcular inclinação avançada da média móvel                    |
+//+------------------------------------------------------------------+
+SSlopeResult CMovingAverages::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
+                                               int lookback = 10,
+                                               double threshold_high = 0.5,
+                                               double threshold_low = -0.5)
+{
+    SSlopeResult result;
+    result.slope_value = 0.0;
+    result.r_squared = 0.0;
+    result.trend_direction = "LATERAL";
+    result.trend_strength = 0.0;
+
+    if (m_handle == INVALID_HANDLE)
+    {
+        Print("ERRO: Handle do indicador inválido para cálculo da inclinação avançada");
+        return result;
+    }
+
+    if (lookback <= 0)
+    {
+        Print("ERRO: Lookback deve ser maior que zero");
+        return result;
+    }
+
+    // Obter valores da MA
+    double ma_values[];
+    if (!CopyValues(0, lookback + 1, ma_values))
+    {
+        Print("ERRO: Falha ao obter valores da MA para cálculo da inclinação");
+        return result;
+    }
+
+    switch (method)
+    {
+    case SLOPE_LINEAR_REGRESSION:
+        result = CalculateLinearRegressionSlope(ma_values, lookback);
+        break;
+
+    case SLOPE_SIMPLE_DIFFERENCE:
+        result = CalculateSimpleDifference(ma_values, lookback);
+        break;
+
+    case SLOPE_PERCENTAGE_CHANGE:
+        result = CalculatePercentageChange(ma_values, lookback);
+        break;
+
+    case SLOPE_DISCRETE_DERIVATIVE:
+        result = CalculateDiscreteDerivative(ma_values);
+        break;
+
+    case SLOPE_ANGLE_DEGREES:
+        result = CalculateAngleDegrees(ma_values, lookback);
+        break;
+    }
+
+    // Determinar direção da tendência
+    if (result.slope_value > threshold_high)
+        result.trend_direction = "ALTA";
+    else if (result.slope_value < threshold_low)
+        result.trend_direction = "BAIXA";
+    else
+        result.trend_direction = "LATERAL";
+
+    // Calcular força da tendência (0-100)
+    result.trend_strength = MathMin(100.0, MathAbs(result.slope_value) * 100.0);
+
+    return result;
+}
+
+//+------------------------------------------------------------------+
+//| Calcular inclinação por regressão linear                       |
+//+------------------------------------------------------------------+
+SSlopeResult CMovingAverages::CalculateLinearRegressionSlope(double &ma_values[], int lookback)
+{
+    SSlopeResult result;
+    result.slope_value = 0.0;
+    result.r_squared = 0.0;
+
+    double sum_x = 0.0, sum_y = 0.0, sum_xy = 0.0, sum_x2 = 0.0, sum_y2 = 0.0;
+    int n = lookback;
+
+    // CORREÇÃO: Usar índices temporais corretos
+    // x representa tempo: valores maiores = mais recente
+    // y representa valor da MA
+    for (int i = 0; i < n; i++)
+    {
+        double x = n - i; // ✅ Tempo crescente: passado → presente
+        double y = ma_values[i]; // ma_values[0] = mais recente
+
+        sum_x += x;
+        sum_y += y;
+        sum_xy += x * y;
+        sum_x2 += x * x;
+        sum_y2 += y * y;
+    }
+
+    // Calcular slope (inclinação)
+    double denominator = n * sum_x2 - sum_x * sum_x;
+    if (denominator != 0.0)
+    {
+        result.slope_value = (n * sum_xy - sum_x * sum_y) / denominator;
+
+        // Calcular R² (coeficiente de determinação)
+        double numerator = n * sum_xy - sum_x * sum_y;
+        double denom_r2 = MathSqrt((n * sum_x2 - sum_x * sum_x) * (n * sum_y2 - sum_y * sum_y));
+        if (denom_r2 != 0.0)
+        {
+            double r = numerator / denom_r2;
+            result.r_squared = r * r;
+        }
+    }
+
+    // Normalizar para pips
+    double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
+    int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
+    double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
+    result.slope_value = result.slope_value / pip_value;
+   
+    return result;
+}
+
+
+//+------------------------------------------------------------------+
+//| Calcular diferença simples                                     |
+//+------------------------------------------------------------------+
+SSlopeResult CMovingAverages::CalculateSimpleDifference(double &ma_values[], int lookback)
+{
+    SSlopeResult result;
+    result.slope_value = ma_values[0] - ma_values[lookback];
+
+    // Normalizar para pips
+    double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
+    int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
+    double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
+    result.slope_value = result.slope_value / pip_value;
+
+    return result;
+}
+
+//+------------------------------------------------------------------+
+//| Calcular mudança percentual                                    |
+//+------------------------------------------------------------------+
+SSlopeResult CMovingAverages::CalculatePercentageChange(double &ma_values[], int lookback)
+{
+    SSlopeResult result;
+
+    if (ma_values[lookback] != 0.0)
+    {
+        result.slope_value = ((ma_values[0] / ma_values[lookback]) - 1.0) * 100.0;
+    }
+
+    return result;
+}
+
+//+------------------------------------------------------------------+
+//| Calcular derivada discreta                                     |
+//+------------------------------------------------------------------+
+SSlopeResult CMovingAverages::CalculateDiscreteDerivative(double &ma_values[])
+{
+    SSlopeResult result;
+    result.slope_value = ma_values[0] - ma_values[1];
+
+    // Normalizar para pips
+    double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
+    int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
+    double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
+    result.slope_value = result.slope_value / pip_value;
+
+    return result;
+}
+
+//+------------------------------------------------------------------+
+//| Calcular ângulo em graus                                       |
+//+------------------------------------------------------------------+
+SSlopeResult CMovingAverages::CalculateAngleDegrees(double &ma_values[], int lookback)
+{
+    SSlopeResult result;
+
+    double vertical_diff = ma_values[0] - ma_values[lookback];
+    double horizontal_diff = lookback;
+
+    double angle_rad = MathArctan(vertical_diff / horizontal_diff);
+    result.slope_value = angle_rad * 180.0 / M_PI;
+
+    return result;
+}
+
+//+------------------------------------------------------------------+
+//| Obter classificação da tendência baseada em bandas             |
+//+------------------------------------------------------------------+
+string CMovingAverages::GetTrendClassification(double slope_value,
+                                               double strong_threshold = 1.0,
+                                               double weak_threshold = 0.3)
+{
+    if (slope_value > strong_threshold)
+        return "ALTA_FORTE";
+    else if (slope_value > weak_threshold)
+        return "ALTA_FRACA";
+    else if (slope_value < -strong_threshold)
+        return "BAIXA_FORTE";
+    else if (slope_value < -weak_threshold)
+        return "BAIXA_FRACA";
+    else
+        return "LATERAL";
+}
+
+//+------------------------------------------------------------------+
+//| Validação cruzada com múltiplos métodos de inclinação          |
+//+------------------------------------------------------------------+
+SSlopeValidation CMovingAverages::GetSlopeValidation(int lookback = 10,
+                                                     double threshold_high = 0.5,
+                                                     double threshold_low = -0.5,
+                                                     bool use_weighted_analysis = true)
+{
+    SSlopeValidation validation;
+
+    if (m_handle == INVALID_HANDLE)
+    {
+        Print("ERRO: Handle do indicador inválido para validação de inclinação");
+        return validation;
+    }
+
+    // Calcular inclinação com todos os métodos
+    validation.linear_regression = GetAdvancedSlope(SLOPE_LINEAR_REGRESSION, lookback, threshold_high, threshold_low);
+    validation.simple_difference = GetAdvancedSlope(SLOPE_SIMPLE_DIFFERENCE, lookback, threshold_high, threshold_low);
+    validation.percentage_change = GetAdvancedSlope(SLOPE_PERCENTAGE_CHANGE, lookback, threshold_high, threshold_low);
+    validation.discrete_derivative = GetAdvancedSlope(SLOPE_DISCRETE_DERIVATIVE, lookback, threshold_high, threshold_low);
+    validation.angle_degrees = GetAdvancedSlope(SLOPE_ANGLE_DEGREES, lookback, threshold_high, threshold_low);
+
+    // Analisar consenso entre métodos
+    validation = AnalyzeMethodsConsensus(validation, use_weighted_analysis);
+
+    return validation;
+}
+
+//+------------------------------------------------------------------+
+//| Analisar consenso entre métodos                                |
+//+------------------------------------------------------------------+
+SSlopeValidation CMovingAverages::AnalyzeMethodsConsensus(SSlopeValidation &validation, bool use_weighted_analysis)
+{
+    // Array com as direções de cada método
+    string directions[5] = {
+        validation.linear_regression.trend_direction,
+        validation.simple_difference.trend_direction,
+        validation.percentage_change.trend_direction,
+        validation.discrete_derivative.trend_direction,
+        validation.angle_degrees.trend_direction
+    };
+    
+    // Array com os valores de slope para análise adicional
+    double slopes[5] = {
+        validation.linear_regression.slope_value,
+        validation.simple_difference.slope_value,
+        validation.percentage_change.slope_value,
+        validation.discrete_derivative.slope_value,
+        validation.angle_degrees.slope_value
+    };
+    
+    // Pesos para cada método (ajustáveis conforme preferência)
+    double weights[5] = {0.30, 0.20, 0.20, 0.15, 0.15}; // Regressão linear tem maior peso
+    
+    // Contar votos para cada direção
+    int votes_alta = 0, votes_baixa = 0, votes_lateral = 0;
+    double weighted_alta = 0.0, weighted_baixa = 0.0, weighted_lateral = 0.0;
+    
+    // Debug: Imprimir valores para diagnóstico
+    Print("=== DEBUG: Análise de Consenso ===");
+    for(int i = 0; i < 5; i++)
+    {
+        Print("Método ", i, ": Direção=", directions[i], ", Slope=", slopes[i]);
+        
+        if(directions[i] == "ALTA")
+        {
+            votes_alta++;
+            weighted_alta += weights[i];
+        }
+        else if(directions[i] == "BAIXA")
+        {
+            votes_baixa++;
+            weighted_baixa += weights[i];
+        }
+        else
+        {
+            votes_lateral++;
+            weighted_lateral += weights[i];
+        }
+    }
+    
+    Print("Votos: ALTA=", votes_alta, ", BAIXA=", votes_baixa, ", LATERAL=", votes_lateral);
+    Print("Pesos: ALTA=", weighted_alta, ", BAIXA=", weighted_baixa, ", LATERAL=", weighted_lateral);
+    
+    // Determinar tendência final
+    if(use_weighted_analysis)
+    {
+        // Análise ponderada
+        if(weighted_alta > weighted_baixa && weighted_alta > weighted_lateral)
+        {
+            validation.final_trend = "ALTA";
+            validation.methods_agreement = (int)(weighted_alta * 100);
+        }
+        else if(weighted_baixa > weighted_alta && weighted_baixa > weighted_lateral)
+        {
+            validation.final_trend = "BAIXA";
+            validation.methods_agreement = (int)(weighted_baixa * 100);
+        }
+        else
+        {
+            validation.final_trend = "LATERAL";
+            validation.methods_agreement = (int)(weighted_lateral * 100);
+        }
+    }
+    else
+    {
+        // Análise por maioria simples
+        if(votes_alta > votes_baixa && votes_alta > votes_lateral)
+        {
+            validation.final_trend = "ALTA";
+            validation.methods_agreement = votes_alta;
+        }
+        else if(votes_baixa > votes_alta && votes_baixa > votes_lateral)
+        {
+            validation.final_trend = "BAIXA";
+            validation.methods_agreement = votes_baixa;
+        }
+        else
+        {
+            validation.final_trend = "LATERAL";
+            validation.methods_agreement = votes_lateral;
+        }
+    }
+    
+    // Calcular nível de confiança
+    validation.confidence_score = CalculateConfidenceScore(validation);
+    
+    // CORREÇÃO: Tentar calcular força do consenso, usar alternativa se falhar
+    validation.consensus_strength = CalculateConsensusStrength(validation);
+    
+    // CORREÇÃO: Se consensus_strength for 0, usar método alternativo
+    if(validation.consensus_strength == 0.0)
+    {
+        validation.consensus_strength = CalculateDirectionalConsensus(validation);
+        Print("AVISO: Usando consenso direcional alternativo: ", validation.consensus_strength);
+    }
+    
+    // Calcular inclinação ponderada
+    validation.weighted_slope = CalculateWeightedSlope(validation, weights);
+    
+    // CORREÇÃO: Critério mais flexível para sinal confiável
+    validation.is_reliable = (validation.confidence_score >= 50.0 && validation.methods_agreement >= 2);
+    
+    // Determinar nível de risco com correções
+    validation.risk_level = DetermineRiskLevel(validation);
+    
+    Print("Resultado Final: Trend=", validation.final_trend, ", Confiança=", validation.confidence_score, 
+          ", Consenso=", validation.consensus_strength, ", Risco=", validation.risk_level);
+    
+    return validation;
+}
+
+//+------------------------------------------------------------------+
+//| Calcular score de confiança                                    |
+//+------------------------------------------------------------------+
+double CMovingAverages::CalculateConfidenceScore(SSlopeValidation &validation)
+{
+    double score = 0.0;
+    
+    // CORREÇÃO: Peso baseado na concordância entre métodos (0-5 para 0-100)
+    double agreement_ratio = (double)validation.methods_agreement / 5.0;
+    if(validation.methods_agreement > 5) // Se for percentual
+        agreement_ratio = (double)validation.methods_agreement / 100.0;
+    
+    score += agreement_ratio * 40.0;
+    
+    // Peso baseado na qualidade da regressão linear (R²)
+    score += validation.linear_regression.r_squared * 30.0;
+    
+    // CORREÇÃO: Peso baseado na força média das tendências
+    double avg_strength = (validation.linear_regression.trend_strength + 
+                          validation.simple_difference.trend_strength + 
+                          validation.percentage_change.trend_strength + 
+                          validation.discrete_derivative.trend_strength + 
+                          validation.angle_degrees.trend_strength) / 5.0;
+    score += (avg_strength / 100.0) * 30.0;
+    
+    return MathMin(100.0, MathMax(0.0, score));
+}
+//+------------------------------------------------------------------+
+//| Calcular força do consenso                                     |
+//+------------------------------------------------------------------+
+double CMovingAverages::CalculateConsensusStrength(SSlopeValidation &validation)
+{
+    // Verificar consistência dos sinais
+    double slopes[5] = {
+        validation.linear_regression.slope_value,
+        validation.simple_difference.slope_value,
+        validation.percentage_change.slope_value,
+        validation.discrete_derivative.slope_value,
+        validation.angle_degrees.slope_value
+    };
+    
+    // CORREÇÃO: Lógica correta para validar números
+    int valid_count = 0;
+    double valid_slopes[5];
+    
+    for(int i = 0; i < 5; i++)
+    {
+        // CORREÇÃO: Condição correta - pular se for 0 OU inválido
+        if(slopes[i] == 0.0 || !MathIsValidNumber(slopes[i]))
+            continue;
+        valid_slopes[valid_count] = slopes[i];
+        valid_count++;
+    }
+    
+    if(valid_count < 2)
+        return 0.0;
+    
+    // Calcular desvio padrão dos slopes válidos
+    double mean = 0.0;
+    for(int i = 0; i < valid_count; i++)
+        mean += valid_slopes[i];
+    mean /= valid_count;
+    
+    double variance = 0.0;
+    for(int i = 0; i < valid_count; i++)
+        variance += MathPow(valid_slopes[i] - mean, 2);
+    variance /= valid_count;
+    
+    double std_dev = MathSqrt(variance);
+    
+    // CORREÇÃO: Ajustar desvio esperado baseado na magnitude dos valores
+    double max_expected_deviation = MathMax(0.5, MathAbs(mean) * 0.3);
+    double consensus = 100.0 * (1.0 - MathMin(std_dev / max_expected_deviation, 1.0));
+    
+    // CORREÇÃO: Adicionar debug para diagnosticar
+    Print("DEBUG Consensus: valid_count=", valid_count, ", mean=", mean, 
+          ", std_dev=", std_dev, ", max_expected_dev=", max_expected_deviation, 
+          ", consensus=", consensus);
+    
+    return MathMax(0.0, consensus);
+}
+
+//+------------------------------------------------------------------+
+//| Calcular inclinação ponderada                                  |
+//+------------------------------------------------------------------+
+double CMovingAverages::CalculateWeightedSlope(SSlopeValidation &validation, double &weights[])
+{
+    double slopes[5] = {
+        validation.linear_regression.slope_value,
+        validation.simple_difference.slope_value,
+        validation.percentage_change.slope_value,
+        validation.discrete_derivative.slope_value,
+        validation.angle_degrees.slope_value};
+
+    double weighted_sum = 0.0;
+    for (int i = 0; i < 5; i++)
+        weighted_sum += slopes[i] * weights[i];
+
+    return weighted_sum;
+}
+
+//+------------------------------------------------------------------+
+//| Determinar nível de risco                                      |
+//+------------------------------------------------------------------+
+string CMovingAverages::DetermineRiskLevel(SSlopeValidation &validation)
+{
+    // CORREÇÃO: Critérios mais balanceados e alternativos
+    double confidence = validation.confidence_score;
+    double consensus = validation.consensus_strength;
+    int agreement = validation.methods_agreement;
+    
+    // Debug para diagnosticar
+    Print("DEBUG Risk: confidence=", confidence, ", consensus=", consensus, 
+          ", agreement=", agreement);
+    
+    // CORREÇÃO: Usar critérios alternativos quando consensus falha
+    if(consensus > 0.0)
+    {
+        // Usar critério original quando consensus é válido
+        if(confidence >= 70.0 && consensus >= 60.0)
+            return "BAIXO";
+        else if(confidence >= 50.0 && consensus >= 40.0)
+            return "MEDIO";
+        else
+            return "ALTO";
+    }
+    else
+    {
+        // CORREÇÃO: Critério alternativo baseado em confidence e agreement
+        if(confidence >= 80.0 && agreement >= 4)
+            return "BAIXO";
+        else if(confidence >= 60.0 && agreement >= 3)
+            return "MEDIO";
+        else
+            return "ALTO";
+    }
+}
+//+------------------------------------------------------------------+
+//| Obter análise textual detalhada                               |
+//+------------------------------------------------------------------+
+string CMovingAverages::GetSlopeAnalysisReport(SSlopeValidation &validation)
+{
+    string report = "";
+
+    report += "=== RELATÓRIO DE ANÁLISE DE INCLINAÇÃO ===\n";
+    report += "Tendência Final: " + validation.final_trend + "\n";
+    report += "Confiança: " + DoubleToString(validation.confidence_score, 1) + "%\n";
+    report += "Consenso: " + DoubleToString(validation.consensus_strength, 1) + "%\n";
+    report += "Métodos Concordantes: " + IntegerToString(validation.methods_agreement) + "/5\n";
+    report += "Inclinação Ponderada: " + DoubleToString(validation.weighted_slope, 3) + "\n";
+    report += "Nível de Risco: " + validation.risk_level + "\n";
+    report += "Sinal Confiável: " + (validation.is_reliable ? "SIM" : "NÃO") + "\n\n";
+
+    report += "=== DETALHES POR MÉTODO ===\n";
+    report += "Regressão Linear: " + validation.linear_regression.trend_direction +
+              " (R²: " + DoubleToString(validation.linear_regression.r_squared, 3) + ")\n";
+    report += "Diferença Simples: " + validation.simple_difference.trend_direction + "\n";
+    report += "Mudança %: " + validation.percentage_change.trend_direction + "\n";
+    report += "Derivada Discreta: " + validation.discrete_derivative.trend_direction + "\n";
+    report += "Ângulo: " + validation.angle_degrees.trend_direction + "\n";
+
+    return report;
+}
+
+//+------------------------------------------------------------------+
+//| Função auxiliar para debug detalhado                           |
+//+------------------------------------------------------------------+
+void CMovingAverages::DebugSlopeValidation(SSlopeValidation &validation)
+{
+    Print("=== DEBUG DETALHADO ===");
+    Print("Linear Regression: slope=", validation.linear_regression.slope_value, 
+          ", trend=", validation.linear_regression.trend_direction,
+          ", r2=", validation.linear_regression.r_squared);
+    Print("Simple Difference: slope=", validation.simple_difference.slope_value, 
+          ", trend=", validation.simple_difference.trend_direction);
+    Print("Percentage Change: slope=", validation.percentage_change.slope_value, 
+          ", trend=", validation.percentage_change.trend_direction);
+    Print("Discrete Derivative: slope=", validation.discrete_derivative.slope_value, 
+          ", trend=", validation.discrete_derivative.trend_direction);
+    Print("Angle Degrees: slope=", validation.angle_degrees.slope_value, 
+          ", trend=", validation.angle_degrees.trend_direction);
+    
+    Print("Final: trend=", validation.final_trend, 
+          ", confidence=", validation.confidence_score,
+          ", consensus=", validation.consensus_strength,
+          ", risk=", validation.risk_level);
+}
+
+
+//+------------------------------------------------------------------+
+//| Versão simplificada para testes                                |
+//+------------------------------------------------------------------+
+SSlopeValidation CMovingAverages::GetSimpleSlopeValidation(int lookback = 10)
+{
+    SSlopeValidation validation;
+    
+    // Usar apenas 3 métodos mais confiáveis para teste
+    validation.linear_regression = GetAdvancedSlope(SLOPE_LINEAR_REGRESSION, lookback, 0.3, -0.3);
+    validation.simple_difference = GetAdvancedSlope(SLOPE_SIMPLE_DIFFERENCE, lookback, 0.3, -0.3);
+    validation.percentage_change = GetAdvancedSlope(SLOPE_PERCENTAGE_CHANGE, lookback, 0.1, -0.1);
+    
+    // Análise simplificada
+    int votes_alta = 0, votes_baixa = 0, votes_lateral = 0;
+    
+    if(validation.linear_regression.trend_direction == "ALTA") votes_alta++;
+    else if(validation.linear_regression.trend_direction == "BAIXA") votes_baixa++;
+    else votes_lateral++;
+    
+    if(validation.simple_difference.trend_direction == "ALTA") votes_alta++;
+    else if(validation.simple_difference.trend_direction == "BAIXA") votes_baixa++;
+    else votes_lateral++;
+    
+    if(validation.percentage_change.trend_direction == "ALTA") votes_alta++;
+    else if(validation.percentage_change.trend_direction == "BAIXA") votes_baixa++;
+    else votes_lateral++;
+    
+    // Determinar tendência por maioria
+    if(votes_alta > votes_baixa && votes_alta > votes_lateral)
+        validation.final_trend = "ALTA";
+    else if(votes_baixa > votes_alta && votes_baixa > votes_lateral)
+        validation.final_trend = "BAIXA";
+    else
+        validation.final_trend = "LATERAL";
+    
+    validation.methods_agreement = MathMax(MathMax(votes_alta, votes_baixa), votes_lateral);
+    validation.confidence_score = (validation.methods_agreement / 3.0) * 100.0;
+    validation.is_reliable = (validation.methods_agreement >= 2);
+    
+    if(validation.confidence_score >= 80.0)
+        validation.risk_level = "BAIXO";
+    else if(validation.confidence_score >= 60.0)
+        validation.risk_level = "MEDIO";
+    else
+        validation.risk_level = "ALTO";
+    
+    return validation;
+}
+
+//+------------------------------------------------------------------+
+//| Versão alternativa usando apenas direções (sem slopes)         |
+//+------------------------------------------------------------------+
+double CMovingAverages::CalculateDirectionalConsensus(SSlopeValidation &validation)
+{
+    // Array com as direções de cada método
+    string directions[5] = {
+        validation.linear_regression.trend_direction,
+        validation.simple_difference.trend_direction,
+        validation.percentage_change.trend_direction,
+        validation.discrete_derivative.trend_direction,
+        validation.angle_degrees.trend_direction
+    };
+    
+    // Contar concordâncias
+    int max_agreement = 0;
+    string directions_unique[3] = {"ALTA", "BAIXA", "LATERAL"};
+    
+    for(int i = 0; i < 3; i++)
+    {
+        int count = 0;
+        for(int j = 0; j < 5; j++)
+        {
+            if(directions[j] == directions_unique[i])
+                count++;
+        }
+        if(count > max_agreement)
+            max_agreement = count;
+    }
+    
+    // Converter para percentual
+    double consensus = (max_agreement / 5.0) * 100.0;
+    
+    Print("DEBUG Directional Consensus: max_agreement=", max_agreement, 
+          ", consensus=", consensus);
+    
+    return consensus;
 }

@@ -185,6 +185,36 @@ void CheckCtxTrendLine(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 }
 
 //+------------------------------------------------------------------+
+//| Informações sobre a TrendLine de um TF                           |
+//+------------------------------------------------------------------+
+void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
+{
+   // if (tf == PERIOD_H1)
+   // {
+   //    CMovingAverages *ema = ctx.GetIndicator("ema50");
+   //    if (ema != NULL)
+   //    {
+   //       Print("ema50 ENCONTRADA!");
+
+   //       SSlopeValidation full_validation = ema.GetSlopeValidation(10, 0.5, -0.5, true);
+   //       ema.DebugSlopeValidation(full_validation);
+   //    }
+   // }
+   
+   if (tf == PERIOD_M15)
+   {
+      CMovingAverages *ema = ctx.GetIndicator("ema9");
+      if (ema != NULL)
+      {
+         Print("ema9 ENCONTRADA!");
+
+         SSlopeValidation full_validation = ema.GetSlopeValidation(9, 0.3, -0.3, true);
+         ema.DebugSlopeValidation(full_validation);
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
 //| Atualizar todos os contextos de um símbolo                       |
 //+------------------------------------------------------------------+
 void UpdateSymbolContexts(string symbol)
@@ -208,11 +238,11 @@ void UpdateSymbolContexts(string symbol)
       if (ctx.HasNewBar())
       {
          ctx.Update();
-         Print("Contexto atualizado: ", symbol, " ", EnumToString(tf));
+         CheckCtxMASlope(tf, ctx);
       }
 
       // -  -  -  -  -  -  -
-      //CheckCtxTrendLine(tf, ctx);
+      // CheckCtxTrendLine(tf, ctx);
       // -  -  -  -  -  -  -
    }
 }
@@ -233,6 +263,7 @@ void ExecuteOnNewBar()
 
 //+------------------------------------------------------------------+
 //| Método para alterar o timeframe de controle                     |
+
 //+------------------------------------------------------------------+
 void SetControlTimeframe(ENUM_TIMEFRAMES new_timeframe)
 {
