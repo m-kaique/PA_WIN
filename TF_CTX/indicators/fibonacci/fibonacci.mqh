@@ -12,8 +12,6 @@
 class CFibonacci : public CIndicatorBase
   {
 private:
-   string          m_symbol;
-   ENUM_TIMEFRAMES m_timeframe;
    int             m_bars;
    double          m_levels[6];
    double          m_extensions[3];

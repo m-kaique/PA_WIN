@@ -10,68 +10,67 @@
 #include "bollinger_defs.mqh"
 
 class CBollinger : public CIndicatorBase
-  {
+{
 private:
-   string            m_symbol;
-   ENUM_TIMEFRAMES   m_timeframe;
-   int               m_period;
-   int               m_shift;
-   double            m_deviation;
-   ENUM_APPLIED_PRICE m_price;
-   int               m_handle;
+  int m_period;
+  int m_shift;
+  double m_deviation;
+  ENUM_APPLIED_PRICE m_price;
 
-   bool              CreateHandle();
-   void              ReleaseHandle();
-   double            GetBufferValue(int buffer_index,int shift=0);
+  bool CreateHandle();
+  void ReleaseHandle();
+  double GetBufferValue(int buffer_index, int shift = 0);
+  virtual SSlopeResult GetAdvancedSlope(ENUM_SLOPE_METHOD method, int lookback, double threshold_high, double threshold_low, COPY_METHOD copy_method = COPY_MIDDLE) override;
 
 public:
-                     CBollinger();
-                    ~CBollinger();
+  CBollinger();
+  ~CBollinger();
 
-  bool              Init(string symbol, ENUM_TIMEFRAMES timeframe,
-                         int period, int shift, double deviation,
-                         ENUM_APPLIED_PRICE price);
+  bool Init(string symbol, ENUM_TIMEFRAMES timeframe,
+            int period, int shift, double deviation,
+            ENUM_APPLIED_PRICE price);
 
-  bool              Init(string symbol, ENUM_TIMEFRAMES timeframe,
-                          CBollingerConfig &config);
+  bool Init(string symbol, ENUM_TIMEFRAMES timeframe,
+            CBollingerConfig &config);
 
-   // Compatibilidade com interface base
-   virtual bool      Init(string symbol, ENUM_TIMEFRAMES timeframe,
-                          int period, ENUM_MA_METHOD method);
+  // Compatibilidade com interface base
+  virtual bool Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                    int period, ENUM_MA_METHOD method);
 
-   virtual double    GetValue(int shift=0);       // Middle band
-   double            GetUpper(int shift=0);
-   double            GetLower(int shift=0);
+  virtual double GetValue(int shift = 0); // Middle band
+  double GetUpper(int shift = 0);
+  double GetLower(int shift = 0);
 
-   virtual bool      CopyValues(int shift, int count, double &buffer[]); // middle
-   bool              CopyUpper(int shift,int count,double &buffer[]);
-  bool              CopyLower(int shift,int count,double &buffer[]);
+  virtual bool CopyValues(int shift, int count, double &buffer[]); // middle
+  bool CopyUpper(int shift, int count, double &buffer[]);
+  bool CopyLower(int shift, int count, double &buffer[]);
 
-   virtual bool      IsReady();
-   virtual bool      Update() override;
-  };
+  virtual bool IsReady();
+  virtual bool Update() override;
+  virtual SSlopeValidation GetSlopeValidation(int lookback, double threshold_high, double threshold_low, bool use_weighted_analysis, COPY_METHOD copy_method = COPY_MIDDLE) override;
+};
 
 //+------------------------------------------------------------------+
 //| Constructor                                                      |
 //+------------------------------------------------------------------+
 CBollinger::CBollinger()
-  {
-   m_symbol="";
-   m_timeframe=PERIOD_CURRENT;
-   m_period=20;
-   m_shift=0;
-   m_deviation=2.0;
-   m_price=PRICE_CLOSE;
-   m_handle=INVALID_HANDLE;
-  }
+{
+  m_symbol = "";
+  m_timeframe = PERIOD_CURRENT;
+  m_period = 20;
+  m_shift = 0;
+  m_deviation = 2.0;
+  m_price = PRICE_CLOSE;
+  handle = INVALID_HANDLE;
+}
 
 //+------------------------------------------------------------------+
 //| Destructor                                                       |
 //+------------------------------------------------------------------+
 CBollinger::~CBollinger()
-  {
-   ReleaseHandle();
-  }
+{
+  ReleaseHandle();
+}
 
 //+------------------------------------------------------------------+
 //| Init with full parameters                                        |
@@ -79,155 +78,283 @@ CBollinger::~CBollinger()
 bool CBollinger::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                       int period, int shift, double deviation,
                       ENUM_APPLIED_PRICE price)
-  {
-   m_symbol=symbol;
-   m_timeframe=timeframe;
-   m_period=period;
-   m_shift=shift;
-   m_deviation=deviation;
-   m_price=price;
+{
+  m_symbol = symbol;
+  m_timeframe = timeframe;
+  m_period = period;
+  m_shift = shift;
+  m_deviation = deviation;
+  m_price = price;
 
-   ReleaseHandle();
-   return CreateHandle();
-  }
+  ReleaseHandle();
+  return CreateHandle();
+}
 
 //+------------------------------------------------------------------+
 //| Interface base implementation (uses defaults)                    |
 //+------------------------------------------------------------------+
 bool CBollinger::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                       int period, ENUM_MA_METHOD method)
-  {
-   // method parameter not used; default shift 0, deviation 2, PRICE_CLOSE
-  return Init(symbol,timeframe,period,0,2.0,PRICE_CLOSE);
-  }
+{
+  // method parameter not used; default shift 0, deviation 2, PRICE_CLOSE
+  return Init(symbol, timeframe, period, 0, 2.0, PRICE_CLOSE);
+}
 
 bool CBollinger::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                       CBollingerConfig &config)
-  {
-   return Init(symbol, timeframe, config.period, config.shift,
-               config.deviation, config.applied_price);
-  }
+{
+  return Init(symbol, timeframe, config.period, config.shift,
+              config.deviation, config.applied_price);
+}
 
 //+------------------------------------------------------------------+
 //| Create indicator handle                                          |
 //+------------------------------------------------------------------+
 bool CBollinger::CreateHandle()
+{
+  handle = iBands(m_symbol, m_timeframe, m_period, m_shift, m_deviation, m_price);
+  if (handle == INVALID_HANDLE)
   {
-   m_handle=iBands(m_symbol,m_timeframe,m_period,m_shift,m_deviation,m_price);
-   if(m_handle==INVALID_HANDLE)
-     {
-      Print("ERRO: Falha ao criar handle Bollinger para ",m_symbol);
-      return false;
-     }
-   return true;
+    Print("ERRO: Falha ao criar handle Bollinger para ", m_symbol);
+    return false;
   }
+  return true;
+}
 
 //+------------------------------------------------------------------+
 //| Release handle                                                   |
 //+------------------------------------------------------------------+
 void CBollinger::ReleaseHandle()
+{
+  if (handle != INVALID_HANDLE)
   {
-   if(m_handle!=INVALID_HANDLE)
-     {
-      IndicatorRelease(m_handle);
-      m_handle=INVALID_HANDLE;
-     }
+    IndicatorRelease(handle);
+    handle = INVALID_HANDLE;
   }
+}
 
 //+------------------------------------------------------------------+
 //| Get buffer value                                                 |
 //+------------------------------------------------------------------+
-double CBollinger::GetBufferValue(int buffer_index,int shift)
-  {
-   if(m_handle==INVALID_HANDLE)
-      return 0.0;
-   double buf[];
-   ArraySetAsSeries(buf,true);
-   if(CopyBuffer(m_handle,buffer_index,shift,1,buf)<=0)
-      return 0.0;
-   return buf[0];
-  }
+double CBollinger::GetBufferValue(int buffer_index, int shift)
+{
+  if (handle == INVALID_HANDLE)
+    return 0.0;
+  double buf[];
+  ArraySetAsSeries(buf, true);
+  if (CopyBuffer(handle, buffer_index, shift, 1, buf) <= 0)
+    return 0.0;
+  return buf[0];
+}
 
 //+------------------------------------------------------------------+
 //| Middle band (buffer 2)                                           |
 //+------------------------------------------------------------------+
 double CBollinger::GetValue(int shift)
-  {
-   return GetBufferValue(2,shift);
-  }
+{
+  return GetBufferValue(2, shift);
+}
 
 //+------------------------------------------------------------------+
 //| Upper band (buffer 0)                                            |
 //+------------------------------------------------------------------+
 double CBollinger::GetUpper(int shift)
-  {
-   return GetBufferValue(0,shift);
-  }
+{
+  return GetBufferValue(0, shift);
+}
 
 //+------------------------------------------------------------------+
 //| Lower band (buffer 1)                                            |
 //+------------------------------------------------------------------+
 double CBollinger::GetLower(int shift)
-  {
-   return GetBufferValue(1,shift);
-  }
+{
+  return GetBufferValue(1, shift);
+}
 
 //+------------------------------------------------------------------+
 //| Copy middle band values                                          |
 //+------------------------------------------------------------------+
-bool CBollinger::CopyValues(int shift,int count,double &buffer[])
-  {
-   if(m_handle==INVALID_HANDLE)
-      return false;
-   ArrayResize(buffer,count);
-   ArraySetAsSeries(buffer,true);
-   return CopyBuffer(m_handle,2,shift,count,buffer)>0;
-  }
+bool CBollinger::CopyValues(int shift, int count, double &buffer[])
+{
+  if (handle == INVALID_HANDLE)
+    return false;
+  ArrayResize(buffer, count);
+  ArraySetAsSeries(buffer, true);
+  return CopyBuffer(handle, 2, shift, count, buffer) > 0;
+}
 
 //+------------------------------------------------------------------+
 //| Copy upper band values                                           |
 //+------------------------------------------------------------------+
-bool CBollinger::CopyUpper(int shift,int count,double &buffer[])
-  {
-   if(m_handle==INVALID_HANDLE)
-      return false;
-   ArrayResize(buffer,count);
-   ArraySetAsSeries(buffer,true);
-   return CopyBuffer(m_handle,0,shift,count,buffer)>0;
-  }
+bool CBollinger::CopyUpper(int shift, int count, double &buffer[])
+{
+  if (handle == INVALID_HANDLE)
+    return false;
+  ArrayResize(buffer, count);
+  ArraySetAsSeries(buffer, true);
+  return CopyBuffer(handle, 0, shift, count, buffer) > 0;
+}
 
 //+------------------------------------------------------------------+
 //| Copy lower band values                                           |
 //+------------------------------------------------------------------+
-bool CBollinger::CopyLower(int shift,int count,double &buffer[])
-  {
-   if(m_handle==INVALID_HANDLE)
-      return false;
-   ArrayResize(buffer,count);
-   ArraySetAsSeries(buffer,true);
-   return CopyBuffer(m_handle,1,shift,count,buffer)>0;
-  }
+bool CBollinger::CopyLower(int shift, int count, double &buffer[])
+{
+  if (handle == INVALID_HANDLE)
+    return false;
+  ArrayResize(buffer, count);
+  ArraySetAsSeries(buffer, true);
+  return CopyBuffer(handle, 1, shift, count, buffer) > 0;
+}
 
 //+------------------------------------------------------------------+
 //| Check readiness                                                  |
 //+------------------------------------------------------------------+
 bool CBollinger::IsReady()
-  {
-   return (BarsCalculated(m_handle)>0);
-  }
+{
+  return (BarsCalculated(handle) > 0);
+}
 
 //+------------------------------------------------------------------+
 //| Recreate handle if necessary                                      |
 //+------------------------------------------------------------------+
 bool CBollinger::Update()
+{
+  if (handle == INVALID_HANDLE)
+    return CreateHandle();
+
+  if (BarsCalculated(handle) <= 0)
+    return false;
+
+  return true;
+}
+
+//+------------------------------------------------------------------+
+//| Calcular inclinação avançada da média móvel                    |
+//+------------------------------------------------------------------+
+SSlopeResult CBollinger::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
+                                          int lookback = 10,
+                                          double threshold_high = 0.5,
+                                          double threshold_low = -0.5,
+                                          COPY_METHOD copy_method = COPY_MIDDLE)
+{
+  SSlopeResult result;
+  result.slope_value = 0.0;
+  result.r_squared = 0.0;
+  result.trend_direction = "LATERAL";
+  result.trend_strength = 0.0;
+
+  if (handle == INVALID_HANDLE)
   {
-   if(m_handle==INVALID_HANDLE)
-      return CreateHandle();
-
-   if(BarsCalculated(m_handle)<=0)
-      return false;
-
-   return true;
+    Print("ERRO: Handle do indicador inválido para cálculo da inclinação avançada");
+    return result;
   }
+
+  if (lookback <= 0)
+  {
+    Print("ERRO: Lookback deve ser maior que zero");
+    return result;
+  }
+
+  // Obter valores da MA
+  double ma_values[];
+
+  switch (copy_method)
+  {
+  case COPY_LOWER:
+    if (!CopyLower(0, lookback + 1, ma_values))
+    {
+      Print("ERRO: Falha ao obter valores para cálculo da inclinação");
+      return result;
+    }
+    break;
+
+  case COPY_UPPER:
+    if (!CopyUpper(0, lookback + 1, ma_values))
+    {
+      Print("ERRO: Falha ao obter valores para cálculo da inclinação");
+      return result;
+    }
+    break;
+
+  case COPY_MIDDLE:
+    if (!CopyValues(0, lookback + 1, ma_values))
+    {
+      Print("ERRO: Falha ao obter valores para cálculo da inclinação");
+      return result;
+    }
+    break;
+
+  default:
+    Print("ERRO: Método de cópia inválido");
+    return result;
+  }
+
+  switch (method)
+  {
+  case SLOPE_LINEAR_REGRESSION:
+    result = CalculateLinearRegressionSlope(ma_values, lookback);
+    break;
+
+  case SLOPE_SIMPLE_DIFFERENCE:
+    result = CalculateSimpleDifference(ma_values, lookback);
+    break;
+
+  case SLOPE_PERCENTAGE_CHANGE:
+    result = CalculatePercentageChange(ma_values, lookback);
+    break;
+
+  case SLOPE_DISCRETE_DERIVATIVE:
+    result = CalculateDiscreteDerivative(ma_values);
+    break;
+
+  case SLOPE_ANGLE_DEGREES:
+    result = CalculateAngleDegrees(ma_values, lookback);
+    break;
+  }
+
+  // Determinar direção
+  if (result.slope_value > threshold_high)
+    result.trend_direction = "ALTA";
+  else if (result.slope_value < threshold_low)
+    result.trend_direction = "BAIXA";
+  else
+    result.trend_direction = "LATERAL";
+
+  // Calcular força (0-100)
+  result.trend_strength = MathMin(100.0, MathAbs(result.slope_value) * 100.0);
+
+  return result;
+}
+
+//+------------------------------------------------------------------+
+//| Validação cruzada com múltiplos métodos de inclinação          |
+//+------------------------------------------------------------------+
+SSlopeValidation CBollinger::GetSlopeValidation(int lookback = 10,
+                                                    double threshold_high = 0.5,
+                                                    double threshold_low = -0.5,
+                                                    bool use_weighted_analysis = true,
+                                                    COPY_METHOD copy_method = COPY_MIDDLE)
+{
+  SSlopeValidation validation;
+
+  if (handle == INVALID_HANDLE)
+  {
+    Print("ERRO: Handle do indicador inválido para validação de inclinação");
+    return validation;
+  }
+
+  // Calcular inclinação com todos os métodos
+  validation.linear_regression = GetAdvancedSlope(SLOPE_LINEAR_REGRESSION, lookback, threshold_high, threshold_low, copy_method);
+  validation.simple_difference = GetAdvancedSlope(SLOPE_SIMPLE_DIFFERENCE, lookback, threshold_high, threshold_low, copy_method);
+  validation.percentage_change = GetAdvancedSlope(SLOPE_PERCENTAGE_CHANGE, lookback, threshold_high, threshold_low, copy_method);
+  validation.discrete_derivative = GetAdvancedSlope(SLOPE_DISCRETE_DERIVATIVE, lookback, threshold_high, threshold_low, copy_method);
+  validation.angle_degrees = GetAdvancedSlope(SLOPE_ANGLE_DEGREES, lookback, threshold_high, threshold_low, copy_method);
+
+  // Analisar consenso entre métodos
+  validation = AnalyzeMethodsConsensus(validation, use_weighted_analysis);
+
+  return validation;
+}
 
 #endif // __BOLLINGER_MQH__

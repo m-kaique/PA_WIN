@@ -189,27 +189,38 @@ void CheckCtxTrendLine(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 //+------------------------------------------------------------------+
 void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 {
-   // if (tf == PERIOD_H1)
-   // {
-   //    CMovingAverages *ema = ctx.GetIndicator("ema50");
-   //    if (ema != NULL)
-   //    {
-   //       Print("ema50 ENCONTRADA!");
-
-   //       SSlopeValidation full_validation = ema.GetSlopeValidation(10, 0.5, -0.5, true);
-   //       ema.DebugSlopeValidation(full_validation);
-   //    }
-   // }
-   
    if (tf == PERIOD_M15)
    {
       CMovingAverages *ema = ctx.GetIndicator("ema9");
       if (ema != NULL)
       {
-         Print("ema9 ENCONTRADA!");
+         SSlopeValidation full_validation = ema.GetSlopeValidation(9, 0.45, -0.45, true);
+         Print("EMA9: " + (string)full_validation.final_trend);
 
-         SSlopeValidation full_validation = ema.GetSlopeValidation(9, 0.3, -0.3, true);
-         ema.DebugSlopeValidation(full_validation);
+         // ema.DebugSlopeValidation(full_validation);
+      }
+      CVWAP *vwap = ctx.GetIndicator("vwap_diario_fin");
+      if (vwap != NULL)
+      {
+         SSlopeValidation full_validation = vwap.GetSlopeValidation(9, 0.45, -0.45, true);
+         Print("VWAP: " + (string)full_validation.final_trend);
+
+         // ema.DebugSlopeValidation(full_validation);
+      }
+      CBollinger *boll20 = ctx.GetIndicator("boll20");
+      if (boll20 != NULL)
+      {
+         Print("#CIMA#");
+         SSlopeValidation full_validationUpper = boll20.GetSlopeValidation(9, 0.45, -0.45, true, COPY_UPPER);
+         boll20.DebugSlopeValidation(full_validationUpper);
+
+         Print("#MEIO#");
+         SSlopeValidation full_validation = boll20.GetSlopeValidation(9, 0.45, -0.45, true, COPY_MIDDLE);
+         boll20.DebugSlopeValidation(full_validation);
+
+         Print("#BAXO#");
+         SSlopeValidation full_validationLower = boll20.GetSlopeValidation(9, 0.45, -0.45, true, COPY_LOWER);
+         boll20.DebugSlopeValidation(full_validationLower);
       }
    }
 }

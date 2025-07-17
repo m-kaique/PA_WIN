@@ -16,8 +16,6 @@
 class CVolume : public CIndicatorBase
   {
 private:
-   string          m_symbol;       // Símbolo
-   ENUM_TIMEFRAMES m_timeframe;    // TimeFrame
    int             m_base_shift;   // Shift base configurado
 
 public:

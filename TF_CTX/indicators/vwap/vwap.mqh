@@ -12,8 +12,6 @@
 class CVWAP : public CIndicatorBase
   {
 private:
-   string          m_symbol;
-   ENUM_TIMEFRAMES m_timeframe;
    int             m_period;
    ENUM_MA_METHOD  m_method;
    color           m_color;
@@ -25,7 +23,7 @@ private:
    datetime            m_start_time;
    datetime            m_last_calculated_time;
    double              m_vwap_buffer[];
-   int                 m_handle;
+
 
    bool            CreateHandle();
    void            ReleaseHandle();
@@ -90,7 +88,7 @@ CVWAP::CVWAP()
    m_start_time=0;
    m_last_calculated_time=0;
    ArrayResize(m_vwap_buffer,0);
-   m_handle=INVALID_HANDLE;
+   handle=INVALID_HANDLE;
  }
 
 //+------------------------------------------------------------------+
@@ -105,8 +103,8 @@ CVWAP::~CVWAP()
 
 bool CVWAP::CreateHandle()
   {
-   m_handle=iCustom(m_symbol,m_timeframe,"TF_CTX/indicators/vwap/vwap_indicator.ex5",m_period,m_calc_mode,m_session_tf,m_price_type,m_start_time);
-   if(m_handle==INVALID_HANDLE)
+   handle=iCustom(m_symbol,m_timeframe,"TF_CTX/indicators/vwap/vwap_indicator.ex5",m_period,m_calc_mode,m_session_tf,m_price_type,m_start_time);
+   if(handle==INVALID_HANDLE)
      {
       Print("ERRO: Falha ao criar handle do VWAP para ",m_symbol);
       return false;
@@ -116,10 +114,10 @@ bool CVWAP::CreateHandle()
 
 void CVWAP::ReleaseHandle()
   {
-   if(m_handle!=INVALID_HANDLE)
+   if(handle!=INVALID_HANDLE)
      {
-      IndicatorRelease(m_handle);
-      m_handle=INVALID_HANDLE;
+      IndicatorRelease(handle);
+      handle=INVALID_HANDLE;
      }
   }
 
@@ -260,11 +258,11 @@ double CVWAP::CalcVWAP(int shift)
 //+------------------------------------------------------------------+
 double CVWAP::GetValue(int shift)
   {
-   if(m_handle==INVALID_HANDLE)
+   if(handle==INVALID_HANDLE)
       return EMPTY_VALUE;
    double buf[];
    ArraySetAsSeries(buf,true);
-   if(CopyBuffer(m_handle,0,shift,1,buf)<=0)
+   if(CopyBuffer(handle,0,shift,1,buf)<=0)
       return EMPTY_VALUE;
    return buf[0];
   }
@@ -274,11 +272,11 @@ double CVWAP::GetValue(int shift)
 //+------------------------------------------------------------------+
 bool CVWAP::CopyValues(int shift,int count,double &buffer[])
   {
-   if(m_handle==INVALID_HANDLE)
+   if(handle==INVALID_HANDLE)
       return false;
    ArrayResize(buffer,count);
    ArraySetAsSeries(buffer,true);
-   return (CopyBuffer(m_handle,0,shift,count,buffer)>0);
+   return (CopyBuffer(handle,0,shift,count,buffer)>0);
   }
 
 //+------------------------------------------------------------------+
@@ -286,7 +284,7 @@ bool CVWAP::CopyValues(int shift,int count,double &buffer[])
 //+------------------------------------------------------------------+
 bool CVWAP::IsReady()
   {
-  return (m_handle!=INVALID_HANDLE && BarsCalculated(m_handle)>0);
+  return (handle!=INVALID_HANDLE && BarsCalculated(handle)>0);
   }
 
 
@@ -420,11 +418,11 @@ void CVWAP::UpdateCurrentBar()
 bool CVWAP::Update()
   {
    // (re)create the indicator handle when necessary
-   if(m_handle==INVALID_HANDLE)
+   if(handle==INVALID_HANDLE)
       if(!CreateHandle())
          return false;
 
-   int bars=BarsCalculated(m_handle);
+   int bars=BarsCalculated(handle);
    if(bars<=0)
       return false;
 
@@ -434,7 +432,7 @@ bool CVWAP::Update()
    if(ArraySize(m_vwap_buffer)==0 || m_last_calculated_time==0)
      {
       ArrayResize(m_vwap_buffer,bars);
-      if(CopyBuffer(m_handle,0,0,bars,m_vwap_buffer)<=0)
+      if(CopyBuffer(handle,0,0,bars,m_vwap_buffer)<=0)
          return false;
       m_last_calculated_time=iTime(m_symbol,m_timeframe,0);
       return true;
@@ -450,7 +448,7 @@ bool CVWAP::Update()
       if(add<1) add=1;
       double tmp[];
       ArraySetAsSeries(tmp,true);
-      if(CopyBuffer(m_handle,0,0,add,tmp)<=0)
+      if(CopyBuffer(handle,0,0,add,tmp)<=0)
          return false;
       ArrayResize(m_vwap_buffer,old_size+add);
       for(int i=old_size-1;i>=0;i--)
@@ -464,7 +462,7 @@ bool CVWAP::Update()
    // Same bar - refresh the current value only
    double cur[];
    ArraySetAsSeries(cur,true);
-   if(CopyBuffer(m_handle,0,0,1,cur)<=0)
+   if(CopyBuffer(handle,0,0,1,cur)<=0)
       return false;
    m_vwap_buffer[0]=cur[0];
 

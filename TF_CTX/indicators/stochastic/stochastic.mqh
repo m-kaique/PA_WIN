@@ -16,16 +16,11 @@
 class CStochastic : public CIndicatorBase
   {
 private:
-   string          m_symbol;       // Símbolo
-   ENUM_TIMEFRAMES m_timeframe;    // TimeFrame
    int             m_kperiod;      // Período %K
    int             m_dperiod;      // Período %D
    int             m_slowing;      // Slowing
    ENUM_MA_METHOD  m_ma_method;    // Método de média
    ENUM_STO_PRICE  m_price_field;  // Campo de preço
-
-   // Handle do indicador
-   int             m_handle;
 
    bool            CreateIndicatorHandle();
    void            ReleaseIndicatorHandle();
@@ -69,7 +64,7 @@ CStochastic::CStochastic()
    m_slowing = 0;
    m_ma_method = MODE_SMA;
    m_price_field = STO_LOWHIGH;
-   m_handle = INVALID_HANDLE;
+   handle = INVALID_HANDLE;
   }
 
 //+------------------------------------------------------------------+
@@ -121,9 +116,9 @@ bool CStochastic::Init(string symbol, ENUM_TIMEFRAMES timeframe,
 //+------------------------------------------------------------------+
 bool CStochastic::CreateIndicatorHandle()
   {
-   m_handle = iStochastic(m_symbol, m_timeframe, m_kperiod, m_dperiod,
+   handle = iStochastic(m_symbol, m_timeframe, m_kperiod, m_dperiod,
                           m_slowing, m_ma_method, m_price_field);
-   if(m_handle == INVALID_HANDLE)
+   if(handle == INVALID_HANDLE)
      {
       Print("ERRO: Falha ao criar handle Stochastic para ", m_symbol);
       return false;
@@ -142,10 +137,10 @@ bool CStochastic::CreateIndicatorHandle()
 //+------------------------------------------------------------------+
 void CStochastic::ReleaseIndicatorHandle()
   {
-   if(m_handle != INVALID_HANDLE)
+   if(handle != INVALID_HANDLE)
      {
-      IndicatorRelease(m_handle);
-      m_handle = INVALID_HANDLE;
+      IndicatorRelease(handle);
+      handle = INVALID_HANDLE;
      }
   }
 
@@ -154,7 +149,7 @@ void CStochastic::ReleaseIndicatorHandle()
 //+------------------------------------------------------------------+
 double CStochastic::GetBufferValue(int buffer_index, int shift)
   {
-   if(m_handle == INVALID_HANDLE)
+   if(handle == INVALID_HANDLE)
      {
       Print("ERRO: Handle do Stochastic inválido");
       return 0.0;
@@ -163,7 +158,7 @@ double CStochastic::GetBufferValue(int buffer_index, int shift)
    double buffer[];
    ArraySetAsSeries(buffer, true);
 
-   if(CopyBuffer(m_handle, buffer_index, shift, 1, buffer) <= 0)
+   if(CopyBuffer(handle, buffer_index, shift, 1, buffer) <= 0)
      {
       Print("ERRO: Falha ao copiar dados do Stochastic");
       return 0.0;
@@ -193,14 +188,14 @@ double CStochastic::GetSignalValue(int shift)
 //+------------------------------------------------------------------+
 bool CStochastic::CopyValues(int shift, int count, double &buffer[])
   {
-   if(m_handle == INVALID_HANDLE)
+   if(handle == INVALID_HANDLE)
      {
       Print("ERRO: Handle do Stochastic inválido");
       return false;
      }
    ArrayResize(buffer, count);
    ArraySetAsSeries(buffer, true);
-   if(CopyBuffer(m_handle, 0, shift, count, buffer) <= 0)
+   if(CopyBuffer(handle, 0, shift, count, buffer) <= 0)
      {
       Print("ERRO: Falha ao copiar dados do Stochastic");
       return false;
@@ -213,14 +208,14 @@ bool CStochastic::CopyValues(int shift, int count, double &buffer[])
 //+------------------------------------------------------------------+
 bool CStochastic::CopySignalValues(int shift, int count, double &buffer[])
   {
-   if(m_handle == INVALID_HANDLE)
+   if(handle == INVALID_HANDLE)
      {
       Print("ERRO: Handle do Stochastic inválido");
       return false;
      }
    ArrayResize(buffer, count);
    ArraySetAsSeries(buffer, true);
-   if(CopyBuffer(m_handle, 1, shift, count, buffer) <= 0)
+   if(CopyBuffer(handle, 1, shift, count, buffer) <= 0)
      {
       Print("ERRO: Falha ao copiar dados do Stochastic");
       return false;
@@ -233,7 +228,7 @@ bool CStochastic::CopySignalValues(int shift, int count, double &buffer[])
 //+------------------------------------------------------------------+
 bool CStochastic::IsReady()
   {
-   return (BarsCalculated(m_handle) > 0);
+   return (BarsCalculated(handle) > 0);
   }
 
 //+------------------------------------------------------------------+
@@ -241,10 +236,10 @@ bool CStochastic::IsReady()
 //+------------------------------------------------------------------+
 bool CStochastic::Update()
   {
-   if(m_handle==INVALID_HANDLE)
+   if(handle==INVALID_HANDLE)
       return CreateIndicatorHandle();
 
-   if(BarsCalculated(m_handle)<=0)
+   if(BarsCalculated(handle)<=0)
       return false;
 
    return true;
