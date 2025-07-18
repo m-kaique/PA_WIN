@@ -180,7 +180,7 @@ bool CBollinger::CopyValues(int shift, int count, double &buffer[])
     return false;
   ArrayResize(buffer, count);
   ArraySetAsSeries(buffer, true);
-  return CopyBuffer(handle, 2, shift, count, buffer) > 0;
+  return CopyBuffer(handle, 0, shift, count, buffer) > 0;
 }
 
 //+------------------------------------------------------------------+
@@ -192,7 +192,7 @@ bool CBollinger::CopyUpper(int shift, int count, double &buffer[])
     return false;
   ArrayResize(buffer, count);
   ArraySetAsSeries(buffer, true);
-  return CopyBuffer(handle, 0, shift, count, buffer) > 0;
+  return CopyBuffer(handle, 1, shift, count, buffer) > 0;
 }
 
 //+------------------------------------------------------------------+
@@ -204,7 +204,7 @@ bool CBollinger::CopyLower(int shift, int count, double &buffer[])
     return false;
   ArrayResize(buffer, count);
   ArraySetAsSeries(buffer, true);
-  return CopyBuffer(handle, 1, shift, count, buffer) > 0;
+  return CopyBuffer(handle, 2, shift, count, buffer) > 0;
 }
 
 //+------------------------------------------------------------------+
