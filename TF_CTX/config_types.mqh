@@ -22,6 +22,7 @@ public:
    string name;
    string type;
    bool   enabled;
+   bool   attach_chart; // Nova flag para acoplar ao gráfico o indicador
    virtual ~CIndicatorConfig(){}
   };
 

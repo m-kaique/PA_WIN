@@ -571,6 +571,7 @@ void CConfigManager::FillIndicatorBase(CIndicatorConfig &cfg, CJAVal *node, stri
     cfg.name = (*node)["name"].ToStr();
     cfg.type = type;
     cfg.enabled = (*node)["enabled"].ToBool();
+    cfg.attach_chart = (*node)["attach_chart"].ToBool(); // Nova linha para ler attach_chart
 }
 
 //+------------------------------------------------------------------+

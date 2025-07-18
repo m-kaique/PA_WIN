@@ -13,6 +13,7 @@ protected:
   string m_symbol;             // Símbolo
   ENUM_TIMEFRAMES m_timeframe; // TimeFrame
   int handle;                  // Handle
+  bool attach_chart;           // Flag para acoplar ao gráfico
 
   // Métodos privados para cálculo de inclinação avançada
   virtual SSlopeResult GetAdvancedSlope(ENUM_SLOPE_METHOD method, int lookback, double threshold_high, double threshold_low, COPY_METHOD copy_method = COPY_MIDDLE);
@@ -46,6 +47,21 @@ public:
   string GetSlopeAnalysisReport(SSlopeValidation &validation);
   void DebugSlopeValidation(SSlopeValidation &validation);
   double CalculateDirectionalConsensus(SSlopeValidation &validation);
+
+    bool AttachToChart()
+  {
+    if(attach_chart && handle != INVALID_HANDLE)
+    {
+        if(!ChartIndicatorAdd(0, 0, handle))
+        {
+            Print("ERRO: Falha ao adicionar indicador ao gráfico.");
+            return false;
+        }
+        Print("Indicador acoplado ao gráfico com sucesso.");
+        return true;
+    }
+    return false; // não precisa acoplar
+  }
 };
 
 // SESSÃO A SEGUIR É RESPONSÁVEL PELOS CÁLCULOS DE SLOPE e CONFLUÊNCIAS ENTRE OS RESULTADOS
