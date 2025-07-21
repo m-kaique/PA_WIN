@@ -103,6 +103,7 @@ bool CBollinger::Init(string symbol, ENUM_TIMEFRAMES timeframe,
 bool CBollinger::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                       CBollingerConfig &config)
 {
+  attach_chart = config.attach_chart;
   return Init(symbol, timeframe, config.period, config.shift,
               config.deviation, config.applied_price);
 }
@@ -117,7 +118,7 @@ bool CBollinger::CreateHandle()
   {
     Print("ERRO: Falha ao criar handle Bollinger para ", m_symbol);
     return false;
-  }
+  } 
   return true;
 }
 

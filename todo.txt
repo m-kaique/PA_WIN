@@ -1,0 +1,4 @@
+Apos criar o handle em cada indicador
+validar a flag the attach = true 
+
+ChartIndicatorAdd(0, 0, handle)

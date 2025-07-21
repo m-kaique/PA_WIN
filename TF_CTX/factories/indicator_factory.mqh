@@ -132,7 +132,8 @@ CIndicatorBase* CIndicatorFactory::CreateVWAP(string symbol, ENUM_TIMEFRAMES tf,
    if(c==NULL)
       return NULL;
    CVWAP *ind = new CVWAP();
-   if(ind!=NULL && ind.Init(symbol, tf, c.period, c.method, c.calc_mode, c.session_tf, c.price_type, c.start_time, c.line_color, c.line_style, c.line_width))
+   if(ind!=NULL && ind.Init(
+      symbol, tf, *c))
       return ind;
    delete ind;
    return NULL;
@@ -144,7 +145,7 @@ CIndicatorBase* CIndicatorFactory::CreateBOLL(string symbol, ENUM_TIMEFRAMES tf,
    if(c==NULL)
       return NULL;
    CBollinger *ind = new CBollinger();
-   if(ind!=NULL && ind.Init(symbol, tf, c.period, c.shift, c.deviation, c.applied_price))
+   if(ind!=NULL && ind.Init(symbol, tf, *c))
       return ind;
    delete ind;
    return NULL;

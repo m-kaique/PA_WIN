@@ -48,17 +48,17 @@ public:
   void DebugSlopeValidation(SSlopeValidation &validation);
   double CalculateDirectionalConsensus(SSlopeValidation &validation);
 
-    bool AttachToChart()
+  bool AttachToChart()
   {
-    if(attach_chart && handle != INVALID_HANDLE)
+    if (attach_chart && handle != INVALID_HANDLE)
     {
-        if(!ChartIndicatorAdd(0, 0, handle))
-        {
-            Print("ERRO: Falha ao adicionar indicador ao gráfico.");
-            return false;
-        }
-        Print("Indicador acoplado ao gráfico com sucesso.");
-        return true;
+      if (!ChartIndicatorAdd(0, 0, handle))
+      {
+        Print("ERRO: Falha ao adicionar indicador ao gráfico.");
+        return false;
+      }
+      Print("Indicador acoplado ao gráfico com sucesso.");
+      return true;
     }
     return false; // não precisa acoplar
   }
