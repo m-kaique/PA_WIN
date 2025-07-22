@@ -225,7 +225,7 @@ struct TrendlineAdvancedFeatures
 };
 
 //--- TrendLine configuration
-class CTrendLineConfig : public CPriceActionConfig
+class CTrendLineConfig : public CIndicatorConfig
 {
 public:
   int period;
@@ -240,7 +240,7 @@ public:
   int lta_width;
   int ltb_width;
   bool extend_right;
-  ENUM_TIMEFRAMES alert_tf;
+  // ENUM_TIMEFRAMES alert_tf;
   double min_angle;
   int candles_lookback;
   TrendlineStatusFlags status_flags;

@@ -46,7 +46,7 @@ private:
     STimeframeConfig ParseTimeframeConfig(CJAVal *tf_config, ENUM_TIMEFRAMES tf);
     string CreateContextKey(string symbol, ENUM_TIMEFRAMES tf);
     bool TestJSONParsing();
-    
+
 public:
     // Construtor e Destrutor
     CConfigManager();
@@ -89,7 +89,7 @@ CConfigManager::~CConfigManager()
 bool CConfigManager::InitFromFile(string file_path)
 {
     Print("Tentando carregar arquivo: ", file_path);
-    
+
     if (!LoadConfigFromFile(file_path))
     {
         Print("ERRO: Falha ao carregar configuração do arquivo: ", file_path);
@@ -115,17 +115,17 @@ bool CConfigManager::LoadConfig(string json_content)
 {
     Print("Tentando fazer parse do JSON...");
     Print("Tamanho do JSON: ", StringLen(json_content), " caracteres");
-    
+
     // Limpar configuração anterior
     m_config.Clear();
-    
+
     // Testar parsing básico primeiro
-    if(!TestJSONParsing())
+    if (!TestJSONParsing())
     {
         Print("ERRO: Teste básico de JSON falhou");
         return false;
     }
-    
+
     // Fazer parse do JSON principal
     if (!m_config.Deserialize(json_content))
     {
@@ -143,7 +143,7 @@ bool CConfigManager::LoadConfig(string json_content)
     for (int i = 0; i < m_config.Size(); i++)
     {
         string symbol = m_config.children[i].key;
-        if(StringLen(symbol) > 0)
+        if (StringLen(symbol) > 0)
         {
             ArrayResize(m_symbols, ArraySize(m_symbols) + 1);
             m_symbols[ArraySize(m_symbols) - 1] = symbol;
@@ -163,33 +163,33 @@ bool CConfigManager::LoadConfigFromFile(string file_path)
     Print("Tentando abrir arquivo: ", file_path);
 
     int file_handle = OpenConfigFile(file_path);
-    if(file_handle == INVALID_HANDLE)
+    if (file_handle == INVALID_HANDLE)
         return false;
 
     // Obter tamanho do arquivo
     ulong file_size = FileSize(file_handle);
     Print("Tamanho do arquivo: ", file_size, " bytes");
-    
+
     // Resetar posição do arquivo
     FileSeek(file_handle, 0, SEEK_SET);
-    
+
     // Ler arquivo linha por linha (método mais confiável)
     string json_content = "";
     int lines_read = 0;
-    
+
     Print("Lendo arquivo linha por linha...");
     while (!FileIsEnding(file_handle))
     {
         string line = FileReadString(file_handle);
-        if(StringLen(line) > 0)
+        if (StringLen(line) > 0)
         {
             json_content += line;
             Print("Linha ", lines_read + 1, " (", StringLen(line), " chars): ", StringSubstr(line, 0, MathMin(60, StringLen(line))));
         }
         lines_read++;
-        
+
         // Segurança para evitar loop infinito
-        if(lines_read > 1000)
+        if (lines_read > 1000)
         {
             Print("AVISO: Muitas linhas lidas, interrompendo");
             break;
@@ -198,46 +198,46 @@ bool CConfigManager::LoadConfigFromFile(string file_path)
     Print("Total de linhas lidas: ", lines_read);
 
     FileClose(file_handle);
-    
+
     Print("Arquivo JSON carregado:");
     Print("- Caracteres totais: ", StringLen(json_content));
-    
-    if(StringLen(json_content) == 0)
+
+    if (StringLen(json_content) == 0)
     {
         Print("ERRO: Nenhum conteúdo lido do arquivo");
         return false;
     }
-    
+
     // Verificar se temos caracteres válidos
     string first_chars = StringSubstr(json_content, 0, MathMin(100, StringLen(json_content)));
     Print("- Primeiros 100 caracteres: '", first_chars, "'");
-    
+
     // Mostrar os últimos caracteres também
-    if(StringLen(json_content) > 100)
+    if (StringLen(json_content) > 100)
     {
         string last_chars = StringSubstr(json_content, StringLen(json_content) - 50);
         Print("- Últimos 50 caracteres: '", last_chars, "'");
     }
-    
+
     // Verificar se começa com { (JSON válido)
-    if(StringLen(json_content) > 0)
+    if (StringLen(json_content) > 0)
     {
         ushort first_char = StringGetCharacter(json_content, 0);
         ushort last_char = StringGetCharacter(json_content, StringLen(json_content) - 1);
         Print("- Primeiro caractere (código): ", first_char, " '", CharToString((char)first_char), "'");
         Print("- Último caractere (código): ", last_char, " '", CharToString((char)last_char), "'");
-        
-        if(first_char == '{' || first_char == 123)
+
+        if (first_char == '{' || first_char == 123)
         {
             Print("- Arquivo parece ser JSON válido");
         }
         else
         {
             Print("- AVISO: Arquivo não parece começar com '{' - possível problema de encoding");
-            
+
             // Tentar encontrar o primeiro '{'
             int brace_pos = StringFind(json_content, "{");
-            if(brace_pos >= 0)
+            if (brace_pos >= 0)
             {
                 json_content = StringSubstr(json_content, brace_pos);
                 Print("- JSON ajustado, novo tamanho: ", StringLen(json_content));
@@ -272,7 +272,7 @@ bool CConfigManager::CreateContexts()
             Print("ERRO: Configuração não encontrada para símbolo: ", symbol);
             continue;
         }
-        
+
         Print("Configuração encontrada para símbolo: ", symbol, " com ", symbol_config.Size(), " timeframes");
 
         for (int t = 0; t < symbol_config.Size(); t++)
@@ -306,7 +306,7 @@ bool CConfigManager::CreateContexts()
 
             // Criar novo contexto com lista de indicadores e priceactions
             TF_CTX *ctx = new TF_CTX(tf, config.num_candles,
-                                    config.indicators, config.priceactions);
+                                     config.indicators, config.priceactions);
             if (ctx == NULL)
             {
                 Print("ERRO: Falha ao criar contexto para ", symbol, " ", tf_str);
@@ -428,9 +428,9 @@ bool CConfigManager::TestJSONParsing()
 {
     string test_json = "{\"key\":\"value\"}";
     CJAVal test_config;
-    
+
     bool result = test_config.Deserialize(test_json);
-    if(result)
+    if (result)
     {
         Print("Teste básico de JSON: SUCESSO");
         Print("Valor teste: ", test_config["test"].ToStr());
@@ -439,7 +439,7 @@ bool CConfigManager::TestJSONParsing()
     {
         Print("Teste básico de JSON: FALHOU");
     }
-    
+
     return result;
 }
 
@@ -450,14 +450,22 @@ string CConfigManager::TimeframeToString(ENUM_TIMEFRAMES tf)
 {
     switch (tf)
     {
-    case PERIOD_M1: return "M1";
-    case PERIOD_M5: return "M5";
-    case PERIOD_M15: return "M15";
-    case PERIOD_M30: return "M30";
-    case PERIOD_H1: return "H1";
-    case PERIOD_H4: return "H4";
-    case PERIOD_D1: return "D1";
-    default: return "";
+    case PERIOD_M1:
+        return "M1";
+    case PERIOD_M5:
+        return "M5";
+    case PERIOD_M15:
+        return "M15";
+    case PERIOD_M30:
+        return "M30";
+    case PERIOD_H1:
+        return "H1";
+    case PERIOD_H4:
+        return "H4";
+    case PERIOD_D1:
+        return "D1";
+    default:
+        return "";
     }
 }
 
@@ -532,7 +540,7 @@ color CConfigManager::StringToColor(string color_str)
 int CConfigManager::OpenConfigFile(string file_path)
 {
     int handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_ANSI);
-    if(handle != INVALID_HANDLE)
+    if (handle != INVALID_HANDLE)
     {
         Print("Arquivo encontrado na pasta local do EA (ANSI)");
         return handle;
@@ -540,7 +548,7 @@ int CConfigManager::OpenConfigFile(string file_path)
 
     Print("Arquivo não encontrado na pasta local, tentando pasta Common...");
     handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_COMMON | FILE_ANSI);
-    if(handle != INVALID_HANDLE)
+    if (handle != INVALID_HANDLE)
     {
         Print("Arquivo encontrado na pasta Common (ANSI)");
         return handle;
@@ -548,7 +556,7 @@ int CConfigManager::OpenConfigFile(string file_path)
 
     Print("Tentando com UTF-8...");
     handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_COMMON);
-    if(handle == INVALID_HANDLE)
+    if (handle == INVALID_HANDLE)
     {
         Print("ERRO: Arquivo não encontrado: ", file_path);
         Print("Verificar se arquivo existe em:");
@@ -590,100 +598,158 @@ void CConfigManager::FillPriceActionBase(CPriceActionConfig &cfg, CJAVal *node, 
 //+------------------------------------------------------------------+
 CIndicatorConfig *CConfigManager::CreateIndicatorConfig(CJAVal *ind)
 {
-    if(ind==NULL)
+    if (ind == NULL)
         return NULL;
 
     string type = ind["type"].ToStr();
     string col = "";
 
-    if(type=="MA")
+    if (type == "MA")
     {
-        CMAConfig *p=new CMAConfig();
+        CMAConfig *p = new CMAConfig();
         FillIndicatorBase(*p, ind, type);
-        p.period=(int)ind["period"].ToInt();
-        p.method=StringToMAMethod(ind["method"].ToStr());
+        p.period = (int)ind["period"].ToInt();
+        p.method = StringToMAMethod(ind["method"].ToStr());
         return p;
     }
-    else if(type=="STO")
+    else if (type == "STO")
     {
-        CStochasticConfig *p=new CStochasticConfig();
+        CStochasticConfig *p = new CStochasticConfig();
         FillIndicatorBase(*p, ind, type);
-        p.period=(int)ind["period"].ToInt();
-        p.dperiod=(int)ind["dperiod"].ToInt();
-        p.slowing=(int)ind["slowing"].ToInt();
-        p.method=StringToMAMethod(ind["method"].ToStr());
-        p.price_field=StringToPriceField(ind["price_field"].ToStr());
+        p.period = (int)ind["period"].ToInt();
+        p.dperiod = (int)ind["dperiod"].ToInt();
+        p.slowing = (int)ind["slowing"].ToInt();
+        p.method = StringToMAMethod(ind["method"].ToStr());
+        p.price_field = StringToPriceField(ind["price_field"].ToStr());
         return p;
     }
-    else if(type=="VOL")
+    else if (type == "VOL")
     {
-        CVolumeConfig *p=new CVolumeConfig();
+        CVolumeConfig *p = new CVolumeConfig();
         FillIndicatorBase(*p, ind, type);
-        p.shift=(int)ind["shift"].ToInt();
+        p.shift = (int)ind["shift"].ToInt();
         return p;
     }
-    else if(type=="VWAP")
+    else if (type == "VWAP")
     {
-        CVWAPConfig *p=new CVWAPConfig();
+        CVWAPConfig *p = new CVWAPConfig();
         FillIndicatorBase(*p, ind, type);
-        p.period=(int)ind["period"].ToInt();
-        p.method=StringToMAMethod(ind["method"].ToStr());
-        p.calc_mode=StringToVWAPCalcMode(ind["calc_mode"].ToStr());
-        p.session_tf=StringToTimeframe(ind["session_tf"].ToStr());
-        p.price_type=StringToVWAPPriceType(ind["price_type"].ToStr());
-        string start_str=ind["start_time"].ToStr();
-        if(StringLen(start_str)>0) p.start_time=StringToTime(start_str);
-        col=ind["Color"].ToStr();
-        p.line_color=StringToColor(col);
-        p.line_style=StringToLineStyle(ind["Style"].ToStr());
-        p.line_width=(int)ind["Width"].ToInt();
+        p.period = (int)ind["period"].ToInt();
+        p.method = StringToMAMethod(ind["method"].ToStr());
+        p.calc_mode = StringToVWAPCalcMode(ind["calc_mode"].ToStr());
+        p.session_tf = StringToTimeframe(ind["session_tf"].ToStr());
+        p.price_type = StringToVWAPPriceType(ind["price_type"].ToStr());
+        string start_str = ind["start_time"].ToStr();
+        if (StringLen(start_str) > 0)
+            p.start_time = StringToTime(start_str);
+        col = ind["Color"].ToStr();
+        p.line_color = StringToColor(col);
+        p.line_style = StringToLineStyle(ind["Style"].ToStr());
+        p.line_width = (int)ind["Width"].ToInt();
         return p;
     }
-    else if(type=="BOLL")
+    else if (type == "BOLL")
     {
-        CBollingerConfig *p=new CBollingerConfig();
+        CBollingerConfig *p = new CBollingerConfig();
         FillIndicatorBase(*p, ind, type);
-        p.period=(int)ind["period"].ToInt();
-        p.shift=(int)ind["shift"].ToInt();
-        p.deviation=ind["deviation"].ToDbl();
-        p.applied_price=StringToAppliedPrice(ind["applied_price"].ToStr());
+        p.period = (int)ind["period"].ToInt();
+        p.shift = (int)ind["shift"].ToInt();
+        p.deviation = ind["deviation"].ToDbl();
+        p.applied_price = StringToAppliedPrice(ind["applied_price"].ToStr());
         return p;
     }
-    else if(type=="FIBO")
+    else if (type == "FIBO")
     {
-        CFiboConfig *p=new CFiboConfig();
+        CFiboConfig *p = new CFiboConfig();
         FillIndicatorBase(*p, ind, type);
-        p.period=(int)ind["period"].ToInt();
-        p.level_1=ind["Level_1"].ToDbl();
-        p.level_2=ind["Level_2"].ToDbl();
-        p.level_3=ind["Level_3"].ToDbl();
-        p.level_4=ind["Level_4"].ToDbl();
-        p.level_5=ind["Level_5"].ToDbl();
-        p.level_6=ind["Level_6"].ToDbl();
-        col=ind["LevelsColor"].ToStr();
-        p.levels_color=StringToColor(col);
-        p.levels_style=StringToLineStyle(ind["LevelsStyle"].ToStr());
-        p.levels_width=(int)ind["LevelsWidth"].ToInt();
-        p.ext_1=ind["Ext_1"].ToDbl();
-        p.ext_2=ind["Ext_2"].ToDbl();
-        p.ext_3=ind["Ext_3"].ToDbl();
-        col=ind["ExtensionsColor"].ToStr();
-        p.extensions_color=StringToColor(col);
-        p.extensions_style=StringToLineStyle(ind["ExtensionsStyle"].ToStr());
-        p.extensions_width=(int)ind["ExtensionsWidth"].ToInt();
-        col=ind["ParallelColor"].ToStr();
-        p.parallel_color=StringToColor(col);
-        p.parallel_style=StringToLineStyle(ind["ParallelStyle"].ToStr());
-        p.parallel_width=(int)ind["ParallelWidth"].ToInt();
-        p.show_labels=ind["ShowLabels"].ToBool();
-        col=ind["LabelsColor"].ToStr();
-        p.labels_color=StringToColor(col);
-        p.labels_font_size=(int)ind["LabelsFontSize"].ToInt();
-        string font=ind["LabelsFont"].ToStr();
-        if(StringLen(font)>0) p.labels_font=font;
+        p.period = (int)ind["period"].ToInt();
+        p.level_1 = ind["Level_1"].ToDbl();
+        p.level_2 = ind["Level_2"].ToDbl();
+        p.level_3 = ind["Level_3"].ToDbl();
+        p.level_4 = ind["Level_4"].ToDbl();
+        p.level_5 = ind["Level_5"].ToDbl();
+        p.level_6 = ind["Level_6"].ToDbl();
+        col = ind["LevelsColor"].ToStr();
+        p.levels_color = StringToColor(col);
+        p.levels_style = StringToLineStyle(ind["LevelsStyle"].ToStr());
+        p.levels_width = (int)ind["LevelsWidth"].ToInt();
+        p.ext_1 = ind["Ext_1"].ToDbl();
+        p.ext_2 = ind["Ext_2"].ToDbl();
+        p.ext_3 = ind["Ext_3"].ToDbl();
+        col = ind["ExtensionsColor"].ToStr();
+        p.extensions_color = StringToColor(col);
+        p.extensions_style = StringToLineStyle(ind["ExtensionsStyle"].ToStr());
+        p.extensions_width = (int)ind["ExtensionsWidth"].ToInt();
+        col = ind["ParallelColor"].ToStr();
+        p.parallel_color = StringToColor(col);
+        p.parallel_style = StringToLineStyle(ind["ParallelStyle"].ToStr());
+        p.parallel_width = (int)ind["ParallelWidth"].ToInt();
+        p.show_labels = ind["ShowLabels"].ToBool();
+        col = ind["LabelsColor"].ToStr();
+        p.labels_color = StringToColor(col);
+        p.labels_font_size = (int)ind["LabelsFontSize"].ToInt();
+        string font = ind["LabelsFont"].ToStr();
+        if (StringLen(font) > 0)
+            p.labels_font = font;
         return p;
     }
+    else if (type == "TRENDLINE")
+    {
+        CTrendLineConfig *p = new CTrendLineConfig();
+        FillIndicatorBase(*p, ind, type);
+        p.period = (int)ind["period"].ToInt();
+        p.pivot_left = (int)ind["pivot_left"].ToInt();
+        p.pivot_right = (int)ind["pivot_right"].ToInt();
+        p.draw_lta = ind["draw_lta"].ToBool();
+        p.draw_ltb = ind["draw_ltb"].ToBool();
+        p.lta_color = StringToColor(ind["lta_color"].ToStr());
+        p.ltb_color = StringToColor(ind["ltb_color"].ToStr());
+        p.lta_style = StringToLineStyle(ind["lta_style"].ToStr());
+        p.ltb_style = StringToLineStyle(ind["ltb_style"].ToStr());
+        p.lta_width = (int)ind["lta_width"].ToInt();
+        p.ltb_width = (int)ind["ltb_width"].ToInt();
+        p.extend_right = ind["extend_right"].ToBool();
+        p.alert_tf = StringToTimeframe(ind["alert_tf"].ToStr());
+        p.min_angle = ind["min_angle"].ToDbl();
 
+        p.candles_lookback = (int)ind["trendline_candles_lookback"].ToInt();
+        CJAVal *flags = ind["trendline_status_flags"];
+        if (flags != NULL)
+        {
+            p.status_flags.enable_body_cross = flags["enable_body_cross"].ToBool();
+            p.status_flags.enable_between_ltas = flags["enable_between_ltas"].ToBool();
+            p.status_flags.enable_between_ltbs = flags["enable_between_ltbs"].ToBool();
+            p.status_flags.enable_distance_points = flags["enable_distance_points"].ToBool();
+        }
+
+        CJAVal *ctx = ind["trendline_context_analysis"];
+        if (ctx != NULL)
+        {
+            p.context_analysis.enabled = ctx["enabled"].ToBool();
+            p.context_analysis.lookback = (int)ctx["lookback"].ToInt();
+            p.context_analysis.trend_threshold = ctx["trend_threshold"].ToDbl();
+            p.context_analysis.consolidation_threshold = ctx["consolidation_threshold"].ToDbl();
+        }
+
+        CJAVal *adv = ind["trendline_advanced_features"];
+        if (adv != NULL)
+        {
+            p.advanced_features.detect_fakeout = adv["detect_fakeout"].ToBool();
+            p.advanced_features.count_touches = adv["count_touches"].ToBool();
+            p.advanced_features.touch_tolerance_points = adv["touch_tolerance_points"].ToDbl();
+            string mode = adv["status_evaluate_mode"].ToStr();
+            if (StringLen(mode) > 0)
+                p.advanced_features.status_evaluate_mode = mode;
+            p.advanced_features.register_resets = adv["register_resets"].ToBool();
+        }
+
+        // if (p.alert_tf == PERIOD_CURRENT)
+        //     p.alert_tf = ctx_tf;
+        return p;
+    }
+    else if (type == "SUPRES")
+    {
+    }
     return NULL;
 }
 
@@ -692,86 +758,35 @@ CIndicatorConfig *CConfigManager::CreateIndicatorConfig(CJAVal *ind)
 //+------------------------------------------------------------------+
 CPriceActionConfig *CConfigManager::CreatePriceActionConfig(CJAVal *pa, ENUM_TIMEFRAMES ctx_tf)
 {
-    if(pa==NULL)
+    if (pa == NULL)
         return NULL;
 
     string type = pa["type"].ToStr();
 
-    if(type=="TRENDLINE")
+    if (type == "SUPRES")
     {
-        CTrendLineConfig *p=new CTrendLineConfig();
+        CSupResConfig *p = new CSupResConfig();
         FillPriceActionBase(*p, pa, type);
-        p.period=(int)pa["period"].ToInt();
-        p.pivot_left=(int)pa["pivot_left"].ToInt();
-        p.pivot_right=(int)pa["pivot_right"].ToInt();
-        p.draw_lta=pa["draw_lta"].ToBool();
-        p.draw_ltb=pa["draw_ltb"].ToBool();
-        p.lta_color=StringToColor(pa["lta_color"].ToStr());
-        p.ltb_color=StringToColor(pa["ltb_color"].ToStr());
-        p.lta_style=StringToLineStyle(pa["lta_style"].ToStr());
-        p.ltb_style=StringToLineStyle(pa["ltb_style"].ToStr());
-        p.lta_width=(int)pa["lta_width"].ToInt();
-        p.ltb_width=(int)pa["ltb_width"].ToInt();
-        p.extend_right=pa["extend_right"].ToBool();
-        p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
-      p.min_angle=pa["min_angle"].ToDbl();
-
-      p.candles_lookback=(int)pa["trendline_candles_lookback"].ToInt();
-      CJAVal *flags=pa["trendline_status_flags"];
-      if(flags!=NULL)
-        {
-         p.status_flags.enable_body_cross=flags["enable_body_cross"].ToBool();
-         p.status_flags.enable_between_ltas=flags["enable_between_ltas"].ToBool();
-         p.status_flags.enable_between_ltbs=flags["enable_between_ltbs"].ToBool();
-         p.status_flags.enable_distance_points=flags["enable_distance_points"].ToBool();
-        }
-
-      CJAVal *ctx=pa["trendline_context_analysis"];
-      if(ctx!=NULL)
-        {
-         p.context_analysis.enabled=ctx["enabled"].ToBool();
-         p.context_analysis.lookback=(int)ctx["lookback"].ToInt();
-         p.context_analysis.trend_threshold=ctx["trend_threshold"].ToDbl();
-         p.context_analysis.consolidation_threshold=ctx["consolidation_threshold"].ToDbl();
-        }
-
-      CJAVal *adv=pa["trendline_advanced_features"];
-      if(adv!=NULL)
-        {
-         p.advanced_features.detect_fakeout=adv["detect_fakeout"].ToBool();
-         p.advanced_features.count_touches=adv["count_touches"].ToBool();
-         p.advanced_features.touch_tolerance_points=adv["touch_tolerance_points"].ToDbl();
-         string mode=adv["status_evaluate_mode"].ToStr();
-         if(StringLen(mode)>0) p.advanced_features.status_evaluate_mode=mode;
-         p.advanced_features.register_resets=adv["register_resets"].ToBool();
-        }
-
-        if(p.alert_tf==PERIOD_CURRENT)   p.alert_tf=ctx_tf;
-        return p;
-    }
-    else if(type=="SUPRES")
-    {
-        CSupResConfig *p=new CSupResConfig();
-        FillPriceActionBase(*p, pa, type);
-        p.period=(int)pa["period"].ToInt();
-        p.draw_sup=pa["draw_sup"].ToBool();
-        p.draw_res=pa["draw_res"].ToBool();
-        p.sup_color=StringToColor(pa["sup_color"].ToStr());
-        p.res_color=StringToColor(pa["res_color"].ToStr());
-        p.sup_style=StringToLineStyle(pa["sup_style"].ToStr());
-        p.res_style=StringToLineStyle(pa["res_style"].ToStr());
-        p.sup_width=(int)pa["sup_width"].ToInt();
-        p.res_width=(int)pa["res_width"].ToInt();
-        p.extend_right=pa["extend_right"].ToBool();
-        p.show_labels=pa["show_labels"].ToBool();
-        p.touch_lookback=(int)pa["touch_lookback"].ToInt();
-        p.touch_tolerance=pa["touch_tolerance"].ToDbl();
-        p.zone_range=pa["zone_range"].ToDbl();
-        p.max_zones_to_draw=(int)pa["max_zones_to_draw"].ToInt();
-        p.min_touches=(int)pa["min_touches"].ToInt();
-        p.validation=(ENUM_SUPRES_VALIDATION)pa["validation"].ToInt();
-        p.alert_tf=StringToTimeframe(pa["alert_tf"].ToStr());
-        if(p.alert_tf==PERIOD_CURRENT) p.alert_tf=ctx_tf;
+        p.period = (int)pa["period"].ToInt();
+        p.draw_sup = pa["draw_sup"].ToBool();
+        p.draw_res = pa["draw_res"].ToBool();
+        p.sup_color = StringToColor(pa["sup_color"].ToStr());
+        p.res_color = StringToColor(pa["res_color"].ToStr());
+        p.sup_style = StringToLineStyle(pa["sup_style"].ToStr());
+        p.res_style = StringToLineStyle(pa["res_style"].ToStr());
+        p.sup_width = (int)pa["sup_width"].ToInt();
+        p.res_width = (int)pa["res_width"].ToInt();
+        p.extend_right = pa["extend_right"].ToBool();
+        p.show_labels = pa["show_labels"].ToBool();
+        p.touch_lookback = (int)pa["touch_lookback"].ToInt();
+        p.touch_tolerance = pa["touch_tolerance"].ToDbl();
+        p.zone_range = pa["zone_range"].ToDbl();
+        p.max_zones_to_draw = (int)pa["max_zones_to_draw"].ToInt();
+        p.min_touches = (int)pa["min_touches"].ToInt();
+        p.validation = (ENUM_SUPRES_VALIDATION)pa["validation"].ToInt();
+        p.alert_tf = StringToTimeframe(pa["alert_tf"].ToStr());
+        if (p.alert_tf == PERIOD_CURRENT)
+            p.alert_tf = ctx_tf;
         return p;
     }
 
@@ -784,7 +799,7 @@ CPriceActionConfig *CConfigManager::CreatePriceActionConfig(CJAVal *pa, ENUM_TIM
 STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config, ENUM_TIMEFRAMES ctx_tf)
 {
     STimeframeConfig config;
-    
+
     if (tf_config == NULL)
     {
         Print("ERRO: tf_config é NULL");
@@ -801,20 +816,20 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config, ENUM_TI
 
     // Lista de indicadores
     CJAVal *ind_array = tf_config["indicators"];
-    ArrayResize(config.indicators,0);
-    ArrayResize(config.priceactions,0);
+    ArrayResize(config.indicators, 0);
+    ArrayResize(config.priceactions, 0);
 
-    if(ind_array != NULL)
+    if (ind_array != NULL)
     {
-        for(int i=0;i<ind_array.Size();i++)
+        for (int i = 0; i < ind_array.Size(); i++)
         {
             CIndicatorConfig *icfg = CreateIndicatorConfig((*ind_array)[i]);
-            if(icfg==NULL)
+            if (icfg == NULL)
                 continue;
 
             int pos = ArraySize(config.indicators);
-            ArrayResize(config.indicators,pos+1);
-            config.indicators[pos]=icfg;
+            ArrayResize(config.indicators, pos + 1);
+            config.indicators[pos] = icfg;
 
             Print("Indicador lido: ", icfg.name, " Tipo: ", icfg.type, " Enabled: ", icfg.enabled);
         }
@@ -826,17 +841,17 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config, ENUM_TI
 
     // Lista de priceactions
     CJAVal *pa_array = tf_config["priceaction"];
-    if(pa_array != NULL)
+    if (pa_array != NULL)
     {
-        for(int i=0;i<pa_array.Size();i++)
+        for (int i = 0; i < pa_array.Size(); i++)
         {
             CPriceActionConfig *pcfg = CreatePriceActionConfig((*pa_array)[i], ctx_tf);
-            if(pcfg==NULL)
+            if (pcfg == NULL)
                 continue;
 
-            int pos=ArraySize(config.priceactions);
-            ArrayResize(config.priceactions,pos+1);
-            config.priceactions[pos]=pcfg;
+            int pos = ArraySize(config.priceactions);
+            ArrayResize(config.priceactions, pos + 1);
+            config.priceactions[pos] = pcfg;
             Print("PriceAction lido: ", pcfg.name, " Tipo: ", pcfg.type, " Enabled: ", pcfg.enabled);
         }
     }
