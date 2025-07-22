@@ -7,7 +7,6 @@
 #property version "2.00"
 
 #include "factories/indicator_factory.mqh"
-#include "factories/priceaction_factory.mqh"
 #include "config_types.mqh"
 
 //+------------------------------------------------------------------+
@@ -29,13 +28,10 @@ private:
 
   // PriceActions
   CPriceActionConfig *m_pa_cfg[];
-  CPriceActionBase *m_priceactions[];
   string m_pa_names[];
 
   bool CreateIndicators();
-  bool CreatePriceActions();
   void AddIndicator(CIndicatorBase *ind, string name);
-  void AddPriceAction(CPriceActionBase *pa, string name);
   int FindByName(string name, string &arr[]);
   bool IsValidTimeframe(ENUM_TIMEFRAMES tf);
   bool ValidateParameters();
@@ -51,7 +47,6 @@ public:
   double GetIndicatorValue(string name, int shift = 0);
   bool CopyIndicatorValues(string name, int shift, int count, double &buffer[]);
   double GetPriceActionValue(string name, int shift = 0);
-  CPriceActionBase *GetPriceAction(string name);
   CIndicatorBase *GetIndicator(string name);
   bool CopyPriceActionValues(string name, int shift, int count, double &buffer[]);
   bool HasNewBar();
@@ -81,7 +76,6 @@ TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles,
 
   ArrayResize(m_indicators, 0);
   ArrayResize(m_names, 0);
-  ArrayResize(m_priceactions, 0);
   ArrayResize(m_pa_names, 0);
 }
 
@@ -103,15 +97,6 @@ void TF_CTX::AddIndicator(CIndicatorBase *ind, string name)
   ArrayResize(m_names, pos + 1);
   m_indicators[pos] = ind;
   m_names[pos] = name;
-}
-
-void TF_CTX::AddPriceAction(CPriceActionBase *pa, string name)
-{
-  int pos = ArraySize(m_priceactions);
-  ArrayResize(m_priceactions, pos + 1);
-  ArrayResize(m_pa_names, pos + 1);
-  m_priceactions[pos] = pa;
-  m_pa_names[pos] = name;
 }
 
 int TF_CTX::FindByName(string name, string &arr[])
@@ -163,30 +148,6 @@ bool TF_CTX::CreateIndicators()
   return true;
 }
 
-bool TF_CTX::CreatePriceActions()
-{
-  CPriceActionFactory *factory = CPriceActionFactory::Instance();
-  for (int i = 0; i < ArraySize(m_pa_cfg); i++)
-  {
-    CPriceActionConfig *cfg = m_pa_cfg[i];
-    if (cfg == NULL || !cfg.enabled)
-      continue;
-
-    if (!factory.IsRegistered(cfg.type))
-    {
-      Print("Tipo de priceaction nao suportado: ", cfg.type);
-      continue;
-    }
-    CPriceActionBase *pa = factory.Create(cfg.type, m_symbol, m_timeframe, cfg);
-    if (pa == NULL)
-    {
-      Print("ERRO: Falha ao inicializar priceaction ", cfg.name);
-      return false;
-    }
-    AddPriceAction(pa, cfg.name);
-  }
-  return true;
-}
 
 //+------------------------------------------------------------------+
 //| Inicialização                                                    |
@@ -201,13 +162,6 @@ bool TF_CTX::Init()
     CleanUp();
     return false;
   }
-
-  if (!CreatePriceActions())
-  {
-    CleanUp();
-    return false;
-  }
-
   m_initialized = true;
   return true;
 }
@@ -240,9 +194,6 @@ void TF_CTX::CleanUp()
     if (m_indicators[i] != NULL)
       delete m_indicators[i];
   }
-  for (int i = 0; i < ArraySize(m_priceactions); i++)
-    if (m_priceactions[i] != NULL)
-      delete m_priceactions[i];
   for (int i = 0; i < ArraySize(m_cfg); i++)
   {
     if (m_cfg[i] != NULL)
@@ -254,7 +205,6 @@ void TF_CTX::CleanUp()
   ArrayResize(m_indicators, 0);
   ArrayResize(m_names, 0);
   ArrayResize(m_cfg, 0);
-  ArrayResize(m_priceactions, 0);
   ArrayResize(m_pa_names, 0);
   ArrayResize(m_pa_cfg, 0);
   m_initialized = false;
@@ -284,28 +234,7 @@ bool TF_CTX::CopyIndicatorValues(string name, int shift, int count, double &buff
   return false;
 }
 
-//+------------------------------------------------------------------+
-//| Obter valor da price action                                       |
-//+------------------------------------------------------------------+
-double TF_CTX::GetPriceActionValue(string name, int shift)
-{
-  int idx = FindByName(name, m_pa_names);
-  if (idx >= 0 && m_priceactions[idx] != NULL)
-    return m_priceactions[idx].GetValue(shift);
-  Print("PriceAction nao encontrado: ", name);
-  return 0.0;
-}
 
-//+------------------------------------------------------------------+
-//| Obter ponteiro para a price action                               |
-//+------------------------------------------------------------------+
-CPriceActionBase *TF_CTX::GetPriceAction(string name)
-{
-  int idx = FindByName(name, m_pa_names);
-  if (idx >= 0)
-    return m_priceactions[idx];
-  return NULL;
-}
 
 //+------------------------------------------------------------------+
 //| Obter ponteiro para o Indicador                                  |
@@ -318,17 +247,6 @@ CIndicatorBase *TF_CTX::GetIndicator(string name)
   return NULL;
 }
 
-//+------------------------------------------------------------------+
-//| Copiar valores da price action                                    |
-//+------------------------------------------------------------------+
-bool TF_CTX::CopyPriceActionValues(string name, int shift, int count, double &buffer[])
-{
-  int idx = FindByName(name, m_pa_names);
-  if (idx >= 0 && m_priceactions[idx] != NULL)
-    return m_priceactions[idx].CopyValues(shift, count, buffer);
-  Print("PriceAction nao encontrado: ", name);
-  return false;
-}
 
 bool TF_CTX::HasNewBar()
 {
@@ -358,9 +276,7 @@ bool TF_CTX::Update()
   for (int i = 0; i < ArraySize(m_indicators); i++)
     if (m_indicators[i] != NULL)
       ready &= m_indicators[i].Update();
-  for (int i = 0; i < ArraySize(m_priceactions); i++)
-    if (m_priceactions[i] != NULL)
-      ready &= m_priceactions[i].Update();
+
   return ready;
 }
 

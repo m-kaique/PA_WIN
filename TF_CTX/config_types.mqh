@@ -12,8 +12,8 @@
 #include "indicators/volume/volume_defs.mqh"
 #include "indicators/bollinger/bollinger_defs.mqh"
 #include "indicators/fibonacci/fibonacci_defs.mqh"
-#include "priceaction/trendline/trendline_defs.mqh"
-#include "priceaction/sup_res/sup_res_defs.mqh"
+#include "indicators/trendline/trendline_defs.mqh"
+#include "indicators/sup_res/sup_res_defs.mqh"
 
 //--- Base configuration
 class CIndicatorConfig
@@ -260,14 +260,13 @@ public:
     lta_width = 1;
     ltb_width = 1;
     extend_right = true;
-    alert_tf = PERIOD_H1;
     min_angle = 20.0;
     candles_lookback = 9;
   }
 };
 
 //--- Support/Resistance configuration
-class CSupResConfig : public CPriceActionConfig
+class CSupResConfig : public CIndicatorConfig
 {
 public:
   int period;
@@ -281,7 +280,6 @@ public:
   int res_width;
   bool extend_right;
   bool show_labels;
-  ENUM_TIMEFRAMES alert_tf;
   int touch_lookback;
   double touch_tolerance;
   double zone_range;

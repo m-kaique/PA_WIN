@@ -40,9 +40,7 @@ private:
     color StringToColor(string color_str);
     int OpenConfigFile(string file_path);
     void FillIndicatorBase(CIndicatorConfig &cfg, CJAVal *node, string type);
-    void FillPriceActionBase(CPriceActionConfig &cfg, CJAVal *node, string type);
     CIndicatorConfig *CreateIndicatorConfig(CJAVal *ind);
-    CPriceActionConfig *CreatePriceActionConfig(CJAVal *pa, ENUM_TIMEFRAMES tf);
     STimeframeConfig ParseTimeframeConfig(CJAVal *tf_config, ENUM_TIMEFRAMES tf);
     string CreateContextKey(string symbol, ENUM_TIMEFRAMES tf);
     bool TestJSONParsing();
@@ -584,16 +582,6 @@ void CConfigManager::FillIndicatorBase(CIndicatorConfig &cfg, CJAVal *node, stri
 }
 
 //+------------------------------------------------------------------+
-//| Preencher campos basicos de uma priceaction                      |
-//+------------------------------------------------------------------+
-void CConfigManager::FillPriceActionBase(CPriceActionConfig &cfg, CJAVal *node, string type)
-{
-    cfg.name = (*node)["name"].ToStr();
-    cfg.type = type;
-    cfg.enabled = (*node)["enabled"].ToBool();
-}
-
-//+------------------------------------------------------------------+
 //| Criar configuracao de indicador                                   |
 //+------------------------------------------------------------------+
 CIndicatorConfig *CConfigManager::CreateIndicatorConfig(CJAVal *ind)
@@ -749,47 +737,28 @@ CIndicatorConfig *CConfigManager::CreateIndicatorConfig(CJAVal *ind)
     }
     else if (type == "SUPRES")
     {
-    }
-    return NULL;
-}
-
-//+------------------------------------------------------------------+
-//| Criar configuracao de priceaction                                 |
-//+------------------------------------------------------------------+
-CPriceActionConfig *CConfigManager::CreatePriceActionConfig(CJAVal *pa, ENUM_TIMEFRAMES ctx_tf)
-{
-    if (pa == NULL)
-        return NULL;
-
-    string type = pa["type"].ToStr();
-
-    if (type == "SUPRES")
-    {
-        CSupResConfig *p = new CSupResConfig();
-        FillPriceActionBase(*p, pa, type);
-        p.period = (int)pa["period"].ToInt();
-        p.draw_sup = pa["draw_sup"].ToBool();
-        p.draw_res = pa["draw_res"].ToBool();
-        p.sup_color = StringToColor(pa["sup_color"].ToStr());
-        p.res_color = StringToColor(pa["res_color"].ToStr());
-        p.sup_style = StringToLineStyle(pa["sup_style"].ToStr());
-        p.res_style = StringToLineStyle(pa["res_style"].ToStr());
-        p.sup_width = (int)pa["sup_width"].ToInt();
-        p.res_width = (int)pa["res_width"].ToInt();
-        p.extend_right = pa["extend_right"].ToBool();
-        p.show_labels = pa["show_labels"].ToBool();
-        p.touch_lookback = (int)pa["touch_lookback"].ToInt();
-        p.touch_tolerance = pa["touch_tolerance"].ToDbl();
-        p.zone_range = pa["zone_range"].ToDbl();
-        p.max_zones_to_draw = (int)pa["max_zones_to_draw"].ToInt();
-        p.min_touches = (int)pa["min_touches"].ToInt();
-        p.validation = (ENUM_SUPRES_VALIDATION)pa["validation"].ToInt();
-        p.alert_tf = StringToTimeframe(pa["alert_tf"].ToStr());
-        if (p.alert_tf == PERIOD_CURRENT)
-            p.alert_tf = ctx_tf;
+          CSupResConfig *p = new CSupResConfig();
+        FillIndicatorBase(*p, ind, type);
+        p.period = (int)ind["period"].ToInt();
+        p.draw_sup = ind["draw_sup"].ToBool();
+        p.draw_res = ind["draw_res"].ToBool();
+        p.sup_color = StringToColor(ind["sup_color"].ToStr());
+        p.res_color = StringToColor(ind["res_color"].ToStr());
+        p.sup_style = StringToLineStyle(ind["sup_style"].ToStr());
+        p.res_style = StringToLineStyle(ind["res_style"].ToStr());
+        p.sup_width = (int)ind["sup_width"].ToInt();
+        p.res_width = (int)ind["res_width"].ToInt();
+        p.extend_right = ind["extend_right"].ToBool();
+        p.show_labels = ind["show_labels"].ToBool();
+        p.touch_lookback = (int)ind["touch_lookback"].ToInt();
+        p.touch_tolerance = ind["touch_tolerance"].ToDbl();
+        p.zone_range = ind["zone_range"].ToDbl();
+        p.max_zones_to_draw = (int)ind["max_zones_to_draw"].ToInt();
+        p.min_touches = (int)ind["min_touches"].ToInt();
+        p.validation = (ENUM_SUPRES_VALIDATION)ind["validation"].ToInt();
+        p.alert_tf = StringToTimeframe(ind["alert_tf"].ToStr());
         return p;
     }
-
     return NULL;
 }
 
@@ -837,27 +806,6 @@ STimeframeConfig CConfigManager::ParseTimeframeConfig(CJAVal *tf_config, ENUM_TI
     else
     {
         Print("AVISO: Nenhum indicador configurado");
-    }
-
-    // Lista de priceactions
-    CJAVal *pa_array = tf_config["priceaction"];
-    if (pa_array != NULL)
-    {
-        for (int i = 0; i < pa_array.Size(); i++)
-        {
-            CPriceActionConfig *pcfg = CreatePriceActionConfig((*pa_array)[i], ctx_tf);
-            if (pcfg == NULL)
-                continue;
-
-            int pos = ArraySize(config.priceactions);
-            ArrayResize(config.priceactions, pos + 1);
-            config.priceactions[pos] = pcfg;
-            Print("PriceAction lido: ", pcfg.name, " Tipo: ", pcfg.type, " Enabled: ", pcfg.enabled);
-        }
-    }
-    else
-    {
-        Print("AVISO: Nenhum priceaction configurado");
     }
 
     return config;

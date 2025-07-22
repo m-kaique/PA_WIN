@@ -119,7 +119,7 @@ void CheckCtxTrendLine(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 {
    if (tf == PERIOD_H1)
    {
-      CPriceActionBase *pa = ctx.GetPriceAction("swing_lines");
+      CIndicatorBase *pa = ctx.GetIndicator("swing_lines");
       if (pa != NULL)
       {
          CTrendLine *tl = (CTrendLine *)pa;
@@ -249,7 +249,7 @@ void UpdateSymbolContexts(string symbol)
       if (ctx.HasNewBar())
       {
          ctx.Update();
-         CheckCtxMASlope(tf, ctx);
+         // CheckCtxMASlope(tf, ctx);
       }
 
       // -  -  -  -  -  -  -

@@ -5,18 +5,16 @@
 #ifndef __TRENDLINE_MQH__
 #define __TRENDLINE_MQH__
 
-#include "../priceaction_base.mqh"
-#include "trendline_defs.mqh"
+#include "../indicator_base.mqh"
 #include "../../config_types.mqh"
+#include "trendline_defs.mqh"
 
 // mínimo de ângulo para que uma linha de tendência seja considerada válida
 // o valor é carregado a partir da configuração JSON
 
-class CTrendLine : public CPriceActionBase
+class CTrendLine : public CIndicatorBase
 {
 private:
-  string m_symbol;
-  ENUM_TIMEFRAMES m_timeframe;
   int m_period;
   int m_pivot_left;
   int m_pivot_right;
@@ -173,11 +171,13 @@ public:
   ~CTrendLine();
 
   bool Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig &cfg);
-  virtual bool Init(string symbol, ENUM_TIMEFRAMES timeframe, int period);
-  virtual double GetValue(int shift = 0); // returns LTA value
-  virtual bool CopyValues(int shift, int count, double &buffer[]);
-  virtual bool IsReady();
-  virtual bool Update();
+  bool Init(string symbol, ENUM_TIMEFRAMES timeframe,
+                    int period, ENUM_MA_METHOD method);
+
+  double GetValue(int shift = 0); // returns LTA value
+  bool CopyValues(int shift, int count, double &buffer[]);
+  bool IsReady();
+  virtual bool Update() override;
 
   double GetLTAValue(int shift = 0);
   double GetLTBValue(int shift = 0);
@@ -311,19 +311,15 @@ bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, CTrendLineConfig
   ResetLTB();
   m_lta_last_break = 0;
   m_ltb_last_break = 0;
+
+  alert_tf = cfg.alert_tf;
+  m_alert_tf = alert_tf;
+
+  attach_chart = cfg.attach_chart;
   UpdateCandleAnalysis();
   return ok;
 }
 
-//+------------------------------------------------------------------+
-//| Default init                                                      |
-//+------------------------------------------------------------------+
-bool CTrendLine::Init(string symbol, ENUM_TIMEFRAMES timeframe, int period)
-{
-  CTrendLineConfig tmp;
-  tmp.period = period;
-  return Init(symbol, timeframe, tmp);
-}
 
 //+------------------------------------------------------------------+
 //| GetValue (LTA)                                                    |
