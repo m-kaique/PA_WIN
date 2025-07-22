@@ -14,6 +14,7 @@ protected:
   ENUM_TIMEFRAMES m_timeframe; // TimeFrame
   int handle;                  // Handle
   bool attach_chart;           // Flag para acoplar ao gráfico
+  ENUM_TIMEFRAMES alert_tf;    // TF para alertas
 
   // Métodos privados para cálculo de inclinação avançada
   virtual SSlopeResult GetAdvancedSlope(ENUM_SLOPE_METHOD method, int lookback, double threshold_high, double threshold_low, COPY_METHOD copy_method = COPY_MIDDLE);

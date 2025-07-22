@@ -148,16 +148,17 @@ bool TF_CTX::CreateIndicators()
       return false;
     }
     AddIndicator(ind, cfg.name);
-    
-    // Chamar AttachToChart() após a criação do indicador
-    if (ind.AttachToChart())
-    {
-        Print("Indicador ", cfg.name, " acoplado ao gráfico.");
-    }
-    else
-    {
-        Print("Indicador ", cfg.name, " não acoplado ao gráfico ou falha no acoplamento.");
-    }
+
+    Alert(cfg.name + "->" + EnumToString(cfg.alert_tf));
+    // // Chamar AttachToChart() após a criação do indicador
+    // if (ind.AttachToChart())
+    // {
+    //     Print("Indicador ", cfg.name, " acoplado ao gráfico.");
+    // }
+    // else
+    // {
+    //     Print("Indicador ", cfg.name, " não acoplado ao gráfico ou falha no acoplamento.");
+    // }
   }
   return true;
 }
