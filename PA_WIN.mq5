@@ -226,6 +226,22 @@ void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 }
 
 //+------------------------------------------------------------------+
+//| Posição do candle vs SMA200 H4                                   |
+//+------------------------------------------------------------------+
+void CheckCandlePosition(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
+{
+   if (tf == PERIOD_H4)
+   {
+      CMovingAverages *sma = ctx.GetIndicator("sma200");
+      if (sma != NULL)
+      {
+         ENUM_CANDLE_POSITION posx = sma.GetPreviousCandlePosition(1);
+         Print(sma.GetCandlePositionDescription(posx));
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
 //| Atualizar todos os contextos de um símbolo                       |
 //+------------------------------------------------------------------+
 void UpdateSymbolContexts(string symbol)
@@ -250,11 +266,8 @@ void UpdateSymbolContexts(string symbol)
       {
          ctx.Update();
          // CheckCtxMASlope(tf, ctx);
+         CheckCandlePosition(tf, ctx);
       }
-
-      // -  -  -  -  -  -  -
-      // CheckCtxTrendLine(tf, ctx);
-      // -  -  -  -  -  -  -
    }
 }
 

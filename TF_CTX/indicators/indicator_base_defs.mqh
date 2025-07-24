@@ -33,23 +33,23 @@ struct SSlopeResult
 //+------------------------------------------------------------------+
 struct SSlopeValidation
 {
-    // Resultados individuais de cada método
-    SSlopeResult linear_regression;
-    SSlopeResult simple_difference;
-    SSlopeResult percentage_change;
-    SSlopeResult discrete_derivative;
-    SSlopeResult angle_degrees;
-    
-    // Análise consolidada
-    string final_trend;           // Tendência final consolidada
-    double confidence_score;      // Nível de confiança (0-100)
-    double consensus_strength;    // Força do consenso entre métodos
-    int methods_agreement;        // Quantos métodos concordam
-    bool is_reliable;            // Se o sinal é confiável
-    
-    // Pesos e scores
-    double weighted_slope;        // Inclinação ponderada
-    string risk_level;           // Nível de risco do sinal
+  // Resultados individuais de cada método
+  SSlopeResult linear_regression;
+  SSlopeResult simple_difference;
+  SSlopeResult percentage_change;
+  SSlopeResult discrete_derivative;
+  SSlopeResult angle_degrees;
+
+  // Análise consolidada
+  string final_trend;        // Tendência final consolidada
+  double confidence_score;   // Nível de confiança (0-100)
+  double consensus_strength; // Força do consenso entre métodos
+  int methods_agreement;     // Quantos métodos concordam
+  bool is_reliable;          // Se o sinal é confiável
+
+  // Pesos e scores
+  double weighted_slope; // Inclinação ponderada
+  string risk_level;     // Nível de risco do sinal
 };
 
 enum COPY_METHOD
@@ -59,6 +59,17 @@ enum COPY_METHOD
   COPY_MIDDLE
 };
 
+
+enum ENUM_CANDLE_POSITION
+{
+  CANDLE_COMPLETELY_ABOVE,           // Candle completamente acima do indicador
+  CANDLE_COMPLETELY_BELOW,           // Candle completamente abaixo do indicador
+  INDICATOR_CROSSES_UPPER_BODY,      // Indicador cruza a parte superior do corpo
+  INDICATOR_CROSSES_LOWER_BODY,      // Indicador cruza a parte inferior do corpo
+  INDICATOR_CROSSES_UPPER_SHADOW,    // Indicador cruza a sombra superior
+  INDICATOR_CROSSES_LOWER_SHADOW,    // Indicador cruza a sombra inferior
+  INDICATOR_ON_CANDLE_EXACT,          // Indicador exatamente no nível do candle
+  INDICATOR_CANDLE_POSITION_FAILED
+};
+
 #endif // __INDICATOR_BASE_DEFS_MQH__
-
-

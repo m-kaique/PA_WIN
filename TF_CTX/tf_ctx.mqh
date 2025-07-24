@@ -134,7 +134,7 @@ bool TF_CTX::CreateIndicators()
     }
     AddIndicator(ind, cfg.name);
 
-    Alert(cfg.name + "->" + EnumToString(cfg.alert_tf));
+    // Alert(cfg.name + "->" + EnumToString(cfg.alert_tf));
     // // Chamar AttachToChart() após a criação do indicador
     // if (ind.AttachToChart())
     // {
