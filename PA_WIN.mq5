@@ -197,6 +197,8 @@ void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
          SSlopeValidation full_validation = ema.GetSlopeValidation(9, 0.45, -0.45, true);
          Print("EMA9: " + (string)full_validation.final_trend);
 
+         
+
          // ema.DebugSlopeValidation(full_validation);
       }
       CVWAP *vwap = ctx.GetIndicator("vwap_diario_fin");
@@ -235,8 +237,9 @@ void CheckCandlePosition(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
       CMovingAverages *sma = ctx.GetIndicator("sma200");
       if (sma != NULL)
       {
-         ENUM_CANDLE_POSITION posx = sma.GetPreviousCandlePosition(1);
-         Print(sma.GetCandlePositionDescription(posx));
+         SPositionInfo posx = sma.GetPreviousCandlePosition(1);
+         Print("Posição: " + sma.GetCandlePositionDescription(posx.position));
+         Print("Distância: " + string(posx.distance));
       }
    }
 }
@@ -265,7 +268,7 @@ void UpdateSymbolContexts(string symbol)
       if (ctx.HasNewBar())
       {
          ctx.Update();
-         // CheckCtxMASlope(tf, ctx);
+         CheckCtxMASlope(tf, ctx);
          CheckCandlePosition(tf, ctx);
       }
    }

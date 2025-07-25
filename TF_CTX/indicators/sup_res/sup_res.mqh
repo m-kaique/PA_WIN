@@ -816,7 +816,6 @@ void CSupRes::EvaluateBreakouts()
 //+------------------------------------------------------------------+
 bool CSupRes::Update()
 {
-  Print("ATUALIZANDO SUP RES");
   int bars = m_period > 0 ? m_period : 50;
   int got_high = CopyHigh(m_symbol, m_timeframe, 0, bars, m_highs);
   int got_low = CopyLow(m_symbol, m_timeframe, 0, bars, m_lows);

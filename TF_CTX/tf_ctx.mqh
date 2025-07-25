@@ -135,15 +135,15 @@ bool TF_CTX::CreateIndicators()
     AddIndicator(ind, cfg.name);
 
     // Alert(cfg.name + "->" + EnumToString(cfg.alert_tf));
-    // // Chamar AttachToChart() após a criação do indicador
-    // if (ind.AttachToChart())
-    // {
-    //     Print("Indicador ", cfg.name, " acoplado ao gráfico.");
-    // }
-    // else
-    // {
-    //     Print("Indicador ", cfg.name, " não acoplado ao gráfico ou falha no acoplamento.");
-    // }
+    // Chamar AttachToChart() após a criação do indicador
+    if (ind.AttachToChart())
+    {
+        // Print("Indicador ", cfg.name, " acoplado ao gráfico.");
+    }
+    else
+    {
+        // Print("Indicador ", cfg.name, " não acoplado ao gráfico ou falha no acoplamento.");
+    }
   }
   return true;
 }

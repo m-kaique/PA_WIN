@@ -63,7 +63,7 @@ public:
     }
     return false; // não precisa acoplar
   }
-  ENUM_CANDLE_POSITION GetPreviousCandlePosition(int shift);
+  SPositionInfo GetPreviousCandlePosition(int shift);
   string GetCandlePositionDescription(ENUM_CANDLE_POSITION position);
 };
 
@@ -643,28 +643,27 @@ double CIndicatorBase::CalculateDirectionalConsensus(SSlopeValidation &validatio
   return consensus;
 }
 
-
 //+------------------------------------------------------------------------+
 //| Retorna a posição do candle anterior em relação ao valor do indicador |
 //+------------------------------------------------------------------------+
-ENUM_CANDLE_POSITION CIndicatorBase::GetPreviousCandlePosition(int shift)
+SPositionInfo CIndicatorBase::GetPreviousCandlePosition(int shift)
 {
+  SPositionInfo result;
+  result.distance = 0.0;
+
   if (handle == INVALID_HANDLE)
   {
     Print("ERRO: Handle do indicador inválido para GetPreviousCandlePosition");
-    return INDICATOR_ON_CANDLE_EXACT; // Retorna um valor padrão em caso de erro
+    result.position = INDICATOR_CANDLE_POSITION_FAILED;
+    return result;
   }
 
-  // Obter o valor do indicador para o candle anterior (shift)
   double indicator_value = GetValue(shift);
-
-  // Obter os preços do candle anterior (shift)
   double open_price = iOpen(m_symbol, m_timeframe, shift);
   double close_price = iClose(m_symbol, m_timeframe, shift);
   double high_price = iHigh(m_symbol, m_timeframe, shift);
   double low_price = iLow(m_symbol, m_timeframe, shift);
 
-  // Verificar se os valores são válidos
   if (indicator_value == EMPTY_VALUE || !MathIsValidNumber(indicator_value) ||
       open_price == EMPTY_VALUE || !MathIsValidNumber(open_price) ||
       close_price == EMPTY_VALUE || !MathIsValidNumber(close_price) ||
@@ -672,64 +671,67 @@ ENUM_CANDLE_POSITION CIndicatorBase::GetPreviousCandlePosition(int shift)
       low_price == EMPTY_VALUE || !MathIsValidNumber(low_price))
   {
     Print("AVISO: Valores inválidos para cálculo da posição do candle em GetPreviousCandlePosition");
-    return INDICATOR_ON_CANDLE_EXACT; // Retorna um valor padrão se os dados não forem válidos
+    result.position = INDICATOR_CANDLE_POSITION_FAILED;
+    return result;
   }
 
-  // Definir uma pequena tolerância para considerar valores 'exatos'
-  double tolerance = SymbolInfoDouble(m_symbol, SYMBOL_POINT) * 15; // tolerância
+  double tolerance = SymbolInfoDouble(m_symbol, SYMBOL_POINT) * 15;
+  double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
+  int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
+  double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
 
-  // Determinar os limites do corpo do candle
   double body_top = MathMax(open_price, close_price);
   double body_bottom = MathMin(open_price, close_price);
 
-  // Verificar se o candle está completamente acima do indicador
   if (low_price > indicator_value + tolerance)
   {
-    return CANDLE_COMPLETELY_ABOVE;
-  }
-  
-  // Verificar se o candle está completamente abaixo do indicador
-  if (high_price < indicator_value - tolerance)
-  {
-    return CANDLE_COMPLETELY_BELOW;
+    result.position = CANDLE_ABOVE_WITH_DISTANCE;
+    result.distance = (low_price - indicator_value) / pip_value;
+    return result;
   }
 
-  // Se chegou aqui, o indicador está intersectando o candle de alguma forma
-  
-  // Verificar se o indicador está na sombra superior
+  if (high_price < indicator_value - tolerance)
+  {
+    result.position = CANDLE_BELOW_WITH_DISTANCE;
+    result.distance = (indicator_value - high_price) / pip_value;
+    return result;
+  }
+
   if (indicator_value > body_top + tolerance && indicator_value <= high_price)
   {
-    return INDICATOR_CROSSES_UPPER_SHADOW;
+    result.position = INDICATOR_CROSSES_UPPER_SHADOW;
+    return result;
   }
-  
-  // Verificar se o indicador está na sombra inferior
+
   if (indicator_value < body_bottom - tolerance && indicator_value >= low_price)
   {
-    return INDICATOR_CROSSES_LOWER_SHADOW;
+    result.position = INDICATOR_CROSSES_LOWER_SHADOW;
+    return result;
   }
-  
-  // Verificar se o indicador está cruzando o corpo do candle
+
   if (indicator_value >= body_bottom - tolerance && indicator_value <= body_top + tolerance)
   {
-    // Determinar se está na metade superior ou inferior do corpo
     double body_midpoint = (body_top + body_bottom) / 2.0;
-    
-    if (indicator_value > body_midpoint+tolerance)
+
+    if (indicator_value > body_midpoint + tolerance)
     {
-      return INDICATOR_CROSSES_UPPER_BODY;
+      result.position = INDICATOR_CROSSES_UPPER_BODY;
+      return result;
     }
-    else if (indicator_value < body_midpoint-tolerance)
+    else if (indicator_value < body_midpoint - tolerance)
     {
-      return INDICATOR_CROSSES_LOWER_BODY;
+      result.position = INDICATOR_CROSSES_LOWER_BODY;
+      return result;
     }
     else
     {
-      return INDICATOR_ON_CANDLE_EXACT;
+      result.position = INDICATOR_ON_CANDLE_EXACT;
+      return result;
     }
   }
 
-  // Caso de segurança - não deveria chegar aqui normalmente
-  return INDICATOR_CANDLE_POSITION_FAILED;
+  result.position = INDICATOR_CANDLE_POSITION_FAILED;
+  return result;
 }
 
 //+------------------------------------------------------------------+
@@ -737,26 +739,27 @@ ENUM_CANDLE_POSITION CIndicatorBase::GetPreviousCandlePosition(int shift)
 //+------------------------------------------------------------------+
 string CIndicatorBase::GetCandlePositionDescription(ENUM_CANDLE_POSITION position)
 {
-  switch(position)
+  switch (position)
   {
-    case CANDLE_COMPLETELY_ABOVE:
-      return "Candle completamente acima do indicador";
-    case CANDLE_COMPLETELY_BELOW:
-      return "Candle completamente abaixo do indicador";
-    case INDICATOR_CROSSES_UPPER_BODY:
-      return "Indicador cruza a parte superior do corpo";
-    case INDICATOR_CROSSES_LOWER_BODY:
-      return "Indicador cruza a parte inferior do corpo";
-    case INDICATOR_CROSSES_UPPER_SHADOW:
-      return "Indicador cruza a sombra superior";
-    case INDICATOR_CROSSES_LOWER_SHADOW:
-      return "Indicador cruza a sombra inferior";
-    case INDICATOR_ON_CANDLE_EXACT:
-      return "Indicador no nível exato do candle";
-    default:
-      return "Posição indefinida";
+  case CANDLE_ABOVE_WITH_DISTANCE:
+    return "Candle completamente acima do indicador (com distância)";
+  case CANDLE_BELOW_WITH_DISTANCE:
+    return "Candle completamente abaixo do indicador (com distância)";
+  case INDICATOR_CROSSES_UPPER_BODY:
+    return "Indicador cruza a parte superior do corpo";
+  case INDICATOR_CROSSES_LOWER_BODY:
+    return "Indicador cruza a parte inferior do corpo";
+  case INDICATOR_CROSSES_UPPER_SHADOW:
+    return "Indicador cruza a sombra superior";
+  case INDICATOR_CROSSES_LOWER_SHADOW:
+    return "Indicador cruza a sombra inferior";
+  case INDICATOR_ON_CANDLE_EXACT:
+    return "Indicador no nível exato do candle";
+  case INDICATOR_CANDLE_POSITION_FAILED:
+    return "Falha ao determinar a posição do candle";
+  default:
+    return "Posição indefinida";
   }
 }
-
 
 #endif // __INDICATOR_BASE_MQH__
