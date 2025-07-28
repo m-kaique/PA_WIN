@@ -5,7 +5,7 @@
 #ifndef __FIBONACCI_MQH__
 #define __FIBONACCI_MQH__
 
-#include "../indicator_base.mqh"
+#include "../indicator_base/indicator_base.mqh"
 #include "../../config_types.mqh"
 #include "fibonacci_defs.mqh"
 

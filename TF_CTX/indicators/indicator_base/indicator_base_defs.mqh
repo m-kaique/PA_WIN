@@ -84,5 +84,18 @@ struct SPositionInfo
   ENUM_CANDLE_POSITION position; // Posição do candle
   double distance;               // Distância em pips (se aplicável)
 };
+struct SThresholdConfig {
+    int lookback;
+    double linear_regression_high, linear_regression_low;
+    double simple_difference_high, simple_difference_low;
+    double percentage_change_high, percentage_change_low;
+    double discrete_derivative_high, discrete_derivative_low;
+    double angle_degrees_high, angle_degrees_low;
+};
 
+enum ENUM_TRADING_STYLE {
+    TRADING_SCALPING,
+    TRADING_SWING,
+    TRADING_POSITION
+};
 #endif // __INDICATOR_BASE_DEFS_MQH__

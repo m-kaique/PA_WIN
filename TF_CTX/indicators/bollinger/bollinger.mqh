@@ -5,7 +5,7 @@
 #ifndef __BOLLINGER_MQH__
 #define __BOLLINGER_MQH__
 
-#include "../indicator_base.mqh"
+#include "../indicator_base/indicator_base.mqh"
 #include "../../config_types.mqh"
 #include "bollinger_defs.mqh"
 
@@ -345,12 +345,25 @@ SSlopeValidation CBollinger::GetSlopeValidation(int lookback = 10,
     return validation;
   }
 
-  // Calcular inclinação com todos os métodos
-  validation.linear_regression = GetAdvancedSlope(SLOPE_LINEAR_REGRESSION, lookback, threshold_high, threshold_low, copy_method);
-  validation.simple_difference = GetAdvancedSlope(SLOPE_SIMPLE_DIFFERENCE, lookback, threshold_high, threshold_low, copy_method);
-  validation.percentage_change = GetAdvancedSlope(SLOPE_PERCENTAGE_CHANGE, lookback, threshold_high, threshold_low, copy_method);
-  validation.discrete_derivative = GetAdvancedSlope(SLOPE_DISCRETE_DERIVATIVE, lookback, threshold_high, threshold_low, copy_method);
-  validation.angle_degrees = GetAdvancedSlope(SLOPE_ANGLE_DEGREES, lookback, threshold_high, threshold_low, copy_method);
+   // TYPES ----------
+  // TRADING_SCALPING
+  // TRADING_SWING
+  // TRADING_POSITION
+
+  // Obter configuração otimizada
+  SThresholdConfig config = GetOptimizedConfig(m_timeframe, TRADING_SCALPING);
+
+  // Calcular inclinação com configurações específicas
+  validation.linear_regression = GetAdvancedSlope(SLOPE_LINEAR_REGRESSION, config.lookback,
+                                                  config.linear_regression_high, config.linear_regression_low,copy_method);
+  validation.simple_difference = GetAdvancedSlope(SLOPE_SIMPLE_DIFFERENCE, config.lookback,
+                                                  config.simple_difference_high, config.simple_difference_low,copy_method);
+  validation.percentage_change = GetAdvancedSlope(SLOPE_PERCENTAGE_CHANGE, config.lookback,
+                                                  config.percentage_change_high, config.percentage_change_low,copy_method);
+  validation.discrete_derivative = GetAdvancedSlope(SLOPE_DISCRETE_DERIVATIVE, config.lookback,
+                                                    config.discrete_derivative_high, config.discrete_derivative_low,copy_method);
+  validation.angle_degrees = GetAdvancedSlope(SLOPE_ANGLE_DEGREES, config.lookback,
+                                              config.angle_degrees_high, config.angle_degrees_low,copy_method);
 
   // Analisar consenso entre métodos
   validation = AnalyzeMethodsConsensus(validation, use_weighted_analysis);

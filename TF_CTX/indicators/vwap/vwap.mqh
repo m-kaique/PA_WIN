@@ -5,7 +5,7 @@
 #ifndef __VWAP_MQH__
 #define __VWAP_MQH__
 
-#include "../indicator_base.mqh"
+#include "../indicator_base/indicator_base.mqh"
 #include "vwap_defs.mqh"
 #include "../../config_types.mqh"
 

@@ -5,7 +5,7 @@
 #ifndef __SUP_RES_MQH__
 #define __SUP_RES_MQH__
 
-#include "../indicator_base.mqh"
+#include "../indicator_base/indicator_base.mqh"
 #include "sup_res_defs.mqh"
 #include "../../config_types.mqh"
 

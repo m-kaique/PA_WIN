@@ -5,7 +5,7 @@
 #ifndef __TRENDLINE_MQH__
 #define __TRENDLINE_MQH__
 
-#include "../indicator_base.mqh"
+#include "../indicator_base/indicator_base.mqh"
 #include "../../config_types.mqh"
 #include "trendline_defs.mqh"
 
