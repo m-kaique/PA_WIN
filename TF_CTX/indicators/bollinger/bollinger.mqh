@@ -47,7 +47,7 @@ public:
 
   virtual bool IsReady();
   virtual bool Update() override;
-  virtual SSlopeValidation GetSlopeValidation(int lookback, double threshold_high, double threshold_low, bool use_weighted_analysis, COPY_METHOD copy_method = COPY_MIDDLE) override;
+  virtual SSlopeValidation GetSlopeValidation(bool use_weighted_analysis, COPY_METHOD copy_method = COPY_MIDDLE) override;
 };
 
 //+------------------------------------------------------------------+
@@ -294,23 +294,23 @@ SSlopeResult CBollinger::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
   switch (method)
   {
   case SLOPE_LINEAR_REGRESSION:
-    result = CalculateLinearRegressionSlope(ma_values, lookback);
+    result = m_slope.CalculateLinearRegressionSlope(m_symbol, ma_values, lookback);
     break;
 
   case SLOPE_SIMPLE_DIFFERENCE:
-    result = CalculateSimpleDifference(ma_values, lookback);
+    result = m_slope.CalculateSimpleDifference(m_symbol, ma_values, lookback);
     break;
 
   case SLOPE_PERCENTAGE_CHANGE:
-    result = CalculatePercentageChange(ma_values, lookback);
+    result = m_slope.CalculatePercentageChange(m_symbol, ma_values, lookback);
     break;
 
   case SLOPE_DISCRETE_DERIVATIVE:
-    result = CalculateDiscreteDerivative(ma_values);
+    result = m_slope.CalculateDiscreteDerivative(m_symbol, ma_values);
     break;
 
   case SLOPE_ANGLE_DEGREES:
-    result = CalculateAngleDegrees(ma_values, lookback);
+    result = m_slope.CalculateAngleDegrees(m_symbol, ma_values, lookback);
     break;
   }
 
@@ -331,10 +331,7 @@ SSlopeResult CBollinger::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
 //+------------------------------------------------------------------+
 //| Validação cruzada com múltiplos métodos de inclinação          |
 //+------------------------------------------------------------------+
-SSlopeValidation CBollinger::GetSlopeValidation(int lookback = 10,
-                                                    double threshold_high = 0.5,
-                                                    double threshold_low = -0.5,
-                                                    bool use_weighted_analysis = true,
+SSlopeValidation CBollinger::GetSlopeValidation(    bool use_weighted_analysis = true,
                                                     COPY_METHOD copy_method = COPY_MIDDLE)
 {
   SSlopeValidation validation;

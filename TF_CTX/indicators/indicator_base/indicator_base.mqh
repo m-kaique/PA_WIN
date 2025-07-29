@@ -4,26 +4,22 @@
 //+------------------------------------------------------------------+
 #ifndef __INDICATOR_BASE_MQH__
 #define __INDICATOR_BASE_MQH__
-#include "indicator_base_defs.mqh" 
-
+#include "indicator_base_defs.mqh"
+#include "submodules/indicator_slope/slope.mqh"
 
 class CIndicatorBase
 {
-
+ 
 protected:
+  CSlope m_slope;
   string m_symbol;             // Símbolo
   ENUM_TIMEFRAMES m_timeframe; // TimeFrame
-  int handle;                  // Handle
+  int handle;                  // Handlef
   bool attach_chart;           // Flag para acoplar ao gráfico
   ENUM_TIMEFRAMES alert_tf;    // TF para alertas
 
   // Métodos privados para cálculo de inclinação avançada
   virtual SSlopeResult GetAdvancedSlope(ENUM_SLOPE_METHOD method, int lookback, double threshold_high, double threshold_low, COPY_METHOD copy_method = COPY_MIDDLE);
-  SSlopeResult CalculateLinearRegressionSlope(double &ma_values[], int lookback);
-  SSlopeResult CalculateSimpleDifference(double &ma_values[], int lookback);
-  SSlopeResult CalculatePercentageChange(double &ma_values[], int lookback);
-  SSlopeResult CalculateDiscreteDerivative(double &ma_values[]);
-  SSlopeResult CalculateAngleDegrees(double &ma_values[], int lookback);
   string GetTrendClassification(double slope_value, double strong_threshold, double weak_threshold);
 
   // Métodos privados para validação cruzada
@@ -45,7 +41,7 @@ public:
   virtual ~CIndicatorBase() {}
 
   // Metodos publicos slope
-  virtual SSlopeValidation GetSlopeValidation(int lookback, double threshold_high, double threshold_low, bool use_weighted_analysis, COPY_METHOD copy_method = COPY_MIDDLE);
+  virtual SSlopeValidation GetSlopeValidation(bool use_weighted_analysis, COPY_METHOD copy_method = COPY_MIDDLE);
   string GetSlopeAnalysisReport(SSlopeValidation &validation);
   void DebugSlopeValidation(SSlopeValidation &validation);
   double CalculateDirectionalConsensus(SSlopeValidation &validation);
@@ -108,23 +104,23 @@ SSlopeResult CIndicatorBase::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
   switch (method)
   {
   case SLOPE_LINEAR_REGRESSION:
-    result = CalculateLinearRegressionSlope(ma_values, lookback);
+    result = m_slope.CalculateLinearRegressionSlope(m_symbol, ma_values, lookback);
     break;
 
   case SLOPE_SIMPLE_DIFFERENCE:
-    result = CalculateSimpleDifference(ma_values, lookback);
+    result = m_slope.CalculateSimpleDifference(m_symbol, ma_values, lookback);
     break;
 
   case SLOPE_PERCENTAGE_CHANGE:
-    result = CalculatePercentageChange(ma_values, lookback);
+    result = m_slope.CalculatePercentageChange(m_symbol, ma_values, lookback);
     break;
 
   case SLOPE_DISCRETE_DERIVATIVE:
-    result = CalculateDiscreteDerivative(ma_values);
+    result = m_slope.CalculateDiscreteDerivative(m_symbol, ma_values);
     break;
 
   case SLOPE_ANGLE_DEGREES:
-    result = CalculateAngleDegrees(ma_values, lookback);
+    result = m_slope.CalculateAngleDegrees(m_symbol, ma_values, lookback);
     break;
   }
 
@@ -142,122 +138,6 @@ SSlopeResult CIndicatorBase::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
   return result;
 }
 
-//+------------------------------------------------------------------+
-//| Calcular inclinação por regressão linear                       |
-//+------------------------------------------------------------------+
-SSlopeResult CIndicatorBase::CalculateLinearRegressionSlope(double &ma_values[], int lookback)
-{
-  SSlopeResult result;
-  result.slope_value = 0.0;
-  result.r_squared = 0.0;
-
-  double sum_x = 0.0, sum_y = 0.0, sum_xy = 0.0, sum_x2 = 0.0, sum_y2 = 0.0;
-  int n = lookback;
-
-  // CORREÇÃO: Usar índices temporais corretos
-  // x representa tempo: valores maiores = mais recente
-  // y representa valor da MA
-  for (int i = 0; i < n; i++)
-  {
-    double x = n - i;        // ✅ Tempo crescente: passado → presente
-    double y = ma_values[i]; // ma_values[0] = mais recente
-
-    sum_x += x;
-    sum_y += y;
-    sum_xy += x * y;
-    sum_x2 += x * x;
-    sum_y2 += y * y;
-  }
-
-  // Calcular slope (inclinação)
-  double denominator = n * sum_x2 - sum_x * sum_x;
-  if (denominator != 0.0)
-  {
-    result.slope_value = (n * sum_xy - sum_x * sum_y) / denominator;
-
-    // Calcular R² (coeficiente de determinação)
-    double numerator = n * sum_xy - sum_x * sum_y;
-    double denom_r2 = MathSqrt((n * sum_x2 - sum_x * sum_x) * (n * sum_y2 - sum_y * sum_y));
-    if (denom_r2 != 0.0)
-    {
-      double r = numerator / denom_r2;
-      result.r_squared = r * r;
-    }
-  }
-
-  // Normalizar para pips
-  double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
-  int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
-  double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
-  result.slope_value = result.slope_value / pip_value;
-
-  return result;
-}
-
-//+------------------------------------------------------------------+
-//| Calcular diferença simples                                     |
-//+------------------------------------------------------------------+
-SSlopeResult CIndicatorBase::CalculateSimpleDifference(double &ma_values[], int lookback)
-{
-  SSlopeResult result;
-  result.slope_value = ma_values[0] - ma_values[lookback];
-
-  // Normalizar para pips
-  double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
-  int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
-  double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
-  result.slope_value = result.slope_value / pip_value;
-
-  return result;
-}
-
-//+------------------------------------------------------------------+
-//| Calcular mudança percentual                                    |
-//+------------------------------------------------------------------+
-SSlopeResult CIndicatorBase::CalculatePercentageChange(double &ma_values[], int lookback)
-{
-  SSlopeResult result;
-
-  if (ma_values[lookback] != 0.0)
-  {
-    result.slope_value = ((ma_values[0] / ma_values[lookback]) - 1.0) * 100.0;
-  }
-
-  return result;
-}
-
-//+------------------------------------------------------------------+
-//| Calcular derivada discreta                                     |
-//+------------------------------------------------------------------+
-SSlopeResult CIndicatorBase::CalculateDiscreteDerivative(double &ma_values[])
-{
-  SSlopeResult result;
-  result.slope_value = ma_values[0] - ma_values[1];
-
-  // Normalizar para pips
-  double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
-  int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
-  double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
-  result.slope_value = result.slope_value / pip_value;
-
-  return result;
-}
-
-//+------------------------------------------------------------------+
-//| Calcular ângulo em graus                                       |
-//+------------------------------------------------------------------+
-SSlopeResult CIndicatorBase::CalculateAngleDegrees(double &ma_values[], int lookback)
-{
-  SSlopeResult result;
-
-  double vertical_diff = ma_values[0] - ma_values[lookback];
-  double horizontal_diff = lookback;
-
-  double angle_rad = MathArctan(vertical_diff / horizontal_diff);
-  result.slope_value = angle_rad * 180.0 / M_PI;
-
-  return result;
-}
 
 //+------------------------------------------------------------------+
 //| Obter classificação da tendência baseada em bandas             |
@@ -281,7 +161,7 @@ string CIndicatorBase::GetTrendClassification(double slope_value,
 //+------------------------------------------------------------------+
 //| Validação cruzada com múltiplos métodos de inclinação          |
 //+------------------------------------------------------------------+
-SSlopeValidation CIndicatorBase::GetSlopeValidation(int lookback, double threshold_high, double threshold_low, bool use_weighted_analysis, COPY_METHOD copy_method = COPY_MIDDLE)
+SSlopeValidation CIndicatorBase::GetSlopeValidation(bool use_weighted_analysis, COPY_METHOD copy_method = COPY_MIDDLE)
 {
   SSlopeValidation validation;
 

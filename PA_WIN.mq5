@@ -194,7 +194,7 @@ void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
       CMovingAverages *ema = ctx.GetIndicator("ema9");
       if (ema != NULL)
       {
-         SSlopeValidation full_validation = ema.GetSlopeValidation(9, 0.45, -0.45, true);
+         SSlopeValidation full_validation = ema.GetSlopeValidation(true);
          Print("EMA9: " + (string)full_validation.final_trend);
 
          
@@ -204,7 +204,7 @@ void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
       CVWAP *vwap = ctx.GetIndicator("vwap_diario_fin");
       if (vwap != NULL)
       {
-         SSlopeValidation full_validation = vwap.GetSlopeValidation(9, 0.45, -0.45, true);
+         SSlopeValidation full_validation = vwap.GetSlopeValidation(true);
          Print("VWAP: " + (string)full_validation.final_trend);
 
          // ema.DebugSlopeValidation(full_validation);
@@ -213,15 +213,15 @@ void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
       if (boll20 != NULL)
       {
          Print("#CIMA#");
-         SSlopeValidation full_validationUpper = boll20.GetSlopeValidation(9, 0.45, -0.45, true, COPY_UPPER);
+         SSlopeValidation full_validationUpper = boll20.GetSlopeValidation(true, COPY_UPPER);
          boll20.DebugSlopeValidation(full_validationUpper);
 
          Print("#MEIO#");
-         SSlopeValidation full_validation = boll20.GetSlopeValidation(9, 0.45, -0.45, true, COPY_MIDDLE);
+         SSlopeValidation full_validation = boll20.GetSlopeValidation(true, COPY_MIDDLE);
          boll20.DebugSlopeValidation(full_validation);
 
          Print("#BAXO#");
-         SSlopeValidation full_validationLower = boll20.GetSlopeValidation(9, 0.45, -0.45, true, COPY_LOWER);
+         SSlopeValidation full_validationLower = boll20.GetSlopeValidation(true, COPY_LOWER);
          boll20.DebugSlopeValidation(full_validationLower);
       }
    }
