@@ -236,7 +236,7 @@ void CheckCandlePosition(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
       if (sma != NULL)
       {
          SPositionInfo posx = sma.GetPositionInfo(1);
-         Print("Posição: " + sma.GetCandlePositionDescription(posx.position));
+         Print("Posição: " + sma.m_candle_distance.GetCandlePositionDescription(posx.position));
          Print("Distância: " + string(posx.distance));
       }
    }
@@ -266,7 +266,7 @@ void UpdateSymbolContexts(string symbol)
       if (ctx.HasNewBar())
       {
          ctx.Update();
-         CheckCtxMASlope(tf, ctx);
+         // CheckCtxMASlope(tf, ctx);
          CheckCandlePosition(tf, ctx);
       }
    }

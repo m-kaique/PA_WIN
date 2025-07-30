@@ -5,30 +5,4 @@
 #ifndef __INDICATOR_BASE_DEFS_MQH__
 #define __INDICATOR_BASE_DEFS_MQH__
 
-//+------------------------------------------------------------------+
-//| Enumeração para a posição do candle em relação ao indicador      |
-//+------------------------------------------------------------------+
-enum ENUM_CANDLE_POSITION
-{
-  CANDLE_COMPLETELY_ABOVE = 0,          // Candle completamente acima do indicador
-  CANDLE_COMPLETELY_BELOW = 1,          // Candle completamente abaixo do indicador
-  INDICATOR_CROSSES_UPPER_BODY = 2,     // Indicador cruza a parte superior do corpo
-  INDICATOR_CROSSES_LOWER_BODY = 3,     // Indicador cruza a parte inferior do corpo
-  INDICATOR_CROSSES_UPPER_SHADOW = 4,   // Indicador cruza a sombra superior
-  INDICATOR_CROSSES_LOWER_SHADOW = 5,   // Indicador cruza a sombra inferior
-  INDICATOR_ON_CANDLE_EXACT = 6,        // Indicador no nível exato do candle
-  INDICATOR_CANDLE_POSITION_FAILED = 7, // Falha ao determinar a posição
-  CANDLE_ABOVE_WITH_DISTANCE = 8,       // Candle completamente acima com distância
-  CANDLE_BELOW_WITH_DISTANCE = 9        // Candle completamente abaixo com distância
-};
-
-//+------------------------------------------------------------------+
-//| Estrutura para informações detalhadas da posição do candle       |
-//+------------------------------------------------------------------+
-struct SPositionInfo
-{
-  ENUM_CANDLE_POSITION position; // Posição do candle
-  double distance;               // Distância em pips (se aplicável)
-};
-
 #endif // __INDICATOR_BASE_DEFS_MQH__
