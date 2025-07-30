@@ -48,13 +48,6 @@ struct SSlopeValidation
   string risk_level;     // Nível de risco do sinal
 };
 
-enum COPY_METHOD
-{
-  COPY_UPPER,
-  COPY_LOWER,
-  COPY_MIDDLE
-};
-
 struct SThresholdConfig {
     int lookback;
     double linear_regression_high, linear_regression_low;

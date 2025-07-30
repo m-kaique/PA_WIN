@@ -50,7 +50,7 @@ protected:
     return false; // não precisa acoplar
   }
 
-  SPositionInfo GetPositionInfo(int shift);
+  virtual SPositionInfo GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE);
   CSlope m_slope;              // Classe Cálculo Inclinação 
   CIndCandleDistance m_candle_distance;
 };
@@ -159,7 +159,7 @@ SSlopeResult CIndicatorBase::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
 }
 
 
-SPositionInfo CIndicatorBase::GetPositionInfo(int shift){
+SPositionInfo CIndicatorBase::GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE){
   double ind_value = GetValue(shift);
   SPositionInfo result;
   result.distance = 0.0;

@@ -230,13 +230,33 @@ void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 //+------------------------------------------------------------------+
 void CheckCandlePosition(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 {
-   if (tf == PERIOD_H4)
+   // if (tf == PERIOD_H4)
+   // {
+   //    CMovingAverages *sma = ctx.GetIndicator("sma200");
+   //    if (sma != NULL)
+   //    {
+   //       SPositionInfo posx = sma.GetPositionInfo(1);
+   //       Print("Posição: " + sma.m_candle_distance.GetCandlePositionDescription(posx.position));
+   //       Print("Distância: " + string(posx.distance));
+   //    }
+   // }
+
+   if (tf == PERIOD_M15)
    {
-      CMovingAverages *sma = ctx.GetIndicator("sma200");
-      if (sma != NULL)
+      CBollinger *boll = ctx.GetIndicator("boll20");
+      if (boll != NULL)
       {
-         SPositionInfo posx = sma.GetPositionInfo(1);
-         Print("Posição: " + sma.m_candle_distance.GetCandlePositionDescription(posx.position));
+
+         SPositionInfo posy = boll.GetPositionInfo(1, COPY_UPPER);
+         Print("COPY_UPPER: " + boll.m_candle_distance.GetCandlePositionDescription(posy.position));
+         Print("Distância: " + string(posy.distance));
+
+         SPositionInfo pos = boll.GetPositionInfo(1, COPY_MIDDLE);
+         Print("COPY_MIDDLE: " + boll.m_candle_distance.GetCandlePositionDescription(pos.position));
+         Print("Distância: " + string(pos.distance));
+
+         SPositionInfo posx = boll.GetPositionInfo(1, COPY_LOWER);
+         Print("COPY_LOWER: " + boll.m_candle_distance.GetCandlePositionDescription(posx.position));
          Print("Distância: " + string(posx.distance));
       }
    }

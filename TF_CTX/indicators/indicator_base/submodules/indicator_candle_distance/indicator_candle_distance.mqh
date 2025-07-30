@@ -5,7 +5,7 @@
 class CIndCandleDistance{
    public:
    SPositionInfo GetPreviousCandlePosition(int shift, string symbol, ENUM_TIMEFRAMES tf, double indValue);
-  string GetCandlePositionDescription(ENUM_CANDLE_POSITION position);
+   string GetCandlePositionDescription(ENUM_CANDLE_POSITION position);
 };
 
 

@@ -47,7 +47,8 @@ public:
 
   virtual bool IsReady();
   virtual bool Update() override;
-  virtual SSlopeValidation GetSlopeValidation(bool use_weighted_analysis, COPY_METHOD copy_method = COPY_MIDDLE) override;
+  SSlopeValidation GetSlopeValidation(bool use_weighted_analysis, COPY_METHOD copy_method = COPY_MIDDLE) override;
+  SPositionInfo GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE) override;
 };
 
 //+------------------------------------------------------------------+
@@ -118,7 +119,7 @@ bool CBollinger::CreateHandle()
   {
     Print("ERRO: Falha ao criar handle Bollinger para ", m_symbol);
     return false;
-  } 
+  }
   return true;
 }
 
@@ -153,7 +154,7 @@ double CBollinger::GetBufferValue(int buffer_index, int shift)
 //+------------------------------------------------------------------+
 double CBollinger::GetValue(int shift)
 {
-  return GetBufferValue(2, shift);
+  return GetBufferValue(0, shift);
 }
 
 //+------------------------------------------------------------------+
@@ -161,7 +162,7 @@ double CBollinger::GetValue(int shift)
 //+------------------------------------------------------------------+
 double CBollinger::GetUpper(int shift)
 {
-  return GetBufferValue(0, shift);
+  return GetBufferValue(1, shift);
 }
 
 //+------------------------------------------------------------------+
@@ -169,7 +170,7 @@ double CBollinger::GetUpper(int shift)
 //+------------------------------------------------------------------+
 double CBollinger::GetLower(int shift)
 {
-  return GetBufferValue(1, shift);
+  return GetBufferValue(2, shift);
 }
 
 //+------------------------------------------------------------------+
@@ -331,8 +332,8 @@ SSlopeResult CBollinger::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
 //+------------------------------------------------------------------+
 //| Validação cruzada com múltiplos métodos de inclinação          |
 //+------------------------------------------------------------------+
-SSlopeValidation CBollinger::GetSlopeValidation(    bool use_weighted_analysis = true,
-                                                    COPY_METHOD copy_method = COPY_MIDDLE)
+SSlopeValidation CBollinger::GetSlopeValidation(bool use_weighted_analysis = true,
+                                                COPY_METHOD copy_method = COPY_MIDDLE)
 {
   SSlopeValidation validation;
 
@@ -352,20 +353,47 @@ SSlopeValidation CBollinger::GetSlopeValidation(    bool use_weighted_analysis =
 
   // Calcular inclinação com configurações específicas
   validation.linear_regression = GetAdvancedSlope(SLOPE_LINEAR_REGRESSION, config.lookback,
-                                                  config.linear_regression_high, config.linear_regression_low,copy_method);
+                                                  config.linear_regression_high, config.linear_regression_low, copy_method);
   validation.simple_difference = GetAdvancedSlope(SLOPE_SIMPLE_DIFFERENCE, config.lookback,
-                                                  config.simple_difference_high, config.simple_difference_low,copy_method);
+                                                  config.simple_difference_high, config.simple_difference_low, copy_method);
   validation.percentage_change = GetAdvancedSlope(SLOPE_PERCENTAGE_CHANGE, config.lookback,
-                                                  config.percentage_change_high, config.percentage_change_low,copy_method);
+                                                  config.percentage_change_high, config.percentage_change_low, copy_method);
   validation.discrete_derivative = GetAdvancedSlope(SLOPE_DISCRETE_DERIVATIVE, config.lookback,
-                                                    config.discrete_derivative_high, config.discrete_derivative_low,copy_method);
+                                                    config.discrete_derivative_high, config.discrete_derivative_low, copy_method);
   validation.angle_degrees = GetAdvancedSlope(SLOPE_ANGLE_DEGREES, config.lookback,
-                                              config.angle_degrees_high, config.angle_degrees_low,copy_method);
+                                              config.angle_degrees_high, config.angle_degrees_low, copy_method);
 
   // Analisar consenso entre métodos
   validation = m_slope.AnalyzeMethodsConsensus(validation, use_weighted_analysis);
 
   return validation;
+}
+
+SPositionInfo CBollinger::GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE)
+{
+
+  double ind_value = 0;
+
+  if (copy_method == COPY_LOWER)
+  {
+    Print("COPIA - LOWER");
+    ind_value = GetLower(shift);
+  }
+  else if (copy_method == COPY_UPPER)
+  {
+        Print("COPIA - UPPER");
+    ind_value = GetUpper(shift);
+  }
+  else
+  {
+        Print("COPIA - MIDDLE");
+    ind_value = GetValue(shift);
+  }
+
+  SPositionInfo result;
+  result.distance = 0.0;
+  result = m_candle_distance.GetPreviousCandlePosition(shift, m_symbol, m_timeframe, ind_value);
+  return result;
 }
 
 #endif // __BOLLINGER_MQH__
