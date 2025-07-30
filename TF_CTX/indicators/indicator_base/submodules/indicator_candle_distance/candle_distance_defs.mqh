@@ -1,0 +1,4 @@
+#ifndef __IND_CANDLE_DISTANCE_DEFS_MQH__
+#define __IND_CANDLE_DISTANCE_DEFS_MQH__
+
+#endif

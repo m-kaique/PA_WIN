@@ -197,8 +197,6 @@ void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
          SSlopeValidation full_validation = ema.GetSlopeValidation(true);
          Print("EMA9: " + (string)full_validation.final_trend);
 
-         
-
          // ema.DebugSlopeValidation(full_validation);
       }
       CVWAP *vwap = ctx.GetIndicator("vwap_diario_fin");
@@ -214,15 +212,15 @@ void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
       {
          Print("#CIMA#");
          SSlopeValidation full_validationUpper = boll20.GetSlopeValidation(true, COPY_UPPER);
-         boll20.DebugSlopeValidation(full_validationUpper);
+         boll20.m_slope.DebugSlopeValidation(full_validationUpper);
 
          Print("#MEIO#");
          SSlopeValidation full_validation = boll20.GetSlopeValidation(true, COPY_MIDDLE);
-         boll20.DebugSlopeValidation(full_validation);
+         boll20.m_slope.DebugSlopeValidation(full_validation);
 
          Print("#BAXO#");
          SSlopeValidation full_validationLower = boll20.GetSlopeValidation(true, COPY_LOWER);
-         boll20.DebugSlopeValidation(full_validationLower);
+         boll20.m_slope.DebugSlopeValidation(full_validationLower);
       }
    }
 }
@@ -237,7 +235,7 @@ void CheckCandlePosition(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
       CMovingAverages *sma = ctx.GetIndicator("sma200");
       if (sma != NULL)
       {
-         SPositionInfo posx = sma.GetPreviousCandlePosition(1);
+         SPositionInfo posx = sma.GetPositionInfo(1);
          Print("Posição: " + sma.GetCandlePositionDescription(posx.position));
          Print("Distância: " + string(posx.distance));
       }

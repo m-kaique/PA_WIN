@@ -342,7 +342,7 @@ SSlopeValidation CBollinger::GetSlopeValidation(    bool use_weighted_analysis =
     return validation;
   }
 
-   // TYPES ----------
+  // TYPES ----------
   // TRADING_SCALPING
   // TRADING_SWING
   // TRADING_POSITION
@@ -363,7 +363,7 @@ SSlopeValidation CBollinger::GetSlopeValidation(    bool use_weighted_analysis =
                                               config.angle_degrees_high, config.angle_degrees_low,copy_method);
 
   // Analisar consenso entre métodos
-  validation = AnalyzeMethodsConsensus(validation, use_weighted_analysis);
+  validation = m_slope.AnalyzeMethodsConsensus(validation, use_weighted_analysis);
 
   return validation;
 }

@@ -1,7 +1,6 @@
 #ifndef __INDICATOR_SLOPE_DEFS_MQH__
 #define __INDICATOR_SLOPE_DEFS_MQH__
 
-
 //+------------------------------------------------------------------+
 //| Enumeração para métodos de cálculo de inclinação               |
 //+------------------------------------------------------------------+
