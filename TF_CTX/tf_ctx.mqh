@@ -46,9 +46,7 @@ public:
   bool Update();
   double GetIndicatorValue(string name, int shift = 0);
   bool CopyIndicatorValues(string name, int shift, int count, double &buffer[]);
-  double GetPriceActionValue(string name, int shift = 0);
   CIndicatorBase *GetIndicator(string name);
-  bool CopyPriceActionValues(string name, int shift, int count, double &buffer[]);
   bool HasNewBar();
 };
 

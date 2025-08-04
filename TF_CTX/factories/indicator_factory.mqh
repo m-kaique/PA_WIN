@@ -9,6 +9,8 @@
 #include "../indicators/fibonacci/fibonacci.mqh"
 #include "../indicators/trendline/trendline.mqh"
 #include "../indicators/sup_res/sup_res.mqh"
+#include "../indicators/atr/atr.mqh"
+#include "../indicators/adx/adx.mqh"
 #include "../config_types.mqh"
 
 // Creator function signature
@@ -41,6 +43,8 @@ private:
    static CIndicatorBase *CreateFIBO(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg);
    static CIndicatorBase *CreateTrendline(string Symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg);
    static CIndicatorBase *CreateSupRes(string Symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg);
+   static CIndicatorBase *CreateATR(string Symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg);
+   static CIndicatorBase *CreateADX(string Symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg);
 
 public:
    static CIndicatorFactory *Instance()
@@ -93,6 +97,32 @@ void CIndicatorFactory::RegisterDefaults()
    Register("FIBO", CreateFIBO);
    Register("TRENDLINE", CreateTrendline);
    Register("SUPRES", CreateSupRes);
+   Register("ATR", CreateATR);
+   Register("ADX", CreateADX);
+}
+
+CIndicatorBase *CIndicatorFactory::CreateADX(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg)
+{
+   CAdxConfig *c = (CAdxConfig *)cfg;
+   if (c == NULL)
+      return NULL;
+   CADX *ind = new CADX();
+   if (ind != NULL && ind.Init(symbol, tf, *c))
+      return ind;
+   delete ind;
+   return NULL;
+}
+
+CIndicatorBase *CIndicatorFactory::CreateATR(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg)
+{
+   CAtrConfig *c = (CAtrConfig *)cfg;
+   if (c == NULL)
+      return NULL;
+   CATR *ind = new CATR();
+   if (ind != NULL && ind.Init(symbol, tf, *c))
+      return ind;
+   delete ind;
+   return NULL;
 }
 
 CIndicatorBase *CIndicatorFactory::CreateMA(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg)

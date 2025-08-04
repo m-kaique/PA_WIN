@@ -1,2 +1,0 @@
-tolerancia da distancia => cfg
-override boll e fibo

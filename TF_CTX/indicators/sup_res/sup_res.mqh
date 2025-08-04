@@ -493,7 +493,8 @@ void CSupRes::CalculatePriceZones(const double &highs[], const double &lows[], i
     for (int j = i + 1; j < n; j++)
       if (zones[j].touches > zones[i].touches)
       {
-        SRZone tmp = zones[i];
+        SRZone tmp;
+        tmp = zones[i];
         zones[i] = zones[j];
         zones[j] = tmp;
       }
@@ -545,7 +546,8 @@ void CSupRes::ClassifyZones()
     for (int j = i + 1; j < ArraySize(m_current_supports); j++)
       if (m_current_supports[j].upper > m_current_supports[i].upper)
       {
-        SRZone tmp = m_current_supports[i];
+        SRZone tmp;
+        tmp = m_current_supports[i];
         m_current_supports[i] = m_current_supports[j];
         m_current_supports[j] = tmp;
       }
@@ -555,7 +557,8 @@ void CSupRes::ClassifyZones()
     for (int j = i + 1; j < ArraySize(m_current_resistances); j++)
       if (m_current_resistances[j].lower < m_current_resistances[i].lower)
       {
-        SRZone tmp = m_current_resistances[i];
+        SRZone tmp;
+        tmp = m_current_resistances[i];
         m_current_resistances[i] = m_current_resistances[j];
         m_current_resistances[j] = tmp;
       }

@@ -349,7 +349,8 @@ SSlopeValidation CBollinger::GetSlopeValidation(bool use_weighted_analysis = tru
   // TRADING_POSITION
 
   // Obter configuração otimizada
-  SThresholdConfig config = GetOptimizedConfig(m_timeframe, TRADING_SCALPING);
+  SThresholdConfig config;
+  config = GetOptimizedConfig(m_timeframe, TRADING_SCALPING);
 
   // Calcular inclinação com configurações específicas
   validation.linear_regression = GetAdvancedSlope(SLOPE_LINEAR_REGRESSION, config.lookback,
@@ -381,12 +382,12 @@ SPositionInfo CBollinger::GetPositionInfo(int shift, COPY_METHOD copy_method = C
   }
   else if (copy_method == COPY_UPPER)
   {
-        Print("COPIA - UPPER");
+    Print("COPIA - UPPER");
     ind_value = GetUpper(shift);
   }
   else
   {
-        Print("COPIA - MIDDLE");
+    Print("COPIA - MIDDLE");
     ind_value = GetValue(shift);
   }
 

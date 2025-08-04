@@ -35,7 +35,7 @@ public:
   ENUM_MA_METHOD method;
   CMAConfig()
   {
-    period = 0;
+    period = 0; 
     method = MODE_SMA;
   }
 };
@@ -57,6 +57,23 @@ public:
     method = MODE_SMA;
     price_field = STO_LOWHIGH;
   }
+};
+
+
+//--- ADX
+class CAdxConfig : public CIndicatorConfig
+{
+public:
+  int period;
+  CAdxConfig() { period = 11; }
+};
+
+//--- ATR
+class CAtrConfig : public CIndicatorConfig
+{
+public:
+  int period;
+  CAtrConfig() { period = 14; }
 };
 
 //--- Volume

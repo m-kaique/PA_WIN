@@ -293,7 +293,8 @@ bool CConfigManager::CreateContexts()
                 continue;
             }
 
-            STimeframeConfig config = ParseTimeframeConfig(tf_config, tf);
+            STimeframeConfig config;
+            config = ParseTimeframeConfig(tf_config, tf);
             Print("TimeFrame ", tf_str, " - Enabled: ", config.enabled, " NumCandles: ", config.num_candles);
 
             if (!config.enabled)
@@ -617,6 +618,19 @@ CIndicatorConfig *CConfigManager::CreateIndicatorConfig(CJAVal *ind)
         FillIndicatorBase(*p, ind, type);
         p.shift = (int)ind["shift"].ToInt();
         return p;
+    }    else if (type == "ADX")
+    {
+        CAdxConfig *p = new CAdxConfig();
+        FillIndicatorBase(*p, ind, type);
+        p.period = (int)ind["period"].ToInt();
+        return p;
+    }
+    else if (type == "ATR")
+    {
+        CAtrConfig *p = new CAtrConfig();
+        FillIndicatorBase(*p, ind, type);
+        p.period = (int)ind["period"].ToInt();
+        return p;
     }
     else if (type == "VWAP")
     {
@@ -730,14 +744,11 @@ CIndicatorConfig *CConfigManager::CreateIndicatorConfig(CJAVal *ind)
                 p.advanced_features.status_evaluate_mode = mode;
             p.advanced_features.register_resets = adv["register_resets"].ToBool();
         }
-
-        // if (p.alert_tf == PERIOD_CURRENT)
-        //     p.alert_tf = ctx_tf;
         return p;
     }
     else if (type == "SUPRES")
     {
-          CSupResConfig *p = new CSupResConfig();
+        CSupResConfig *p = new CSupResConfig();
         FillIndicatorBase(*p, ind, type);
         p.period = (int)ind["period"].ToInt();
         p.draw_sup = ind["draw_sup"].ToBool();

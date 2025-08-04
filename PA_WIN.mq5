@@ -93,6 +93,8 @@ void OnTick()
 
    // Executar lógica apenas em novos candles
    ExecuteOnNewBar();
+   //CheckCOnditions(PERIOD_M5);
+   //manage_positions(PERIOD_M5);
 }
 
 //+------------------------------------------------------------------+
@@ -127,7 +129,8 @@ void CheckCtxTrendLine(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
          if (pos != "")
             Print("Posicao do preco em H1: ", pos);
 
-         CTrendLine::SCandleFullInfo cd = tl.GetCandleFullInfo(1);
+         CTrendLine::SCandleFullInfo cd;
+         cd = tl.GetCandleFullInfo(1);
 
          // Cabeçalho da análise do candle
          Print("========== ANÁLISE CANDLE[1] - H1 ==========");
@@ -194,32 +197,37 @@ void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
       CMovingAverages *ema = ctx.GetIndicator("ema9");
       if (ema != NULL)
       {
-         SSlopeValidation full_validation = ema.GetSlopeValidation(true);
+         SSlopeValidation full_validation;
+         full_validation = ema.GetSlopeValidation(true);
          Print("EMA9: " + (string)full_validation.final_trend);
-
          // ema.DebugSlopeValidation(full_validation);
       }
       CVWAP *vwap = ctx.GetIndicator("vwap_diario_fin");
       if (vwap != NULL)
       {
-         SSlopeValidation full_validation = vwap.GetSlopeValidation(true);
+         SSlopeValidation full_validation ;
+         full_validation = vwap.GetSlopeValidation(true);
          Print("VWAP: " + (string)full_validation.final_trend);
-
          // ema.DebugSlopeValidation(full_validation);
       }
+
       CBollinger *boll20 = ctx.GetIndicator("boll20");
+
       if (boll20 != NULL)
       {
          Print("#CIMA#");
-         SSlopeValidation full_validationUpper = boll20.GetSlopeValidation(true, COPY_UPPER);
+         SSlopeValidation full_validationUpper ;
+         full_validationUpper = boll20.GetSlopeValidation(true, COPY_UPPER);
          boll20.m_slope.DebugSlopeValidation(full_validationUpper);
 
          Print("#MEIO#");
-         SSlopeValidation full_validation = boll20.GetSlopeValidation(true, COPY_MIDDLE);
+         SSlopeValidation full_validation ;
+         full_validation = boll20.GetSlopeValidation(true, COPY_MIDDLE);
          boll20.m_slope.DebugSlopeValidation(full_validation);
 
          Print("#BAXO#");
-         SSlopeValidation full_validationLower = boll20.GetSlopeValidation(true, COPY_LOWER);
+         SSlopeValidation full_validationLower ;
+         full_validationLower = boll20.GetSlopeValidation(true, COPY_LOWER);
          boll20.m_slope.DebugSlopeValidation(full_validationLower);
       }
    }
@@ -247,15 +255,18 @@ void CheckCandlePosition(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
       if (boll != NULL)
       {
 
-         SPositionInfo posy = boll.GetPositionInfo(1, COPY_UPPER);
+         SPositionInfo posy;
+         posy = boll.GetPositionInfo(1, COPY_UPPER);
          Print("COPY_UPPER: " + boll.m_candle_distance.GetCandlePositionDescription(posy.position));
          Print("Distância: " + string(posy.distance));
 
-         SPositionInfo pos = boll.GetPositionInfo(1, COPY_MIDDLE);
+         SPositionInfo pos ;
+         pos= boll.GetPositionInfo(1, COPY_MIDDLE);
          Print("COPY_MIDDLE: " + boll.m_candle_distance.GetCandlePositionDescription(pos.position));
          Print("Distância: " + string(pos.distance));
 
-         SPositionInfo posx = boll.GetPositionInfo(1, COPY_LOWER);
+         SPositionInfo posx;
+         posx = boll.GetPositionInfo(1, COPY_LOWER);
          Print("COPY_LOWER: " + boll.m_candle_distance.GetCandlePositionDescription(posx.position));
          Print("Distância: " + string(posx.distance));
       }
@@ -286,10 +297,10 @@ void UpdateSymbolContexts(string symbol)
       if (ctx.HasNewBar())
       {
          ctx.Update();
-         // CheckCtxMASlope(tf, ctx);
-         CheckCandlePosition(tf, ctx);
+         CheckCtxMASlope(tf, ctx);
+         //CheckCandlePosition(tf, ctx);
       }
-   }
+   } 
 }
 
 //+------------------------------------------------------------------+
@@ -304,6 +315,8 @@ void ExecuteOnNewBar()
    {
       UpdateSymbolContexts(symbols[i]);
    }
+
+   // Avaliar confluencias indxind e tfxtf
 }
 
 //+------------------------------------------------------------------+

@@ -6,14 +6,13 @@
 #ifndef __INDICATOR_BASE_MQH__
 #define __INDICATOR_BASE_MQH__
 #include "indicator_base_defs.mqh"
-#include "submodules/indicator_slope/slope.mqh" 
+#include "submodules/indicator_slope/slope.mqh"
 #include "submodules/indicator_candle_distance/indicator_candle_distance.mqh"
 
+class CIndicatorBase
+{
 
-class CIndicatorBase{
- 
 protected:
-  
   string m_symbol;             // Símbolo
   ENUM_TIMEFRAMES m_timeframe; // TimeFrame
   int handle;                  // Handlef
@@ -22,10 +21,7 @@ protected:
   // Métodos privados para cálculo de inclinação avançada
   virtual SSlopeResult GetAdvancedSlope(ENUM_SLOPE_METHOD method, int lookback, double threshold_high, double threshold_low, COPY_METHOD copy_method = COPY_MIDDLE);
 
-
-
-  public:
-
+public:
   virtual bool Init(string symbol, ENUM_TIMEFRAMES timeframe, int period, ENUM_MA_METHOD method) = 0;
   virtual double GetValue(int shift = 0) = 0;
   virtual bool CopyValues(int shift, int count, double &buffer[]) = 0;
@@ -51,10 +47,9 @@ protected:
   }
 
   virtual SPositionInfo GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE);
-  CSlope m_slope;              // Classe Cálculo Inclinação 
+  CSlope m_slope; // Classe Cálculo Inclinação
   CIndCandleDistance m_candle_distance;
 };
-
 
 //+------------------------------------------------------------------+
 //| Validação cruzada com múltiplos métodos de inclinação          |
@@ -70,7 +65,8 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(bool use_weighted_analysis =
   // TRADING_POSITION
 
   // Obter configuração otimizada
-  SThresholdConfig config = GetOptimizedConfig(m_timeframe, TRADING_SCALPING);
+  SThresholdConfig config;
+  config = GetOptimizedConfig(m_timeframe, TRADING_SCALPING);
 
   // Calcular inclinação com configurações específicas
   validation.linear_regression = GetAdvancedSlope(SLOPE_LINEAR_REGRESSION, config.lookback,
@@ -90,8 +86,7 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(bool use_weighted_analysis =
   return validation;
 }
 
-
- //+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
 //| Calcular inclinação avançada do Indicador                       |
 //+------------------------------------------------------------------+
 // INDICADOR_BASE.GetSlopeValidation->GetAdvancedslope
@@ -158,14 +153,13 @@ SSlopeResult CIndicatorBase::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
   return result;
 }
 
-
-SPositionInfo CIndicatorBase::GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE){
+SPositionInfo CIndicatorBase::GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE)
+{
   double ind_value = GetValue(shift);
   SPositionInfo result;
   result.distance = 0.0;
   result = m_candle_distance.GetPreviousCandlePosition(shift, m_symbol, m_timeframe, ind_value);
   return result;
 }
-
 
 #endif // __INDICATOR_BASE_MQH__
