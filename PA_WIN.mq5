@@ -193,43 +193,89 @@ void CheckCtxTrendLine(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 {
    if (tf == PERIOD_M15)
-   {
+   {   
+
+      double cavalo = 0;
+
+      CATR *atr_m15 = ctx.GetIndicator("ATR15");
+      if (atr_m15 != NULL)
+      {
+         Print("###  atr_m15");
+         double atr_value = atr_m15.GetValue(1);
+         cavalo = atr_value;
+         Print("valor: " + (string)atr_value);
+      }
+
       CMovingAverages *ema = ctx.GetIndicator("ema9");
       if (ema != NULL)
       {
+         Print("###  EMA9");
          SSlopeValidation full_validation;
          full_validation = ema.GetSlopeValidation(true);
-         Print("EMA9: " + (string)full_validation.final_trend);
-         // ema.DebugSlopeValidation(full_validation);
+
+         full_validation.linear_regression.slope_value = (full_validation.linear_regression.slope_value/cavalo);
+         full_validation.simple_difference.slope_value = (full_validation.simple_difference.slope_value/cavalo);
+         full_validation.discrete_derivative.slope_value = (full_validation.discrete_derivative.slope_value/cavalo);
+
+         // RL norm ATR
+         if(full_validation.linear_regression.slope_value > 0.15){
+            full_validation.linear_regression.trend_direction = "cavalo_UP";
+         } else if (full_validation.linear_regression.slope_value < -0.15){
+            full_validation.linear_regression.trend_direction = "cavalo_DOWN";
+         }else{
+            full_validation.linear_regression.trend_direction = "cavalo_SIDEWALK";
+         }
+
+         // RL norm DIFF
+         if(full_validation.simple_difference.slope_value > 1.5){
+            full_validation.simple_difference.trend_direction = "cavalo_UP";
+         } else if (full_validation.simple_difference.slope_value < -1.5){
+            full_validation.simple_difference.trend_direction = "cavalo_DOWN";
+         }else{
+            full_validation.simple_difference.trend_direction = "cavalo_SIDEWALK";
+         }
+
+         // RL norm ATR
+         if(full_validation.discrete_derivative.slope_value > 0.15){
+            full_validation.discrete_derivative.trend_direction = "cavalo_UP";
+         } else if (full_validation.discrete_derivative.slope_value < -0.15){
+            full_validation.discrete_derivative.trend_direction = "cavalo_DOWN";
+         }else{
+            full_validation.discrete_derivative.trend_direction = "cavalo_SIDEWALK";
+         }
+
+         ema.m_slope.DebugSlopeValidation(full_validation);
+        
       }
-      CVWAP *vwap = ctx.GetIndicator("vwap_diario_fin");
-      if (vwap != NULL)
-      {
-         SSlopeValidation full_validation ;
-         full_validation = vwap.GetSlopeValidation(true);
-         Print("VWAP: " + (string)full_validation.final_trend);
-         // ema.DebugSlopeValidation(full_validation);
-      }
 
-      CBollinger *boll20 = ctx.GetIndicator("boll20");
+      // CVWAP *vwap = ctx.GetIndicator("vwap_diario_fin");
+      // if (vwap != NULL)
+      // {
+      //    Print("###  VWAP");
+      //    SSlopeValidation full_validation ;
+      //    full_validation = vwap.GetSlopeValidation(true);
+      //    ema.m_slope.DebugSlopeValidation(full_validation);
+      // }
 
-      if (boll20 != NULL)
-      {
-         Print("#CIMA#");
-         SSlopeValidation full_validationUpper ;
-         full_validationUpper = boll20.GetSlopeValidation(true, COPY_UPPER);
-         boll20.m_slope.DebugSlopeValidation(full_validationUpper);
+      // CBollinger *boll20 = ctx.GetIndicator("boll20");
 
-         Print("#MEIO#");
-         SSlopeValidation full_validation ;
-         full_validation = boll20.GetSlopeValidation(true, COPY_MIDDLE);
-         boll20.m_slope.DebugSlopeValidation(full_validation);
+      // if (boll20 != NULL)
+      // {
+      //    Print("#CIMA#");
+      //    SSlopeValidation full_validationUpper ;
+      //    full_validationUpper = boll20.GetSlopeValidation(true, COPY_UPPER);
+      //    boll20.m_slope.DebugSlopeValidation(full_validationUpper);
 
-         Print("#BAXO#");
-         SSlopeValidation full_validationLower ;
-         full_validationLower = boll20.GetSlopeValidation(true, COPY_LOWER);
-         boll20.m_slope.DebugSlopeValidation(full_validationLower);
-      }
+      //    Print("#MEIO#");
+      //    SSlopeValidation full_validation ;
+      //    full_validation = boll20.GetSlopeValidation(true, COPY_MIDDLE);
+      //    boll20.m_slope.DebugSlopeValidation(full_validation);
+
+      //    Print("#BAXO#");
+      //    SSlopeValidation full_validationLower ;
+      //    full_validationLower = boll20.GetSlopeValidation(true, COPY_LOWER);
+      //    boll20.m_slope.DebugSlopeValidation(full_validationLower);
+      // }
    }
 }
 

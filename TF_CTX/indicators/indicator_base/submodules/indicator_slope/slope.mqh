@@ -79,10 +79,10 @@ SSlopeResult CSlope::CalculateLinearRegressionSlope(string m_symbol, double &ma_
   }
 
   // Normalizar para pips
-  double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
-  int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
-  double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
-  result.slope_value = result.slope_value / pip_value;
+  // double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
+  // int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
+  // double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
+  //result.slope_value = result.slope_value / pip_value;
 
   return result;
 }
@@ -96,10 +96,10 @@ SSlopeResult CSlope::CalculateSimpleDifference(string m_symbol, double &ma_value
   result.slope_value = ma_values[0] - ma_values[lookback];
 
   // Normalizar para pips
-  double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
-  int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
-  double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
-  result.slope_value = result.slope_value / pip_value;
+  // double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
+  // int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
+  // double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
+  // result.slope_value = result.slope_value / pip_value;
 
   return result;
 }
@@ -128,10 +128,10 @@ SSlopeResult CSlope::CalculateDiscreteDerivative(string m_symbol, double &ma_val
   result.slope_value = ma_values[0] - ma_values[1];
 
   // Normalizar para pips
-  double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
-  int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
-  double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
-  result.slope_value = result.slope_value / pip_value;
+  // double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
+  // int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
+  // double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
+  // result.slope_value = result.slope_value / pip_value;
 
   return result;
 }
@@ -500,18 +500,19 @@ void CSlope::DebugSlopeValidation(SSlopeValidation &validation)
         ", r2=", validation.linear_regression.r_squared);
   Print("Simple Difference: slope=", validation.simple_difference.slope_value,
         ", trend=", validation.simple_difference.trend_direction);
-  Print("Percentage Change: slope=", validation.percentage_change.slope_value,
-        ", trend=", validation.percentage_change.trend_direction);
+  // Print("Percentage Change: slope=", validation.percentage_change.slope_value,
+  //       ", trend=", validation.percentage_change.trend_direction);
   Print("Discrete Derivative: slope=", validation.discrete_derivative.slope_value,
         ", trend=", validation.discrete_derivative.trend_direction);
-  Print("Angle Degrees: slope=", validation.angle_degrees.slope_value,
-        ", trend=", validation.angle_degrees.trend_direction);
+  // Print("Angle Degrees: slope=", validation.angle_degrees.slope_value,
+  //       ", trend=", validation.angle_degrees.trend_direction);
 
-  Print("Final: trend=", validation.final_trend,
-        ", confidence=", validation.confidence_score,
-        ", consensus=", validation.consensus_strength,
-        ", risk=", validation.risk_level);
+  // Print("Final: trend=", validation.final_trend,
+  //       ", confidence=", validation.confidence_score,
+  //       ", consensus=", validation.consensus_strength,
+  //       ", risk=", validation.risk_level);
 }
+
 
 SThresholdConfig GetOptimizedConfig(ENUM_TIMEFRAMES tf, ENUM_TRADING_STYLE style = TRADING_SWING)
 {
@@ -522,8 +523,8 @@ SThresholdConfig GetOptimizedConfig(ENUM_TIMEFRAMES tf, ENUM_TRADING_STYLE style
   case PERIOD_M1:
     config.lookback = (style == TRADING_SCALPING) ? 5 : (style == TRADING_SWING) ? 8
                                                                                  : 10;
-    config.linear_regression_high = (style == TRADING_SCALPING) ? 1.5 : 2.0;
-    config.simple_difference_high = (style == TRADING_SCALPING) ? 12.0 : 15.0;
+    config.linear_regression_high = (style == TRADING_SCALPING) ? 0.25 : 0.2;
+    config.simple_difference_high = (style == TRADING_SCALPING) ? 0.20 : 0.15;
     config.percentage_change_high = (style == TRADING_SCALPING) ? 0.008 : 0.01;
     config.discrete_derivative_high = (style == TRADING_SCALPING) ? 4.0 : 5.0;
     config.angle_degrees_high = (style == TRADING_SCALPING) ? 6.0 : 8.0;
@@ -542,7 +543,7 @@ SThresholdConfig GetOptimizedConfig(ENUM_TIMEFRAMES tf, ENUM_TRADING_STYLE style
   case PERIOD_M15:
     config.lookback = (style == TRADING_SCALPING) ? 8 : (style == TRADING_SWING) ? 12
                                                                                  : 15;
-    config.linear_regression_high = (style == TRADING_SCALPING) ? 5.0 : 6.0;
+    config.linear_regression_high = (style == TRADING_SCALPING) ? 0.2 : 0.2;
     config.simple_difference_high = (style == TRADING_SCALPING) ? 35.0 : 40.0;
     config.percentage_change_high = (style == TRADING_SCALPING) ? 0.02 : 0.025;
     config.discrete_derivative_high = (style == TRADING_SCALPING) ? 10.0 : 12.0;

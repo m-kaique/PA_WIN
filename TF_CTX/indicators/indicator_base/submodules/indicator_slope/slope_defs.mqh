@@ -52,10 +52,10 @@ struct SThresholdConfig {
     int lookback;
     double linear_regression_high, linear_regression_low;
     double simple_difference_high, simple_difference_low;
-    double percentage_change_high, percentage_change_low;
     double discrete_derivative_high, discrete_derivative_low;
     double angle_degrees_high, angle_degrees_low;
-};
+    double percentage_change_high, percentage_change_low;
+  };
 
 enum ENUM_TRADING_STYLE {
     TRADING_SCALPING,

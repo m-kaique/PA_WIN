@@ -26,10 +26,6 @@ private:
   CIndicatorBase *m_indicators[];
   string m_names[];
 
-  // PriceActions
-  CPriceActionConfig *m_pa_cfg[];
-  string m_pa_names[];
-
   bool CreateIndicators();
   void AddIndicator(CIndicatorBase *ind, string name);
   int FindByName(string name, string &arr[]);
@@ -67,14 +63,8 @@ TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles,
   for (int i = 0; i < sz; i++)
     m_cfg[i] = cfg[i];
 
-  int psz = ArraySize(pa_cfg);
-  ArrayResize(m_pa_cfg, psz);
-  for (int i = 0; i < psz; i++)
-    m_pa_cfg[i] = pa_cfg[i];
-
   ArrayResize(m_indicators, 0);
   ArrayResize(m_names, 0);
-  ArrayResize(m_pa_names, 0);
 }
 
 //+------------------------------------------------------------------+
@@ -197,14 +187,10 @@ void TF_CTX::CleanUp()
     if (m_cfg[i] != NULL)
       delete m_cfg[i];
   }
-  for (int i = 0; i < ArraySize(m_pa_cfg); i++)
-    if (m_pa_cfg[i] != NULL)
-      delete m_pa_cfg[i];
+
   ArrayResize(m_indicators, 0);
   ArrayResize(m_names, 0);
   ArrayResize(m_cfg, 0);
-  ArrayResize(m_pa_names, 0);
-  ArrayResize(m_pa_cfg, 0);
   m_initialized = false;
 }
 
