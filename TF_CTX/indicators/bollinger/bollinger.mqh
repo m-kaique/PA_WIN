@@ -20,7 +20,7 @@ private:
   bool CreateHandle();
   void ReleaseHandle();
   double GetBufferValue(int buffer_index, int shift = 0);
-  virtual SSlopeResult GetAdvancedSlope(ENUM_SLOPE_METHOD method, int lookback, COPY_METHOD copy_method = COPY_MIDDLE) override;
+  virtual SSlopeResult GetAdvancedSlope(ENUM_SLOPE_METHOD method, int lookback, double atr, COPY_METHOD copy_method = COPY_MIDDLE) override;
 
 public:
   CBollinger();
@@ -47,7 +47,8 @@ public:
 
   virtual bool IsReady();
   virtual bool Update() override;
-  SSlopeValidation GetSlopeValidation(bool use_weighted_analysis, COPY_METHOD copy_method = COPY_MIDDLE) override;
+  SSlopeValidation
+  GetSlopeValidation(double atr, COPY_METHOD copy_method = COPY_MIDDLE) override;
   SPositionInfo GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE) override;
 };
 
@@ -236,10 +237,10 @@ bool CBollinger::Update()
 //+------------------------------------------------------------------+
 SSlopeResult CBollinger::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
                                           int lookback = 10,
+                                          double atr = 0,
                                           COPY_METHOD copy_method = COPY_MIDDLE)
 {
   SSlopeResult result;
-
 
   if (handle == INVALID_HANDLE)
   {
@@ -290,24 +291,25 @@ SSlopeResult CBollinger::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
   switch (method)
   {
   case SLOPE_LINEAR_REGRESSION:
-    result = m_slope.CalculateLinearRegressionSlope(m_symbol, ma_values, lookback);
+    result = m_slope.CalculateLinearRegressionSlope(m_symbol, ma_values, atr, lookback);
     break;
 
   case SLOPE_SIMPLE_DIFFERENCE:
-    result = m_slope.CalculateSimpleDifference(m_symbol, ma_values, lookback);
-    break;
-
-  case SLOPE_PERCENTAGE_CHANGE:
-    result = m_slope.CalculatePercentageChange(m_symbol, ma_values, lookback);
+    result = m_slope.CalculateSimpleDifference(m_symbol, ma_values, atr, lookback);
     break;
 
   case SLOPE_DISCRETE_DERIVATIVE:
-    result = m_slope.CalculateDiscreteDerivative(m_symbol, ma_values);
+    result = m_slope.CalculateDiscreteDerivative(m_symbol, ma_values, atr);
     break;
 
-  case SLOPE_ANGLE_DEGREES:
-    result = m_slope.CalculateAngleDegrees(m_symbol, ma_values, lookback);
-    break;
+  // case SLOPE_PERCENTAGE_CHANGE:
+  //   result = m_slope.CalculatePercentageChange(m_symbol, ma_values, lookback);
+  //   break;
+
+  // case SLOPE_ANGLE_DEGREES:
+  //   result = m_slope.CalculateAngleDegrees(m_symbol, ma_values, lookback);
+  //   break;
+  // 
   }
 
   return result;
@@ -316,8 +318,7 @@ SSlopeResult CBollinger::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
 //+------------------------------------------------------------------+
 //| Validação cruzada com múltiplos métodos de inclinação          |
 //+------------------------------------------------------------------+
-SSlopeValidation CBollinger::GetSlopeValidation(bool use_weighted_analysis = true,
-                                                COPY_METHOD copy_method = COPY_MIDDLE)
+SSlopeValidation CBollinger::GetSlopeValidation(double atr, COPY_METHOD copy_method = COPY_MIDDLE)
 {
   SSlopeValidation validation;
 
@@ -337,11 +338,12 @@ SSlopeValidation CBollinger::GetSlopeValidation(bool use_weighted_analysis = tru
   config = GetOptimizedConfig(m_timeframe, TRADING_SCALPING);
 
   // Calcular inclinação com configurações específicas
-  validation.linear_regression = GetAdvancedSlope(SLOPE_LINEAR_REGRESSION, config.lookback);
-  validation.simple_difference = GetAdvancedSlope(SLOPE_SIMPLE_DIFFERENCE, config.lookback);
-  validation.percentage_change = GetAdvancedSlope(SLOPE_PERCENTAGE_CHANGE, config.lookback);
-  validation.discrete_derivative = GetAdvancedSlope(SLOPE_DISCRETE_DERIVATIVE, config.lookback);
-  validation.angle_degrees = GetAdvancedSlope(SLOPE_ANGLE_DEGREES, config.lookback);
+  validation.linear_regression = GetAdvancedSlope(SLOPE_LINEAR_REGRESSION, config.lookback, atr);
+  validation.simple_difference = GetAdvancedSlope(SLOPE_SIMPLE_DIFFERENCE, config.lookback, atr);
+  validation.discrete_derivative = GetAdvancedSlope(SLOPE_DISCRETE_DERIVATIVE, config.lookback, atr);
+
+  // validation.percentage_change = GetAdvancedSlope(SLOPE_PERCENTAGE_CHANGE, config.lookback);
+  // validation.angle_degrees = GetAdvancedSlope(SLOPE_ANGLE_DEGREES, config.lookback);
 
   return validation;
 }

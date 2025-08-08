@@ -19,7 +19,7 @@ protected:
   bool attach_chart;           // Flag para acoplar ao gráfico
   ENUM_TIMEFRAMES alert_tf;    // TF para alertas
   // Métodos privados para cálculo de inclinação avançada
-  virtual SSlopeResult GetAdvancedSlope(ENUM_SLOPE_METHOD method, int lookback, COPY_METHOD copy_method = COPY_MIDDLE);
+  virtual SSlopeResult GetAdvancedSlope(ENUM_SLOPE_METHOD method, int lookback, double atr, COPY_METHOD copy_method = COPY_MIDDLE);
 
 public:
   virtual bool Init(string symbol, ENUM_TIMEFRAMES timeframe, int period, ENUM_MA_METHOD method) = 0;
@@ -30,7 +30,7 @@ public:
   virtual ~CIndicatorBase() {}
 
   // Metodos publicos slope
-  virtual SSlopeValidation GetSlopeValidation(bool use_weighted_analysis, COPY_METHOD copy_method = COPY_MIDDLE);
+  virtual SSlopeValidation GetSlopeValidation(double atr, COPY_METHOD copy_method = COPY_MIDDLE);
   bool AttachToChart()
   {
     if (attach_chart && handle != INVALID_HANDLE)
@@ -55,7 +55,7 @@ public:
 //| Validação cruzada com múltiplos métodos de inclinação          |
 //+------------------------------------------------------------------+
 // PA_WIN CALL
-SSlopeValidation CIndicatorBase::GetSlopeValidation(bool use_weighted_analysis = true, COPY_METHOD copy_method = COPY_MIDDLE)
+SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy_method = COPY_MIDDLE)
 {
   SSlopeValidation validation;
 
@@ -69,11 +69,64 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(bool use_weighted_analysis =
   config = GetOptimizedConfig(m_timeframe, TRADING_SCALPING);
 
   // Calcular inclinação com configurações específicas
-  validation.linear_regression = GetAdvancedSlope(SLOPE_LINEAR_REGRESSION, config.lookback);
-  validation.simple_difference = GetAdvancedSlope(SLOPE_SIMPLE_DIFFERENCE, config.lookback);
-  validation.percentage_change = GetAdvancedSlope(SLOPE_PERCENTAGE_CHANGE, config.lookback);
-  validation.discrete_derivative = GetAdvancedSlope(SLOPE_DISCRETE_DERIVATIVE, config.lookback);
-  validation.angle_degrees = GetAdvancedSlope(SLOPE_ANGLE_DEGREES, config.lookback);
+  validation.linear_regression = GetAdvancedSlope(
+      SLOPE_LINEAR_REGRESSION,
+      config.lookback,
+      atr);
+
+  validation.simple_difference = GetAdvancedSlope(
+      SLOPE_SIMPLE_DIFFERENCE,
+      config.lookback,
+      atr);
+
+  validation.discrete_derivative = GetAdvancedSlope(
+      SLOPE_DISCRETE_DERIVATIVE,
+      config.lookback,
+      atr);
+
+  // validation.angle_degrees = GetAdvancedSlope(SLOPE_ANGLE_DEGREES, config.lookback);
+  // validation.percentage_change = GetAdvancedSlope(SLOPE_PERCENTAGE_CHANGE, config.lookback);
+
+    if (validation.linear_regression.slope_value > config.linear_regression_high)
+  {
+    validation.linear_regression.trend_direction = "_UP";
+  }
+  else if (validation.linear_regression.slope_value < config.linear_regression_low)
+  {
+    validation.linear_regression.trend_direction = "_DOWN";
+  }
+  else
+  {
+    validation.linear_regression.trend_direction = "_SIDEWALK";
+  }
+
+  // RL norm DIFF
+  if (validation.simple_difference.slope_value > config.simple_difference_high)
+  {
+    validation.simple_difference.trend_direction = "_UP";
+  }
+  else if (validation.simple_difference.slope_value < config.simple_difference_low)
+  {
+    validation.simple_difference.trend_direction = "_DOWN";
+  }
+  else
+  {
+    validation.simple_difference.trend_direction = "_SIDEWALK";
+  }
+
+  // RL norm ATR
+  if (validation.discrete_derivative.slope_value > config.discrete_derivative_high)
+  {
+    validation.discrete_derivative.trend_direction = "_UP";
+  }
+  else if (validation.discrete_derivative.slope_value < config.discrete_derivative_low)
+  {
+    validation.discrete_derivative.trend_direction = "_DOWN";
+  }
+  else
+  {
+    validation.discrete_derivative.trend_direction = "_SIDEWALK";
+  }
 
   return validation;
 }
@@ -84,6 +137,7 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(bool use_weighted_analysis =
 // INDICADOR_BASE.GetSlopeValidation->GetAdvancedslope
 SSlopeResult CIndicatorBase::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
                                               int lookback = 10,
+                                              double atr = 0,
                                               COPY_METHOD copy_method = COPY_MIDDLE)
 {
   SSlopeResult result;
@@ -105,24 +159,24 @@ SSlopeResult CIndicatorBase::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
   switch (method)
   {
   case SLOPE_LINEAR_REGRESSION:
-    result = m_slope.CalculateLinearRegressionSlope(m_symbol, ma_values, lookback);
+    result = m_slope.CalculateLinearRegressionSlope(m_symbol, ma_values, atr, lookback);
     break;
 
   case SLOPE_SIMPLE_DIFFERENCE:
-    result = m_slope.CalculateSimpleDifference(m_symbol, ma_values, lookback);
-    break;
-
-  case SLOPE_PERCENTAGE_CHANGE:
-    result = m_slope.CalculatePercentageChange(m_symbol, ma_values, lookback);
+    result = m_slope.CalculateSimpleDifference(m_symbol, ma_values, atr, lookback);
     break;
 
   case SLOPE_DISCRETE_DERIVATIVE:
-    result = m_slope.CalculateDiscreteDerivative(m_symbol, ma_values);
+    result = m_slope.CalculateDiscreteDerivative(m_symbol, ma_values, atr);
     break;
 
-  case SLOPE_ANGLE_DEGREES:
-    result = m_slope.CalculateAngleDegrees(m_symbol, ma_values, lookback);
-    break;
+    //     case SLOPE_PERCENTAGE_CHANGE:
+    //   result = m_slope.CalculatePercentageChange(m_symbol, ma_values, lookback, treshold_high, treshold_low);
+    //   break;
+
+    // case SLOPE_ANGLE_DEGREES:
+    //   result = m_slope.CalculateAngleDegrees(m_symbol, ma_values, lookback, treshold_high, treshold_low);
+    //   break;
   }
 
   return result;
