@@ -126,11 +126,11 @@ bool TF_CTX::CreateIndicators()
     // Chamar AttachToChart() após a criação do indicador
     if (ind.AttachToChart())
     {
-        // Print("Indicador ", cfg.name, " acoplado ao gráfico.");
+        Print("Indicador ", cfg.name, " acoplado ao gráfico.");
     }
     else
     {
-        // Print("Indicador ", cfg.name, " não acoplado ao gráfico ou falha no acoplamento.");
+        Print("Indicador ", cfg.name, " não acoplado ao gráfico ou falha no acoplamento.");
     }
   }
   return true;

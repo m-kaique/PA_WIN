@@ -24,7 +24,7 @@ public:
   SSlopeResult CalculateLinearRegressionSlope(string m_symbol, double &ma_values[], double atr, int lookback);
   SSlopeResult CalculateSimpleDifference(string m_symbol, double &ma_values[], double atr, int lookback);
   SSlopeResult CalculatePercentageChange(string m_symbol, double &ma_values[], int lookback);
-  SSlopeResult CalculateDiscreteDerivative(string m_symbol, double &ma_values[],double atr);
+  SSlopeResult CalculateDiscreteDerivative(string m_symbol, double &ma_values[], double atr);
   SSlopeResult CalculateAngleDegrees(string m_symbol, double &ma_values[], int lookback);
   SSlopeValidation AnalyzeMethodsConsensus(SSlopeValidation &validation, bool use_weighted_analysis);
 };
@@ -82,7 +82,17 @@ SSlopeResult CSlope::CalculateLinearRegressionSlope(string m_symbol, double &ma_
   // double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
   // int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
   // double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
-  result.slope_value = result.slope_value / atr;
+  // Normalizar para pips
+  if (atr != 0.0)
+  {
+    result.slope_value = result.slope_value / atr;
+    result.slope_value = NormalizeDouble(result.slope_value, 2);
+  }
+  else
+  {
+    Print("ATR zero detectado em ", __FUNCTION__);
+    result.slope_value = 0.0;
+  }
 
   return result;
 }
@@ -99,11 +109,19 @@ SSlopeResult CSlope::CalculateSimpleDifference(string m_symbol, double &ma_value
   // double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
   // int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
   // double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
-  result.slope_value = result.slope_value / atr;
+  if (atr != 0.0)
+  {
+    result.slope_value = result.slope_value / atr;
+    result.slope_value = NormalizeDouble(result.slope_value, 2);
+  }
+  else
+  {
+    Print("ATR zero detectado em ", __FUNCTION__);
+    result.slope_value = 0.0;
+  }
 
   return result;
 }
-
 
 //+------------------------------------------------------------------+
 //| Calcular derivada discreta                                     |
@@ -117,7 +135,16 @@ SSlopeResult CSlope::CalculateDiscreteDerivative(string m_symbol, double &ma_val
   // double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
   // int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
   // double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
-  result.slope_value = result.slope_value / atr;
+  if (atr != 0.0)
+  {
+    result.slope_value = result.slope_value / atr;
+    result.slope_value = NormalizeDouble(result.slope_value, 2);
+  }
+  else
+  {
+    Print("ATR zero detectado em ", __FUNCTION__);
+    result.slope_value = 0.0;
+  }
 
   return result;
 }
@@ -153,13 +180,11 @@ SSlopeResult CSlope::CalculateAngleDegrees(string m_symbol, double &ma_values[],
   return result;
 }
 
-
 //+---------------------------------------------------------------------------------------------------------------+
 //
 //| Funções de Análise                                                                                          |
 //
 //+---------------------------------------------------------------------------------------------------------------+
-
 
 //+------------------------------------------------------------------+
 //| Obter análise textual detalhada                               |
@@ -194,27 +219,25 @@ string CSlope::GetSlopeAnalysisReport(SSlopeValidation &validation)
 void CSlope::DebugSlopeValidation(SSlopeValidation &validation)
 {
   Print("=== DEBUG DETALHADO ===");
-  Print("Linear Regression: slope=", validation.linear_regression.slope_value,
+  Print("Linear Regression: slope=", (string)validation.linear_regression.slope_value,
         ", trend=", validation.linear_regression.trend_direction,
-        ", r2=", validation.linear_regression.r_squared);
-  Print("Simple Difference: slope=", validation.simple_difference.slope_value,
+        ", r2=", (string)validation.linear_regression.r_squared);
+  Print("Simple Difference: slope=", (string)validation.simple_difference.slope_value,
         ", trend=", validation.simple_difference.trend_direction);
 
-  Print("Discrete Derivative: slope=", validation.discrete_derivative.slope_value,
+  Print("Discrete Derivative: slope=", (string)validation.discrete_derivative.slope_value,
         ", trend=", validation.discrete_derivative.trend_direction);
 
   // Print("Percentage Change: slope=", validation.percentage_change.slope_value,
   //       ", trend=", validation.percentage_change.trend_direction);
-        // Print("Angle Degrees: slope=", validation.angle_degrees.slope_value,
+  // Print("Angle Degrees: slope=", validation.angle_degrees.slope_value,
   //       ", trend=", validation.angle_degrees.trend_direction);
 
-  
   // Print("Final: trend=", validation.final_trend,
   //       ", confidence=", validation.confidence_score,
   //       ", consensus=", validation.consensus_strength,
   //       ", risk=", validation.risk_level);
 }
-
 
 //+---------------------------------------------------------------------------------------------------------------+
 //
