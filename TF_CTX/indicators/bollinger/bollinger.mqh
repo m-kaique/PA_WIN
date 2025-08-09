@@ -302,14 +302,14 @@ SSlopeResult CBollinger::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
     result = m_slope.CalculateDiscreteDerivative(m_symbol, ma_values, atr);
     break;
 
-  // case SLOPE_PERCENTAGE_CHANGE:
-  //   result = m_slope.CalculatePercentageChange(m_symbol, ma_values, lookback);
-  //   break;
+    // case SLOPE_PERCENTAGE_CHANGE:
+    //   result = m_slope.CalculatePercentageChange(m_symbol, ma_values, lookback);
+    //   break;
 
-  // case SLOPE_ANGLE_DEGREES:
-  //   result = m_slope.CalculateAngleDegrees(m_symbol, ma_values, lookback);
-  //   break;
-  // 
+    // case SLOPE_ANGLE_DEGREES:
+    //   result = m_slope.CalculateAngleDegrees(m_symbol, ma_values, lookback);
+    //   break;
+    //
   }
 
   return result;
@@ -322,12 +322,6 @@ SSlopeValidation CBollinger::GetSlopeValidation(double atr, COPY_METHOD copy_met
 {
   SSlopeValidation validation;
 
-  if (handle == INVALID_HANDLE)
-  {
-    Print("ERRO: Handle do indicador inválido para validação de inclinação");
-    return validation;
-  }
-
   // TYPES ----------
   // TRADING_SCALPING
   // TRADING_SWING
@@ -338,12 +332,64 @@ SSlopeValidation CBollinger::GetSlopeValidation(double atr, COPY_METHOD copy_met
   config = GetOptimizedConfig(m_timeframe, TRADING_SCALPING);
 
   // Calcular inclinação com configurações específicas
-  validation.linear_regression = GetAdvancedSlope(SLOPE_LINEAR_REGRESSION, config.lookback, atr);
-  validation.simple_difference = GetAdvancedSlope(SLOPE_SIMPLE_DIFFERENCE, config.lookback, atr);
-  validation.discrete_derivative = GetAdvancedSlope(SLOPE_DISCRETE_DERIVATIVE, config.lookback, atr);
+  validation.linear_regression = GetAdvancedSlope(
+      SLOPE_LINEAR_REGRESSION,
+      config.lookback,
+      atr, copy_method);
 
-  // validation.percentage_change = GetAdvancedSlope(SLOPE_PERCENTAGE_CHANGE, config.lookback);
+  validation.simple_difference = GetAdvancedSlope(
+      SLOPE_SIMPLE_DIFFERENCE,
+      config.lookback,
+      atr, copy_method);
+
+  validation.discrete_derivative = GetAdvancedSlope(
+      SLOPE_DISCRETE_DERIVATIVE,
+      config.lookback,
+      atr, copy_method);
+
   // validation.angle_degrees = GetAdvancedSlope(SLOPE_ANGLE_DEGREES, config.lookback);
+  // validation.percentage_change = GetAdvancedSlope(SLOPE_PERCENTAGE_CHANGE, config.lookback);
+
+  if (validation.linear_regression.slope_value > config.linear_regression_high)
+  {
+    validation.linear_regression.trend_direction = "_UP";
+  }
+  else if (validation.linear_regression.slope_value < config.linear_regression_low)
+  {
+    validation.linear_regression.trend_direction = "_DOWN";
+  }
+  else
+  {
+    validation.linear_regression.trend_direction = "_SIDEWALK";
+  }
+
+  // RL norm DIFF
+  if (validation.simple_difference.slope_value > config.simple_difference_high)
+  {
+    validation.simple_difference.trend_direction = "_UP";
+  }
+  else if (validation.simple_difference.slope_value < config.simple_difference_low)
+  {
+    validation.simple_difference.trend_direction = "_DOWN";
+  }
+  else
+  {
+    validation.simple_difference.trend_direction = "_SIDEWALK";
+  }
+
+  // RL norm ATR
+  if (validation.discrete_derivative.slope_value > config.discrete_derivative_high)
+  {
+    validation.discrete_derivative.trend_direction = "_UP";
+  }
+  else if (validation.discrete_derivative.slope_value < config.discrete_derivative_low)
+  {
+    validation.discrete_derivative.trend_direction = "_DOWN";
+  }
+  else
+  {
+    validation.discrete_derivative.trend_direction = "_SIDEWALK";
+  }
 
   return validation;
 }

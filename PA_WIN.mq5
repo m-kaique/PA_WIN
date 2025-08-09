@@ -205,6 +205,10 @@ void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
          tf_ctx_atr = atr_value;
          Print("valor: " + (string)atr_value);
       }
+      else
+      {
+         Print("Atr Não Configurado ou Com Problemas...");
+      }
 
       if (tf_ctx_atr != 0)
       {
@@ -238,25 +242,24 @@ void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
             vwap.m_slope.DebugSlopeValidation(full_validation);
          }
 
-         // CBollinger *boll20 = ctx.GetIndicator("boll20");
+         CBollinger *boll20 = ctx.GetIndicator("boll20");
+         if (boll20 != NULL)
+         {
+            Print("#BOLLINGER BANDA SUPERIOR#");
+            SSlopeValidation full_validationUpper;
+            full_validationUpper = boll20.GetSlopeValidation(tf_ctx_atr, COPY_UPPER);
+            boll20.m_slope.DebugSlopeValidation(full_validationUpper);
 
-         // if (boll20 != NULL)
-         // {
-         //    Print("#CIMA#");
-         //    SSlopeValidation full_validationUpper ;
-         //    full_validationUpper = boll20.GetSlopeValidation(COPY_UPPER);
-         //    boll20.m_slope.DebugSlopeValidation(full_validationUpper);
+            Print("#BOLLINGER BANDA CENTRAL#");
+            SSlopeValidation full_validation;
+            full_validation = boll20.GetSlopeValidation(tf_ctx_atr, COPY_MIDDLE);
+            boll20.m_slope.DebugSlopeValidation(full_validation);
 
-         //    Print("#MEIO#");
-         //    SSlopeValidation full_validation ;
-         //    full_validation = boll20.GetSlopeValidation(COPY_MIDDLE);
-         //    boll20.m_slope.DebugSlopeValidation(full_validation);
-
-         //    Print("#BAXO#");
-         //    SSlopeValidation full_validationLower ;
-         //    full_validationLower = boll20.GetSlopeValidation(COPY_LOWER);
-         //    boll20.m_slope.DebugSlopeValidation(full_validationLower);
-         // }
+            Print("#BOLLINGER BANDA INFERIOR#");
+            SSlopeValidation full_validationLower;
+            full_validationLower = boll20.GetSlopeValidation(tf_ctx_atr, COPY_LOWER);
+            boll20.m_slope.DebugSlopeValidation(full_validationLower);
+         }
       }
    }
 }
@@ -326,7 +329,7 @@ void UpdateSymbolContexts(string symbol)
       {
          ctx.Update();
          CheckCtxMASlope(tf, ctx);
-         // CheckCandlePosition(tf, ctx);
+         CheckCandlePosition(tf, ctx);
       }
    }
 }

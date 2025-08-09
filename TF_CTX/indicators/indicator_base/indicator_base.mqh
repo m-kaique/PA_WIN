@@ -30,6 +30,12 @@ public:
   virtual ~CIndicatorBase() {}
 
   // Metodos publicos slope
+  // TODO: 2025.08.09 20:42:31.383	PA_WIN (WIN$N,M15)	Indicador MODE_SMA inicializado para WIN$N - PERIOD_H4 - Período: 200
+
+  // 2025.08.09 20:42:31.384	PA_WIN (WIN$N,M15)	ERRO: Falha ao adicionar indicador ao gráfico.
+  // 2025.08.09 20:42:31.384	PA_WIN (WIN$N,M15)	Indicador sma200 não acoplado ao gráfico ou falha no acoplamento.
+  // 2025.08.09 20:42:31.385	PA_WIN (WIN$N,M15)	Indicador sr_completo não acoplado ao gráfico ou falha no acoplamento.
+
   virtual SSlopeValidation GetSlopeValidation(double atr, COPY_METHOD copy_method = COPY_MIDDLE);
   bool AttachToChart()
   {
@@ -87,7 +93,7 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy
   // validation.angle_degrees = GetAdvancedSlope(SLOPE_ANGLE_DEGREES, config.lookback);
   // validation.percentage_change = GetAdvancedSlope(SLOPE_PERCENTAGE_CHANGE, config.lookback);
 
-    if (validation.linear_regression.slope_value > config.linear_regression_high)
+  if (validation.linear_regression.slope_value > config.linear_regression_high)
   {
     validation.linear_regression.trend_direction = "_UP";
   }
@@ -169,14 +175,6 @@ SSlopeResult CIndicatorBase::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
   case SLOPE_DISCRETE_DERIVATIVE:
     result = m_slope.CalculateDiscreteDerivative(m_symbol, ma_values, atr);
     break;
-
-    //     case SLOPE_PERCENTAGE_CHANGE:
-    //   result = m_slope.CalculatePercentageChange(m_symbol, ma_values, lookback, treshold_high, treshold_low);
-    //   break;
-
-    // case SLOPE_ANGLE_DEGREES:
-    //   result = m_slope.CalculateAngleDegrees(m_symbol, ma_values, lookback, treshold_high, treshold_low);
-    //   break;
   }
 
   return result;

@@ -249,85 +249,16 @@ SThresholdConfig GetOptimizedConfig(ENUM_TIMEFRAMES tf, ENUM_TRADING_STYLE style
 {
   SThresholdConfig config;
 
-  switch (tf)
-  {
-  case PERIOD_M1:
-    config.lookback = (style == TRADING_SCALPING) ? 5 : (style == TRADING_SWING) ? 8
-                                                                                 : 10;
-    config.linear_regression_high = (style == TRADING_SCALPING) ? 0.25 : 0.2;
-    config.simple_difference_high = (style == TRADING_SCALPING) ? 0.20 : 0.15;
-    config.percentage_change_high = (style == TRADING_SCALPING) ? 0.008 : 0.01;
-    config.discrete_derivative_high = (style == TRADING_SCALPING) ? 4.0 : 5.0;
-    config.angle_degrees_high = (style == TRADING_SCALPING) ? 6.0 : 8.0;
-    break;
-
-  case PERIOD_M5:
-    config.lookback = (style == TRADING_SCALPING) ? 6 : (style == TRADING_SWING) ? 10
-                                                                                 : 12;
-    config.linear_regression_high = (style == TRADING_SCALPING) ? 3.0 : 4.0;
-    config.simple_difference_high = (style == TRADING_SCALPING) ? 20.0 : 25.0;
-    config.percentage_change_high = (style == TRADING_SCALPING) ? 0.015 : 0.02;
-    config.discrete_derivative_high = (style == TRADING_SCALPING) ? 6.0 : 8.0;
-    config.angle_degrees_high = (style == TRADING_SCALPING) ? 10.0 : 12.0;
-    break;
-
-  case PERIOD_M15:
-    config.lookback = (style == TRADING_SCALPING) ? 8 : (style == TRADING_SWING) ? 12
-                                                                                 : 15;
-    config.linear_regression_high = (style == TRADING_SCALPING) ? 0.15 : 0.2;
-    config.simple_difference_high = (style == TRADING_SCALPING) ? 1.5 : 2.0;
-    config.discrete_derivative_high = (style == TRADING_SCALPING) ? 0.15 : 0.2;
-
-    // config.percentage_change_high = (style == TRADING_SCALPING) ? 0 : 0;
-    // config.angle_degrees_high = (style == TRADING_SCALPING) ? 0 : 0;
-    break;
-
-  case PERIOD_M30:
-    config.lookback = (style == TRADING_SCALPING) ? 10 : (style == TRADING_SWING) ? 15
-                                                                                  : 20;
-    config.linear_regression_high = 8.0;
-    config.simple_difference_high = 50.0;
-    config.percentage_change_high = 0.03;
-    config.discrete_derivative_high = 15.0;
-    config.angle_degrees_high = 22.0;
-    break;
-
-  case PERIOD_H1:
-    config.lookback = (style == TRADING_SCALPING) ? 12 : (style == TRADING_SWING) ? 18
-                                                                                  : 25;
-    config.linear_regression_high = (style == TRADING_POSITION) ? 12.0 : 10.0;
-    config.simple_difference_high = (style == TRADING_POSITION) ? 80.0 : 60.0;
-    config.percentage_change_high = (style == TRADING_POSITION) ? 0.05 : 0.04;
-    config.discrete_derivative_high = (style == TRADING_POSITION) ? 25.0 : 20.0;
-    config.angle_degrees_high = (style == TRADING_POSITION) ? 35.0 : 30.0;
-    break;
-
-  case PERIOD_H4:
-    config.lookback = (style == TRADING_SWING) ? 22 : (style == TRADING_POSITION) ? 30
-                                                                                  : 25;
-    config.linear_regression_high = (style == TRADING_POSITION) ? 18.0 : 15.0;
-    config.simple_difference_high = (style == TRADING_POSITION) ? 120.0 : 100.0;
-    config.percentage_change_high = (style == TRADING_POSITION) ? 0.08 : 0.06;
-    config.discrete_derivative_high = (style == TRADING_POSITION) ? 35.0 : 30.0;
-    config.angle_degrees_high = (style == TRADING_POSITION) ? 45.0 : 40.0;
-    break;
-
-  case PERIOD_D1:
-    config.lookback = (style == TRADING_POSITION) ? 35 : 25;
-    config.linear_regression_high = (style == TRADING_POSITION) ? 30.0 : 25.0;
-    config.simple_difference_high = (style == TRADING_POSITION) ? 180.0 : 150.0;
-    config.percentage_change_high = (style == TRADING_POSITION) ? 0.12 : 0.10;
-    config.discrete_derivative_high = (style == TRADING_POSITION) ? 60.0 : 50.0;
-    config.angle_degrees_high = (style == TRADING_POSITION) ? 70.0 : 60.0;
-    break;
-  }
+  config.lookback = (style == TRADING_SCALPING) ? 8 : (style == TRADING_SWING) ? 12
+                                                                               : 15;
+  config.linear_regression_high = (style == TRADING_SCALPING) ? 0.15 : 0.2;
+  config.simple_difference_high = (style == TRADING_SCALPING) ? 1.5 : 2.0;
+  config.discrete_derivative_high = (style == TRADING_SCALPING) ? 0.15 : 0.2;
 
   // Definir valores negativos
   config.linear_regression_low = -config.linear_regression_high;
   config.simple_difference_low = -config.simple_difference_high;
-  config.percentage_change_low = -config.percentage_change_high;
   config.discrete_derivative_low = -config.discrete_derivative_high;
-  config.angle_degrees_low = -config.angle_degrees_high;
 
   return config;
 }
