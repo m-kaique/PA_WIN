@@ -121,21 +121,9 @@ bool TF_CTX::CreateIndicators()
       return false;
     }
     AddIndicator(ind, cfg.name);
-
-    // Alert(cfg.name + "->" + EnumToString(cfg.alert_tf));
-    // Chamar AttachToChart() após a criação do indicador
-    if (ind.AttachToChart())
-    {
-        Print("Indicador ", cfg.name, " acoplado ao gráfico.");
-    }
-    else
-    {
-        Print("Indicador ", cfg.name, " não acoplado ao gráfico ou falha no acoplamento.");
-    }
   }
   return true;
 }
-
 
 //+------------------------------------------------------------------+
 //| Inicialização                                                    |
@@ -151,6 +139,37 @@ bool TF_CTX::Init()
     return false;
   }
   m_initialized = true;
+
+  // NOVO: Loop para anexar indicadores ao gráfico após inicialização completa
+  bool all_attached = true;
+  for (int i = 0; i < ArraySize(m_indicators); i++)
+  {
+    if (m_indicators[i] != NULL)
+    {
+      if (m_indicators[i].AttachToChart())
+      {
+        Print("Indicador ", m_names[i], " acoplado ao gráfico com sucesso.");
+      }
+      else
+      {
+        // Última tentativa: verificar GetLastError()
+        int last_error = GetLastError();
+        if (last_error != 0)
+        {
+          Print("  Último erro do sistema: ", last_error);
+          ResetLastError();
+        }
+        Print("AVISO: Indicador ", m_names[i], " não pôde ser acoplado ao gráfico.");
+        all_attached = false;
+      }
+    }
+  }
+
+  if (!all_attached)
+  {
+    Print("AVISO: Alguns indicadores não foram acoplados ao gráfico, mas continuarão funcionando.");
+  }
+
   return true;
 }
 
@@ -218,8 +237,6 @@ bool TF_CTX::CopyIndicatorValues(string name, int shift, int count, double &buff
   return false;
 }
 
-
-
 //+------------------------------------------------------------------+
 //| Obter ponteiro para o Indicador                                  |
 //+------------------------------------------------------------------+
@@ -230,7 +247,6 @@ CIndicatorBase *TF_CTX::GetIndicator(string name)
     return m_indicators[idx];
   return NULL;
 }
-
 
 bool TF_CTX::HasNewBar()
 {

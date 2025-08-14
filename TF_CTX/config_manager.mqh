@@ -580,6 +580,18 @@ void CConfigManager::FillIndicatorBase(CIndicatorConfig &cfg, CJAVal *node, stri
     cfg.enabled = (*node)["enabled"].ToBool();
     cfg.attach_chart = (*node)["attach_chart"].ToBool(); // Nova linha para ler attach_chart
     cfg.alert_tf = StringToTimeframe((*node)["alert_tf"].ToStr());
+
+    // Ler slope_values se existir no JSON
+    if ((*node).HasKey("slope_values"))
+    {
+        CJAVal *slope_node = (*node)["slope_values"];
+        if (slope_node.HasKey("simple_diff"))
+            cfg.slope_values.simple_diff = (*slope_node)["simple_diff"].ToDbl();
+        if (slope_node.HasKey("linear_reg"))
+            cfg.slope_values.linear_reg = (*slope_node)["linear_reg"].ToDbl();
+        if (slope_node.HasKey("discrete_der"))
+            cfg.slope_values.discrete_der = (*slope_node)["discrete_der"].ToDbl();
+    }
 }
 
 //+------------------------------------------------------------------+
@@ -618,7 +630,8 @@ CIndicatorConfig *CConfigManager::CreateIndicatorConfig(CJAVal *ind)
         FillIndicatorBase(*p, ind, type);
         p.shift = (int)ind["shift"].ToInt();
         return p;
-    }    else if (type == "ADX")
+    }
+    else if (type == "ADX")
     {
         CAdxConfig *p = new CAdxConfig();
         FillIndicatorBase(*p, ind, type);

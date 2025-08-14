@@ -190,7 +190,7 @@ void CheckCtxTrendLine(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 //+------------------------------------------------------------------+
 //| Informações sobre a TrendLine de um TF                           |
 //+------------------------------------------------------------------+
-void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
+void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx) 
 {
    if (tf == PERIOD_M15)
    {

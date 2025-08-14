@@ -93,6 +93,7 @@ bool CMovingAverages::Init(string symbol, ENUM_TIMEFRAMES timeframe, CMAConfig &
 {
     attach_chart = config.attach_chart; // Atribui a flag do config
     alert_tf = config.alert_tf;
+    slope_values = config.slope_values;
 
     return Init(symbol, timeframe, config.period, config.method);
 }

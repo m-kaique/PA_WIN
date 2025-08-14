@@ -106,6 +106,7 @@ bool CBollinger::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                       CBollingerConfig &config)
 {
   attach_chart = config.attach_chart;
+  slope_values = config.slope_values;
   return Init(symbol, timeframe, config.period, config.shift,
               config.deviation, config.applied_price);
 }
@@ -301,15 +302,6 @@ SSlopeResult CBollinger::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
   case SLOPE_DISCRETE_DERIVATIVE:
     result = m_slope.CalculateDiscreteDerivative(m_symbol, ma_values, atr);
     break;
-
-    // case SLOPE_PERCENTAGE_CHANGE:
-    //   result = m_slope.CalculatePercentageChange(m_symbol, ma_values, lookback);
-    //   break;
-
-    // case SLOPE_ANGLE_DEGREES:
-    //   result = m_slope.CalculateAngleDegrees(m_symbol, ma_values, lookback);
-    //   break;
-    //
   }
 
   return result;
@@ -350,11 +342,11 @@ SSlopeValidation CBollinger::GetSlopeValidation(double atr, COPY_METHOD copy_met
   // validation.angle_degrees = GetAdvancedSlope(SLOPE_ANGLE_DEGREES, config.lookback);
   // validation.percentage_change = GetAdvancedSlope(SLOPE_PERCENTAGE_CHANGE, config.lookback);
 
-  if (validation.linear_regression.slope_value > config.linear_regression_high)
+  if (validation.linear_regression.slope_value > slope_values.linear_reg)
   {
     validation.linear_regression.trend_direction = "_UP";
   }
-  else if (validation.linear_regression.slope_value < config.linear_regression_low)
+  else if (validation.linear_regression.slope_value < -slope_values.linear_reg)
   {
     validation.linear_regression.trend_direction = "_DOWN";
   }
@@ -364,11 +356,11 @@ SSlopeValidation CBollinger::GetSlopeValidation(double atr, COPY_METHOD copy_met
   }
 
   // RL norm DIFF
-  if (validation.simple_difference.slope_value > config.simple_difference_high)
+  if (validation.simple_difference.slope_value > slope_values.simple_diff)
   {
     validation.simple_difference.trend_direction = "_UP";
   }
-  else if (validation.simple_difference.slope_value < config.simple_difference_low)
+  else if (validation.simple_difference.slope_value < -slope_values.simple_diff)
   {
     validation.simple_difference.trend_direction = "_DOWN";
   }
@@ -378,11 +370,11 @@ SSlopeValidation CBollinger::GetSlopeValidation(double atr, COPY_METHOD copy_met
   }
 
   // RL norm ATR
-  if (validation.discrete_derivative.slope_value > config.discrete_derivative_high)
+  if (validation.discrete_derivative.slope_value > slope_values.discrete_der)
   {
     validation.discrete_derivative.trend_direction = "_UP";
   }
-  else if (validation.discrete_derivative.slope_value < config.discrete_derivative_low)
+  else if (validation.discrete_derivative.slope_value < -slope_values.discrete_der)
   {
     validation.discrete_derivative.trend_direction = "_DOWN";
   }
@@ -390,6 +382,10 @@ SSlopeValidation CBollinger::GetSlopeValidation(double atr, COPY_METHOD copy_met
   {
     validation.discrete_derivative.trend_direction = "_SIDEWALK";
   }
+
+  validation.linear_config_value = slope_values.linear_reg;
+  validation.difference_config_value = slope_values.simple_diff;
+  validation.derivative_config_value = slope_values.discrete_der;
 
   return validation;
 }

@@ -228,6 +228,9 @@ void CSlope::DebugSlopeValidation(SSlopeValidation &validation)
   Print("Discrete Derivative: slope=", (string)validation.discrete_derivative.slope_value,
         ", trend=", validation.discrete_derivative.trend_direction);
 
+  Print("Config Values: " , validation.linear_config_value, " ", validation.difference_config_value, " ",
+  validation.derivative_config_value);
+
   // Print("Percentage Change: slope=", validation.percentage_change.slope_value,
   //       ", trend=", validation.percentage_change.trend_direction);
   // Print("Angle Degrees: slope=", validation.angle_degrees.slope_value,

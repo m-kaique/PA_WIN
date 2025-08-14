@@ -20,6 +20,7 @@ protected:
   ENUM_TIMEFRAMES alert_tf;    // TF para alertas
   // Métodos privados para cálculo de inclinação avançada
   virtual SSlopeResult GetAdvancedSlope(ENUM_SLOPE_METHOD method, int lookback, double atr, COPY_METHOD copy_method = COPY_MIDDLE);
+  SSlopeValues slope_values;
 
 public:
   virtual bool Init(string symbol, ENUM_TIMEFRAMES timeframe, int period, ENUM_MA_METHOD method) = 0;
@@ -28,15 +29,8 @@ public:
   virtual bool IsReady() = 0;
   virtual bool Update() { return IsReady(); }
   virtual ~CIndicatorBase() {}
-
-  // Metodos publicos slope
-  // TODO: 2025.08.09 20:42:31.383	PA_WIN (WIN$N,M15)	Indicador MODE_SMA inicializado para WIN$N - PERIOD_H4 - Período: 200
-
-  // 2025.08.09 20:42:31.384	PA_WIN (WIN$N,M15)	ERRO: Falha ao adicionar indicador ao gráfico.
-  // 2025.08.09 20:42:31.384	PA_WIN (WIN$N,M15)	Indicador sma200 não acoplado ao gráfico ou falha no acoplamento.
-  // 2025.08.09 20:42:31.385	PA_WIN (WIN$N,M15)	Indicador sr_completo não acoplado ao gráfico ou falha no acoplamento.
-
   virtual SSlopeValidation GetSlopeValidation(double atr, COPY_METHOD copy_method = COPY_MIDDLE);
+
   bool AttachToChart()
   {
     if (attach_chart && handle != INVALID_HANDLE)
@@ -90,14 +84,11 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy
       config.lookback,
       atr);
 
-  // validation.angle_degrees = GetAdvancedSlope(SLOPE_ANGLE_DEGREES, config.lookback);
-  // validation.percentage_change = GetAdvancedSlope(SLOPE_PERCENTAGE_CHANGE, config.lookback);
-
-  if (validation.linear_regression.slope_value > config.linear_regression_high)
+  if (validation.linear_regression.slope_value > slope_values.linear_reg)
   {
     validation.linear_regression.trend_direction = "_UP";
   }
-  else if (validation.linear_regression.slope_value < config.linear_regression_low)
+  else if (validation.linear_regression.slope_value < -slope_values.linear_reg)
   {
     validation.linear_regression.trend_direction = "_DOWN";
   }
@@ -107,11 +98,11 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy
   }
 
   // RL norm DIFF
-  if (validation.simple_difference.slope_value > config.simple_difference_high)
+  if (validation.simple_difference.slope_value > slope_values.simple_diff)
   {
     validation.simple_difference.trend_direction = "_UP";
   }
-  else if (validation.simple_difference.slope_value < config.simple_difference_low)
+  else if (validation.simple_difference.slope_value < -slope_values.simple_diff)
   {
     validation.simple_difference.trend_direction = "_DOWN";
   }
@@ -121,11 +112,11 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy
   }
 
   // RL norm ATR
-  if (validation.discrete_derivative.slope_value > config.discrete_derivative_high)
+  if (validation.discrete_derivative.slope_value > slope_values.discrete_der)
   {
     validation.discrete_derivative.trend_direction = "_UP";
   }
-  else if (validation.discrete_derivative.slope_value < config.discrete_derivative_low)
+  else if (validation.discrete_derivative.slope_value < -slope_values.discrete_der)
   {
     validation.discrete_derivative.trend_direction = "_DOWN";
   }
@@ -134,6 +125,10 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy
     validation.discrete_derivative.trend_direction = "_SIDEWALK";
   }
 
+  validation.linear_config_value = slope_values.linear_reg;
+  validation.difference_config_value = slope_values.simple_diff;
+  validation.derivative_config_value = slope_values.discrete_der;
+  
   return validation;
 }
 

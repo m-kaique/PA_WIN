@@ -14,6 +14,7 @@
 #include "indicators/fibonacci/fibonacci_defs.mqh"
 #include "indicators/trendline/trendline_defs.mqh"
 #include "indicators/sup_res/sup_res_defs.mqh"
+#include "indicators/indicator_base/submodules/indicator_slope/slope_defs.mqh"
 
 //--- Base configuration
 class CIndicatorConfig
@@ -24,6 +25,7 @@ public:
   bool enabled;
   bool attach_chart;        // Nova flag para acoplar ao gráfico o indicador
   ENUM_TIMEFRAMES alert_tf; // TF alert
+  SSlopeValues slope_values;
   virtual ~CIndicatorConfig() {}
 };
 

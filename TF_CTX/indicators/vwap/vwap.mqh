@@ -256,6 +256,8 @@ bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                  CVWAPConfig &config)
 {
   attach_chart = config.attach_chart; // Atribui a flag do config
+  slope_values = config.slope_values;
+  
   return Init(symbol, timeframe, config.period, config.method,
               config.calc_mode, config.session_tf, config.price_type,
               config.start_time, config.line_color,

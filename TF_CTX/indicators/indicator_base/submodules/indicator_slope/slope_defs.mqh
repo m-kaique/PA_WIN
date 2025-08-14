@@ -46,6 +46,10 @@ struct SSlopeValidation
   // Pesos e scores
   double weighted_slope; // Inclinação ponderada
   string risk_level;     // Nível de risco do sinal
+
+  double linear_config_value;
+  double difference_config_value;
+  double derivative_config_value;
 };
 
 struct SThresholdConfig {
@@ -61,5 +65,20 @@ enum ENUM_TRADING_STYLE {
     TRADING_SCALPING,
     TRADING_SWING,
     TRADING_POSITION
+};
+
+//--- Slope values configuration structure
+struct SSlopeValues
+{
+  double simple_diff;
+  double linear_reg;
+  double discrete_der;
+  SSlopeValues()
+  {
+    simple_diff = 999.99;
+    linear_reg = 999.99;
+    discrete_der = 999.99;
+  }
+  
 };
 #endif
