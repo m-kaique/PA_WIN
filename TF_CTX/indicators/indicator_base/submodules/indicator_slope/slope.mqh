@@ -78,11 +78,6 @@ SSlopeResult CSlope::CalculateLinearRegressionSlope(string m_symbol, double &ma_
     }
   }
 
-  // Normalizar para pips
-  // double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
-  // int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
-  // double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
-  // Normalizar para pips
   if (atr != 0.0)
   {
     result.slope_value = result.slope_value / atr;
@@ -131,10 +126,6 @@ SSlopeResult CSlope::CalculateDiscreteDerivative(string m_symbol, double &ma_val
   SSlopeResult result;
   result.slope_value = ma_values[0] - ma_values[1];
 
-  // Normalizar para pips
-  // double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
-  // int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
-  // double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
   if (atr != 0.0)
   {
     result.slope_value = result.slope_value / atr;
@@ -205,10 +196,8 @@ string CSlope::GetSlopeAnalysisReport(SSlopeValidation &validation)
   report += "=== DETALHES POR MÉTODO ===\n";
   report += "Regressão Linear: " + validation.linear_regression.trend_direction +
             " (R²: " + DoubleToString(validation.linear_regression.r_squared, 3) + ")\n";
-  report += "Diferença Simples: " + validation.simple_difference.trend_direction + "\n";
-  report += "Mudança %: " + validation.percentage_change.trend_direction + "\n";
-  report += "Derivada Discreta: " + validation.discrete_derivative.trend_direction + "\n";
-  report += "Ângulo: " + validation.angle_degrees.trend_direction + "\n";
+  report += "Diferença Simples: " + validation.simple_difference.trend_direction + "\n"; 
+  report += "Derivada Discreta: " + validation.discrete_derivative.trend_direction + "\n"; 
 
   return report;
 }
@@ -228,42 +217,9 @@ void CSlope::DebugSlopeValidation(SSlopeValidation &validation)
   Print("Discrete Derivative: slope=", (string)validation.discrete_derivative.slope_value,
         ", trend=", validation.discrete_derivative.trend_direction);
 
-  Print("Config Values: " , validation.linear_config_value, " ", validation.difference_config_value, " ",
-  validation.derivative_config_value);
+  Print("# JSON VALUES # " , "LR: " ,validation.linear_config_value, " SD: ", validation.difference_config_value, " DD: ",
+  validation.derivative_config_value,  " Lookback: " , validation.lookback_config_value);
 
-  // Print("Percentage Change: slope=", validation.percentage_change.slope_value,
-  //       ", trend=", validation.percentage_change.trend_direction);
-  // Print("Angle Degrees: slope=", validation.angle_degrees.slope_value,
-  //       ", trend=", validation.angle_degrees.trend_direction);
-
-  // Print("Final: trend=", validation.final_trend,
-  //       ", confidence=", validation.confidence_score,
-  //       ", consensus=", validation.consensus_strength,
-  //       ", risk=", validation.risk_level);
-}
-
-//+---------------------------------------------------------------------------------------------------------------+
-//
-//| CONFIG DE LIMIARES                                                                                         |
-//
-//+---------------------------------------------------------------------------------------------------------------+
-
-SThresholdConfig GetOptimizedConfig(ENUM_TIMEFRAMES tf, ENUM_TRADING_STYLE style = TRADING_SWING)
-{
-  SThresholdConfig config;
-
-  config.lookback = (style == TRADING_SCALPING) ? 8 : (style == TRADING_SWING) ? 12
-                                                                               : 15;
-  config.linear_regression_high = (style == TRADING_SCALPING) ? 0.15 : 0.2;
-  config.simple_difference_high = (style == TRADING_SCALPING) ? 1.5 : 2.0;
-  config.discrete_derivative_high = (style == TRADING_SCALPING) ? 0.15 : 0.2;
-
-  // Definir valores negativos
-  config.linear_regression_low = -config.linear_regression_high;
-  config.simple_difference_low = -config.simple_difference_high;
-  config.discrete_derivative_low = -config.discrete_derivative_high;
-
-  return config;
 }
 
 #endif

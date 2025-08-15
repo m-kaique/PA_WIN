@@ -314,29 +314,20 @@ SSlopeValidation CBollinger::GetSlopeValidation(double atr, COPY_METHOD copy_met
 {
   SSlopeValidation validation;
 
-  // TYPES ----------
-  // TRADING_SCALPING
-  // TRADING_SWING
-  // TRADING_POSITION
-
-  // Obter configuração otimizada
-  SThresholdConfig config;
-  config = GetOptimizedConfig(m_timeframe, TRADING_SCALPING);
-
   // Calcular inclinação com configurações específicas
   validation.linear_regression = GetAdvancedSlope(
       SLOPE_LINEAR_REGRESSION,
-      config.lookback,
+      slope_values.lookback,
       atr, copy_method);
 
   validation.simple_difference = GetAdvancedSlope(
       SLOPE_SIMPLE_DIFFERENCE,
-      config.lookback,
+      slope_values.lookback,
       atr, copy_method);
 
   validation.discrete_derivative = GetAdvancedSlope(
       SLOPE_DISCRETE_DERIVATIVE,
-      config.lookback,
+      slope_values.lookback,
       atr, copy_method);
 
   // validation.angle_degrees = GetAdvancedSlope(SLOPE_ANGLE_DEGREES, config.lookback);
@@ -386,6 +377,7 @@ SSlopeValidation CBollinger::GetSlopeValidation(double atr, COPY_METHOD copy_met
   validation.linear_config_value = slope_values.linear_reg;
   validation.difference_config_value = slope_values.simple_diff;
   validation.derivative_config_value = slope_values.discrete_der;
+  validation.lookback_config_value = slope_values.lookback;
 
   return validation;
 }

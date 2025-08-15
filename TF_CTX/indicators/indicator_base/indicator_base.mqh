@@ -50,6 +50,7 @@ public:
   CSlope m_slope; // Classe Cálculo Inclinação
   CIndCandleDistance m_candle_distance;
 };
+ 
 
 //+------------------------------------------------------------------+
 //| Validação cruzada com múltiplos métodos de inclinação          |
@@ -59,29 +60,19 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy
 {
   SSlopeValidation validation;
 
-  // TYPES ----------
-  // TRADING_SCALPING
-  // TRADING_SWING
-  // TRADING_POSITION
-
-  // Obter configuração otimizada
-  SThresholdConfig config;
-  config = GetOptimizedConfig(m_timeframe, TRADING_SCALPING);
-
-  // Calcular inclinação com configurações específicas
   validation.linear_regression = GetAdvancedSlope(
       SLOPE_LINEAR_REGRESSION,
-      config.lookback,
+      slope_values.lookback,
       atr);
 
   validation.simple_difference = GetAdvancedSlope(
       SLOPE_SIMPLE_DIFFERENCE,
-      config.lookback,
+      slope_values.lookback,
       atr);
 
   validation.discrete_derivative = GetAdvancedSlope(
       SLOPE_DISCRETE_DERIVATIVE,
-      config.lookback,
+      slope_values.lookback,
       atr);
 
   if (validation.linear_regression.slope_value > slope_values.linear_reg)
@@ -128,7 +119,8 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy
   validation.linear_config_value = slope_values.linear_reg;
   validation.difference_config_value = slope_values.simple_diff;
   validation.derivative_config_value = slope_values.discrete_der;
-  
+  validation.lookback_config_value = slope_values.lookback;
+
   return validation;
 }
 

@@ -346,8 +346,6 @@ void ExecuteOnNewBar()
    {
       UpdateSymbolContexts(symbols[i]);
    }
-
-   // Avaliar confluencias indxind e tfxtf
 }
 
 //+------------------------------------------------------------------+

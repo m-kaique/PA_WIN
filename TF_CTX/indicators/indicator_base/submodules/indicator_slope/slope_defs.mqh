@@ -50,31 +50,19 @@ struct SSlopeValidation
   double linear_config_value;
   double difference_config_value;
   double derivative_config_value;
-};
-
-struct SThresholdConfig {
-    int lookback;
-    double linear_regression_high, linear_regression_low;
-    double simple_difference_high, simple_difference_low;
-    double discrete_derivative_high, discrete_derivative_low;
-    double angle_degrees_high, angle_degrees_low;
-    double percentage_change_high, percentage_change_low;
-  };
-
-enum ENUM_TRADING_STYLE {
-    TRADING_SCALPING,
-    TRADING_SWING,
-    TRADING_POSITION
+  int lookback_config_value;
 };
 
 //--- Slope values configuration structure
 struct SSlopeValues
 {
+  int lookback;
   double simple_diff;
   double linear_reg;
   double discrete_der;
   SSlopeValues()
   {
+    lookback = 9;
     simple_diff = 999.99;
     linear_reg = 999.99;
     discrete_der = 999.99;

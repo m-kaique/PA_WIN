@@ -578,13 +578,15 @@ void CConfigManager::FillIndicatorBase(CIndicatorConfig &cfg, CJAVal *node, stri
     cfg.name = (*node)["name"].ToStr();
     cfg.type = type;
     cfg.enabled = (*node)["enabled"].ToBool();
-    cfg.attach_chart = (*node)["attach_chart"].ToBool(); // Nova linha para ler attach_chart
+    cfg.attach_chart = (*node)["attach_chart"].ToBool();
     cfg.alert_tf = StringToTimeframe((*node)["alert_tf"].ToStr());
 
     // Ler slope_values se existir no JSON
     if ((*node).HasKey("slope_values"))
     {
         CJAVal *slope_node = (*node)["slope_values"];
+        if (slope_node.HasKey("lookback"))
+            cfg.slope_values.lookback = (int)(*slope_node)["lookback"].ToInt();
         if (slope_node.HasKey("simple_diff"))
             cfg.slope_values.simple_diff = (*slope_node)["simple_diff"].ToDbl();
         if (slope_node.HasKey("linear_reg"))
