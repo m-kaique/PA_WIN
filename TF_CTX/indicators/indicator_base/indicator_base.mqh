@@ -19,7 +19,9 @@ protected:
   bool attach_chart;           // Flag para acoplar ao gráfico
   ENUM_TIMEFRAMES alert_tf;    // TF para alertas
   // Métodos privados para cálculo de inclinação avançada
-  virtual SSlopeResult GetAdvancedSlope(ENUM_SLOPE_METHOD method, int lookback, double atr, COPY_METHOD copy_method = COPY_MIDDLE);
+  SSlopeResult GetAdvancedSlope(ENUM_SLOPE_METHOD method, int lookback, double atr, COPY_METHOD copy_method = COPY_MIDDLE);
+  virtual bool OnCopyValuesForSlope(int shift, int count, double &buffer[], COPY_METHOD copy_method) { return CopyValues(shift, count, buffer); }
+  virtual double OnGetIndicatorValue(int shift, COPY_METHOD copy_method) { return GetValue(shift); }
   SSlopeValues slope_values;
 
 public:
@@ -29,7 +31,7 @@ public:
   virtual bool IsReady() = 0;
   virtual bool Update() { return IsReady(); }
   virtual ~CIndicatorBase() {}
-  virtual SSlopeValidation GetSlopeValidation(double atr, COPY_METHOD copy_method = COPY_MIDDLE);
+  SSlopeValidation GetSlopeValidation(double atr, COPY_METHOD copy_method = COPY_MIDDLE);
 
   bool AttachToChart()
   {
@@ -46,7 +48,7 @@ public:
     return false; // não precisa acoplar
   }
 
-  virtual SPositionInfo GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE);
+  SPositionInfo GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE);
   CSlope m_slope; // Classe Cálculo Inclinação
   CIndCandleDistance m_candle_distance;
 };
@@ -141,9 +143,9 @@ SSlopeResult CIndicatorBase::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
     return result;
   }
 
-  // Obter valores da MA
+  // Obter valores da MA usando o método template
   double ma_values[];
-  if (!CopyValues(0, lookback + 1, ma_values))
+  if (!OnCopyValuesForSlope(0, lookback + 1, ma_values, copy_method))
   {
     Print("ERRO: Falha ao obter valores para cálculo da inclinação");
     return result;
@@ -169,7 +171,7 @@ SSlopeResult CIndicatorBase::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
 
 SPositionInfo CIndicatorBase::GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE)
 {
-  double ind_value = GetValue(shift);
+  double ind_value = OnGetIndicatorValue(shift, copy_method);
   SPositionInfo result;
   result.distance = 0.0;
   result = m_candle_distance.GetPreviousCandlePosition(shift, m_symbol, m_timeframe, ind_value);

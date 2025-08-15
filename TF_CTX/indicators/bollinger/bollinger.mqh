@@ -20,7 +20,8 @@ private:
   bool CreateHandle();
   void ReleaseHandle();
   double GetBufferValue(int buffer_index, int shift = 0);
-  virtual SSlopeResult GetAdvancedSlope(ENUM_SLOPE_METHOD method, int lookback, double atr, COPY_METHOD copy_method = COPY_MIDDLE) override;
+  virtual bool OnCopyValuesForSlope(int shift, int count, double &buffer[], COPY_METHOD copy_method) override;
+  virtual double OnGetIndicatorValue(int shift, COPY_METHOD copy_method) override;
 
 public:
   CBollinger();
@@ -47,9 +48,6 @@ public:
 
   virtual bool IsReady();
   virtual bool Update() override;
-  SSlopeValidation
-  GetSlopeValidation(double atr, COPY_METHOD copy_method = COPY_MIDDLE) override;
-  SPositionInfo GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE) override;
 };
 
 //+------------------------------------------------------------------+
@@ -233,180 +231,49 @@ bool CBollinger::Update()
   return true;
 }
 
+
 //+------------------------------------------------------------------+
-//| Calcular inclinação avançada da média móvel                    |
+//| Implementação do método template para copiar valores para o cálculo de inclinação |
 //+------------------------------------------------------------------+
-SSlopeResult CBollinger::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
-                                          int lookback = 10,
-                                          double atr = 0,
-                                          COPY_METHOD copy_method = COPY_MIDDLE)
+bool CBollinger::OnCopyValuesForSlope(int shift, int count, double &buffer[], COPY_METHOD copy_method)
 {
-  SSlopeResult result;
-
   if (handle == INVALID_HANDLE)
-  {
-    Print("ERRO: Handle do indicador inválido para cálculo da inclinação avançada");
-    return result;
-  }
-
-  if (lookback <= 0)
-  {
-    Print("ERRO: Lookback deve ser maior que zero");
-    return result;
-  }
-
-  // Obter valores da MA
-  double ma_values[];
+    return false;
 
   switch (copy_method)
   {
   case COPY_LOWER:
-    if (!CopyLower(0, lookback + 1, ma_values))
-    {
-      Print("ERRO: Falha ao obter valores para cálculo da inclinação");
-      return result;
-    }
-    break;
+    return CopyLower(shift, count, buffer);
 
   case COPY_UPPER:
-    if (!CopyUpper(0, lookback + 1, ma_values))
-    {
-      Print("ERRO: Falha ao obter valores para cálculo da inclinação");
-      return result;
-    }
-    break;
+    return CopyUpper(shift, count, buffer);
 
   case COPY_MIDDLE:
-    if (!CopyValues(0, lookback + 1, ma_values))
-    {
-      Print("ERRO: Falha ao obter valores para cálculo da inclinação");
-      return result;
-    }
-    break;
+    return CopyValues(shift, count, buffer);
 
   default:
     Print("ERRO: Método de cópia inválido");
-    return result;
+    return false;
   }
+};
 
-  switch (method)
-  {
-  case SLOPE_LINEAR_REGRESSION:
-    result = m_slope.CalculateLinearRegressionSlope(m_symbol, ma_values, atr, lookback);
-    break;
-
-  case SLOPE_SIMPLE_DIFFERENCE:
-    result = m_slope.CalculateSimpleDifference(m_symbol, ma_values, atr, lookback);
-    break;
-
-  case SLOPE_DISCRETE_DERIVATIVE:
-    result = m_slope.CalculateDiscreteDerivative(m_symbol, ma_values, atr);
-    break;
-  }
-
-  return result;
-}
-
+ //+------------------------------------------------------------------+
+//| Implementação do método template para obter o valor do indicador |
 //+------------------------------------------------------------------+
-//| Validação cruzada com múltiplos métodos de inclinação          |
-//+------------------------------------------------------------------+
-SSlopeValidation CBollinger::GetSlopeValidation(double atr, COPY_METHOD copy_method = COPY_MIDDLE)
+double CBollinger::OnGetIndicatorValue(int shift, COPY_METHOD copy_method)
 {
-  SSlopeValidation validation;
-
-  // Calcular inclinação com configurações específicas
-  validation.linear_regression = GetAdvancedSlope(
-      SLOPE_LINEAR_REGRESSION,
-      slope_values.lookback,
-      atr, copy_method);
-
-  validation.simple_difference = GetAdvancedSlope(
-      SLOPE_SIMPLE_DIFFERENCE,
-      slope_values.lookback,
-      atr, copy_method);
-
-  validation.discrete_derivative = GetAdvancedSlope(
-      SLOPE_DISCRETE_DERIVATIVE,
-      slope_values.lookback,
-      atr, copy_method);
-
-  // validation.angle_degrees = GetAdvancedSlope(SLOPE_ANGLE_DEGREES, config.lookback);
-  // validation.percentage_change = GetAdvancedSlope(SLOPE_PERCENTAGE_CHANGE, config.lookback);
-
-  if (validation.linear_regression.slope_value > slope_values.linear_reg)
-  {
-    validation.linear_regression.trend_direction = "_UP";
-  }
-  else if (validation.linear_regression.slope_value < -slope_values.linear_reg)
-  {
-    validation.linear_regression.trend_direction = "_DOWN";
-  }
-  else
-  {
-    validation.linear_regression.trend_direction = "_SIDEWALK";
-  }
-
-  // RL norm DIFF
-  if (validation.simple_difference.slope_value > slope_values.simple_diff)
-  {
-    validation.simple_difference.trend_direction = "_UP";
-  }
-  else if (validation.simple_difference.slope_value < -slope_values.simple_diff)
-  {
-    validation.simple_difference.trend_direction = "_DOWN";
-  }
-  else
-  {
-    validation.simple_difference.trend_direction = "_SIDEWALK";
-  }
-
-  // RL norm ATR
-  if (validation.discrete_derivative.slope_value > slope_values.discrete_der)
-  {
-    validation.discrete_derivative.trend_direction = "_UP";
-  }
-  else if (validation.discrete_derivative.slope_value < -slope_values.discrete_der)
-  {
-    validation.discrete_derivative.trend_direction = "_DOWN";
-  }
-  else
-  {
-    validation.discrete_derivative.trend_direction = "_SIDEWALK";
-  }
-
-  validation.linear_config_value = slope_values.linear_reg;
-  validation.difference_config_value = slope_values.simple_diff;
-  validation.derivative_config_value = slope_values.discrete_der;
-  validation.lookback_config_value = slope_values.lookback;
-
-  return validation;
-}
-
-SPositionInfo CBollinger::GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE)
-{
-
-  double ind_value = 0;
-
   if (copy_method == COPY_LOWER)
   {
-    Print("COPIA - LOWER");
-    ind_value = GetLower(shift);
+    return GetLower(shift);
   }
   else if (copy_method == COPY_UPPER)
   {
-    Print("COPIA - UPPER");
-    ind_value = GetUpper(shift);
+    return GetUpper(shift);
   }
   else
   {
-    Print("COPIA - MIDDLE");
-    ind_value = GetValue(shift);
+    return GetValue(shift);
   }
-
-  SPositionInfo result;
-  result.distance = 0.0;
-  result = m_candle_distance.GetPreviousCandlePosition(shift, m_symbol, m_timeframe, ind_value);
-  return result;
 }
 
 #endif // __BOLLINGER_MQH__
