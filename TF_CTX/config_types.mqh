@@ -25,7 +25,7 @@ public:
   bool enabled;
   bool attach_chart;        // Nova flag para acoplar ao gráfico o indicador
   ENUM_TIMEFRAMES alert_tf; // TF alert
-  SSlopeValues slope_values;
+  SSlopeValues slope_values[];
   virtual ~CIndicatorConfig() {}
 };
 

@@ -584,15 +584,22 @@ void CConfigManager::FillIndicatorBase(CIndicatorConfig &cfg, CJAVal *node, stri
     // Ler slope_values se existir no JSON
     if ((*node).HasKey("slope_values"))
     {
-        CJAVal *slope_node = (*node)["slope_values"];
-        if (slope_node.HasKey("lookback"))
-            cfg.slope_values.lookback = (int)(*slope_node)["lookback"].ToInt();
-        if (slope_node.HasKey("simple_diff"))
-            cfg.slope_values.simple_diff = (*slope_node)["simple_diff"].ToDbl();
-        if (slope_node.HasKey("linear_reg"))
-            cfg.slope_values.linear_reg = (*slope_node)["linear_reg"].ToDbl();
-        if (slope_node.HasKey("discrete_der"))
-            cfg.slope_values.discrete_der = (*slope_node)["discrete_der"].ToDbl();
+        CJAVal *slope_values_array_node = (*node)["slope_values"];
+
+        int num_slopes = slope_values_array_node.Size();
+        ArrayResize(cfg.slope_values, num_slopes);
+        for (int i = 0; i < num_slopes; i++)
+        {
+            CJAVal *slope_node = slope_values_array_node[i];
+            if (slope_node.HasKey("lookback"))
+                cfg.slope_values[i].lookback = (int)slope_node["lookback"].ToInt();
+            if (slope_node.HasKey("simple_diff"))
+                cfg.slope_values[i].simple_diff = slope_node["simple_diff"].ToDbl();
+            if (slope_node.HasKey("linear_reg"))
+                cfg.slope_values[i].linear_reg = slope_node["linear_reg"].ToDbl();
+            if (slope_node.HasKey("discrete_der"))
+                cfg.slope_values[i].discrete_der = slope_node["discrete_der"].ToDbl();
+        }
     }
 }
 

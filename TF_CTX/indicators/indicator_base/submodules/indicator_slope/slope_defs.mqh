@@ -67,6 +67,5 @@ struct SSlopeValues
     linear_reg = 999.99;
     discrete_der = 999.99;
   }
-  
 };
 #endif

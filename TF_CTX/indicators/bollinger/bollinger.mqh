@@ -104,7 +104,7 @@ bool CBollinger::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                       CBollingerConfig &config)
 {
   attach_chart = config.attach_chart;
-  slope_values = config.slope_values;
+  slope_values = config.slope_values[0];
   return Init(symbol, timeframe, config.period, config.shift,
               config.deviation, config.applied_price);
 }
