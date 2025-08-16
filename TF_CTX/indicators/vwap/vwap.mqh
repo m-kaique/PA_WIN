@@ -258,8 +258,7 @@ bool CVWAP::Init(string symbol, ENUM_TIMEFRAMES timeframe,
   attach_chart = config.attach_chart; // Atribui a flag do config
   ArrayCopy(slope_values, config.slope_values);
 
-  
-  return Init(symbol, timeframe, config.period, config.method,
+    return Init(symbol, timeframe, config.period, config.method,
               config.calc_mode, config.session_tf, config.price_type,
               config.start_time, config.line_color,
               config.line_style, config.line_width);
