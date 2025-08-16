@@ -22,6 +22,7 @@ private:
   double GetBufferValue(int buffer_index, int shift = 0);
   virtual bool OnCopyValuesForSlope(int shift, int count, double &buffer[], COPY_METHOD copy_method) override;
   virtual double OnGetIndicatorValue(int shift, COPY_METHOD copy_method) override;
+  virtual int OnGetSlopeConfigIndex(COPY_METHOD copy_method) override;
 
 public:
   CBollinger();
@@ -104,7 +105,7 @@ bool CBollinger::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                       CBollingerConfig &config)
 {
   attach_chart = config.attach_chart;
-  slope_values = config.slope_values[0];
+  ArrayCopy(slope_values, config.slope_values);
   return Init(symbol, timeframe, config.period, config.shift,
               config.deviation, config.applied_price);
 }
@@ -231,7 +232,6 @@ bool CBollinger::Update()
   return true;
 }
 
-
 //+------------------------------------------------------------------+
 //| Implementação do método template para copiar valores para o cálculo de inclinação |
 //+------------------------------------------------------------------+
@@ -257,7 +257,7 @@ bool CBollinger::OnCopyValuesForSlope(int shift, int count, double &buffer[], CO
   }
 };
 
- //+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
 //| Implementação do método template para obter o valor do indicador |
 //+------------------------------------------------------------------+
 double CBollinger::OnGetIndicatorValue(int shift, COPY_METHOD copy_method)
@@ -274,6 +274,25 @@ double CBollinger::OnGetIndicatorValue(int shift, COPY_METHOD copy_method)
   {
     return GetValue(shift);
   }
+}
+
+int CBollinger::OnGetSlopeConfigIndex(COPY_METHOD copy_method)
+{
+
+  if (copy_method == COPY_MIDDLE)
+  {
+    return 1;
+  }
+  else if (copy_method == COPY_UPPER)
+  {
+    return 0;
+  }
+  else if (copy_method == COPY_LOWER)
+  {
+    return 2;
+  }
+
+  return 1;
 }
 
 #endif // __BOLLINGER_MQH__

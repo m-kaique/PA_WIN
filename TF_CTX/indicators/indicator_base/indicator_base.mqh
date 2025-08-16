@@ -22,7 +22,8 @@ protected:
   SSlopeResult GetAdvancedSlope(ENUM_SLOPE_METHOD method, int lookback, double atr, COPY_METHOD copy_method = COPY_MIDDLE);
   virtual bool OnCopyValuesForSlope(int shift, int count, double &buffer[], COPY_METHOD copy_method) { return CopyValues(shift, count, buffer); }
   virtual double OnGetIndicatorValue(int shift, COPY_METHOD copy_method) { return GetValue(shift); }
-  SSlopeValues slope_values;
+  virtual int OnGetSlopeConfigIndex(COPY_METHOD copy_method) {return 0;};
+  SSlopeValues slope_values[];
 
 public:
   virtual bool Init(string symbol, ENUM_TIMEFRAMES timeframe, int period, ENUM_MA_METHOD method) = 0;
@@ -60,28 +61,31 @@ public:
 // PA_WIN CALL
 SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy_method = COPY_MIDDLE)
 {
+
+  int slope_conf_index = OnGetSlopeConfigIndex(copy_method);
+
   SSlopeValidation validation;
 
   validation.linear_regression = GetAdvancedSlope(
       SLOPE_LINEAR_REGRESSION,
-      slope_values.lookback,
+      slope_values[slope_conf_index].lookback,
       atr);
 
   validation.simple_difference = GetAdvancedSlope(
       SLOPE_SIMPLE_DIFFERENCE,
-      slope_values.lookback,
+      slope_values[slope_conf_index].lookback,
       atr);
 
   validation.discrete_derivative = GetAdvancedSlope(
       SLOPE_DISCRETE_DERIVATIVE,
-      slope_values.lookback,
+      slope_values[slope_conf_index].lookback,
       atr);
 
-  if (validation.linear_regression.slope_value > slope_values.linear_reg)
+  if (validation.linear_regression.slope_value > slope_values[slope_conf_index].linear_reg)
   {
     validation.linear_regression.trend_direction = "_UP";
   }
-  else if (validation.linear_regression.slope_value < -slope_values.linear_reg)
+  else if (validation.linear_regression.slope_value < -slope_values[slope_conf_index].linear_reg)
   {
     validation.linear_regression.trend_direction = "_DOWN";
   }
@@ -91,11 +95,11 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy
   }
 
   // RL norm DIFF
-  if (validation.simple_difference.slope_value > slope_values.simple_diff)
+  if (validation.simple_difference.slope_value > slope_values[slope_conf_index].simple_diff)
   {
     validation.simple_difference.trend_direction = "_UP";
   }
-  else if (validation.simple_difference.slope_value < -slope_values.simple_diff)
+  else if (validation.simple_difference.slope_value < -slope_values[slope_conf_index].simple_diff)
   {
     validation.simple_difference.trend_direction = "_DOWN";
   }
@@ -105,11 +109,11 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy
   }
 
   // RL norm ATR
-  if (validation.discrete_derivative.slope_value > slope_values.discrete_der)
+  if (validation.discrete_derivative.slope_value > slope_values[slope_conf_index].discrete_der)
   {
     validation.discrete_derivative.trend_direction = "_UP";
   }
-  else if (validation.discrete_derivative.slope_value < -slope_values.discrete_der)
+  else if (validation.discrete_derivative.slope_value < -slope_values[slope_conf_index].discrete_der)
   {
     validation.discrete_derivative.trend_direction = "_DOWN";
   }
@@ -118,10 +122,10 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy
     validation.discrete_derivative.trend_direction = "_SIDEWALK";
   }
 
-  validation.linear_config_value = slope_values.linear_reg;
-  validation.difference_config_value = slope_values.simple_diff;
-  validation.derivative_config_value = slope_values.discrete_der;
-  validation.lookback_config_value = slope_values.lookback;
+  validation.linear_config_value = slope_values[slope_conf_index].linear_reg;
+  validation.difference_config_value = slope_values[slope_conf_index].simple_diff;
+  validation.derivative_config_value = slope_values[slope_conf_index].discrete_der;
+  validation.lookback_config_value = slope_values[slope_conf_index].lookback;
 
   return validation;
 }
@@ -143,7 +147,7 @@ SSlopeResult CIndicatorBase::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
     return result;
   }
 
-  // Obter valores da MA usando o método template
+  // Obter valores do buffer usando o método template
   double ma_values[];
   if (!OnCopyValuesForSlope(0, lookback + 1, ma_values, copy_method))
   {
