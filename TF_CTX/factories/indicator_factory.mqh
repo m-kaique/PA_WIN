@@ -11,7 +11,7 @@
 #include "../indicators/sup_res/sup_res.mqh"
 #include "../indicators/atr/atr.mqh"
 #include "../indicators/adx/adx.mqh"
-#include "../config_types.mqh"
+#include "../indicators/indicators_types.mqh"
 
 // Creator function signature
 typedef CIndicatorBase *(*IndicatorCreatorFunc)(string symbol, ENUM_TIMEFRAMES timeframe, CIndicatorConfig *config);

@@ -7,7 +7,7 @@
 
 #include "../indicator_base/indicator_base.mqh"
 #include "sup_res_defs.mqh"
-#include "../../config_types.mqh"
+#include "../indicators_types.mqh"
 
 // Structure representing a support/resistance zone
 struct SRZone

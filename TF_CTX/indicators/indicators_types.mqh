@@ -1,20 +1,21 @@
 //+------------------------------------------------------------------+
-//|                                               config_types.mqh   |
+//|                                                                  |
 //|  OOP indicator configuration types                               |
 //+------------------------------------------------------------------+
 
-#ifndef __CONFIG_TYPES_MQH__
-#define __CONFIG_TYPES_MQH__
+#ifndef __INDICATORS_TYPES__
+#define __INDICATORS_TYPES__
 
-#include "indicators/vwap/vwap_defs.mqh"
-#include "indicators/ma/ma_defs.mqh"
-#include "indicators/stochastic/stochastic_defs.mqh"
-#include "indicators/volume/volume_defs.mqh"
-#include "indicators/bollinger/bollinger_defs.mqh"
-#include "indicators/fibonacci/fibonacci_defs.mqh"
-#include "indicators/trendline/trendline_defs.mqh"
-#include "indicators/sup_res/sup_res_defs.mqh"
-#include "indicators/indicator_base/submodules/indicator_slope/slope_defs.mqh"
+
+#include "vwap/vwap_defs.mqh"
+#include "ma/ma_defs.mqh"
+#include "stochastic/stochastic_defs.mqh"
+#include "volume/volume_defs.mqh"
+#include "bollinger/bollinger_defs.mqh"
+#include "fibonacci/fibonacci_defs.mqh"
+#include "trendline/trendline_defs.mqh"
+#include "sup_res/sup_res_defs.mqh"
+#include "indicator_base/submodules/indicator_slope/slope_defs.mqh"
 
 //--- Base configuration
 class CIndicatorConfig
@@ -337,4 +338,4 @@ struct STimeframeConfig
   CPriceActionConfig *priceactions[];
 };
 
-#endif // __CONFIG_TYPES_MQH__
+#endif

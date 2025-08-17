@@ -7,7 +7,7 @@
 #property version "2.00"
 
 #include "factories/indicator_factory.mqh"
-#include "config_types.mqh"
+#include "indicators/indicators_types.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe principal para contexto de TimeFrame                     |

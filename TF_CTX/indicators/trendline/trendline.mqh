@@ -6,7 +6,7 @@
 #define __TRENDLINE_MQH__
 
 #include "../indicator_base/indicator_base.mqh"
-#include "../../config_types.mqh"
+#include "../indicators_types.mqh"
 #include "trendline_defs.mqh"
 
 // mínimo de ângulo para que uma linha de tendência seja considerada válida

@@ -9,7 +9,7 @@
 #property link "https://mql5.com"
 #property version "2.00"
 
-#include "TF_CTX/config_manager.mqh"
+#include "CONFIG_MANAGER/config_manager.mqh"
 
 // Gerenciador de configuração
 CConfigManager *g_config_manager;

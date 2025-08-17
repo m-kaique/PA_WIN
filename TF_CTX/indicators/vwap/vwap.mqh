@@ -7,7 +7,7 @@
 
 #include "../indicator_base/indicator_base.mqh"
 #include "vwap_defs.mqh"
-#include "../../config_types.mqh"
+#include "../indicators_types.mqh"
 
 class CVWAP : public CIndicatorBase
 {

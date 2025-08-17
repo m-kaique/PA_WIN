@@ -7,7 +7,7 @@
 #property version   "1.01"
 
 #include "../indicator_base/indicator_base.mqh"
-#include "../../config_types.mqh"
+#include "../indicators_types.mqh"
 #include "stochastic_defs.mqh"
 
 //+------------------------------------------------------------------+

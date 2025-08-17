@@ -6,7 +6,7 @@
 #define __FIBONACCI_MQH__
 
 #include "../indicator_base/indicator_base.mqh"
-#include "../../config_types.mqh"
+#include "../indicators_types.mqh"
 #include "fibonacci_defs.mqh"
 
 class CFibonacci : public CIndicatorBase

@@ -8,7 +8,7 @@
 #property version "1.00"
 #include "atr_defs.mqh"
 #include "../indicator_base/indicator_base.mqh"
-#include "../../config_types.mqh"
+#include "../indicators_types.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe para cálculo do ATR (Average True Range)                |
