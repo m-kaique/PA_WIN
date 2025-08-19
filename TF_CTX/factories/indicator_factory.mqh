@@ -81,6 +81,15 @@ public:
             return m_creators[i].func(symbol, tf, cfg);
       return NULL;
    }
+
+   static void Cleanup()
+   {
+      if (s_instance != NULL)
+      {
+         delete s_instance;
+         s_instance = NULL;
+      }
+   }
 };
 
 //--- Static member initialization
@@ -210,15 +219,15 @@ CIndicatorBase *CIndicatorFactory::CreateTrendline(string symbol, ENUM_TIMEFRAME
    return NULL;
 }
 
-CIndicatorBase* CIndicatorFactory::CreateSupRes(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg)
-  {
-   CSupResConfig *c = (CSupResConfig*)cfg;
-   if(c==NULL)
+CIndicatorBase *CIndicatorFactory::CreateSupRes(string symbol, ENUM_TIMEFRAMES tf, CIndicatorConfig *cfg)
+{
+   CSupResConfig *c = (CSupResConfig *)cfg;
+   if (c == NULL)
       return NULL;
    CSupRes *ind = new CSupRes();
-   if(ind!=NULL && ind.Init(symbol, tf, *c))
+   if (ind != NULL && ind.Init(symbol, tf, *c))
       return ind;
    delete ind;
    return NULL;
-  }
+}
 #endif // __INDICATOR_FACTORY_MQH__

@@ -76,6 +76,9 @@ void OnDeinit(const int reason)
       delete g_config_manager;
       g_config_manager = NULL;
    }
+
+   // Garantir limpeza final do singleton
+   CIndicatorFactory::Cleanup();
 }
 
 //+------------------------------------------------------------------+
@@ -190,7 +193,7 @@ void CheckCtxTrendLine(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 //+------------------------------------------------------------------+
 //| Informações sobre a TrendLine de um TF                           |
 //+------------------------------------------------------------------+
-void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx) 
+void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 {
    if (tf == PERIOD_M15)
    {
@@ -264,6 +267,20 @@ void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
    }
 }
 
+void CheckM15Vol(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
+{
+   if (tf == PERIOD_M15)
+   {
+
+      CVolume *vol0 = ctx.GetIndicator("vol0");
+      if (vol0 != NULL)
+      {
+         Print("###  vol0");   
+         Print("VALOR>>> " + (string)vol0.GetValue());
+      } 
+   }
+}
+
 //+------------------------------------------------------------------+
 //| Posição do candle vs SMA200 H4                                   |
 //+------------------------------------------------------------------+
@@ -328,8 +345,9 @@ void UpdateSymbolContexts(string symbol)
       if (ctx.HasNewBar())
       {
          ctx.Update();
-         CheckCtxMASlope(tf, ctx);
-         CheckCandlePosition(tf, ctx);
+         // CheckCtxMASlope(tf, ctx);
+         // CheckCandlePosition(tf, ctx);
+         CheckM15Vol(tf, ctx);
       }
    }
 }

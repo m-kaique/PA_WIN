@@ -28,11 +28,11 @@ private:
     ENUM_VWAP_PRICE_TYPE StringToVWAPPriceType(string type_str);
     ENUM_LINE_STYLE StringToLineStyle(string style_str);
     color StringToColor(string color_str);
-    
+
     // Métodos para criar configurações específicas de indicadores
     void FillIndicatorBase(CIndicatorConfig &cfg, CJAVal *node, string type);
     CIndicatorConfig *CreateIndicatorConfig(CJAVal *ind);
-    
+
     // Métodos específicos para cada tipo de indicador
     CMAConfig *CreateMAConfig(CJAVal *ind);
     CStochasticConfig *CreateStochasticConfig(CJAVal *ind);
@@ -52,9 +52,44 @@ public:
 
     // Método principal para parsing de configuração de timeframe
     STimeframeConfig ParseTimeframeConfig(CJAVal *tf_config, ENUM_TIMEFRAMES ctx_tf);
-    
+
     // Método para criar contexto baseado na configuração
     TF_CTX *CreateContext(string symbol, ENUM_TIMEFRAMES timeframe, STimeframeConfig &config);
+
+    //+------------------------------------------------------------------+
+    //| Cleanup das configurações                                        |
+    //+------------------------------------------------------------------+
+    void CleanupTimeframeConfig(STimeframeConfig &config)
+    {
+        // Libera memória dos indicadores
+        int ind_count = ArraySize(config.indicators);
+        for (int i = 0; i < ind_count; i++)
+        {
+            if (config.indicators[i] != NULL)
+            {
+                Print("Deletando " + config.indicators[i].name);
+                delete config.indicators[i];
+                config.indicators[i] = NULL;
+            }
+        }
+        ArrayResize(config.indicators, 0);
+
+        // Resetar os campos básicos
+        config.enabled = false;
+        config.num_candles = 0;
+    }
+
+    //+------------------------------------------------------------------+
+    //| Cleanup do contexto                                              |
+    //+------------------------------------------------------------------+
+    static void CleanupContext(TF_CTX *&ctx)
+    {
+        if (ctx != NULL)
+        {
+            delete ctx;
+            ctx = NULL;
+        }
+    }
 };
 
 //+------------------------------------------------------------------+
@@ -95,12 +130,11 @@ STimeframeConfig CTimeframeConfigParser::ParseTimeframeConfig(CJAVal *tf_config,
     // Lista de indicadores
     CJAVal *ind_array = tf_config["indicators"];
     ArrayResize(config.indicators, 0);
-    ArrayResize(config.priceactions, 0);
 
     if (ind_array != NULL)
     {
         Print("Processando ", ind_array.Size(), " indicadores");
-        
+
         for (int i = 0; i < ind_array.Size(); i++)
         {
             CIndicatorConfig *icfg = CreateIndicatorConfig((*ind_array)[i]);
@@ -114,7 +148,9 @@ STimeframeConfig CTimeframeConfigParser::ParseTimeframeConfig(CJAVal *tf_config,
             ArrayResize(config.indicators, pos + 1);
             config.indicators[pos] = icfg;
 
+            Print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
             Print("Indicador lido: ", icfg.name, " Tipo: ", icfg.type, " Enabled: ", icfg.enabled);
+            Print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
         }
     }
     else
@@ -137,12 +173,12 @@ TF_CTX *CTimeframeConfigParser::CreateContext(string symbol, ENUM_TIMEFRAMES tim
         return NULL;
     }
 
-    Print("Criando contexto para ", symbol, " ", EnumToString(timeframe), 
+    Print("Criando contexto para ", symbol, " ", EnumToString(timeframe),
           " com ", ArraySize(config.indicators), " indicadores");
 
     TF_CTX *ctx = new TF_CTX(timeframe, config.num_candles,
-                             config.indicators, config.priceactions);
-    
+                             config.indicators);
+
     if (ctx == NULL)
     {
         Print("ERRO: Falha ao alocar memória para contexto");
@@ -178,9 +214,9 @@ void CTimeframeConfigParser::FillIndicatorBase(CIndicatorConfig &cfg, CJAVal *no
 
         int num_slopes = slope_values_array_node.Size();
         ArrayResize(cfg.slope_values, num_slopes);
-        
+
         Print("Carregando ", num_slopes, " configurações de slope para indicador ", cfg.name);
-        
+
         for (int i = 0; i < num_slopes; i++)
         {
             CJAVal *slope_node = slope_values_array_node[i];
@@ -309,11 +345,11 @@ CVWAPConfig *CTimeframeConfigParser::CreateVWAPConfig(CJAVal *ind)
     p.calc_mode = StringToVWAPCalcMode(ind["calc_mode"].ToStr());
     p.session_tf = StringToTimeframe(ind["session_tf"].ToStr());
     p.price_type = StringToVWAPPriceType(ind["price_type"].ToStr());
-    
+
     string start_str = ind["start_time"].ToStr();
     if (StringLen(start_str) > 0)
         p.start_time = StringToTime(start_str);
-        
+
     p.line_color = StringToColor(ind["Color"].ToStr());
     p.line_style = StringToLineStyle(ind["Style"].ToStr());
     p.line_width = (int)ind["Width"].ToInt();
@@ -342,7 +378,7 @@ CFiboConfig *CTimeframeConfigParser::CreateFiboConfig(CJAVal *ind)
     CFiboConfig *p = new CFiboConfig();
     FillIndicatorBase(*p, ind, "FIBO");
     p.period = (int)ind["period"].ToInt();
-    
+
     // Níveis de retração
     p.level_1 = ind["Level_1"].ToDbl();
     p.level_2 = ind["Level_2"].ToDbl();
@@ -350,34 +386,34 @@ CFiboConfig *CTimeframeConfigParser::CreateFiboConfig(CJAVal *ind)
     p.level_4 = ind["Level_4"].ToDbl();
     p.level_5 = ind["Level_5"].ToDbl();
     p.level_6 = ind["Level_6"].ToDbl();
-    
+
     p.levels_color = StringToColor(ind["LevelsColor"].ToStr());
     p.levels_style = StringToLineStyle(ind["LevelsStyle"].ToStr());
     p.levels_width = (int)ind["LevelsWidth"].ToInt();
-    
+
     // Extensões
     p.ext_1 = ind["Ext_1"].ToDbl();
     p.ext_2 = ind["Ext_2"].ToDbl();
     p.ext_3 = ind["Ext_3"].ToDbl();
-    
+
     p.extensions_color = StringToColor(ind["ExtensionsColor"].ToStr());
     p.extensions_style = StringToLineStyle(ind["ExtensionsStyle"].ToStr());
     p.extensions_width = (int)ind["ExtensionsWidth"].ToInt();
-    
+
     // Linhas paralelas
     p.parallel_color = StringToColor(ind["ParallelColor"].ToStr());
     p.parallel_style = StringToLineStyle(ind["ParallelStyle"].ToStr());
     p.parallel_width = (int)ind["ParallelWidth"].ToInt();
-    
+
     // Labels
     p.show_labels = ind["ShowLabels"].ToBool();
     p.labels_color = StringToColor(ind["LabelsColor"].ToStr());
     p.labels_font_size = (int)ind["LabelsFontSize"].ToInt();
-    
+
     string font = ind["LabelsFont"].ToStr();
     if (StringLen(font) > 0)
         p.labels_font = font;
-        
+
     return p;
 }
 
@@ -388,11 +424,11 @@ CTrendLineConfig *CTimeframeConfigParser::CreateTrendLineConfig(CJAVal *ind)
 {
     CTrendLineConfig *p = new CTrendLineConfig();
     FillIndicatorBase(*p, ind, "TRENDLINE");
-    
+
     p.period = (int)ind["period"].ToInt();
     p.pivot_left = (int)ind["pivot_left"].ToInt();
     p.pivot_right = (int)ind["pivot_right"].ToInt();
-    
+
     // Configurações de desenho
     p.draw_lta = ind["draw_lta"].ToBool();
     p.draw_ltb = ind["draw_ltb"].ToBool();
@@ -404,10 +440,10 @@ CTrendLineConfig *CTimeframeConfigParser::CreateTrendLineConfig(CJAVal *ind)
     p.ltb_width = (int)ind["ltb_width"].ToInt();
     p.extend_right = ind["extend_right"].ToBool();
     p.min_angle = ind["min_angle"].ToDbl();
-    
+
     // Configurações específicas de trend line
     p.candles_lookback = (int)ind["trendline_candles_lookback"].ToInt();
-    
+
     // Status flags
     CJAVal *flags = ind["trendline_status_flags"];
     if (flags != NULL)
@@ -435,14 +471,14 @@ CTrendLineConfig *CTimeframeConfigParser::CreateTrendLineConfig(CJAVal *ind)
         p.advanced_features.detect_fakeout = adv["detect_fakeout"].ToBool();
         p.advanced_features.count_touches = adv["count_touches"].ToBool();
         p.advanced_features.touch_tolerance_points = adv["touch_tolerance_points"].ToDbl();
-        
+
         string mode = adv["status_evaluate_mode"].ToStr();
         if (StringLen(mode) > 0)
             p.advanced_features.status_evaluate_mode = mode;
-            
+
         p.advanced_features.register_resets = adv["register_resets"].ToBool();
     }
-    
+
     return p;
 }
 
@@ -453,9 +489,9 @@ CSupResConfig *CTimeframeConfigParser::CreateSupResConfig(CJAVal *ind)
 {
     CSupResConfig *p = new CSupResConfig();
     FillIndicatorBase(*p, ind, "SUPRES");
-    
+
     p.period = (int)ind["period"].ToInt();
-    
+
     // Configurações de desenho
     p.draw_sup = ind["draw_sup"].ToBool();
     p.draw_res = ind["draw_res"].ToBool();
@@ -467,7 +503,7 @@ CSupResConfig *CTimeframeConfigParser::CreateSupResConfig(CJAVal *ind)
     p.res_width = (int)ind["res_width"].ToInt();
     p.extend_right = ind["extend_right"].ToBool();
     p.show_labels = ind["show_labels"].ToBool();
-    
+
     // Configurações de análise
     p.touch_lookback = (int)ind["touch_lookback"].ToInt();
     p.touch_tolerance = ind["touch_tolerance"].ToDbl();
@@ -475,7 +511,7 @@ CSupResConfig *CTimeframeConfigParser::CreateSupResConfig(CJAVal *ind)
     p.max_zones_to_draw = (int)ind["max_zones_to_draw"].ToInt();
     p.min_touches = (int)ind["min_touches"].ToInt();
     p.validation = (ENUM_SUPRES_VALIDATION)ind["validation"].ToInt();
-    
+
     return p;
 }
 

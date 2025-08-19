@@ -35,7 +35,7 @@ private:
 
 public:
   TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles,
-         CIndicatorConfig *&cfg[], CPriceActionConfig *&pa_cfg[]);
+         CIndicatorConfig *&cfg[]);
   ~TF_CTX();
 
   bool Init();
@@ -50,7 +50,7 @@ public:
 //| Construtor                                                       |
 //+------------------------------------------------------------------+
 TF_CTX::TF_CTX(ENUM_TIMEFRAMES timeframe, int num_candles,
-               CIndicatorConfig *&cfg[], CPriceActionConfig *&pa_cfg[])
+               CIndicatorConfig *&cfg[])
 {
   m_timeframe = timeframe;
   m_last_bar_time = 0;
@@ -196,22 +196,34 @@ bool TF_CTX::ValidateParameters()
 //+------------------------------------------------------------------+
 void TF_CTX::CleanUp()
 {
-  for (int i = 0; i < ArraySize(m_indicators); i++)
-  {
-    if (m_indicators[i] != NULL)
-      delete m_indicators[i];
-  }
+    // Destruir configurações associadas (evita leaks dos *Config)
   for (int i = 0; i < ArraySize(m_cfg); i++)
   {
     if (m_cfg[i] != NULL)
+    {
       delete m_cfg[i];
+      m_cfg[i] = NULL;
+    }
   }
-
-  ArrayResize(m_indicators, 0);
-  ArrayResize(m_names, 0);
   ArrayResize(m_cfg, 0);
+
+  ArrayResize(m_names, 0);
   m_initialized = false;
+  
+  // Destruir indicadores criados para este contexto
+  for (int i = 0; i < ArraySize(m_indicators); i++)
+  {
+    if (m_indicators[i] != NULL)
+    {
+      delete m_indicators[i];
+      m_indicators[i] = NULL;
+    }
+  }
+  ArrayResize(m_indicators, 0);
+
+
 }
+
 
 //+------------------------------------------------------------------+
 //| Obter valor do indicador                                         |

@@ -4,16 +4,15 @@
 //|                                             https://www.mql5.com |
 //|                                                                  |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2025, MetaQuotes Ltd."
+#property copyright "CopyrightF 2025, MetaQuotes Ltd."
 #property link "https://www.mql5.com"
 #property version "2.00"
 
-#include  "submodules/tf_ctx_parser/tf_ctx_parser.mqh"
+#include "submodules/tf_ctx_parser/tf_ctx_parser.mqh"
 #include "../utils/JAson.mqh"
 #include "../utils/conversion.mqh"
 #include "../TF_CTX/tf_ctx.mqh"
 #include "config_types.mqh"
-
 
 //+------------------------------------------------------------------+
 //| Classe para gerenciar configurações e contextos                 |
@@ -71,6 +70,8 @@ CConfigManager::CConfigManager()
 CConfigManager::~CConfigManager()
 {
     Cleanup();
+    // Cleanup do singleton factory
+    CIndicatorFactory::Cleanup();
 }
 
 //+------------------------------------------------------------------+
@@ -93,11 +94,11 @@ bool CConfigManager::InitFromFile(string file_path)
         return false;
     }
 
-    /*** 
+    /***
      * Novos parsers devem ser chamados aqui
-     * 
+     *
      * ex. futuramente o parser para confluencias/regras/riscos e etc
-     * 
+     *
      * ***/
 
     m_initialized = true;
@@ -210,11 +211,11 @@ bool CConfigManager::LoadConfigFromFile(string file_path)
     if (StringLen(json_content) > 0)
     {
         ushort first_char = StringGetCharacter(json_content, 0);
-        
+
         if (first_char != '{' && first_char != 123)
         {
             Print("AVISO: Arquivo não parece começar com '{' - ajustando...");
-            
+
             // Tentar encontrar o primeiro '{'
             int brace_pos = StringFind(json_content, "{");
             if (brace_pos >= 0)
@@ -276,10 +277,11 @@ bool CConfigManager::CreateContexts()
             // Usar o parser para processar a configuração do timeframe
             STimeframeConfig config;
             config = tf_ctx_parser.ParseTimeframeConfig(tf_config, tf);
-            
+
             if (!config.enabled)
             {
                 Print("TimeFrame ", tf_str, " está desabilitado");
+                tf_ctx_parser.CleanupTimeframeConfig(config); // Cleanup added here
                 continue;
             }
 
@@ -288,6 +290,7 @@ bool CConfigManager::CreateContexts()
             if (ctx == NULL)
             {
                 Print("ERRO: Falha ao criar contexto para ", symbol, " ", tf_str);
+                tf_ctx_parser.CleanupTimeframeConfig(config); // Cleanup added here
                 continue;
             }
 
@@ -355,7 +358,7 @@ int CConfigManager::GetSymbolContexts(string symbol, TF_CTX *&contexts[], ENUM_T
     ArrayResize(timeframes, 0);
 
     string symbol_prefix = symbol + "_";
-    
+
     for (int i = 0; i < ArraySize(m_context_keys); i++)
     {
         string key = m_context_keys[i];
@@ -364,7 +367,7 @@ int CConfigManager::GetSymbolContexts(string symbol, TF_CTX *&contexts[], ENUM_T
             int pos = ArraySize(contexts);
             ArrayResize(contexts, pos + 1);
             ArrayResize(timeframes, pos + 1);
-            
+
             contexts[pos] = m_contexts[i];
 
             string tf_str = StringSubstr(key, StringLen(symbol_prefix));
@@ -382,8 +385,8 @@ void CConfigManager::Cleanup()
 {
     Print("Limpando recursos do ConfigManager...");
     
-    // Deletar contextos
-    for (int i = 0; i < ArraySize(m_contexts); i++)
+    // Deletar contextos PRIMEIRO (ordem inversa à criação)
+    for (int i = ArraySize(m_contexts) - 1; i >= 0; i--)
     {
         if (m_contexts[i] != NULL)
         {
@@ -391,7 +394,7 @@ void CConfigManager::Cleanup()
             m_contexts[i] = NULL;
         }
     }
-
+  
     ArrayResize(m_contexts, 0);
     ArrayResize(m_context_keys, 0);
     ArrayResize(m_symbols, 0);
@@ -400,7 +403,6 @@ void CConfigManager::Cleanup()
     
     Print("Recursos limpos com sucesso");
 }
-
 //+------------------------------------------------------------------+
 //| Teste básico de JSON parsing                                    |
 //+------------------------------------------------------------------+
@@ -431,16 +433,26 @@ string CConfigManager::TimeframeToString(ENUM_TIMEFRAMES tf)
 {
     switch (tf)
     {
-        case PERIOD_M1:  return "M1";
-        case PERIOD_M5:  return "M5";
-        case PERIOD_M15: return "M15";
-        case PERIOD_M30: return "M30";
-        case PERIOD_H1:  return "H1";
-        case PERIOD_H4:  return "H4";
-        case PERIOD_D1:  return "D1";
-        case PERIOD_W1:  return "W1";
-        case PERIOD_MN1: return "MN1";
-        default: return "UNKNOWN";
+    case PERIOD_M1:
+        return "M1";
+    case PERIOD_M5:
+        return "M5";
+    case PERIOD_M15:
+        return "M15";
+    case PERIOD_M30:
+        return "M30";
+    case PERIOD_H1:
+        return "H1";
+    case PERIOD_H4:
+        return "H4";
+    case PERIOD_D1:
+        return "D1";
+    case PERIOD_W1:
+        return "W1";
+    case PERIOD_MN1:
+        return "MN1";
+    default:
+        return "UNKNOWN";
     }
 }
 
@@ -458,7 +470,7 @@ string CConfigManager::CreateContextKey(string symbol, ENUM_TIMEFRAMES tf)
 int CConfigManager::OpenConfigFile(string file_path)
 {
     Print("Tentando abrir arquivo: ", file_path);
-    
+
     // Primeira tentativa: pasta local do EA (ANSI)
     int handle = FileOpen(file_path, FILE_READ | FILE_TXT | FILE_ANSI);
     if (handle != INVALID_HANDLE)
@@ -490,6 +502,6 @@ int CConfigManager::OpenConfigFile(string file_path)
     Print("Verificar se o arquivo existe em:");
     Print("1. Terminal_Data_Folder\\MQL5\\Files\\", file_path);
     Print("2. Common_Data_Folder\\Files\\", file_path);
-    
+
     return 0;
 }
