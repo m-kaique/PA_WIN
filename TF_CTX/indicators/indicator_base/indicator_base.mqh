@@ -34,6 +34,7 @@ public:
   virtual ~CIndicatorBase() {}
   SSlopeValidation GetSlopeValidation(double atr, COPY_METHOD copy_method = COPY_MIDDLE);
 
+  
   bool AttachToChart()
   {
     if (attach_chart && handle != INVALID_HANDLE)
@@ -44,6 +45,7 @@ public:
         return false;
       }
       Print("Indicador acoplado ao gráfico com sucesso.");
+
       return true;
     }
     return false; // não precisa acoplar
@@ -81,11 +83,11 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy
       slope_values[slope_conf_index].lookback,
       atr);
 
-  if (validation.linear_regression.slope_value > slope_values[slope_conf_index].linear_reg)
+  if (validation.linear_regression.slope_value >= slope_values[slope_conf_index].linear_reg)
   {
     validation.linear_regression.trend_direction = "_UP";
   }
-  else if (validation.linear_regression.slope_value < -slope_values[slope_conf_index].linear_reg)
+  else if (validation.linear_regression.slope_value <= -slope_values[slope_conf_index].linear_reg)
   {
     validation.linear_regression.trend_direction = "_DOWN";
   }
@@ -95,11 +97,11 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy
   }
 
   // RL norm DIFF
-  if (validation.simple_difference.slope_value > slope_values[slope_conf_index].simple_diff)
+  if (validation.simple_difference.slope_value >= slope_values[slope_conf_index].simple_diff)
   {
     validation.simple_difference.trend_direction = "_UP";
   }
-  else if (validation.simple_difference.slope_value < -slope_values[slope_conf_index].simple_diff)
+  else if (validation.simple_difference.slope_value <= -slope_values[slope_conf_index].simple_diff)
   {
     validation.simple_difference.trend_direction = "_DOWN";
   }
@@ -109,11 +111,11 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy
   }
 
   // RL norm ATR
-  if (validation.discrete_derivative.slope_value > slope_values[slope_conf_index].discrete_der)
+  if (validation.discrete_derivative.slope_value >= slope_values[slope_conf_index].discrete_der)
   {
     validation.discrete_derivative.trend_direction = "_UP";
   }
-  else if (validation.discrete_derivative.slope_value < -slope_values[slope_conf_index].discrete_der)
+  else if (validation.discrete_derivative.slope_value <= -slope_values[slope_conf_index].discrete_der)
   {
     validation.discrete_derivative.trend_direction = "_DOWN";
   }

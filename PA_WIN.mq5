@@ -70,15 +70,53 @@ int OnInit()
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
 {
+   Print("=== INICIANDO DEINICIALIZAÇÃO ===");
+   Print("Motivo: ", reason);
+
    // Limpar gerenciador de configuração
    if (g_config_manager != NULL)
    {
+      Print("Limpando ConfigManager...");
       delete g_config_manager;
       g_config_manager = NULL;
    }
 
    // Garantir limpeza final do singleton
    CIndicatorFactory::Cleanup();
+
+   // Pequena pausa e limpeza adicional se necessário
+   if (reason == REASON_REMOVE || reason == REASON_CHARTCHANGE || reason == REASON_PARAMETERS)
+   {
+      Sleep(200); // Pausa para garantir que tudo foi processado
+
+      ObjectsDeleteAll(0, 0); // remove todos os objetos da janela principal
+
+      // Limpeza forçada final se ainda houverem indicadores
+      int total_remaining = 0;
+      for (int window = 0; window <= 10; window++)
+      {
+         total_remaining += ChartIndicatorsTotal(0, window);
+      }
+
+      if (total_remaining > 0)
+      {
+         Print("AVISO: ", total_remaining, " indicadores ainda presentes. Executando limpeza final...");
+
+         for (int window = 0; window <= 10; window++)
+         {
+            int total = ChartIndicatorsTotal(0, window);
+            for (int i = total - 1; i >= 0; i--)
+            {
+               string name = ChartIndicatorName(0, window, i);
+               Print("Indicator Name = " + name);
+               ChartIndicatorDelete(0, window, name);
+            }
+         }
+         ChartRedraw(0);
+      }
+   }
+
+   Print("=== DEINICIALIZAÇÃO CONCLUÍDA ===");
 }
 
 //+------------------------------------------------------------------+
@@ -193,7 +231,7 @@ void CheckCtxTrendLine(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 //+------------------------------------------------------------------+
 //| Informações sobre a TrendLine de um TF                           |
 //+------------------------------------------------------------------+
-void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
+void CheckSlopePosM15(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 {
    if (tf == PERIOD_M15)
    {
@@ -215,108 +253,102 @@ void CheckCtxMASlope(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 
       if (tf_ctx_atr != 0)
       {
+         // EMA 9
          CMovingAverages *ema = ctx.GetIndicator("ema9");
          if (ema != NULL)
          {
+            // Slope
             Print("###  EMA9");
             SSlopeValidation full_validation;
             full_validation = ema.GetSlopeValidation(tf_ctx_atr);
-
             ema.m_slope.DebugSlopeValidation(full_validation);
+
+            // Pos
+            SPositionInfo pos_ema9;
+            pos_ema9 = ema.GetPositionInfo(1);
+            Print("Posição EMA9: " + ema.m_candle_distance.GetCandlePositionDescription(pos_ema9.position));
+            Print("Distância EMA9: " + string(pos_ema9.distance));
          }
 
+         // EMA21
          CMovingAverages *ema21 = ctx.GetIndicator("ema21");
          if (ema21 != NULL)
          {
+            // Slope
             Print("###  EMA21");
             SSlopeValidation full_validation;
             full_validation = ema21.GetSlopeValidation(tf_ctx_atr);
-
             ema21.m_slope.DebugSlopeValidation(full_validation);
+
+            // Pos
+            SPositionInfo pos_ema21;
+            pos_ema21 = ema21.GetPositionInfo(1);
+            Print("Posição EMA21: " + ema21.m_candle_distance.GetCandlePositionDescription(pos_ema21.position));
+            Print("Distância EMA21: " + string(pos_ema21.distance));
          }
 
+         // VWAP
          CVWAP *vwap = ctx.GetIndicator("vwap_diario_fin");
          if (vwap != NULL)
          {
+            // Slope
             Print("###  VWAP");
             SSlopeValidation full_validation;
             full_validation = vwap.GetSlopeValidation(tf_ctx_atr);
-
             vwap.m_slope.DebugSlopeValidation(full_validation);
+
+            // Pos
+            SPositionInfo pos_vwap;
+            pos_vwap = vwap.GetPositionInfo(1);
+            Print("Posição VWAP: " + vwap.m_candle_distance.GetCandlePositionDescription(pos_vwap.position));
+            Print("Distância VWAP: " + string(pos_vwap.distance));
          }
 
-         CBollinger *boll20 = ctx.GetIndicator("boll20");
-         if (boll20 != NULL)
+         // BOLL
+         CBollinger *boll = ctx.GetIndicator("boll20");
+         if (boll != NULL)
          {
-            Print("#BOLLINGER BANDA SUPERIOR#");
-            SSlopeValidation full_validationUpper;
-            full_validationUpper = boll20.GetSlopeValidation(tf_ctx_atr, COPY_UPPER);
-            boll20.m_slope.DebugSlopeValidation(full_validationUpper);
 
-            Print("#BOLLINGER BANDA CENTRAL#");
+            // Slope Superior
+            Print("###  BOLL SUPERIOR");
+            SSlopeValidation full_validation_superior;
+            full_validation_superior = boll.GetSlopeValidation(tf_ctx_atr, COPY_UPPER);
+            boll.m_slope.DebugSlopeValidation(full_validation_superior);
+
+            // Pos Superior
+            SPositionInfo pos_boll_superior;
+            pos_boll_superior = boll.GetPositionInfo(1, COPY_UPPER);
+            Print("Posição: " + boll.m_candle_distance.GetCandlePositionDescription(pos_boll_superior.position));
+            Print("Distância: " + string(pos_boll_superior.distance));
+
+            // ---
+
+            // Slope Centro
+            Print("###  BOLL CENTRO");
             SSlopeValidation full_validation;
-            full_validation = boll20.GetSlopeValidation(tf_ctx_atr, COPY_MIDDLE);
-            boll20.m_slope.DebugSlopeValidation(full_validation);
+            full_validation = boll.GetSlopeValidation(tf_ctx_atr, COPY_MIDDLE);
+            boll.m_slope.DebugSlopeValidation(full_validation);
 
-            Print("#BOLLINGER BANDA INFERIOR#");
-            SSlopeValidation full_validationLower;
-            full_validationLower = boll20.GetSlopeValidation(tf_ctx_atr, COPY_LOWER);
-            boll20.m_slope.DebugSlopeValidation(full_validationLower);
+            // Pos Centro
+            SPositionInfo pos_boll_meio;
+            pos_boll_meio = boll.GetPositionInfo(1, COPY_MIDDLE);
+            Print("Posição: " + boll.m_candle_distance.GetCandlePositionDescription(pos_boll_meio.position));
+            Print("Distância: " + string(pos_boll_meio.distance));
+
+                        // ---
+
+            // Slope Inferior
+            Print("###  BOLL INFERIOR");
+            SSlopeValidation full_validation_inferior;
+            full_validation_inferior = boll.GetSlopeValidation(tf_ctx_atr, COPY_LOWER);
+            boll.m_slope.DebugSlopeValidation(full_validation_inferior);
+
+            // Pos Inferior
+            SPositionInfo pos_boll_inferior;
+            pos_boll_inferior = boll.GetPositionInfo(1, COPY_LOWER);
+            Print("Posição: " + boll.m_candle_distance.GetCandlePositionDescription(pos_boll_inferior.position));
+            Print("Distância: " + string(pos_boll_inferior.distance));
          }
-      }
-   }
-}
-
-void CheckM15Vol(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
-{
-   if (tf == PERIOD_M15)
-   {
-
-      CVolume *vol0 = ctx.GetIndicator("vol0");
-      if (vol0 != NULL)
-      {
-         Print("###  vol0");   
-         Print("VALOR>>> " + (string)vol0.GetValue());
-      } 
-   }
-}
-
-//+------------------------------------------------------------------+
-//| Posição do candle vs SMA200 H4                                   |
-//+------------------------------------------------------------------+
-void CheckCandlePosition(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
-{
-   // if (tf == PERIOD_H4)
-   // {
-   //    CMovingAverages *sma = ctx.GetIndicator("sma200");
-   //    if (sma != NULL)
-   //    {
-   //       SPositionInfo posx = sma.GetPositionInfo(1);
-   //       Print("Posição: " + sma.m_candle_distance.GetCandlePositionDescription(posx.position));
-   //       Print("Distância: " + string(posx.distance));
-   //    }
-   // }
-
-   if (tf == PERIOD_M15)
-   {
-      CBollinger *boll = ctx.GetIndicator("boll20");
-      if (boll != NULL)
-      {
-
-         SPositionInfo posy;
-         posy = boll.GetPositionInfo(1, COPY_UPPER);
-         Print("COPY_UPPER: " + boll.m_candle_distance.GetCandlePositionDescription(posy.position));
-         Print("Distância: " + string(posy.distance));
-
-         SPositionInfo pos;
-         pos = boll.GetPositionInfo(1, COPY_MIDDLE);
-         Print("COPY_MIDDLE: " + boll.m_candle_distance.GetCandlePositionDescription(pos.position));
-         Print("Distância: " + string(pos.distance));
-
-         SPositionInfo posx;
-         posx = boll.GetPositionInfo(1, COPY_LOWER);
-         Print("COPY_LOWER: " + boll.m_candle_distance.GetCandlePositionDescription(posx.position));
-         Print("Distância: " + string(posx.distance));
       }
    }
 }
@@ -345,9 +377,9 @@ void UpdateSymbolContexts(string symbol)
       if (ctx.HasNewBar())
       {
          ctx.Update();
-         // CheckCtxMASlope(tf, ctx);
+         CheckSlopePosM15(tf, ctx);
          // CheckCandlePosition(tf, ctx);
-         CheckM15Vol(tf, ctx);
+         // CheckM15Vol(tf, ctx);
       }
    }
 }
