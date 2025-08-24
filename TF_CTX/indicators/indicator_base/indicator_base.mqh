@@ -20,9 +20,9 @@ protected:
   ENUM_TIMEFRAMES alert_tf;    // TF para alertas
   // Métodos privados para cálculo de inclinação avançada
   SSlopeResult GetAdvancedSlope(ENUM_SLOPE_METHOD method, int lookback, double atr, COPY_METHOD copy_method = COPY_MIDDLE);
-  virtual bool OnCopyValuesForSlope(int shift, int count, double &buffer[], COPY_METHOD copy_method) { return CopyValues(shift, count, buffer); }
+  virtual bool OnCopyValuesForSlope(int shift, int count, double &buffer[], COPY_METHOD copy_method);
   virtual double OnGetIndicatorValue(int shift, COPY_METHOD copy_method) { return GetValue(shift); }
-  virtual int OnGetSlopeConfigIndex(COPY_METHOD copy_method) {return 0;};
+  virtual int OnGetSlopeConfigIndex(COPY_METHOD copy_method) { return 0; };
   SSlopeValues slope_values[];
 
 public:
@@ -34,7 +34,6 @@ public:
   virtual ~CIndicatorBase() {}
   SSlopeValidation GetSlopeValidation(double atr, COPY_METHOD copy_method = COPY_MIDDLE);
 
-  
   bool AttachToChart()
   {
     if (attach_chart && handle != INVALID_HANDLE)
@@ -55,8 +54,8 @@ public:
   CSlope m_slope; // Classe Cálculo Inclinação
   CIndCandleDistance m_candle_distance;
 };
- 
 
+bool CIndicatorBase::OnCopyValuesForSlope(int shift, int count, double &buffer[], COPY_METHOD copy_method) { return CopyValues(shift, count, buffer); }
 //+------------------------------------------------------------------+
 //| Validação cruzada com múltiplos métodos de inclinação          |
 //+------------------------------------------------------------------+
@@ -71,17 +70,20 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy
   validation.linear_regression = GetAdvancedSlope(
       SLOPE_LINEAR_REGRESSION,
       slope_values[slope_conf_index].lookback,
-      atr);
+      atr,
+      copy_method);
 
   validation.simple_difference = GetAdvancedSlope(
       SLOPE_SIMPLE_DIFFERENCE,
       slope_values[slope_conf_index].lookback,
-      atr);
+      atr,
+      copy_method);
 
   validation.discrete_derivative = GetAdvancedSlope(
       SLOPE_DISCRETE_DERIVATIVE,
       slope_values[slope_conf_index].lookback,
-      atr);
+      atr,
+      copy_method);
 
   if (validation.linear_regression.slope_value >= slope_values[slope_conf_index].linear_reg)
   {
@@ -168,7 +170,7 @@ SSlopeResult CIndicatorBase::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
     break;
 
   case SLOPE_DISCRETE_DERIVATIVE:
-    result = m_slope.CalculateDiscreteDerivative(m_symbol, ma_values, atr);
+    result = m_slope.CalculateDiscreteDerivative(m_symbol, ma_values, atr, lookback);
     break;
   }
 
@@ -177,6 +179,7 @@ SSlopeResult CIndicatorBase::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
 
 SPositionInfo CIndicatorBase::GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE)
 {
+  Print("GetPosition info: " + EnumToString(copy_method));
   double ind_value = OnGetIndicatorValue(shift, copy_method);
   SPositionInfo result;
   result.distance = 0.0;

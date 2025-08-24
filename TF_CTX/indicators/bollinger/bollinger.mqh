@@ -118,7 +118,7 @@ bool CBollinger::CreateHandle()
   handle = iBands(m_symbol, m_timeframe, m_period, m_shift, m_deviation, m_price);
   if (handle == INVALID_HANDLE)
   {
-    Print("ERRO: Falha ao criar handle Bollinger para ", m_symbol);
+    //Print("ERRO: Falha ao criar handle Bollinger para ", m_symbol);
     return false;
   }
   return true;
@@ -155,7 +155,7 @@ double CBollinger::GetBufferValue(int buffer_index, int shift)
 //+------------------------------------------------------------------+
 double CBollinger::GetValue(int shift)
 {
-  return GetBufferValue(0, shift);
+  return GetBufferValue(BASE_LINE, shift);
 }
 
 //+------------------------------------------------------------------+
@@ -163,7 +163,7 @@ double CBollinger::GetValue(int shift)
 //+------------------------------------------------------------------+
 double CBollinger::GetUpper(int shift)
 {
-  return GetBufferValue(1, shift);
+  return GetBufferValue(UPPER_BAND, shift);
 }
 
 //+------------------------------------------------------------------+
@@ -171,7 +171,7 @@ double CBollinger::GetUpper(int shift)
 //+------------------------------------------------------------------+
 double CBollinger::GetLower(int shift)
 {
-  return GetBufferValue(2, shift);
+  return GetBufferValue(LOWER_BAND, shift);
 }
 
 //+------------------------------------------------------------------+
@@ -183,7 +183,7 @@ bool CBollinger::CopyValues(int shift, int count, double &buffer[])
     return false;
   ArrayResize(buffer, count);
   ArraySetAsSeries(buffer, true);
-  return CopyBuffer(handle, 0, shift, count, buffer) > 0;
+  return CopyBuffer(handle, BASE_LINE, shift, count, buffer) > 0;
 }
 
 //+------------------------------------------------------------------+
@@ -191,11 +191,12 @@ bool CBollinger::CopyValues(int shift, int count, double &buffer[])
 //+------------------------------------------------------------------+
 bool CBollinger::CopyUpper(int shift, int count, double &buffer[])
 {
+  // 0 - BASE_LINE, 1 - UPPER_BAND, 2 - LOWER_BAND
   if (handle == INVALID_HANDLE)
     return false;
   ArrayResize(buffer, count);
   ArraySetAsSeries(buffer, true);
-  return CopyBuffer(handle, 1, shift, count, buffer) > 0;
+  return CopyBuffer(handle, UPPER_BAND, shift, count, buffer) > 0;
 }
 
 //+------------------------------------------------------------------+
@@ -207,7 +208,7 @@ bool CBollinger::CopyLower(int shift, int count, double &buffer[])
     return false;
   ArrayResize(buffer, count);
   ArraySetAsSeries(buffer, true);
-  return CopyBuffer(handle, 2, shift, count, buffer) > 0;
+  return CopyBuffer(handle, LOWER_BAND, shift, count, buffer) > 0;
 }
 
 //+------------------------------------------------------------------+
@@ -240,19 +241,23 @@ bool CBollinger::OnCopyValuesForSlope(int shift, int count, double &buffer[], CO
   if (handle == INVALID_HANDLE)
     return false;
 
+    //Print("METODO DE COPIA: " + EnumToString(copy_method));
   switch (copy_method)
-  {
-  case COPY_LOWER:
+  { 
+    case COPY_LOWER:
+  //Print("COPIANDO - LOWER");
     return CopyLower(shift, count, buffer);
 
   case COPY_UPPER:
+    //Print("COPIANDO - UPPER");
     return CopyUpper(shift, count, buffer);
 
   case COPY_MIDDLE:
+    //Print("COPIANDO - MIDDLE");
     return CopyValues(shift, count, buffer);
 
   default:
-    Print("ERRO: Método de cópia inválido");
+    //Print("ERRO: Método de cópia inválido");
     return false;
   }
 };
@@ -261,7 +266,8 @@ bool CBollinger::OnCopyValuesForSlope(int shift, int count, double &buffer[], CO
 //| Implementação do método template para obter o valor do indicador |
 //+------------------------------------------------------------------+
 double CBollinger::OnGetIndicatorValue(int shift, COPY_METHOD copy_method)
-{
+{  //Print("OnGetIndicatorValue bollinger class: " + EnumToString(copy_method));
+  //Print("OnGetIndicatorValue bollinger class: " + (string)(copy_method));
   if (copy_method == COPY_LOWER)
   {
     return GetLower(shift);
@@ -281,14 +287,17 @@ int CBollinger::OnGetSlopeConfigIndex(COPY_METHOD copy_method)
 
   if (copy_method == COPY_MIDDLE)
   {
+    //Print("RETORNANDO MIDDLE");
     return 1;
   }
   else if (copy_method == COPY_UPPER)
   {
+        //Print("RETORNANDO UPPER");
     return 0;
   }
   else if (copy_method == COPY_LOWER)
   {
+        //Print("RETORNANDO LOWER");
     return 2;
   }
 

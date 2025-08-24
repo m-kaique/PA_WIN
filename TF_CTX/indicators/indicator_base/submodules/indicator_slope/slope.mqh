@@ -24,7 +24,7 @@ public:
   SSlopeResult CalculateLinearRegressionSlope(string m_symbol, double &ma_values[], double atr, int lookback);
   SSlopeResult CalculateSimpleDifference(string m_symbol, double &ma_values[], double atr, int lookback);
   SSlopeResult CalculatePercentageChange(string m_symbol, double &ma_values[], int lookback);
-  SSlopeResult CalculateDiscreteDerivative(string m_symbol, double &ma_values[], double atr);
+  SSlopeResult CalculateDiscreteDerivative(string m_symbol, double &ma_values[], double atr, int lookback);
   SSlopeResult CalculateAngleDegrees(string m_symbol, double &ma_values[], int lookback);
   SSlopeValidation AnalyzeMethodsConsensus(SSlopeValidation &validation, bool use_weighted_analysis);
 };
@@ -36,7 +36,7 @@ public:
 //+---------------------------------------------------------------------------------------------------------------+
 
 //+------------------------------------------------------------------+
-//| Calcular inclinação por regressão linear                       |
+//| Calcular inclinação por regressão linear (normalizado por ATR)  |
 //+------------------------------------------------------------------+
 SSlopeResult CSlope::CalculateLinearRegressionSlope(string m_symbol, double &ma_values[], double atr, int lookback)
 {
@@ -47,28 +47,22 @@ SSlopeResult CSlope::CalculateLinearRegressionSlope(string m_symbol, double &ma_
   double sum_x = 0.0, sum_y = 0.0, sum_xy = 0.0, sum_x2 = 0.0, sum_y2 = 0.0;
   int n = lookback;
 
-  // CORREÇÃO: Usar índices temporais corretos
-  // x representa tempo: valores maiores = mais recente
-  // y representa valor da MA
   for (int i = 0; i < n; i++)
   {
-    double x = n - i;        // ✅ Tempo crescente: passado → presente
-    double y = ma_values[i]; // ma_values[0] = mais recente
-
-    sum_x += x;
-    sum_y += y;
+    double x = i;                      // tempo: passado → presente
+    double y = ma_values[n - 1 - i];   // inverter: ma_values[0] = mais recente
+    sum_x  += x;
+    sum_y  += y;
     sum_xy += x * y;
     sum_x2 += x * x;
     sum_y2 += y * y;
   }
 
-  // Calcular slope (inclinação)
   double denominator = n * sum_x2 - sum_x * sum_x;
   if (denominator != 0.0)
   {
     result.slope_value = (n * sum_xy - sum_x * sum_y) / denominator;
 
-    // Calcular R² (coeficiente de determinação)
     double numerator = n * sum_xy - sum_x * sum_y;
     double denom_r2 = MathSqrt((n * sum_x2 - sum_x * sum_x) * (n * sum_y2 - sum_y * sum_y));
     if (denom_r2 != 0.0)
@@ -79,63 +73,47 @@ SSlopeResult CSlope::CalculateLinearRegressionSlope(string m_symbol, double &ma_
   }
 
   if (atr != 0.0)
-  {
-    result.slope_value = result.slope_value / atr;
-    result.slope_value = NormalizeDouble(result.slope_value, 2);
-  }
+    result.slope_value /= atr;   // ✅ normalizar pela volatilidade
   else
-  {
-    Print("ATR zero detectado em ", __FUNCTION__);
     result.slope_value = 0.0;
-  }
 
   return result;
 }
 
 //+------------------------------------------------------------------+
-//| Calcular diferença simples                                     |
+//| Calcular diferença simples (normalizado por ATR)                |
 //+------------------------------------------------------------------+
 SSlopeResult CSlope::CalculateSimpleDifference(string m_symbol, double &ma_values[], double atr, int lookback)
 {
   SSlopeResult result;
-  result.slope_value = ma_values[0] - ma_values[lookback];
+  result.slope_value = ma_values[0] - ma_values[lookback - 1];  // corrigido índice
 
-  // Normalizar para pips
-  // double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
-  // int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
-  // double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
   if (atr != 0.0)
-  {
-    result.slope_value = result.slope_value / atr;
-    result.slope_value = NormalizeDouble(result.slope_value, 2);
-  }
+    result.slope_value /= atr;   // ✅ normalizar pela volatilidade
   else
-  {
-    Print("ATR zero detectado em ", __FUNCTION__);
     result.slope_value = 0.0;
-  }
 
   return result;
 }
 
 //+------------------------------------------------------------------+
-//| Calcular derivada discreta                                     |
+//| Calcular derivada discreta (normalizado por ATR)                |
 //+------------------------------------------------------------------+
-SSlopeResult CSlope::CalculateDiscreteDerivative(string m_symbol, double &ma_values[], double atr)
+SSlopeResult CSlope::CalculateDiscreteDerivative(string m_symbol, double &ma_values[], double atr, int lookback)
 {
   SSlopeResult result;
-  result.slope_value = ma_values[0] - ma_values[1];
+  
+  // Usar o mesmo lookback dos outros métodos para consistência
+  int period = (lookback > 1) ? lookback : 2;
+  
+  // Calcular a derivada discreta: (f(x) - f(x-n)) / n
+  // Onde n é o período de lookback
+  result.slope_value = (ma_values[0] - ma_values[period - 1]) / (double)period;
 
   if (atr != 0.0)
-  {
-    result.slope_value = result.slope_value / atr;
-    result.slope_value = NormalizeDouble(result.slope_value, 2);
-  }
+    result.slope_value /= atr;   // normalizar pela volatilidade
   else
-  {
-    Print("ATR zero detectado em ", __FUNCTION__);
     result.slope_value = 0.0;
-  }
 
   return result;
 }
