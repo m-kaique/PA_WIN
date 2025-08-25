@@ -52,10 +52,10 @@
                "max_tol_dist_candle": 50,
                "slope_values": [
                   {
-                     "lookback": 1,
-                     "simple_diff": 0.11,
-                     "linear_reg": 0.11,
-                     "discrete_der": 0.11
+                     "lookback": 4,
+                     "simple_diff": 0.4,
+                     "linear_reg": 0.12,
+                     "discrete_der": 0.12
                   }
                ]
             },
@@ -81,7 +81,7 @@
                "max_zones_to_draw": 3,
                "min_touches": 2,
                "validation": 2,
-               "attach_chart": false,
+               "attach_chart": true,
                "min_tol_di  st_candle": 10,
                "max_tol_dist_candle": 50
             }
@@ -100,10 +100,10 @@
                "attach_chart": true,
                "slope_values": [
                   {
-                     "lookback": 2,
-                     "simple_diff": 0.22,
-                     "linear_reg": 0.22,
-                     "discrete_der": 0.22
+                     "lookback": 4,
+                     "simple_diff": 0.4,
+                     "linear_reg": 0.12,
+                     "discrete_der": 0.12
                   }
                ]
             },
@@ -175,10 +175,10 @@
                "attach_chart": true,
                "slope_values": [
                   {
-                     "lookback": 3,
-                     "simple_diff": 0.33,
-                     "linear_reg": 0.33,
-                     "discrete_der": 0.33
+                     "lookback": 4,
+                     "simple_diff": 0.4,
+                     "linear_reg": 0.12,
+                     "discrete_der": 0.12
                   }
                ]
             },
@@ -192,16 +192,16 @@
                "slope_values": [
                   {
                      "lookback": 4,
-                     "simple_diff": 0.44,
-                     "linear_reg": 0.44,
-                     "discrete_der": 0.44
+                     "simple_diff": 0.4,
+                     "linear_reg": 0.12,
+                     "discrete_der": 0.12
                   }
                ]
             },
             {
                "name": "vol0",
                "type": "VOL",
-               "shift": 0,
+               "shift": 1,
                "enabled": true
             },
             {
@@ -218,10 +218,10 @@
                "attach_chart": true,
                "slope_values": [
                   {
-                     "lookback": 5,
-                     "simple_diff": 0.55,
-                     "linear_reg": 0.55,
-                     "discrete_der": 0.55
+                     "lookback": 4,
+                     "simple_diff": 0.4,
+                     "linear_reg": 0.12,
+                     "discrete_der": 0.12
                   }
                ]
             },
@@ -236,22 +236,22 @@
                "attach_chart": true,
                "slope_values": [
                   {
-                     "lookback": 1,
-                     "simple_diff": 0.11,
-                     "linear_reg": 0.11,
-                     "discrete_der": 0.11
+                     "lookback": 4,
+                     "simple_diff": 0.4,
+                     "linear_reg": 0.12,
+                     "discrete_der": 0.12
                   },
                   {
-                     "lookback": 2,
-                     "simple_diff": 0.22,
-                     "linear_reg": 0.22,
-                     "discrete_der": 0.22
+                     "lookback": 4,
+                     "simple_diff": 0.4,
+                     "linear_reg": 0.12,
+                     "discrete_der": 0.12
                   },
                   {
-                     "lookback": 3,
-                     "simple_diff": 0.33,
-                     "linear_reg": 0.33,
-                     "discrete_der": 0.33
+                     "lookback": 4,
+                     "simple_diff": 0.4,
+                     "linear_reg": 0.12,
+                     "discrete_der": 0.12
                   }
                ]
             }
