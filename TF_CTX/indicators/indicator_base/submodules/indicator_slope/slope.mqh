@@ -6,19 +6,8 @@ class CSlope
 {
 
 private:
-  string GetTrendClassification(double slope_value, double strong_threshold, double weak_threshold);
-
 protected:
-  // Métodos privados para validação cruzada
-
-  double CalculateConfidenceScore(SSlopeValidation &validation);
-  double CalculateConsensusStrength(SSlopeValidation &validation);
-  double CalculateWeightedSlope(SSlopeValidation &validation, double &weights[]);
-  string DetermineRiskLevel(SSlopeValidation &validation);
-  double CalculateDirectionalConsensus(SSlopeValidation &validation);
-
 public:
-  string GetSlopeAnalysisReport(SSlopeValidation &validation);
   void DebugSlopeValidation(SSlopeValidation &validation);
   // Equações de slope/Inclinação
   SSlopeResult CalculateLinearRegressionSlope(string m_symbol, double &ma_values[], double atr, int lookback);
@@ -26,7 +15,7 @@ public:
   SSlopeResult CalculatePercentageChange(string m_symbol, double &ma_values[], int lookback);
   SSlopeResult CalculateDiscreteDerivative(string m_symbol, double &ma_values[], double atr, int lookback);
   SSlopeResult CalculateAngleDegrees(string m_symbol, double &ma_values[], int lookback);
-  SSlopeValidation AnalyzeMethodsConsensus(SSlopeValidation &validation, bool use_weighted_analysis);
+  // SSlopeValidation AnalyzeMethodsConsensus(SSlopeValidation &validation, bool use_weighted_analysis);
 };
 
 //+---------------------------------------------------------------------------------------------------------------+
@@ -49,10 +38,10 @@ SSlopeResult CSlope::CalculateLinearRegressionSlope(string m_symbol, double &ma_
 
   for (int i = 0; i < n; i++)
   {
-    double x = i;                      // tempo: passado → presente
-    double y = ma_values[n - 1 - i];   // inverter: ma_values[0] = mais recente
-    sum_x  += x;
-    sum_y  += y;
+    double x = i;                    // tempo: passado → presente
+    double y = ma_values[n - 1 - i]; // inverter: ma_values[0] = mais recente
+    sum_x += x;
+    sum_y += y;
     sum_xy += x * y;
     sum_x2 += x * x;
     sum_y2 += y * y;
@@ -73,7 +62,7 @@ SSlopeResult CSlope::CalculateLinearRegressionSlope(string m_symbol, double &ma_
   }
 
   if (atr != 0.0)
-    result.slope_value /= atr;   // ✅ normalizar pela volatilidade
+    result.slope_value /= atr; // ✅ normalizar pela volatilidade
   else
     result.slope_value = 0.0;
 
@@ -86,10 +75,10 @@ SSlopeResult CSlope::CalculateLinearRegressionSlope(string m_symbol, double &ma_
 SSlopeResult CSlope::CalculateSimpleDifference(string m_symbol, double &ma_values[], double atr, int lookback)
 {
   SSlopeResult result;
-  result.slope_value = ma_values[0] - ma_values[lookback - 1];  // corrigido índice
+  result.slope_value = ma_values[0] - ma_values[lookback - 1]; // corrigido índice
 
   if (atr != 0.0)
-    result.slope_value /= atr;   // ✅ normalizar pela volatilidade
+    result.slope_value /= atr; // ✅ normalizar pela volatilidade
   else
     result.slope_value = 0.0;
 
@@ -102,16 +91,16 @@ SSlopeResult CSlope::CalculateSimpleDifference(string m_symbol, double &ma_value
 SSlopeResult CSlope::CalculateDiscreteDerivative(string m_symbol, double &ma_values[], double atr, int lookback)
 {
   SSlopeResult result;
-  
+
   // Usar o mesmo lookback dos outros métodos para consistência
   int period = (lookback > 1) ? lookback : 2;
-  
+
   // Calcular a derivada discreta: (f(x) - f(x-n)) / n
   // Onde n é o período de lookback
   result.slope_value = (ma_values[0] - ma_values[period - 1]) / (double)period;
 
   if (atr != 0.0)
-    result.slope_value /= atr;   // normalizar pela volatilidade
+    result.slope_value /= atr; // normalizar pela volatilidade
   else
     result.slope_value = 0.0;
 
@@ -156,31 +145,6 @@ SSlopeResult CSlope::CalculateAngleDegrees(string m_symbol, double &ma_values[],
 //+---------------------------------------------------------------------------------------------------------------+
 
 //+------------------------------------------------------------------+
-//| Obter análise textual detalhada                               |
-//+------------------------------------------------------------------+
-string CSlope::GetSlopeAnalysisReport(SSlopeValidation &validation)
-{
-  string report = "";
-
-  report += "=== RELATÓRIO DE ANÁLISE DE INCLINAÇÃO ===\n";
-  report += "Tendência Final: " + validation.final_trend + "\n";
-  report += "Confiança: " + DoubleToString(validation.confidence_score, 1) + "%\n";
-  report += "Consenso: " + DoubleToString(validation.consensus_strength, 1) + "%\n";
-  report += "Métodos Concordantes: " + IntegerToString(validation.methods_agreement) + "/5\n";
-  report += "Inclinação Ponderada: " + DoubleToString(validation.weighted_slope, 3) + "\n";
-  report += "Nível de Risco: " + validation.risk_level + "\n";
-  report += "Sinal Confiável: " + (validation.is_reliable ? "SIM" : "NÃO") + "\n\n";
-
-  report += "=== DETALHES POR MÉTODO ===\n";
-  report += "Regressão Linear: " + validation.linear_regression.trend_direction +
-            " (R²: " + DoubleToString(validation.linear_regression.r_squared, 3) + ")\n";
-  report += "Diferença Simples: " + validation.simple_difference.trend_direction + "\n"; 
-  report += "Derivada Discreta: " + validation.discrete_derivative.trend_direction + "\n"; 
-
-  return report;
-}
-
-//+------------------------------------------------------------------+
 //| Função auxiliar para debug detalhado                           |
 //+------------------------------------------------------------------+
 void CSlope::DebugSlopeValidation(SSlopeValidation &validation)
@@ -195,9 +159,8 @@ void CSlope::DebugSlopeValidation(SSlopeValidation &validation)
   Print("Discrete Derivative: slope=", (string)validation.discrete_derivative.slope_value,
         ", trend=", validation.discrete_derivative.trend_direction);
 
-  Print("# JSON VALUES # " , "LR: " ,validation.linear_config_value, " SD: ", validation.difference_config_value, " DD: ",
-  validation.derivative_config_value,  " Lookback: " , validation.lookback_config_value);
-
+  Print("# JSON VALUES # ", "LR: ", validation.linear_config_value, " SD: ", validation.difference_config_value, " DD: ",
+        validation.derivative_config_value, " Lookback: ", validation.lookback_config_value);
 }
 
 #endif

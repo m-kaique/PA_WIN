@@ -335,7 +335,7 @@ void CheckSlopePosM15(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
             Print("Posição: " + boll.m_candle_distance.GetCandlePositionDescription(pos_boll_meio.position));
             Print("Distância: " + string(pos_boll_meio.distance));
 
-                        // ---
+            // ---
 
             // Slope Inferior
             Print("###  BOLL INFERIOR");
@@ -349,7 +349,6 @@ void CheckSlopePosM15(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
             Print("Posição: " + boll.m_candle_distance.GetCandlePositionDescription(pos_boll_inferior.position));
             Print("Distância: " + string(pos_boll_inferior.distance));
          }
-    
       }
    }
 }
