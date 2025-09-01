@@ -50,7 +50,7 @@ public:
     return false; // não precisa acoplar
   }
 
-  SPositionInfo GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE);
+  SPositionInfo GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE, double atr = 0);
   CSlope m_slope; // Classe Cálculo Inclinação
   CIndCandleDistance m_candle_distance;
 };
@@ -177,13 +177,13 @@ SSlopeResult CIndicatorBase::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
   return result;
 }
 
-SPositionInfo CIndicatorBase::GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE)
+SPositionInfo CIndicatorBase::GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE, double atr = 0)
 {
   Print("GetPosition info: " + EnumToString(copy_method));
   double ind_value = OnGetIndicatorValue(shift, copy_method);
   SPositionInfo result;
   result.distance = 0.0;
-  result = m_candle_distance.GetPreviousCandlePosition(shift, m_symbol, m_timeframe, ind_value);
+  result = m_candle_distance.GetPreviousCandlePosition(shift, m_symbol, m_timeframe, ind_value, atr);
   return result;
 }
 

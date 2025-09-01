@@ -5,14 +5,14 @@
 class CIndCandleDistance
 {
 public:
-  SPositionInfo GetPreviousCandlePosition(int shift, string symbol, ENUM_TIMEFRAMES tf, double indValue);
+  SPositionInfo GetPreviousCandlePosition(int shift, string symbol, ENUM_TIMEFRAMES tf, double indValue, double atr);
   string GetCandlePositionDescription(ENUM_CANDLE_POSITION position);
 };
 
 //+------------------------------------------------------------------------+
 //| Retorna a posição do candle anterior em relação ao valor do indicador |
 //+------------------------------------------------------------------------+
-SPositionInfo CIndCandleDistance::GetPreviousCandlePosition(int shift, string symbol, ENUM_TIMEFRAMES tf, double indValue)
+SPositionInfo CIndCandleDistance::GetPreviousCandlePosition(int shift, string symbol, ENUM_TIMEFRAMES tf, double indValue, double atr)
 {
   SPositionInfo result;
   result.distance = 0.0;
@@ -35,14 +35,15 @@ SPositionInfo CIndCandleDistance::GetPreviousCandlePosition(int shift, string sy
 
   double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
   int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+  
   double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
-  double tolerance = point * 15; // Tolerância de 15 pontos
+  double tolerance = point * (atr * 0.09); // Tolerância de +- 15 pontos com atr em prox de 165
 
   double body_top = MathMax(open_price, close_price);
   double body_bottom = MathMin(open_price, close_price);
   bool has_body = (MathAbs(open_price - close_price) > tolerance);
-  bool has_upper_shadow = ((high_price - body_top) > tolerance);
-  bool has_lower_shadow = ((body_bottom - low_price) > tolerance);
+  bool has_upper_shadow = (high_price > body_top);
+  bool has_lower_shadow = (low_price < body_bottom);
 
   // Conditions
 
@@ -55,8 +56,8 @@ SPositionInfo CIndCandleDistance::GetPreviousCandlePosition(int shift, string sy
   bool is_below = (high_price < indicator_value);
 
   // shadow
-  bool is_upper_shadow_cross = has_upper_shadow && (indicator_value > body_top) && (indicator_value < high_price);
-  bool is_lower_shadow_cross = has_lower_shadow && (indicator_value < body_bottom) && (indicator_value > low_price);
+  bool is_upper_shadow_cross = has_upper_shadow && (indicator_value > body_top) && (indicator_value <= high_price);
+  bool is_lower_shadow_cross = has_lower_shadow && (indicator_value < body_bottom) && (indicator_value >= low_price);
 
   if (is_above_with_distance)
   {
@@ -149,13 +150,12 @@ string CIndCandleDistance::GetCandlePositionDescription(ENUM_CANDLE_POSITION pos
   {
   case CANDLE_ABOVE:
 
-  
     return "Candle acima do indicador";
   case CANDLE_ABOVE_WITH_DISTANCE:
     return "Candle completamente acima do indicador (com distância)";
-case CANDLE_BELOW:
+  case CANDLE_BELOW:
     return "Candle abaixo do indicador";
-    case CANDLE_BELOW_WITH_DISTANCE:
+  case CANDLE_BELOW_WITH_DISTANCE:
     return "Candle completamente abaixo do indicador (com distância)";
   case INDICATOR_CROSSES_UPPER_BODY:
     return "Indicador cruza a parte superior do corpo";
