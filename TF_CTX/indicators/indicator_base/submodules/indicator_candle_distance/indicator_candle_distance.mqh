@@ -35,7 +35,7 @@ SPositionInfo CIndCandleDistance::GetPreviousCandlePosition(int shift, string sy
 
   double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
   int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
-  
+
   double pip_value = (digits == 5 || digits == 3) ? point * 10 : point;
   double tolerance = point * (atr * 0.09); // Tolerância de +- 15 pontos com atr em prox de 165
 
@@ -131,13 +131,21 @@ SPositionInfo CIndCandleDistance::GetPreviousCandlePosition(int shift, string sy
   }
 
   // Se não há corpo, mas o indicador está no nível do preço de abertura/fechamento
-  if (MathAbs(indicator_value - open_price) <= tolerance)
+  if (indicator_value == open_price && indicator_value == close_price)
   {
     result.position = INDICATOR_CROSSES_CENTER_BODY;
     return result;
   }
 
   result.position = INDICATOR_CANDLE_POSITION_FAILED;
+  Print("Falha ao classificar posição com os valores:");
+  Print("Open: ", (string)open_price);
+  Print("Close: ", (string)close_price);
+  Print("High: ", (string)high_price);
+  Print("Low: ", (string)low_price);
+  Print("ATR: ", (string)atr);
+  Print("ATR * 0.09: ", (string)tolerance);
+
   return result;
 }
 
