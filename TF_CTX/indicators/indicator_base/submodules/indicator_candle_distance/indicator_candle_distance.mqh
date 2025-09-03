@@ -63,19 +63,25 @@ SPositionInfo CIndCandleDistance::GetPreviousCandlePosition(int shift, string sy
   {
     result.position = CANDLE_ABOVE_WITH_DISTANCE;
     result.distance = (low_price - indicator_value) / pip_value;
+    result.gap = tolerance;
+    result.atr = atr;
     return result;
   }
 
   if (is_above)
   {
-    result.position = CANDLE_ABOVE;
+    result.position = INDICATOR_CROSSES_LOWER_BODY;
     result.distance = (low_price - indicator_value) / pip_value;
+    result.gap = tolerance;
+    result.atr = atr;
     return result;
   }
 
   if (is_upper_shadow_cross)
   {
     result.position = INDICATOR_CROSSES_UPPER_SHADOW;
+    result.gap = tolerance;
+    result.atr = atr;
     return result;
   }
 
@@ -83,19 +89,25 @@ SPositionInfo CIndCandleDistance::GetPreviousCandlePosition(int shift, string sy
   {
     result.position = CANDLE_BELOW_WITH_DISTANCE;
     result.distance = (indicator_value - high_price) / pip_value;
+    result.gap = tolerance;
+    result.atr = atr;
     return result;
   }
 
   if (is_below)
   {
-    result.position = CANDLE_BELOW;
+    result.position = INDICATOR_CROSSES_UPPER_SHADOW;
     result.distance = (indicator_value - high_price) / pip_value;
+    result.gap = tolerance;
+    result.atr = atr;
     return result;
   }
 
   if (is_lower_shadow_cross)
   {
     result.position = INDICATOR_CROSSES_LOWER_SHADOW;
+    result.gap = tolerance;
+    result.atr = atr;
     return result;
   }
 
@@ -115,16 +127,22 @@ SPositionInfo CIndCandleDistance::GetPreviousCandlePosition(int shift, string sy
       if (is_upper_body_cross)
       {
         result.position = INDICATOR_CROSSES_UPPER_BODY;
+        result.gap = tolerance;
+        result.atr = atr;
         return result;
       }
       else if (is_lower_body_cross)
       {
         result.position = INDICATOR_CROSSES_LOWER_BODY;
+        result.gap = tolerance;
+        result.atr = atr;
         return result;
       }
       else
       {
         result.position = INDICATOR_CROSSES_CENTER_BODY;
+        result.gap = tolerance;
+        result.atr = atr;
         return result;
       }
     }
@@ -134,6 +152,8 @@ SPositionInfo CIndCandleDistance::GetPreviousCandlePosition(int shift, string sy
   if (indicator_value == open_price && indicator_value == close_price)
   {
     result.position = INDICATOR_CROSSES_CENTER_BODY;
+    result.gap = tolerance;
+    result.atr = atr;
     return result;
   }
 

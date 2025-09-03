@@ -267,6 +267,9 @@ void CheckSlopePosM15(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
             pos_ema9 = ema.GetPositionInfo(1, COPY_MIDDLE, tf_ctx_atr);
             Print("Posição EMA9: " + ema.m_candle_distance.GetCandlePositionDescription(pos_ema9.position));
             Print("Distância EMA9: " + string(pos_ema9.distance));
+            Print("GAP EMA9: " + string(pos_ema9.gap));
+            Print("ATR EMA9: " + string(pos_ema9.atr));
+
          }
 
          // EMA21
@@ -284,6 +287,8 @@ void CheckSlopePosM15(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
             pos_ema21 = ema21.GetPositionInfo(1, COPY_MIDDLE, tf_ctx_atr);
             Print("Posição EMA21: " + ema21.m_candle_distance.GetCandlePositionDescription(pos_ema21.position));
             Print("Distância EMA21: " + string(pos_ema21.distance));
+            Print("GAP EMA21: " + string(pos_ema21.gap));
+            Print("ATR EMA21: " + string(pos_ema21.atr));
          }
 
          // VWAP
@@ -301,6 +306,8 @@ void CheckSlopePosM15(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
             pos_vwap = vwap.GetPositionInfo(1, COPY_MIDDLE, tf_ctx_atr);
             Print("Posição VWAP: " + vwap.m_candle_distance.GetCandlePositionDescription(pos_vwap.position));
             Print("Distância VWAP: " + string(pos_vwap.distance));
+            Print("GAP VWAP: " + string(pos_vwap.gap));
+            Print("ATR VWAP: " + string(pos_vwap.atr));   
          }
 
          // BOLL
@@ -319,6 +326,8 @@ void CheckSlopePosM15(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
             pos_boll_superior = boll.GetPositionInfo(1, COPY_UPPER, tf_ctx_atr);
             Print("Posição: " + boll.m_candle_distance.GetCandlePositionDescription(pos_boll_superior.position));
             Print("Distância: " + string(pos_boll_superior.distance));
+            Print("GAP: " + string(pos_boll_superior.gap));
+            Print("ATR: " + string(pos_boll_superior.atr));
 
             // ---
 
@@ -333,6 +342,8 @@ void CheckSlopePosM15(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
             pos_boll_meio = boll.GetPositionInfo(1, COPY_MIDDLE, tf_ctx_atr);
             Print("Posição: " + boll.m_candle_distance.GetCandlePositionDescription(pos_boll_meio.position));
             Print("Distância: " + string(pos_boll_meio.distance));
+            Print("GAP: " + string(pos_boll_meio.gap));
+            Print("ATR: " + string(pos_boll_meio.atr));
 
             // ---
 
@@ -347,6 +358,8 @@ void CheckSlopePosM15(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
             pos_boll_inferior = boll.GetPositionInfo(1, COPY_LOWER, tf_ctx_atr);
             Print("Posição: " + boll.m_candle_distance.GetCandlePositionDescription(pos_boll_inferior.position));
             Print("Distância: " + string(pos_boll_inferior.distance));
+            Print("GAP: " + string(pos_boll_inferior.gap));
+            Print("ATR: " + string(pos_boll_inferior.atr));
          }
       }
    }

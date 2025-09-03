@@ -34,6 +34,8 @@ struct SPositionInfo
 {
   ENUM_CANDLE_POSITION position; // Posição do candle
   double distance;               // Distância em pips (se aplicável)
+  double atr;
+  double gap;
 };
  
 
