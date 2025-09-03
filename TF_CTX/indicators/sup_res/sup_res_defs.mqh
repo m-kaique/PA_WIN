@@ -3,17 +3,24 @@
 
 // Types for support/resistance lines
 enum ENUM_SUPRES_LINE
-  {
-   SUP_LINE = 0,
-   RES_LINE = 1
-  };
+{
+  SUP_LINE = 0,
+  RES_LINE = 1
+};
 
 // Validation modes for support/resistance
 enum ENUM_SUPRES_VALIDATION
-  {
-   SUPRES_VALIDATE_TOUCHES   = 0, // only count touches
-   SUPRES_VALIDATE_PATTERNS  = 1, // require price action pattern
-   SUPRES_VALIDATE_BOTH      = 2  // touches and price action
-  };
+{
+  SUPRES_VALIDATE_TOUCHES = 0,  // only count touches
+  SUPRES_VALIDATE_PATTERNS = 1, // require price action pattern
+  SUPRES_VALIDATE_BOTH = 2      // touches and price action
+};
 
+// Structure representing a support/resistance zone
+struct SRZone
+{
+  double upper; // upper price limit of the zone
+  double lower; // lower price limit of the zone
+  int touches;  // number of touches inside the zone
+};
 #endif // __SUP_RES_DEFS_MQH__

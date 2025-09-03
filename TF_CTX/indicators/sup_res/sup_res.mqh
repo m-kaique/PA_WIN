@@ -9,14 +9,6 @@
 #include "sup_res_defs.mqh"
 #include "../indicators_types.mqh"
 
-// Structure representing a support/resistance zone
-struct SRZone
-{
-  double upper; // upper price limit of the zone
-  double lower; // lower price limit of the zone
-  int touches;  // number of touches inside the zone
-};
-
 class CSupRes : public CIndicatorBase
 {
 private:

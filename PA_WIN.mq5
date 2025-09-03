@@ -134,8 +134,6 @@ void OnTick()
 
    // Executar lógica apenas em novos candles
    ExecuteOnNewBar();
-   // CheckCOnditions(PERIOD_M5);
-   // manage_positions(PERIOD_M5);
 }
 
 //+------------------------------------------------------------------+
@@ -158,7 +156,7 @@ bool IsNewBar(ENUM_TIMEFRAMES timeframe)
 //+------------------------------------------------------------------+
 //| Informações sobre a TrendLine de um TF                           |
 //+------------------------------------------------------------------+
-void CheckCtxTrendLine(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
+void CheckCtxTrendLine(ENUM_TIMEFRAMES tf, TF_CTX *ctx)
 {
    if (tf == PERIOD_H1)
    {
@@ -231,7 +229,7 @@ void CheckCtxTrendLine(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 //+------------------------------------------------------------------+
 //| Informações sobre a TrendLine de um TF                           |
 //+------------------------------------------------------------------+
-void CheckSlopePosM15(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
+void CheckSlopePosM15(ENUM_TIMEFRAMES tf, TF_CTX *ctx)
 {
    if (tf == PERIOD_M15)
    {
@@ -365,6 +363,71 @@ void CheckSlopePosM15(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
 }
 
 //+------------------------------------------------------------------+
+//| Informações sobre S/R                                            |
+//+------------------------------------------------------------------+
+void CheckSRH4(ENUM_TIMEFRAMES tf, TF_CTX *ctx)
+{
+   if (tf == PERIOD_H4)
+   {
+      CSupRes *sr_h4 = ctx.GetIndicator("sr_completo");
+      if (sr_h4 != NULL)
+      {
+         // Verificar breakouts
+         Print("BREAKUP: ", sr_h4.IsBreakup(), " BREAKDOWN: ", sr_h4.IsBreakdown());
+
+         // Obter zonas de resistência
+         SRZone resistance_zones[];
+         int num_res_zones = sr_h4.GetResistanceZones(resistance_zones);
+
+         if (num_res_zones > 0)
+         {
+            Print("=== ZONAS DE RESISTÊNCIA H4 ===");
+            Print("Total de zonas: ", num_res_zones);
+
+            for (int i = 0; i < num_res_zones; i++)
+            {
+               Print("Zona ", i, ":");
+               Print("  Superior: ", DoubleToString(resistance_zones[i].upper, _Digits));
+               Print("  Inferior: ", DoubleToString(resistance_zones[i].lower, _Digits));
+               Print("  Toques: ", resistance_zones[i].touches);
+
+               // Calcular distância do preço atual
+               double current_price = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+               double distance = resistance_zones[i].lower - current_price;
+               Print("  Distância: ", DoubleToString(distance, _Digits), " pontos");
+            }
+         }
+         else
+         {
+            Print(":/ SEM ZONAS DE RESISTÊNCIA H4 :/");
+         }
+
+         // Obter zonas de suporte
+         SRZone support_zones[];
+         int num_sup_zones = sr_h4.GetSupportZones(support_zones);
+
+         if (num_sup_zones > 0)
+         {
+            Print("=== ZONAS DE SUPORTE H4 ===");
+            Print("Total de zonas: ", num_sup_zones);
+
+            for (int i = 0; i < num_sup_zones; i++)
+            {
+               Print("Zona ", i, ":");
+               Print("  Superior: ", DoubleToString(support_zones[i].upper, _Digits));
+               Print("  Inferior: ", DoubleToString(support_zones[i].lower, _Digits));
+               Print("  Toques: ", support_zones[i].touches);
+            }
+         }
+         else
+         {
+            Print(":/ SEM ZONAS DE SUPORTE H4 :/");
+         }
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
 //| Atualizar todos os contextos de um símbolo                       |
 //+------------------------------------------------------------------+
 void UpdateSymbolContexts(string symbol)
@@ -389,8 +452,7 @@ void UpdateSymbolContexts(string symbol)
       {
          ctx.Update();
          CheckSlopePosM15(tf, ctx);
-         // CheckCandlePosition(tf, ctx);
-         // CheckM15Vol(tf, ctx);
+         CheckSRH4(tf, ctx);
       }
    }
 }
