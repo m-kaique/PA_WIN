@@ -1,7 +1,6 @@
 #ifndef __IND_CANDLE_DISTANCE_DEFS_MQH__
 #define __IND_CANDLE_DISTANCE_DEFS_MQH__
 
-
 // Definição dos enums fornecidos
 enum ENUM_CANDLE_POSITION
 {
@@ -24,7 +23,6 @@ enum ENUM_CANDLE_POSITION
   INDICATOR_INSIDE_BODY,
   INDICATOR_INSIDE_DOJI
 
-
 };
 
 //+------------------------------------------------------------------+
@@ -37,6 +35,5 @@ struct SPositionInfo
   double atr;
   double gap;
 };
- 
 
 #endif

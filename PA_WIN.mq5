@@ -269,7 +269,6 @@ void CheckSlopePosM15(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
             Print("Distância EMA9: " + string(pos_ema9.distance));
             Print("GAP EMA9: " + string(pos_ema9.gap));
             Print("ATR EMA9: " + string(pos_ema9.atr));
-
          }
 
          // EMA21
@@ -307,7 +306,7 @@ void CheckSlopePosM15(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
             Print("Posição VWAP: " + vwap.m_candle_distance.GetCandlePositionDescription(pos_vwap.position));
             Print("Distância VWAP: " + string(pos_vwap.distance));
             Print("GAP VWAP: " + string(pos_vwap.gap));
-            Print("ATR VWAP: " + string(pos_vwap.atr));   
+            Print("ATR VWAP: " + string(pos_vwap.atr));
          }
 
          // BOLL

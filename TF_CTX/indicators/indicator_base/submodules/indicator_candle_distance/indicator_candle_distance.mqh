@@ -70,7 +70,7 @@ SPositionInfo CIndCandleDistance::GetPreviousCandlePosition(int shift, string sy
 
   if (is_above)
   {
-    result.position = INDICATOR_CROSSES_LOWER_BODY;
+    result.position = INDICATOR_CROSSES_LOWER_SHADOW;
     result.distance = (low_price - indicator_value) / pip_value;
     result.gap = tolerance;
     result.atr = atr;
