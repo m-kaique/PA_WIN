@@ -365,23 +365,34 @@ void CheckSlopePosM15(ENUM_TIMEFRAMES tf, TF_CTX *ctx)
 //+------------------------------------------------------------------+
 //| Informações sobre S/R                                            |
 //+------------------------------------------------------------------+
-void CheckSRH4(ENUM_TIMEFRAMES tf, TF_CTX *ctx)
+void Check_SR(ENUM_TIMEFRAMES tf, TF_CTX *ctx)
 {
-   if (tf == PERIOD_H4)
+   if (tf == PERIOD_D1 || tf == PERIOD_H4 || tf == PERIOD_H1)
    {
-      CSupRes *sr_h4 = ctx.GetIndicator("sr_completo");
-      if (sr_h4 != NULL)
-      {
-         // Verificar breakouts
-         Print("BREAKUP: ", sr_h4.IsBreakup(), " BREAKDOWN: ", sr_h4.IsBreakdown());
+      string title;
 
-         // Obter zonas de resistência
+      if (tf == PERIOD_D1)
+         title = "Period D1";
+      if (tf == PERIOD_H4)
+         title = "Period H4";
+      if (tf == PERIOD_H1)
+         title = "Period H1";
+
+      CSupRes *sr_ind = ctx.GetIndicator("sr_completo");
+      if (sr_ind != NULL)
+      {
+         // Verificar breakouts (código atual)
+         Print("BREAKUP: ", sr_ind.IsBreakup(), " BREAKDOWN: ", sr_ind.IsBreakdown());
+
+         double current_price = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+
+         // ZONAS DE RESISTÊNCIA
          SRZone resistance_zones[];
-         int num_res_zones = sr_h4.GetResistanceZones(resistance_zones);
+         int num_res_zones = sr_ind.GetResistanceZones(resistance_zones);
 
          if (num_res_zones > 0)
          {
-            Print("=== ZONAS DE RESISTÊNCIA H4 ===");
+            Print("=== ZONAS DE RESISTÊNCIA ", title, " ===");
             Print("Total de zonas: ", num_res_zones);
 
             for (int i = 0; i < num_res_zones; i++)
@@ -391,24 +402,23 @@ void CheckSRH4(ENUM_TIMEFRAMES tf, TF_CTX *ctx)
                Print("  Inferior: ", DoubleToString(resistance_zones[i].lower, _Digits));
                Print("  Toques: ", resistance_zones[i].touches);
 
-               // Calcular distância do preço atual
-               double current_price = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-               double distance = resistance_zones[i].lower - current_price;
-               Print("  Distância: ", DoubleToString(distance, _Digits), " pontos");
+               // Distância para resistência (sempre positiva - acima do preço atual)
+               double distance_to_resistance = resistance_zones[i].lower - current_price;
+               Print("  Distância: ", DoubleToString(distance_to_resistance, _Digits), " pontos");
             }
          }
          else
          {
-            Print(":/ SEM ZONAS DE RESISTÊNCIA H4 :/");
+            Print("Nenhuma zona de resistência encontrada");
          }
 
-         // Obter zonas de suporte
+         // ZONAS DE SUPORTE
          SRZone support_zones[];
-         int num_sup_zones = sr_h4.GetSupportZones(support_zones);
+         int num_sup_zones = sr_ind.GetSupportZones(support_zones);
 
          if (num_sup_zones > 0)
          {
-            Print("=== ZONAS DE SUPORTE H4 ===");
+            Print("=== ZONAS DE SUPORTE ", title, " ===");
             Print("Total de zonas: ", num_sup_zones);
 
             for (int i = 0; i < num_sup_zones; i++)
@@ -417,16 +427,19 @@ void CheckSRH4(ENUM_TIMEFRAMES tf, TF_CTX *ctx)
                Print("  Superior: ", DoubleToString(support_zones[i].upper, _Digits));
                Print("  Inferior: ", DoubleToString(support_zones[i].lower, _Digits));
                Print("  Toques: ", support_zones[i].touches);
+
+               // Distância para suporte (sempre negativa - abaixo do preço atual)
+               double distance_to_support = support_zones[i].upper - current_price;
+               Print("  Distância: ", DoubleToString(distance_to_support, _Digits), " pontos");
             }
          }
          else
          {
-            Print(":/ SEM ZONAS DE SUPORTE H4 :/");
+            Print("Nenhuma zona de suporte encontrada");
          }
       }
    }
 }
-
 //+------------------------------------------------------------------+
 //| Atualizar todos os contextos de um símbolo                       |
 //+------------------------------------------------------------------+
@@ -451,8 +464,8 @@ void UpdateSymbolContexts(string symbol)
       if (ctx.HasNewBar())
       {
          ctx.Update();
-         CheckSlopePosM15(tf, ctx);
-         CheckSRH4(tf, ctx);
+         // CheckSlopePosM15(tf, ctx);
+         Check_SR(tf, ctx);
       }
    }
 }
