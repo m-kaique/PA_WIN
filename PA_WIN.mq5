@@ -10,6 +10,7 @@
 #property version "2.00"
 
 #include "CONFIG_MANAGER/config_manager.mqh"
+#include "PROVIDER/provider.mqh"
 
 // Gerenciador de configuração
 CConfigManager *g_config_manager;
@@ -26,6 +27,8 @@ ENUM_TIMEFRAMES m_control_tf; // TimeFrame para controle de novo candle
 //+------------------------------------------------------------------+
 int OnInit()
 {
+   FrancisSocketInit();
+
    // Criar gerenciador de configuração
    g_config_manager = new CConfigManager();
    if (g_config_manager == NULL)
@@ -466,6 +469,7 @@ void UpdateSymbolContexts(string symbol)
          ctx.Update();
          // CheckSlopePosM15(tf, ctx);
          Check_SR(tf, ctx);
+         FrancisSocketSendStatus("O Contexto do Timeframe" + EnumToString(tf) + " Foi Atualizado!");
       }
    }
 }
