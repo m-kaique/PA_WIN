@@ -3,7 +3,7 @@
 //|    Classe Singleton para envio de JSON via UDP                   |
 //+------------------------------------------------------------------+
 #property copyright "vegas"
-#property version "2.00"
+#property version "2.01"
 
 #import "Ws2_32.dll"
 int WSAStartup(ushort wVersionRequested, uchar &lpWSAData[]);
@@ -67,6 +67,12 @@ private:
    }
 
 public:
+   // Verificar se instância existe (sem criar uma nova)
+   static bool InstanceExists()
+   {
+      return (m_instance != NULL);
+   }
+
    // Obter instância única (singleton)
    static CFrancisSocket *GetInstance()
    {
@@ -92,7 +98,7 @@ public:
    {
       if (m_initialized)
       {
-         Print("Socket já está inicializado");
+         Print("Francis Socket: Socket já está inicializado");
          return true;
       }
 
@@ -120,7 +126,7 @@ public:
       ConfigureSockAddr();
 
       m_initialized = true;
-      Print("Francis Socket inicializado com sucesso (", m_host, ":", m_port, ")");
+      Print("Francis Socket: Inicializado com sucesso (", m_host, ":", m_port, ")");
       return true;
    }
 
@@ -271,6 +277,22 @@ static CFrancisSocket *CFrancisSocket::m_instance = NULL;
 //| Funções de conveniência para acesso global                       |
 //+------------------------------------------------------------------+
 
+// Verificar se Francis Socket existe (sem criar instância)
+bool FrancisSocketExists()
+{
+   return CFrancisSocket::InstanceExists();
+}
+
+// Verificar se Francis Socket está inicializado
+bool FrancisSocketIsReady()
+{
+   if (!CFrancisSocket::InstanceExists())
+      return false;
+      
+   CFrancisSocket *socket = CFrancisSocket::GetInstance();
+   return socket.IsInitialized();
+}
+
 // Inicializar Francis Socket
 bool FrancisSocketInit(string host = "127.0.0.1", int port = 5005)
 {
@@ -278,32 +300,82 @@ bool FrancisSocketInit(string host = "127.0.0.1", int port = 5005)
    return socket.Initialize(host, port);
 }
 
-// Enviar JSON
+// Enviar JSON (com verificação automática de inicialização)
 bool FrancisSocketSend(string json_data)
 {
+   if (!FrancisSocketIsReady())
+   {
+      Print("AVISO Francis Socket: Socket não está pronto. Inicializando automaticamente...");
+      if (!FrancisSocketInit())
+      {
+         Print("ERRO Francis Socket: Falha na inicialização automática");
+         return false;
+      }
+   }
+   
    CFrancisSocket *socket = CFrancisSocket::GetInstance();
    return socket.SendJson(json_data);
 }
 
-// Enviar JSON de trade
+// Enviar JSON de trade (com verificação automática)
 bool FrancisSocketSendTrade(string action, double volume, double sl = 0, double tp = 0, string symbol = "")
 {
+   if (!FrancisSocketIsReady())
+   {
+      Print("AVISO Francis Socket: Socket não está pronto. Inicializando automaticamente...");
+      if (!FrancisSocketInit())
+      {
+         Print("ERRO Francis Socket: Falha na inicialização automática");
+         return false;
+      }
+   }
+   
    CFrancisSocket *socket = CFrancisSocket::GetInstance();
    return socket.SendTradeJson(action, volume, sl, tp, symbol);
 }
 
-// Enviar JSON de análise
+// Enviar JSON de análise (com verificação automática)
 bool FrancisSocketSendAnalysis(string timeframe, string indicator, string signal, double value = 0, string symbol = "")
 {
+   if (!FrancisSocketIsReady())
+   {
+      Print("AVISO Francis Socket: Socket não está pronto. Inicializando automaticamente...");
+      if (!FrancisSocketInit())
+      {
+         Print("ERRO Francis Socket: Falha na inicialização automática");
+         return false;
+      }
+   }
+   
    CFrancisSocket *socket = CFrancisSocket::GetInstance();
    return socket.SendAnalysisJson(timeframe, indicator, signal, value, symbol);
 }
 
-// Enviar JSON de status
+// Enviar JSON de status (com verificação automática)
 bool FrancisSocketSendStatus(string status, string message = "", string symbol = "")
 {
+   if (!FrancisSocketIsReady())
+   {
+      Print("AVISO Francis Socket: Socket não está pronto. Inicializando automaticamente...");
+      if (!FrancisSocketInit())
+      {
+         Print("ERRO Francis Socket: Falha na inicialização automática");
+         return false;
+      }
+   }
+   
    CFrancisSocket *socket = CFrancisSocket::GetInstance();
    return socket.SendStatusJson(status, message, symbol);
+}
+
+// Obter informações de status
+string FrancisSocketGetInfo()
+{
+   if (!CFrancisSocket::InstanceExists())
+      return "Francis Socket: Instância não existe";
+      
+   CFrancisSocket *socket = CFrancisSocket::GetInstance();
+   return socket.GetConnectionInfo();
 }
 
 // Limpar Francis Socket
@@ -311,3 +383,37 @@ void FrancisSocketCleanup()
 {
    CFrancisSocket::DestroyInstance();
 }
+
+//+------------------------------------------------------------------+
+//| Exemplo de uso das funções de verificação                        |
+//+------------------------------------------------------------------+
+/*
+void ExemploUsoVerificacao()
+{
+   // Verificar se instância existe (sem criar)
+   if (FrancisSocketExists())
+   {
+      Print("Francis Socket já foi criado");
+   }
+   else
+   {
+      Print("Francis Socket ainda não foi criado");
+   }
+   
+   // Verificar se está pronto para uso
+   if (FrancisSocketIsReady())
+   {
+      Print("Francis Socket está pronto para envio");
+   }
+   else
+   {
+      Print("Francis Socket precisa ser inicializado");
+   }
+   
+   // Obter informações de status
+   Print(FrancisSocketGetInfo());
+   
+   // Enviar dados (com inicialização automática se necessário)
+   FrancisSocketSendTrade("buy", 0.01, 1.1550, 1.1300);
+}
+*/

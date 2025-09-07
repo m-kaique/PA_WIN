@@ -469,7 +469,10 @@ void UpdateSymbolContexts(string symbol)
          ctx.Update();
          // CheckSlopePosM15(tf, ctx);
          Check_SR(tf, ctx);
-         FrancisSocketSendStatus("O Contexto do Timeframe" + EnumToString(tf) + " Foi Atualizado!");
+         if (FrancisSocketExists())
+         {
+            FrancisSocketSendStatus("Update", "O Contexto do Timeframe" + EnumToString(tf) + " Foi Atualizado!", _Symbol);
+         }
       }
    }
 }
