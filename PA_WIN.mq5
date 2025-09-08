@@ -27,6 +27,7 @@ ENUM_TIMEFRAMES m_control_tf; // TimeFrame para controle de novo candle
 //+------------------------------------------------------------------+
 int OnInit()
 {
+   // Inicializar socket
    FrancisSocketInit();
 
    // Criar gerenciador de configuração
@@ -471,7 +472,7 @@ void UpdateSymbolContexts(string symbol)
          Check_SR(tf, ctx);
          if (FrancisSocketExists())
          {
-            FrancisSocketSendStatus("Update", "O Contexto do Timeframe" + EnumToString(tf) + " Foi Atualizado!", _Symbol);
+            FrancisSocketSendStatus("Update", "O Contexto do Timeframe" + EnumToString(tf) + " Foi Atualizado!", symbol);
          }
       }
    }
