@@ -367,6 +367,47 @@ void CheckSlopePosM15(ENUM_TIMEFRAMES tf, TF_CTX *ctx)
 }
 
 //+------------------------------------------------------------------+
+//| compra em alta                                                   |
+//+------------------------------------------------------------------+
+void CompraAlta(string symbol)
+{
+   TF_CTX ctx_m15 = g_config_manager.GetContext(symbol, PERIOD_M15);
+   TF_CTX ctx_m3 = g_config_manager.GetContext(symbol, PERIOD_M3);
+
+
+   // *   **Alinhamento de Médias (M15 e M3):**
+   //     *   `EMA9_above_EMA21_M15`: EMA9 acima da EMA21 em M15.
+   //     *   `EMA21_above_EMA50_M15`: EMA21 acima da EMA50 em M15.
+   //     *   `EMA9_above_EMA21_M3`: EMA9 acima da EMA21 em M3.
+   //     *   `EMA21_above_EMA50_M3`: EMA21 acima da EMA50 em M3.
+   // *   **Ponto de Entrada (M3):**
+   //     *   `price_pullback_EMA9_M3`: Preço retorna à EMA9 em M3.
+   //     *   `price_pullback_EMA21_M3`: Preço retorna à EMA21 em M3.
+   //     *   `price_tested_EMA50_SMA200_as_support_any_timeframe`: Preço testou EMA50 e/ou SMA200 como suporte (em qualquer timeframe).
+   //     *   `price_tested_EMA9_EMA21_as_support_any_
+}
+
+//+------------------------------------------------------------------+
+//| venda em baixa                                                   |
+//+------------------------------------------------------------------+
+void VendaBaixa(string symbol)
+{
+   TF_CTX ctx_m15 = g_config_manager.GetContext(symbol, PERIOD_M15);
+   TF_CTX ctx_m3 = g_config_manager.GetContext(symbol, PERIOD_M3);
+   
+   //    *   **Alinhamento de Médias (M15 e M3):**
+   //     *   `EMA9_below_EMA21_M15`: EMA9 abaixo da EMA21 em M15.
+   //     *   `EMA21_below_EMA50_M15`: EMA21 abaixo da EMA50 em M15.
+   //     *   `EMA9_below_EMA21_M3`: EMA9 abaixo da EMA21 em M3.
+   //     *   `EMA21_below_EMA50_M3`: EMA21 abaixo da EMA50 em M3.
+   // *   **Ponto de Entrada (M3):**
+   //     *   `price_pullback_EMA9_M3`: Preço retorna à EMA9 em M3.
+   //     *   `price_pullback_EMA21_M3`: Preço retorna à EMA21 em M3.
+   //     *   `price_tested_EMA50_SMA200_as_resistance_any_timeframe`: Preço testou EMA50 e/ou SMA200 como resistência (em qualquer timeframe).
+   //     *   `price_tested_EMA9_EMA21_as_resistance_any_timeframe`: Preço testou EMA9 e/ou EMA21 como resistência (em qualquer timeframe).
+}
+
+//+------------------------------------------------------------------+
 //| Informações sobre S/R                                            |
 //+------------------------------------------------------------------+
 void Check_SR(ENUM_TIMEFRAMES tf, TF_CTX *ctx)
@@ -458,6 +499,7 @@ void UpdateSymbolContexts(string symbol)
       return;
    }
 
+   // loop the atualização de contextos
    for (int i = 0; i < count; i++)
    {
       TF_CTX *ctx = contexts[i];
@@ -476,6 +518,10 @@ void UpdateSymbolContexts(string symbol)
          }
       }
    }
+
+   // Check de condições
+   CompraAlta(symbol);
+
 }
 
 //+------------------------------------------------------------------+
