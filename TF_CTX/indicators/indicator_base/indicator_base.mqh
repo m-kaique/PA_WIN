@@ -179,7 +179,7 @@ SSlopeResult CIndicatorBase::GetAdvancedSlope(ENUM_SLOPE_METHOD method,
 
 SPositionInfo CIndicatorBase::GetPositionInfo(int shift, COPY_METHOD copy_method = COPY_MIDDLE, double atr = 0)
 {
-  Print("GetPosition info: " + EnumToString(copy_method));
+  // Print("GetPosition info: " + EnumToString(copy_method));
   double ind_value = OnGetIndicatorValue(shift, copy_method);
   SPositionInfo result;
   result.distance = 0.0;

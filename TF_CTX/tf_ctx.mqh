@@ -44,6 +44,7 @@ public:
   bool CopyIndicatorValues(string name, int shift, int count, double &buffer[]);
   CIndicatorBase *GetIndicator(string name);
   bool HasNewBar();
+  ENUM_TIMEFRAMES GetTimeFrame(){return m_timeframe;};
 };
 
 //+------------------------------------------------------------------+

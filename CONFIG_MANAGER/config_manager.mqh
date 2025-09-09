@@ -384,7 +384,7 @@ int CConfigManager::GetSymbolContexts(string symbol, TF_CTX *&contexts[], ENUM_T
 void CConfigManager::Cleanup()
 {
     Print("Limpando recursos do ConfigManager...");
-    
+
     // Deletar contextos PRIMEIRO (ordem inversa à criação)
     for (int i = ArraySize(m_contexts) - 1; i >= 0; i--)
     {
@@ -394,13 +394,13 @@ void CConfigManager::Cleanup()
             m_contexts[i] = NULL;
         }
     }
-  
+
     ArrayResize(m_contexts, 0);
     ArrayResize(m_context_keys, 0);
     ArrayResize(m_symbols, 0);
     m_config.Clear();
     m_initialized = false;
-    
+
     Print("Recursos limpos com sucesso");
 }
 //+------------------------------------------------------------------+
@@ -435,6 +435,8 @@ string CConfigManager::TimeframeToString(ENUM_TIMEFRAMES tf)
     {
     case PERIOD_M1:
         return "M1";
+    case PERIOD_M3:
+        return "M3";
     case PERIOD_M5:
         return "M5";
     case PERIOD_M15:

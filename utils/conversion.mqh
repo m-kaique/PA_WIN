@@ -10,13 +10,14 @@
 // Convert string to ENUM_TIMEFRAMES
 inline ENUM_TIMEFRAMES ToTimeframe(const string tf_str)
   {
-   if(tf_str=="M1")  return PERIOD_M1;
-   if(tf_str=="M5")  return PERIOD_M5;
-   if(tf_str=="M15") return PERIOD_M15;
-   if(tf_str=="M30") return PERIOD_M30;
-   if(tf_str=="H1")  return PERIOD_H1;
-   if(tf_str=="H4")  return PERIOD_H4;
-   if(tf_str=="D1")  return PERIOD_D1;
+  if(tf_str=="M1")  return PERIOD_M1;
+  if(tf_str=="M3")  return PERIOD_M3;
+  if(tf_str=="M5")  return PERIOD_M5;
+  if(tf_str=="M15") return PERIOD_M15;
+  if(tf_str=="M30") return PERIOD_M30;
+  if(tf_str=="H1")  return PERIOD_H1;
+  if(tf_str=="H4")  return PERIOD_H4;
+  if(tf_str=="D1")  return PERIOD_D1;
    return PERIOD_CURRENT;
   }
 
