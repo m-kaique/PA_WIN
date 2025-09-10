@@ -159,6 +159,153 @@ bool IsNewBar(ENUM_TIMEFRAMES timeframe)
 }
 
 //+------------------------------------------------------------------+
+//| Verificar se a tendência está forte baseada na distância entre médias |
+//+------------------------------------------------------------------+
+bool IsStrongTrend(TF_CTX* ctx, double min_distance_9_21_atr = 0.3, double min_distance_21_50_atr = 0.5)
+{
+   if (ctx == NULL) return false;
+   
+   CMovingAverages *ema9 = ctx.GetIndicator("ema9");
+   CMovingAverages *ema21 = ctx.GetIndicator("ema21");
+   CMovingAverages *ema50 = ctx.GetIndicator("ema50");
+   CATR *atr = ctx.GetIndicator("ATR15");
+   
+   if (ema9 == NULL || ema21 == NULL || ema50 == NULL || atr == NULL)
+   {
+      return false;
+   }
+   
+   double ema9_val = ema9.GetValue(1);
+   double ema21_val = ema21.GetValue(1);
+   double ema50_val = ema50.GetValue(1);
+   double atr_val = atr.GetValue(1);
+   
+   if (atr_val <= 0) return false;
+   
+   // Calcular distâncias em termos de ATR
+   double dist_9_21 = MathAbs(ema9_val - ema21_val) / atr_val;
+   double dist_21_50 = MathAbs(ema21_val - ema50_val) / atr_val;
+   
+   bool strong_trend = (dist_9_21 >= min_distance_9_21_atr && dist_21_50 >= min_distance_21_50_atr);
+   
+   return strong_trend;
+}
+
+//+------------------------------------------------------------------+
+//| Verificar momentum bullish através de price action              |
+//+------------------------------------------------------------------+
+bool HasBullishMomentum(TF_CTX* ctx_m15, TF_CTX* ctx_m3, int lookback_candles = 3)
+{
+   if (ctx_m15 == NULL || ctx_m3 == NULL) return false;
+   
+   CMovingAverages *ema21_m15 = ctx_m15.GetIndicator("ema21");
+   if (ema21_m15 == NULL) return false;
+   
+   string symbol = Symbol();
+   
+   // 1. Verificar se o preço está consistentemente acima da EMA21 no M15
+   int candles_above_ema21 = 0;
+   for (int i = 1; i <= lookback_candles; i++)
+   {
+      double close = iClose(symbol, PERIOD_M15, i);
+      double ema21_val = ema21_m15.GetValue(i);
+      if (close > ema21_val)
+      {
+         candles_above_ema21++;
+      }
+   }
+   bool price_above_ema21 = (candles_above_ema21 >= 2);
+   
+   // 2. Verificar se não há candles com sombra inferior muito grande (panic selling)
+   bool no_panic_selling = true;
+   for (int i = 1; i <= 2; i++)
+   {
+      double open = iOpen(symbol, PERIOD_M3, i);
+      double close = iClose(symbol, PERIOD_M3, i);
+      double low = iLow(symbol, PERIOD_M3, i);
+      double high = iHigh(symbol, PERIOD_M3, i);
+      
+      double body_size = MathAbs(close - open);
+      double lower_shadow = MathMin(open, close) - low;
+      double candle_range = high - low;
+      
+      if (candle_range > 0)
+      {
+         double lower_shadow_ratio = lower_shadow / candle_range;
+         if (lower_shadow_ratio > 0.6)
+         {
+            no_panic_selling = false;
+            break;
+         }
+      }
+   }
+   
+   // 3. Verificar se o último candle mostra força
+   double last_open = iOpen(symbol, PERIOD_M3, 1);
+   double last_close = iClose(symbol, PERIOD_M3, 1);
+   bool last_candle_bullish = (last_close >= last_open);
+   
+   return price_above_ema21 && no_panic_selling && last_candle_bullish;
+}
+
+//+------------------------------------------------------------------+
+//| Verificar momentum bearish através de price action              |
+//+------------------------------------------------------------------+
+bool HasBearishMomentum(TF_CTX* ctx_m15, TF_CTX* ctx_m3, int lookback_candles = 3)
+{
+   if (ctx_m15 == NULL || ctx_m3 == NULL) return false;
+   
+   CMovingAverages *ema21_m15 = ctx_m15.GetIndicator("ema21");
+   if (ema21_m15 == NULL) return false;
+   
+   string symbol = Symbol();
+   
+   // 1. Verificar se o preço está consistentemente abaixo da EMA21 no M15
+   int candles_below_ema21 = 0;
+   for (int i = 1; i <= lookback_candles; i++)
+   {
+      double close = iClose(symbol, PERIOD_M15, i);
+      double ema21_val = ema21_m15.GetValue(i);
+      if (close < ema21_val)
+      {
+         candles_below_ema21++;
+      }
+   }
+   bool price_below_ema21 = (candles_below_ema21 >= 2);
+   
+   // 2. Verificar se não há candles com sombra superior muito grande (panic buying)
+   bool no_panic_buying = true;
+   for (int i = 1; i <= 2; i++)
+   {
+      double open = iOpen(symbol, PERIOD_M3, i);
+      double close = iClose(symbol, PERIOD_M3, i);
+      double low = iLow(symbol, PERIOD_M3, i);
+      double high = iHigh(symbol, PERIOD_M3, i);
+      
+      double body_size = MathAbs(close - open);
+      double upper_shadow = high - MathMax(open, close);
+      double candle_range = high - low;
+      
+      if (candle_range > 0)
+      {
+         double upper_shadow_ratio = upper_shadow / candle_range;
+         if (upper_shadow_ratio > 0.6)
+         {
+            no_panic_buying = false;
+            break;
+         }
+      }
+   }
+   
+   // 3. Verificar se o último candle mostra força bearish
+   double last_open = iOpen(symbol, PERIOD_M3, 1);
+   double last_close = iClose(symbol, PERIOD_M3, 1);
+   bool last_candle_bearish = (last_close <= last_open);
+   
+   return price_below_ema21 && no_panic_buying && last_candle_bearish;
+}
+
+//+------------------------------------------------------------------+
 //| Compra em alta                                                   |
 //+------------------------------------------------------------------+
 bool CompraAlta(string symbol)
@@ -224,6 +371,22 @@ bool CompraAlta(string symbol)
    if (!EMA9_above_EMA21_M3 || !EMA21_above_EMA50_M3)
    {
       return false; // Não há alinhamento de alta em M3
+   }
+
+   // === FILTRO DE FORÇA DA TENDÊNCIA ===
+   // Verificar se a tendência está forte em M15
+   bool strong_trend_m15 = IsStrongTrend(ctx_m15, 0.3, 0.5);
+   if (!strong_trend_m15)
+   {
+      return false; // Tendência não está forte o suficiente em M15
+   }
+
+   // === FILTRO DE MOMENTUM ===
+   // Verificar momentum bullish através de price action
+   bool bullish_momentum = HasBullishMomentum(ctx_m15, ctx_m3, 3);
+   if (!bullish_momentum)
+   {
+      return false; // Momentum não está favorável para compra
    }
 
    // === OBTER ATR PARA CÁLCULOS ===
@@ -307,6 +470,7 @@ bool CompraAlta(string symbol)
    // === CONDIÇÕES FINAIS PARA COMPRA ===
    // bool entrada_valida = ((price_pullback_EMA9_M3 || price_pullback_EMA21_M3) &&
    //                        (price_tested_EMA50_as_support || price_tested_SMA200_as_support));
+    
 
    SSlopeValidation ema50_m3_slope = ema50_m3.GetSlopeValidation(atr_m3.GetValue(1), COPY_MIDDLE);
 
@@ -344,6 +508,8 @@ bool CompraAlta(string symbol)
             " | EMA21>EMA50: ", EMA21_above_EMA50_M15 ? "✓" : "✗");
       Print("Alinhamento M3 - EMA9>EMA21: ", EMA9_above_EMA21_M3 ? "✓" : "✗",
             " | EMA21>EMA50: ", EMA21_above_EMA50_M3 ? "✓" : "✗");
+      Print("Força da Tendência M15: ", strong_trend_m15 ? "✓" : "✗");
+      Print("Momentum Bullish: ", bullish_momentum ? "✓" : "✗");
       Print("---");
       Print("Posição EMA9 M3: ", ema9_m3_position.position,
             " | Pullback EMA9: ", price_pullback_EMA9_M3 ? "✓" : "✗");
@@ -428,6 +594,22 @@ bool VendaBaixa(string symbol)
    if (!EMA9_below_EMA21_M3 || !EMA21_below_EMA50_M3)
    {
       return false; // Não há alinhamento de baixa em M3
+   }
+
+   // === FILTRO DE FORÇA DA TENDÊNCIA ===
+   // Verificar se a tendência está forte em M15
+   bool strong_trend_m15 = IsStrongTrend(ctx_m15, 0.3, 0.5);
+   if (!strong_trend_m15)
+   {
+      return false; // Tendência não está forte o suficiente em M15
+   }
+
+   // === FILTRO DE MOMENTUM ===
+   // Verificar momentum bearish através de price action
+   bool bearish_momentum = HasBearishMomentum(ctx_m15, ctx_m3, 3);
+   if (!bearish_momentum)
+   {
+      return false; // Momentum não está favorável para venda
    }
 
    // === OBTER ATR PARA CÁLCULOS ===
@@ -532,6 +714,8 @@ bool VendaBaixa(string symbol)
             " | EMA21<EMA50: ", EMA21_below_EMA50_M15 ? "✓" : "✗");
       Print("Alinhamento M3 - EMA9<EMA21: ", EMA9_below_EMA21_M3 ? "✓" : "✗",
             " | EMA21<EMA50: ", EMA21_below_EMA50_M3 ? "✓" : "✗");
+      Print("Força da Tendência M15: ", strong_trend_m15 ? "✓" : "✗");
+      Print("Momentum Bearish: ", bearish_momentum ? "✓" : "✗");
       Print("---");
       Print("Posição EMA9 M3: ", ema9_m3_position.position,
             " | Pullback EMA9: ", price_pullback_EMA9_M3 ? "✓" : "✗");
