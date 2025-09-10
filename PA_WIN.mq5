@@ -306,6 +306,78 @@ bool HasBearishMomentum(TF_CTX* ctx_m15, TF_CTX* ctx_m3, int lookback_candles = 
 }
 
 //+------------------------------------------------------------------+
+//| Validar se é um pullback adequado (não muito profundo nem prolongado) |
+//+------------------------------------------------------------------+
+bool IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX* ctx, CMovingAverages* ma, double max_distance_atr = 0.8, int max_duration_candles = 3)
+{
+   if (ctx == NULL || ma == NULL || atr_value <= 0) return false;
+   
+   // 1. Verificar se o pullback não é muito profundo
+   if (position_info.distance > max_distance_atr * atr_value)
+   {
+      return false; // Pullback muito profundo
+   }
+   
+   // 2. Verificar velocidade do pullback (não deve estar "grudado" na média)
+   string symbol = Symbol();
+   ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
+   bool was_further_away = false;
+   
+   for (int i = 2; i <= max_duration_candles + 1; i++)
+   {
+      double prev_close = iClose(symbol, tf, i);
+      double prev_ma_value = ma.GetValue(i);
+      double prev_distance = MathAbs(prev_close - prev_ma_value);
+      
+      if (prev_distance > position_info.distance * 1.2)
+      {
+         was_further_away = true;
+         break;
+      }
+   }
+   
+   return was_further_away;
+}
+
+//+------------------------------------------------------------------+
+//| Analisar ambiente de volatilidade para determinar se é adequado para trading |
+//+------------------------------------------------------------------+
+bool IsGoodVolatilityEnvironment(TF_CTX* ctx, int lookback_periods = 10, double min_volatility_ratio = 0.7, double max_volatility_ratio = 1.5)
+{
+   if (ctx == NULL) return false;
+   
+   CATR *atr = ctx.GetIndicator("ATR15");
+   if (atr == NULL) return false;
+   
+   double current_atr = atr.GetValue(1);
+   if (current_atr <= 0) return false;
+   
+   // Calcular ATR médio dos últimos períodos
+   double sum_atr = 0;
+   int valid_periods = 0;
+   
+   for (int i = 1; i <= lookback_periods; i++)
+   {
+      double period_atr = atr.GetValue(i);
+      if (period_atr > 0)
+      {
+         sum_atr += period_atr;
+         valid_periods++;
+      }
+   }
+   
+   if (valid_periods < lookback_periods / 2)
+   {
+      return false;
+   }
+   
+   double avg_atr = sum_atr / valid_periods;
+   double volatility_ratio = current_atr / avg_atr;
+   
+   return (volatility_ratio >= min_volatility_ratio && volatility_ratio <= max_volatility_ratio);
+}
+
+//+------------------------------------------------------------------+
 //| Compra em alta                                                   |
 //+------------------------------------------------------------------+
 bool CompraAlta(string symbol)
@@ -389,6 +461,14 @@ bool CompraAlta(string symbol)
       return false; // Momentum não está favorável para compra
    }
 
+   // === FILTRO DE VOLATILIDADE ===
+   // Verificar se o ambiente de volatilidade é adequado para trading
+   bool good_volatility_m15 = IsGoodVolatilityEnvironment(ctx_m15, 10, 0.7, 1.5);
+   if (!good_volatility_m15)
+   {
+      return false; // Ambiente de volatilidade inadequado em M15
+   }
+
    // === OBTER ATR PARA CÁLCULOS ===
    CATR *atr_m3 = ctx_m3.GetIndicator("ATR15"); // PADRONIZAR NOME ATR
    double atr_value = atr_m3.GetValue(1);
@@ -400,12 +480,18 @@ bool CompraAlta(string symbol)
    bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
                                   ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
                                   ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
+   
+   // Validar se o pullback da EMA9 é adequado
+   bool valid_pullback_EMA9_M3 = IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3, 0.8, 3);
 
    // 2. Verificar pullback para EMA21 em M3 - preço testando a EMA como suporte
    SPositionInfo ema21_m3_position = ema21_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
    bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
                                    ema21_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
                                    ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
+   
+   // Validar se o pullback da EMA21 é adequado
+   bool valid_pullback_EMA21_M3 = IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3, 0.8, 3);
 
    // 3. Verificar teste de EMA50 como suporte em qualquer timeframe
    bool price_tested_EMA50_as_support = false;
@@ -485,7 +571,8 @@ bool CompraAlta(string symbol)
                                 ema50_m15_slope.discrete_derivative.trend_direction == "ALTA" &&
                                 ema50_m15_slope.simple_difference.trend_direction == "ALTA";
 
-   bool entrada_valida = (price_pullback_EMA9_M3 || price_pullback_EMA21_M3);
+   bool entrada_valida = ((price_pullback_EMA9_M3 && valid_pullback_EMA9_M3) || 
+                          (price_pullback_EMA21_M3 && valid_pullback_EMA21_M3));
 
    if (entrada_valida)
    {
@@ -510,11 +597,14 @@ bool CompraAlta(string symbol)
             " | EMA21>EMA50: ", EMA21_above_EMA50_M3 ? "✓" : "✗");
       Print("Força da Tendência M15: ", strong_trend_m15 ? "✓" : "✗");
       Print("Momentum Bullish: ", bullish_momentum ? "✓" : "✗");
+      Print("Volatilidade Adequada M15: ", good_volatility_m15 ? "✓" : "✗");
       Print("---");
       Print("Posição EMA9 M3: ", ema9_m3_position.position,
-            " | Pullback EMA9: ", price_pullback_EMA9_M3 ? "✓" : "✗");
+            " | Pullback EMA9: ", price_pullback_EMA9_M3 ? "✓" : "✗",
+            " | Válido: ", valid_pullback_EMA9_M3 ? "✓" : "✗");
       Print("Posição EMA21 M3: ", ema21_m3_position.position,
-            " | Pullback EMA21: ", price_pullback_EMA21_M3 ? "✓" : "✗");
+            " | Pullback EMA21: ", price_pullback_EMA21_M3 ? "✓" : "✗",
+            " | Válido: ", valid_pullback_EMA21_M3 ? "✓" : "✗");
       Print("Teste EMA50 suporte: ", price_tested_EMA50_as_support ? "✓" : "✗");
       Print("Teste SMA200 suporte: ", price_tested_SMA200_as_support ? "✓" : "✗");
       Print("---");
@@ -612,6 +702,14 @@ bool VendaBaixa(string symbol)
       return false; // Momentum não está favorável para venda
    }
 
+   // === FILTRO DE VOLATILIDADE ===
+   // Verificar se o ambiente de volatilidade é adequado para trading
+   bool good_volatility_m15 = IsGoodVolatilityEnvironment(ctx_m15, 10, 0.7, 1.5);
+   if (!good_volatility_m15)
+   {
+      return false; // Ambiente de volatilidade inadequado em M15
+   }
+
    // === OBTER ATR PARA CÁLCULOS ===
    CATR *atr_m3 = ctx_m3.GetIndicator("ATR15"); // PADRONIZAR NOME ATR
    double atr_value = atr_m3.GetValue(1);
@@ -623,12 +721,18 @@ bool VendaBaixa(string symbol)
    bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
                                   ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY ||
                                   ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
+   
+   // Validar se o pullback da EMA9 é adequado
+   bool valid_pullback_EMA9_M3 = IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3, 0.8, 3);
 
    // 2. Verificar pullback para EMA21 em M3 - preço testando a EMA como resistência
    SPositionInfo ema21_m3_position = ema21_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
    bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
                                    ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY ||
                                    ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
+   
+   // Validar se o pullback da EMA21 é adequado
+   bool valid_pullback_EMA21_M3 = IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3, 0.8, 3);
 
    // 3. Verificar teste de EMA50 como resistência em qualquer timeframe
    bool price_tested_EMA50_as_resistance = false;
@@ -695,7 +799,8 @@ bool VendaBaixa(string symbol)
    }
 
    // === CONDIÇÕES FINAIS PARA VENDA ===
-   bool entrada_valida = ((price_pullback_EMA9_M3 || price_pullback_EMA21_M3) &&
+   bool entrada_valida = (((price_pullback_EMA9_M3 && valid_pullback_EMA9_M3) || 
+                           (price_pullback_EMA21_M3 && valid_pullback_EMA21_M3)) &&
                           (price_tested_EMA50_as_resistance || price_tested_SMA200_as_resistance));
 
    if (entrada_valida)
@@ -716,11 +821,14 @@ bool VendaBaixa(string symbol)
             " | EMA21<EMA50: ", EMA21_below_EMA50_M3 ? "✓" : "✗");
       Print("Força da Tendência M15: ", strong_trend_m15 ? "✓" : "✗");
       Print("Momentum Bearish: ", bearish_momentum ? "✓" : "✗");
+      Print("Volatilidade Adequada M15: ", good_volatility_m15 ? "✓" : "✗");
       Print("---");
       Print("Posição EMA9 M3: ", ema9_m3_position.position,
-            " | Pullback EMA9: ", price_pullback_EMA9_M3 ? "✓" : "✗");
+            " | Pullback EMA9: ", price_pullback_EMA9_M3 ? "✓" : "✗",
+            " | Válido: ", valid_pullback_EMA9_M3 ? "✓" : "✗");
       Print("Posição EMA21 M3: ", ema21_m3_position.position,
-            " | Pullback EMA21: ", price_pullback_EMA21_M3 ? "✓" : "✗");
+            " | Pullback EMA21: ", price_pullback_EMA21_M3 ? "✓" : "✗",
+            " | Válido: ", valid_pullback_EMA21_M3 ? "✓" : "✗");
       Print("Teste EMA50 resistência: ", price_tested_EMA50_as_resistance ? "✓" : "✗");
       Print("Teste SMA200 resistência: ", price_tested_SMA200_as_resistance ? "✓" : "✗");
       Print("====================================");
