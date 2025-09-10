@@ -378,6 +378,91 @@ bool IsGoodVolatilityEnvironment(TF_CTX* ctx, int lookback_periods = 10, double 
 }
 
 //+------------------------------------------------------------------+
+//| Verificar se o mercado está em estrutura de alta                 |
+//+------------------------------------------------------------------+
+bool IsInBullishStructure(TF_CTX* ctx , double min_distance_sma200_atr)
+{
+   if (ctx == NULL) return false;
+   
+   CMovingAverages *sma200 = ctx.GetIndicator("sma200");
+   CATR *atr = ctx.GetIndicator("ATR15");
+   
+   if (sma200 == NULL || atr == NULL) return false;
+   
+   string symbol = Symbol();
+   ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
+   
+   double current_close = iClose(symbol, tf, 1);
+   double sma200_val = sma200.GetValue(1);
+    double atr_val = atr.GetValue(1);
+   
+   if (atr_val <= 0) return false;
+   
+   // 1. Preço deve estar acima da SMA200
+   if (current_close <= sma200_val)
+   {
+      return false;
+   }
+   
+   // 2. Preço deve estar a uma distância mínima da SMA200
+   double distance_to_sma200 = (current_close - sma200_val) / atr_val;
+   if (distance_to_sma200 < min_distance_sma200_atr)
+   {
+      return false;
+   }
+   
+   // 3. SMA200 deve estar inclinada para cima
+   SSlopeValidation sma200_slope = sma200.GetSlopeValidation(atr_val, COPY_MIDDLE);
+   bool sma200_trending_up = (sma200_slope.simple_difference.trend_direction != "BAIXA" ||
+                             sma200_slope.discrete_derivative.trend_direction != "BAIXA" ||
+                           sma200_slope.linear_regression.trend_direction != "BAIXA");
+   
+   return sma200_trending_up;
+}
+
+//+------------------------------------------------------------------+
+//| Verificar se o mercado está em estrutura de baixa                |
+//+------------------------------------------------------------------+
+bool IsInBearishStructure(TF_CTX* ctx, double min_distance_sma200_atr = 0.5)
+{
+   if (ctx == NULL) return false;
+   
+   CMovingAverages *sma200 = ctx.GetIndicator("sma200");
+   CATR *atr = ctx.GetIndicator("ATR15");
+   
+   if (sma200 == NULL || atr == NULL) return false;
+   
+   string symbol = Symbol();
+   ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
+   
+   double current_close = iClose(symbol, tf, 1);
+   double sma200_val = sma200.GetValue(1);
+   double atr_val = atr.GetValue(1);
+   
+   if (atr_val <= 0) return false;
+   
+   // 1. Preço deve estar abaixo da SMA200
+   if (current_close >= sma200_val)
+   {
+      return false;
+   }
+   
+   // 2. Preço deve estar a uma distância mínima da SMA200
+   double distance_to_sma200 = (sma200_val - current_close) / atr_val;
+   if (distance_to_sma200 < min_distance_sma200_atr)
+   {
+      return false;
+   }
+   
+   // 3. SMA200 deve estar inclinada para baixo
+   SSlopeValidation sma200_slope = sma200.GetSlopeValidation(atr_val, COPY_MIDDLE);
+   bool sma200_trending_down = (sma200_slope.simple_difference.trend_direction == "BAIXA" &&
+                               sma200_slope.discrete_derivative.trend_direction == "BAIXA");
+   
+   return sma200_trending_down;
+}
+
+//+------------------------------------------------------------------+
 //| Compra em alta                                                   |
 //+------------------------------------------------------------------+
 bool CompraAlta(string symbol)
@@ -469,9 +554,19 @@ bool CompraAlta(string symbol)
       return false; // Ambiente de volatilidade inadequado em M15
    }
 
+   // === FILTRO DE ESTRUTURA DE MERCADO ===
+   // Verificar se o mercado está em estrutura de alta
+   bool bullish_structure_m15 = IsInBullishStructure(ctx_m15, 0.5);
+   if (!bullish_structure_m15)
+   {
+      return false; // Mercado não está em estrutura de alta em M15
+   }
+
+
    // === OBTER ATR PARA CÁLCULOS ===
    CATR *atr_m3 = ctx_m3.GetIndicator("ATR15"); // PADRONIZAR NOME ATR
    double atr_value = atr_m3.GetValue(1);
+
 
    // === PONTOS DE ENTRADA - USANDO GetPositionInfo  ===
 
@@ -574,6 +669,14 @@ bool CompraAlta(string symbol)
    bool entrada_valida = ((price_pullback_EMA9_M3 && valid_pullback_EMA9_M3) || 
                           (price_pullback_EMA21_M3 && valid_pullback_EMA21_M3));
 
+
+   CMovingAverages *sma200_m15 = ctx_m15.GetIndicator("sma200");
+   if (sma200_m15 == NULL)
+   {
+      return false; // SMA200 não encontrada em M15
+   }
+   SSlopeValidation sma200_m15_slope = sma200_m15.GetSlopeValidation(atr_m15.GetValue(1), COPY_MIDDLE);
+
    if (entrada_valida)
    {
       if (FrancisSocketExists())
@@ -598,6 +701,7 @@ bool CompraAlta(string symbol)
       Print("Força da Tendência M15: ", strong_trend_m15 ? "✓" : "✗");
       Print("Momentum Bullish: ", bullish_momentum ? "✓" : "✗");
       Print("Volatilidade Adequada M15: ", good_volatility_m15 ? "✓" : "✗");
+      //Print("Estrutura Bullish M15: ", bullish_structure_m15 ? "✓" : "✗");
       Print("---");
       Print("Posição EMA9 M3: ", ema9_m3_position.position,
             " | Pullback EMA9: ", price_pullback_EMA9_M3 ? "✓" : "✗",
@@ -616,7 +720,11 @@ bool CompraAlta(string symbol)
       Print("EMA 50 M15 SLOPES");
       Print(" | Linear: ", ema50_m15_slope.linear_regression.trend_direction);
       Print(" | Simple: ", ema50_m15_slope.simple_difference.trend_direction);
-      Print(" | Derivative: ", ema50_m15_slope.discrete_derivative.trend_direction);
+      Print(" | Derivada: ", ema50_m15_slope.discrete_derivative.trend_direction);
+      Print("SMA 200 M15 SLOPES");
+      Print(" | Linear: ", sma200_m15_slope.linear_regression.trend_direction);
+      Print(" | Simple: ", sma200_m15_slope.simple_difference.trend_direction);
+      Print(" | Derivative: ", sma200_m15_slope.discrete_derivative.trend_direction);
       Print("====================================");
       return true;
    }
@@ -624,219 +732,7 @@ bool CompraAlta(string symbol)
    return false;
 }
 
-//+------------------------------------------------------------------+
-//| Venda em baixa                                                   |
-//+------------------------------------------------------------------+
-bool VendaBaixa(string symbol)
-{
-   TF_CTX *ctx_m15 = g_config_manager.GetContext(symbol, PERIOD_M15);
-   TF_CTX *ctx_m3 = g_config_manager.GetContext(symbol, PERIOD_M3);
 
-   if (ctx_m15 == NULL || ctx_m3 == NULL)
-   {
-      Print("ERRO: Contextos M15 ou M3 são nulos em VendaBaixa");
-      return false;
-   }
-
-   // === ALINHAMENTO DE MÉDIAS EMA em M15 ===
-   CMovingAverages *ema9_m15 = ctx_m15.GetIndicator("ema9");
-   CMovingAverages *ema21_m15 = ctx_m15.GetIndicator("ema21");
-   CMovingAverages *ema50_m15 = ctx_m15.GetIndicator("ema50");
-
-   if (ema9_m15 == NULL || ema21_m15 == NULL || ema50_m15 == NULL)
-   {
-      Print("AVISO: Indicadores EMA não encontrados em M15 para VendaBaixa");
-      return false;
-   }
-
-   // Verificar alinhamento EMA9 < EMA21 < EMA50 em M15
-   double ema9_value_m15 = ema9_m15.GetValue(1);
-   double ema21_value_m15 = ema21_m15.GetValue(1);
-   double ema50_value_m15 = ema50_m15.GetValue(1);
-
-   bool EMA9_below_EMA21_M15 = (ema9_value_m15 < ema21_value_m15);
-   bool EMA21_below_EMA50_M15 = (ema21_value_m15 < ema50_value_m15);
-
-   if (!EMA9_below_EMA21_M15 || !EMA21_below_EMA50_M15)
-   {
-      return false; // Não há alinhamento de baixa em M15
-   }
-
-   // === ALINHAMENTO DE MÉDIAS EMA em M3 ===
-   CMovingAverages *ema9_m3 = ctx_m3.GetIndicator("ema9");
-   CMovingAverages *ema21_m3 = ctx_m3.GetIndicator("ema21");
-   CMovingAverages *ema50_m3 = ctx_m3.GetIndicator("ema50");
-
-   if (ema9_m3 == NULL || ema21_m3 == NULL || ema50_m3 == NULL)
-   {
-      Print("AVISO: Indicadores EMA não encontrados em M3 para VendaBaixa");
-      return false;
-   }
-
-   // Verificar alinhamento EMA9 < EMA21 < EMA50 em M3
-   double ema9_value_m3 = ema9_m3.GetValue(1);
-   double ema21_value_m3 = ema21_m3.GetValue(1);
-   double ema50_value_m3 = ema50_m3.GetValue(1);
-
-   bool EMA9_below_EMA21_M3 = (ema9_value_m3 < ema21_value_m3);
-   bool EMA21_below_EMA50_M3 = (ema21_value_m3 < ema50_value_m3);
-
-   if (!EMA9_below_EMA21_M3 || !EMA21_below_EMA50_M3)
-   {
-      return false; // Não há alinhamento de baixa em M3
-   }
-
-   // === FILTRO DE FORÇA DA TENDÊNCIA ===
-   // Verificar se a tendência está forte em M15
-   bool strong_trend_m15 = IsStrongTrend(ctx_m15, 0.3, 0.5);
-   if (!strong_trend_m15)
-   {
-      return false; // Tendência não está forte o suficiente em M15
-   }
-
-   // === FILTRO DE MOMENTUM ===
-   // Verificar momentum bearish através de price action
-   bool bearish_momentum = HasBearishMomentum(ctx_m15, ctx_m3, 3);
-   if (!bearish_momentum)
-   {
-      return false; // Momentum não está favorável para venda
-   }
-
-   // === FILTRO DE VOLATILIDADE ===
-   // Verificar se o ambiente de volatilidade é adequado para trading
-   bool good_volatility_m15 = IsGoodVolatilityEnvironment(ctx_m15, 10, 0.7, 1.5);
-   if (!good_volatility_m15)
-   {
-      return false; // Ambiente de volatilidade inadequado em M15
-   }
-
-   // === OBTER ATR PARA CÁLCULOS ===
-   CATR *atr_m3 = ctx_m3.GetIndicator("ATR15"); // PADRONIZAR NOME ATR
-   double atr_value = atr_m3.GetValue(1);
-
-   // === PONTOS DE ENTRADA - USANDO GetPositionInfo  ===
-
-   // 1. Verificar pullback para EMA9 em M3 - preço testando a EMA como resistência
-   SPositionInfo ema9_m3_position = ema9_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
-   bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
-                                  ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY ||
-                                  ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
-   
-   // Validar se o pullback da EMA9 é adequado
-   bool valid_pullback_EMA9_M3 = IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3, 0.8, 3);
-
-   // 2. Verificar pullback para EMA21 em M3 - preço testando a EMA como resistência
-   SPositionInfo ema21_m3_position = ema21_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
-   bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
-                                   ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY ||
-                                   ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
-   
-   // Validar se o pullback da EMA21 é adequado
-   bool valid_pullback_EMA21_M3 = IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3, 0.8, 3);
-
-   // 3. Verificar teste de EMA50 como resistência em qualquer timeframe
-   bool price_tested_EMA50_as_resistance = false;
-   TF_CTX *contexts[];
-   ENUM_TIMEFRAMES tfs[];
-   int count = g_config_manager.GetSymbolContexts(symbol, contexts, tfs);
-
-   for (int i = 0; i < count; i++)
-   {
-      TF_CTX *ctx = contexts[i];
-      if (ctx == NULL)
-         continue;
-
-      CMovingAverages *ema50 = ctx.GetIndicator("ema50");
-      CATR *atr = ctx.GetIndicator("ATR15");
-
-      if (ema50 != NULL && atr != NULL)
-      {
-         SPositionInfo ema50_position = ema50.GetPositionInfo(1, COPY_MIDDLE, atr.GetValue(1));
-
-         // EMA50 como resistência: candle testou mas não rompeu com distância
-         if (ema50_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
-             ema50_position.position == INDICATOR_CROSSES_UPPER_BODY ||
-             ema50_position.position == INDICATOR_CROSSES_CENTER_BODY ||
-             ema50_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
-             ema50_position.position == INDICATOR_CROSSES_LOWER_BODY)
-         {
-            price_tested_EMA50_as_resistance = true;
-            // Print("EMA50 testada como resistência em ", EnumToString(tfs[i]),
-            //       " - Posição: ", ema50_position.position);
-            break;
-         }
-      }
-   }
-
-   // 4. Verificar teste de SMA200 como resistência em qualquer timeframe
-   bool price_tested_SMA200_as_resistance = false;
-   for (int i = 0; i < count; i++)
-   {
-      TF_CTX *ctx = contexts[i];
-      if (ctx == NULL)
-         continue;
-
-      CMovingAverages *sma200 = ctx.GetIndicator("sma200");
-      CATR *atr = ctx.GetIndicator("ATR15");
-
-      if (sma200 != NULL && atr != NULL)
-      {
-         SPositionInfo sma200_position = sma200.GetPositionInfo(1, COPY_MIDDLE, atr.GetValue(1));
-
-         // SMA200 como resistência: candle testou mas não rompeu com distância
-         if (sma200_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
-             sma200_position.position == INDICATOR_CROSSES_UPPER_BODY ||
-             sma200_position.position == INDICATOR_CROSSES_CENTER_BODY ||
-             sma200_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
-             sma200_position.position == INDICATOR_CROSSES_LOWER_BODY)
-         {
-            price_tested_SMA200_as_resistance = true;
-            // Print("SMA200 testada como resistência em ", EnumToString(tfs[i]),
-            //       " - Posição: ", sma200_position.position);
-            break;
-         }
-      }
-   }
-
-   // === CONDIÇÕES FINAIS PARA VENDA ===
-   bool entrada_valida = (((price_pullback_EMA9_M3 && valid_pullback_EMA9_M3) || 
-                           (price_pullback_EMA21_M3 && valid_pullback_EMA21_M3)) &&
-                          (price_tested_EMA50_as_resistance || price_tested_SMA200_as_resistance));
-
-   if (entrada_valida)
-   {
-      Print("=== SINAL DE VENDA BAIXA DETECTADO ===");
-      Print("Símbolo: ", symbol);
-      Print("EMA9 M15: ", DoubleToString(ema9_value_m15, _Digits),
-            " | EMA21 M15: ", DoubleToString(ema21_value_m15, _Digits),
-            " | EMA50 M15: ", DoubleToString(ema50_value_m15, _Digits));
-      Print("EMA9 M3: ", DoubleToString(ema9_value_m3, _Digits),
-            " | EMA21 M3: ", DoubleToString(ema21_value_m3, _Digits),
-            " | EMA50 M3: ", DoubleToString(ema50_value_m3, _Digits));
-      Print("ATR M3: ", DoubleToString(atr_value, _Digits));
-      Print("---");
-      Print("Alinhamento M15 - EMA9<EMA21: ", EMA9_below_EMA21_M15 ? "✓" : "✗",
-            " | EMA21<EMA50: ", EMA21_below_EMA50_M15 ? "✓" : "✗");
-      Print("Alinhamento M3 - EMA9<EMA21: ", EMA9_below_EMA21_M3 ? "✓" : "✗",
-            " | EMA21<EMA50: ", EMA21_below_EMA50_M3 ? "✓" : "✗");
-      Print("Força da Tendência M15: ", strong_trend_m15 ? "✓" : "✗");
-      Print("Momentum Bearish: ", bearish_momentum ? "✓" : "✗");
-      Print("Volatilidade Adequada M15: ", good_volatility_m15 ? "✓" : "✗");
-      Print("---");
-      Print("Posição EMA9 M3: ", ema9_m3_position.position,
-            " | Pullback EMA9: ", price_pullback_EMA9_M3 ? "✓" : "✗",
-            " | Válido: ", valid_pullback_EMA9_M3 ? "✓" : "✗");
-      Print("Posição EMA21 M3: ", ema21_m3_position.position,
-            " | Pullback EMA21: ", price_pullback_EMA21_M3 ? "✓" : "✗",
-            " | Válido: ", valid_pullback_EMA21_M3 ? "✓" : "✗");
-      Print("Teste EMA50 resistência: ", price_tested_EMA50_as_resistance ? "✓" : "✗");
-      Print("Teste SMA200 resistência: ", price_tested_SMA200_as_resistance ? "✓" : "✗");
-      Print("====================================");
-      return true;
-   }
-
-   return false;
-}
 
 //+------------------------------------------------------------------+
 //| Atualizar todos os contextos de um símbolo                       |
