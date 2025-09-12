@@ -8,6 +8,7 @@
 
 #include "factories/indicator_factory.mqh"
 #include "indicators/indicators_types.mqh"
+#include "indicators/indicator_base/indicator_base.mqh"
 
 //+------------------------------------------------------------------+
 //| Classe principal para contexto de TimeFrame                     |

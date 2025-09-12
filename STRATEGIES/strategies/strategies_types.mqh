@@ -1,8 +1,6 @@
 #ifndef __STRATEGIES_TYPES_MQH__
 #define __STRATEGIES_TYPES_MQH__
 
-#include "emas_bull_buy/emas_bull_buy_defs.mqh"
-
 //--- Base configuraton
 class CStrategyConfig
 {
@@ -13,9 +11,18 @@ public:
    virtual ~CStrategyConfig() {}
 };
 
-class CEmasBullBuy : public CStrategyConfig
+class CEmasBullBuyConfig : public CStrategyConfig
 {
-   CEmasBullBuy() {}
+   public:
+   CEmasBullBuyConfig() {}
+};
+
+
+//--- Strategy Configuration
+struct SStrategyConfig
+{
+   bool enabled;
+   CStrategyConfig *strategies[];
 };
 
 #endif

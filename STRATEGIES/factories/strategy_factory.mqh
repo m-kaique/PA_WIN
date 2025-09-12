@@ -9,5 +9,5 @@ class CStrategyFactory
 {
    private:
    public:
-}
+};
 #endif
