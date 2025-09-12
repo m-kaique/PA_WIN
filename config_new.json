@@ -1,0 +1,590 @@
+{
+   "SYMBOLS": [
+      {
+         "WIN$N": {
+            "D1": {
+               "enabled": true,
+               "num_candles": 9,
+               "indicators": [
+                  {
+                     "name": "sr_completo",
+                     "type": "SUPRES",
+                     "enabled": true,
+                     "period": 50,
+                     "draw_sup": true,
+                     "draw_res": true,
+                     "sup_color": "Blue",
+                     "res_color": "Red",
+                     "sup_style": "SOLID",
+                     "res_style": "SOLID",
+                     "sup_width": 1,
+                     "res_width": 1,
+                     "extend_right": true,
+                     "show_labels": false,
+                     "alert_tf": "H4",
+                     "touch_lookback": 20,
+                     "touch_tolerance": 5.0,
+                     "zone_range": 10.0,
+                     "max_zones_to_draw": 3,
+                     "min_touches": 2,
+                     "validation": 2,
+                     "attach_chart": false,
+                     "min_tol_di  st_candle": 10,
+                     "max_tol_dist_candle": 50
+                  },
+                  {
+                     "name": "fibo_complete",
+                     "type": "FIBO",
+                     "period": 0,
+                     "Level_1": 23.6,
+                     "Level_2": 38.2,
+                     "Level_3": 50.0,
+                     "Level_4": 61.8,
+                     "Level_5": 78.6,
+                     "Level_6": 100.0,
+                     "Ext_1": 127.0,
+                     "Ext_2": 161.8,
+                     "Ext_3": 261.8,
+                     "LevelsColor": "Orange",
+                     "LevelsStyle": "SOLID",
+                     "LevelsWidth": 1,
+                     "ExtensionsColor": "Orange",
+                     "ExtensionsStyle": "DASH",
+                     "ExtensionsWidth": 1,
+                     "ParallelColor": "Yellow",
+                     "ParallelStyle": "SOLID",
+                     "ParallelWidth": 1,
+                     "ShowLabels": false,
+                     "LabelsColor": "White",
+                     "LabelsFontSize": 10,
+                     "LabelsFont": "Arial",
+                     "enabled": false,
+                     "alert_tf": "M15",
+                     "min_tol_dist_candle": 5,
+                     "max_tol_dist_candle": 70
+                  }
+               ]
+            },
+            "H4": {
+               "enabled": true,
+               "num_candles": 9,
+               "indicators": [
+                  {
+                     "name": "ADX15",
+                     "type": "ADX",
+                     "period": 11,
+                     "enabled": true,
+                     "attach_chart": true
+                  },
+                  {
+                     "name": "ATR15",
+                     "type": "ATR",
+                     "period": 13,
+                     "enabled": true,
+                     "attach_chart": true
+                  },
+                  {
+                     "name": "ema50",
+                     "type": "MA",
+                     "period": 50,
+                     "method": "EMA",
+                     "enabled": true,
+                     "attach_chart": true,
+                     "slope_values": [
+                        {
+                           "lookback": 10,
+                           "linear_reg": 0.02,
+                           "simple_diff": 0.10,
+                           "discrete_der": 0.02
+                        }
+                     ]
+                  },
+                  {
+                     "name": "sma200",
+                     "type": "MA",
+                     "period": 200,
+                     "method": "SMA",
+                     "enabled": true,
+                     "attach_chart": true,
+                     "min_tol_dist_candle": 10,
+                     "max_tol_dist_candle": 50,
+                     "slope_values": [
+                        {
+                           "lookback": 10,
+                           "linear_reg": 0.02,
+                           "simple_diff": 0.20,
+                           "discrete_der": 0.02
+                        }
+                     ]
+                  },
+                  {
+                     "name": "sr_completo",
+                     "type": "SUPRES",
+                     "enabled": true,
+                     "period": 50,
+                     "draw_sup": true,
+                     "draw_res": true,
+                     "sup_color": "Blue",
+                     "res_color": "Red",
+                     "sup_style": "SOLID",
+                     "res_style": "SOLID",
+                     "sup_width": 1,
+                     "res_width": 1,
+                     "extend_right": true,
+                     "show_labels": false,
+                     "alert_tf": "H1",
+                     "touch_lookback": 20,
+                     "touch_tolerance": 5.0,
+                     "zone_range": 10.0,
+                     "max_zones_to_draw": 3,
+                     "min_touches": 2,
+                     "validation": 2,
+                     "attach_chart": false,
+                     "min_tol_di  st_candle": 10,
+                     "max_tol_dist_candle": 50
+                  }
+               ]
+            },
+            "H1": {
+               "enabled": true,
+               "num_candles": 18,
+               "indicators": [
+                  {
+                     "name": "ADX15",
+                     "type": "ADX",
+                     "period": 11,
+                     "enabled": true,
+                     "attach_chart": true
+                  },
+                  {
+                     "name": "ATR15",
+                     "type": "ATR",
+                     "period": 13,
+                     "enabled": true,
+                     "attach_chart": true
+                  },
+                  {
+                     "name": "ema50",
+                     "type": "MA",
+                     "period": 50,
+                     "method": "EMA",
+                     "enabled": true,
+                     "attach_chart": true,
+                     "slope_values": [
+                        {
+                           "lookback": 10,
+                           "linear_reg": 0.05,
+                           "simple_diff": 0.50,
+                           "discrete_der": 0.05
+                        }
+                     ]
+                  },
+                  {
+                     "name": "sma200",
+                     "type": "MA",
+                     "period": 200,
+                     "method": "SMA",
+                     "enabled": true,
+                     "attach_chart": true,
+                     "min_tol_dist_candle": 10,
+                     "max_tol_dist_candle": 50,
+                     "slope_values": [
+                        {
+                           "lookback": 10,
+                           "linear_reg": 0.02,
+                           "simple_diff": 0.20,
+                           "discrete_der": 0.02
+                        }
+                     ]
+                  },
+                  {
+                     "name": "swing_lines",
+                     "type": "TRENDLINE",
+                     "period": 20,
+                     "pivot_left": 3,
+                     "pivot_right": 3,
+                     "alert_tf": "M3",
+                     "draw_lta": true,
+                     "draw_ltb": true,
+                     "lta_color": "Green",
+                     "ltb_color": "Red",
+                     "lta_style": "SOLID",
+                     "ltb_style": "SOLID",
+                     "lta_width": 1,
+                     "ltb_width": 1,
+                     "extend_right": true,
+                     "min_angle": 20.0,
+                     "trendline_candles_lookback": 9,
+                     "trendline_status_flags": {
+                        "enable_body_cross": true,
+                        "enable_between_ltas": true,
+                        "enable_between_ltbs": true,
+                        "enable_distance_points": true
+                     },
+                     "trendline_context_analysis": {
+                        "enabled": true,
+                        "lookback": 9,
+                        "trend_threshold": 0.7,
+                        "consolidation_threshold": 0.6
+                     },
+                     "trendline_advanced_features": {
+                        "detect_fakeout": true,
+                        "count_touches": true,
+                        "touch_tolerance_points": 5,
+                        "status_evaluate_mode": "close_only",
+                        "register_resets": true
+                     },
+                     "enabled": false
+                  },
+                  {
+                     "name": "sr_completo",
+                     "type": "SUPRES",
+                     "enabled": true,
+                     "period": 50,
+                     "draw_sup": true,
+                     "draw_res": true,
+                     "sup_color": "Blue",
+                     "res_color": "Red",
+                     "sup_style": "SOLID",
+                     "res_style": "SOLID",
+                     "sup_width": 1,
+                     "res_width": 1,
+                     "extend_right": true,
+                     "show_labels": false,
+                     "alert_tf": "M15",
+                     "touch_lookback": 20,
+                     "touch_tolerance": 5.0,
+                     "zone_range": 10.0,
+                     "max_zones_to_draw": 3,
+                     "min_touches": 2,
+                     "validation": 2,
+                     "attach_chart": false,
+                     "min_tol_di  st_candle": 10,
+                     "max_tol_dist_candle": 50
+                  }
+               ]
+            },
+            "M15": {
+               "enabled": true,
+               "num_candles": 9,
+               "indicators": [
+                  {
+                     "name": "ADX15",
+                     "type": "ADX",
+                     "period": 11,
+                     "enabled": true,
+                     "attach_chart": true
+                  },
+                  {
+                     "name": "ATR15",
+                     "type": "ATR",
+                     "period": 13,
+                     "enabled": true,
+                     "attach_chart": true
+                  },
+                  {
+                     "name": "ema9",
+                     "type": "MA",
+                     "period": 9,
+                     "method": "EMA",
+                     "enabled": true,
+                     "attach_chart": true,
+                     "slope_values": [
+                        {
+                           "lookback": 8,
+                           "linear_reg": 0.06,
+                           "simple_diff": 0.60,
+                           "discrete_der": 0.06
+                        }
+                     ]
+                  },
+                  {
+                     "name": "ema21",
+                     "type": "MA",
+                     "period": 21,
+                     "method": "EMA",
+                     "enabled": true,
+                     "attach_chart": true,
+                     "slope_values": [
+                        {
+                           "lookback": 8,
+                           "linear_reg": 0.06,
+                           "simple_diff": 0.60,
+                           "discrete_der": 0.06
+                        }
+                     ]
+                  },
+                  {
+                     "name": "vol0",
+                     "type": "VOL",
+                     "shift": 0,
+                     "enabled": true
+                  },
+                  {
+                     "name": "vwap_diario_fin",
+                     "type": "VWAP",
+                     "period": 14,
+                     "calc_mode": "PERIODIC",
+                     "session_tf": "D1",
+                     "price_type": "FINANCIAL_AVERAGE",
+                     "Color": "Blue",
+                     "Style": "SOLID",
+                     "Width": 2,
+                     "enabled": true,
+                     "attach_chart": true,
+                     "slope_values": [
+                        {
+                           "lookback": 8,
+                           "linear_reg": 0.06,
+                           "simple_diff": 0.60,
+                           "discrete_der": 0.06
+                        }
+                     ]
+                  },
+                  {
+                     "name": "boll20",
+                     "type": "BOLL",
+                     "period": 21,
+                     "shift": 0,
+                     "deviation": 2.0,
+                     "applied_price": "CLOSE",
+                     "enabled": true,
+                     "attach_chart": true,
+                     "slope_values": [
+                        {
+                           "lookback": 5,
+                           "linear_reg": 0.06,
+                           "simple_diff": 0.60,
+                           "discrete_der": 0.06
+                        },
+                        {
+                           "lookback": 8,
+                           "linear_reg": 0.06,
+                           "simple_diff": 0.60,
+                           "discrete_der": 0.06
+                        },
+                        {
+                           "lookback": 5,
+                           "linear_reg": 0.06,
+                           "simple_diff": 0.60,
+                           "discrete_der": 0.06
+                        }
+                     ]
+                  },
+                  {
+                     "name": "ema50",
+                     "type": "MA",
+                     "period": 50,
+                     "method": "EMA",
+                     "enabled": true,
+                     "attach_chart": true,
+                     "slope_values": [
+                        {
+                           "lookback": 8,
+                           "linear_reg": 0.05,
+                           "simple_diff": 0.50,
+                           "discrete_der": 0.05
+                        }
+                     ]
+                  },
+                  {
+                     "name": "sma200",
+                     "type": "MA",
+                     "period": 200,
+                     "method": "SMA",
+                     "enabled": true,
+                     "attach_chart": true,
+                     "min_tol_dist_candle": 10,
+                     "max_tol_dist_candle": 50,
+                     "slope_values": [
+                        {
+                           "lookback": 10,
+                           "linear_reg": 0.02,
+                           "simple_diff": 0.20,
+                           "discrete_der": 0.02
+                        }
+                     ]
+                  }
+               ]
+            },
+            "M3": {
+               "enabled": true,
+               "num_candles": 9,
+               "indicators": [
+                  {
+                     "name": "ADX15",
+                     "type": "ADX",
+                     "period": 11,
+                     "enabled": true,
+                     "attach_chart": true
+                  },
+                  {
+                     "name": "ATR15",
+                     "type": "ATR",
+                     "period": 13,
+                     "enabled": true,
+                     "attach_chart": true
+                  },
+                  {
+                     "name": "ema9",
+                     "type": "MA",
+                     "period": 9,
+                     "method": "EMA",
+                     "enabled": true,
+                     "attach_chart": true,
+                     "slope_values": [
+                        {
+                           "lookback": 8,
+                           "linear_reg": 0.06,
+                           "simple_diff": 0.60,
+                           "discrete_der": 0.06
+                        }
+                     ]
+                  },
+                  {
+                     "name": "ema21",
+                     "type": "MA",
+                     "period": 21,
+                     "method": "EMA",
+                     "enabled": true,
+                     "attach_chart": true,
+                     "slope_values": [
+                        {
+                           "lookback": 8,
+                           "linear_reg": 0.06,
+                           "simple_diff": 0.60,
+                           "discrete_der": 0.06
+                        }
+                     ]
+                  },
+                  {
+                     "name": "ema50",
+                     "type": "MA",
+                     "period": 50,
+                     "method": "EMA",
+                     "enabled": true,
+                     "attach_chart": true,
+                     "slope_values": [
+                        {
+                           "lookback": 8,
+                           "linear_reg": 0.05,
+                           "simple_diff": 0.50,
+                           "discrete_der": 0.05
+                        }
+                     ]
+                  },
+                  {
+                     "name": "sma200",
+                     "type": "MA",
+                     "period": 200,
+                     "method": "SMA",
+                     "enabled": true,
+                     "attach_chart": true,
+                     "min_tol_dist_candle": 10,
+                     "max_tol_dist_candle": 50,
+                     "slope_values": [
+                        {
+                           "lookback": 10,
+                           "linear_reg": 0.02,
+                           "simple_diff": 0.20,
+                           "discrete_der": 0.02
+                        }
+                     ]
+                  },
+                  {
+                     "name": "vol0",
+                     "type": "VOL",
+                     "shift": 0,
+                     "enabled": true
+                  },
+                  {
+                     "name": "vwap_diario_fin",
+                     "type": "VWAP",
+                     "period": 14,
+                     "calc_mode": "PERIODIC",
+                     "session_tf": "D1",
+                     "price_type": "FINANCIAL_AVERAGE",
+                     "Color": "Blue",
+                     "Style": "SOLID",
+                     "Width": 2,
+                     "enabled": true,
+                     "attach_chart": true,
+                     "slope_values": [
+                        {
+                           "lookback": 8,
+                           "linear_reg": 0.06,
+                           "simple_diff": 0.60,
+                           "discrete_der": 0.06
+                        }
+                     ]
+                  },
+                  {
+                     "name": "boll20",
+                     "type": "BOLL",
+                     "period": 21,
+                     "shift": 0,
+                     "deviation": 2.0,
+                     "applied_price": "CLOSE",
+                     "enabled": true,
+                     "attach_chart": true,
+                     "slope_values": [
+                        {
+                           "lookback": 5,
+                           "linear_reg": 0.06,
+                           "simple_diff": 0.60,
+                           "discrete_der": 0.06
+                        },
+                        {
+                           "lookback": 8,
+                           "linear_reg": 0.06,
+                           "simple_diff": 0.60,
+                           "discrete_der": 0.06
+                        },
+                        {
+                           "lookback": 5,
+                           "linear_reg": 0.06,
+                           "simple_diff": 0.60,
+                           "discrete_der": 0.06
+                        }
+                     ]
+                  }
+               ]
+            }
+         }
+      }
+   ],
+   "STRATEGIES": [
+      {
+         "Conservative_Setup": {
+            "enabled": true,
+            "strategies": [
+               {
+                  "enabled": true,
+                  "name": "m15_m3_emas_buy_bull",
+                  "type": "emas_buy_bull"
+               }
+            ]
+         },
+         "Risky_Setup": {
+            "enabled": false,
+            "strategies": [
+               {
+                  "enabled": false,
+                  "name": "m15_m3_risky_emas_buy_bull",
+                  "type": "emas_buy_bull"
+               }
+            ]
+         },
+         "WIN_Test_Setup": {
+            "enabled": false,
+            "strategies": [
+               {
+                  "enabled": false,
+                  "name": "m15_m3_risky_emas_buy_bull",
+                  "type": "emas_buy_bull"
+               }
+            ]
+         }
+      }
+   ]
+}

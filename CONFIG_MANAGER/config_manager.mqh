@@ -35,6 +35,7 @@ private:
     string CreateContextKey(string symbol, ENUM_TIMEFRAMES tf);
     int OpenConfigFile(string file_path);
     bool TestJSONParsing();
+    bool ValidateNewStructure(); // Novo método para validar estrutura
 
 public:
     // Construtor e Destrutor
@@ -138,21 +139,74 @@ bool CConfigManager::LoadConfig(string json_content)
     Print("JSON parseado com sucesso!");
     Print("Configuração carregada - Size: ", m_config.Size());
 
-    // Extrair símbolos da configuração
-    ArrayResize(m_symbols, 0);
-    for (int i = 0; i < m_config.Size(); i++)
+    // Validar nova estrutura
+    if (!ValidateNewStructure())
     {
-        string symbol = m_config.children[i].key;
-        if (StringLen(symbol) > 0)
+        Print("ERRO: Estrutura JSON inválida");
+        return false;
+    }
+
+    // Extrair símbolos da nova estrutura
+    ArrayResize(m_symbols, 0);
+    
+    CJAVal *symbols_array = m_config["SYMBOLS"];
+    if (symbols_array == NULL)
+    {
+        Print("ERRO: Array SYMBOLS não encontrado");
+        return false;
+    }
+
+    Print("Encontrados ", symbols_array.Size(), " objetos no array SYMBOLS");
+
+    // Percorrer cada objeto no array SYMBOLS
+    for (int i = 0; i < symbols_array.Size(); i++)
+    {
+        CJAVal *symbol_obj = &symbols_array.children[i];
+        
+        // Cada objeto contém um símbolo como chave
+        for (int j = 0; j < symbol_obj.Size(); j++)
         {
-            ArrayResize(m_symbols, ArraySize(m_symbols) + 1);
-            m_symbols[ArraySize(m_symbols) - 1] = symbol;
-            Print("Símbolo encontrado: ", symbol);
+            string symbol = symbol_obj.children[j].key;
+            if (StringLen(symbol) > 0)
+            {
+                ArrayResize(m_symbols, ArraySize(m_symbols) + 1);
+                m_symbols[ArraySize(m_symbols) - 1] = symbol;
+                Print("Símbolo encontrado: ", symbol);
+            }
         }
     }
 
     Print("Total de símbolos extraídos: ", ArraySize(m_symbols));
     return ArraySize(m_symbols) > 0;
+}
+
+//+------------------------------------------------------------------+
+//| Validar nova estrutura JSON                                     |
+//+------------------------------------------------------------------+
+bool CConfigManager::ValidateNewStructure()
+{
+    // Verificar se existe a chave SYMBOLS
+    if (!m_config.HasKey("SYMBOLS"))
+    {
+        Print("ERRO: Chave 'SYMBOLS' não encontrada no JSON");
+        return false;
+    }
+
+    CJAVal *symbols_array = m_config["SYMBOLS"];
+    if (symbols_array == NULL)
+    {
+        Print("ERRO: SYMBOLS é nulo");
+        return false;
+    }
+
+    if (symbols_array.Size() == 0)
+    {
+        Print("ERRO: Array SYMBOLS está vazio");
+        return false;
+    }
+
+    Print("Estrutura JSON validada: ", symbols_array.Size(), " objetos encontrados no array SYMBOLS");
+    return true;
 }
 
 //+------------------------------------------------------------------+
@@ -240,69 +294,84 @@ bool CConfigManager::CreateContexts()
 {
     Print("=== CRIANDO CONTEXTOS ===");
 
-    for (int s = 0; s < ArraySize(m_symbols); s++)
+    CJAVal *symbols_array = m_config["SYMBOLS"];
+    if (symbols_array == NULL)
     {
-        string symbol = m_symbols[s];
-        Print("Processando símbolo: ", symbol);
+        Print("ERRO: Array SYMBOLS não encontrado durante criação de contextos");
+        return false;
+    }
 
-        CJAVal *symbol_config = m_config[symbol];
-        if (symbol_config == NULL)
+    // Percorrer cada objeto no array SYMBOLS
+    for (int i = 0; i < symbols_array.Size(); i++)
+    {
+        CJAVal *symbol_obj = &symbols_array.children[i];
+        
+        // Cada objeto contém um símbolo como chave
+        for (int j = 0; j < symbol_obj.Size(); j++)
         {
-            Print("ERRO: Configuração não encontrada para símbolo: ", symbol);
-            continue;
-        }
+            string symbol = symbol_obj.children[j].key;
+            CJAVal *symbol_config = &symbol_obj.children[j];
+            
+            Print("Processando símbolo: ", symbol);
 
-        Print("Encontrados ", symbol_config.Size(), " timeframes para ", symbol);
-
-        // Processar todos os timeframes do símbolo
-        for (int t = 0; t < symbol_config.Size(); t++)
-        {
-            string tf_str = symbol_config.children[t].key;
-            CJAVal *tf_config = symbol_config[tf_str];
-
-            if (tf_config == NULL)
+            if (symbol_config == NULL)
             {
-                Print("ERRO: Configuração de timeframe nula para ", tf_str);
+                Print("ERRO: Configuração não encontrada para símbolo: ", symbol);
                 continue;
             }
 
-            // Converter string para enum de timeframe
-            ENUM_TIMEFRAMES tf = ToTimeframe(tf_str);
-            if (tf == PERIOD_CURRENT)
+            Print("Encontrados ", symbol_config.Size(), " timeframes para ", symbol);
+
+            // Processar todos os timeframes do símbolo
+            for (int t = 0; t < symbol_config.Size(); t++)
             {
-                Print("ERRO: TimeFrame inválido: ", tf_str);
-                continue;
+                string tf_str = symbol_config.children[t].key;
+                CJAVal *tf_config = &symbol_config.children[t];
+
+                if (tf_config == NULL)
+                {
+                    Print("ERRO: Configuração de timeframe nula para ", tf_str);
+                    continue;
+                }
+
+                // Converter string para enum de timeframe
+                ENUM_TIMEFRAMES tf = ToTimeframe(tf_str);
+                if (tf == PERIOD_CURRENT)
+                {
+                    Print("ERRO: TimeFrame inválido: ", tf_str);
+                    continue;
+                }
+
+                // Usar o parser para processar a configuração do timeframe
+                STimeframeConfig config;
+                config = tf_ctx_parser.ParseTimeframeConfig(tf_config, tf);
+
+                if (!config.enabled)
+                {
+                    Print("TimeFrame ", tf_str, " está desabilitado");
+                    tf_ctx_parser.CleanupTimeframeConfig(config); // Cleanup added here
+                    continue;
+                }
+
+                // Criar contexto usando o parser
+                TF_CTX *ctx = tf_ctx_parser.CreateContext(symbol, tf, config);
+                if (ctx == NULL)
+                {
+                    Print("ERRO: Falha ao criar contexto para ", symbol, " ", tf_str);
+                    tf_ctx_parser.CleanupTimeframeConfig(config); // Cleanup added here
+                    continue;
+                }
+
+                // Adicionar aos arrays de contextos
+                string key = CreateContextKey(symbol, tf);
+                ArrayResize(m_contexts, ArraySize(m_contexts) + 1);
+                ArrayResize(m_context_keys, ArraySize(m_context_keys) + 1);
+
+                m_contexts[ArraySize(m_contexts) - 1] = ctx;
+                m_context_keys[ArraySize(m_context_keys) - 1] = key;
+
+                Print("Contexto criado: ", key, " com ", ArraySize(config.indicators), " indicadores");
             }
-
-            // Usar o parser para processar a configuração do timeframe
-            STimeframeConfig config;
-            config = tf_ctx_parser.ParseTimeframeConfig(tf_config, tf);
-
-            if (!config.enabled)
-            {
-                Print("TimeFrame ", tf_str, " está desabilitado");
-                tf_ctx_parser.CleanupTimeframeConfig(config); // Cleanup added here
-                continue;
-            }
-
-            // Criar contexto usando o parser
-            TF_CTX *ctx = tf_ctx_parser.CreateContext(symbol, tf, config);
-            if (ctx == NULL)
-            {
-                Print("ERRO: Falha ao criar contexto para ", symbol, " ", tf_str);
-                tf_ctx_parser.CleanupTimeframeConfig(config); // Cleanup added here
-                continue;
-            }
-
-            // Adicionar aos arrays de contextos
-            string key = CreateContextKey(symbol, tf);
-            ArrayResize(m_contexts, ArraySize(m_contexts) + 1);
-            ArrayResize(m_context_keys, ArraySize(m_context_keys) + 1);
-
-            m_contexts[ArraySize(m_contexts) - 1] = ctx;
-            m_context_keys[ArraySize(m_context_keys) - 1] = key;
-
-            Print("Contexto criado: ", key, " com ", ArraySize(config.indicators), " indicadores");
         }
     }
 
