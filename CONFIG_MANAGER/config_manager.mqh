@@ -8,10 +8,15 @@
 #property link "https://www.mql5.com"
 #property version "2.00"
 
-#include "submodules/tf_ctx_parser/tf_ctx_parser.mqh"
 #include "../utils/JAson.mqh"
 #include "../utils/conversion.mqh"
+
+#include "submodules/tf_ctx_parser/tf_ctx_parser.mqh"
+#include "submodules/strategy_parser/strategy_ctx_parser.mqh"
+
+#include "../STRATEGIES/strategy_ctx.mqh"
 #include "../TF_CTX/tf_ctx.mqh"
+
 #include "config_types.mqh"
 
 //+------------------------------------------------------------------+
@@ -148,7 +153,7 @@ bool CConfigManager::LoadConfig(string json_content)
 
     // Extrair símbolos da nova estrutura
     ArrayResize(m_symbols, 0);
-    
+
     CJAVal *symbols_array = m_config["SYMBOLS"];
     if (symbols_array == NULL)
     {
@@ -162,7 +167,7 @@ bool CConfigManager::LoadConfig(string json_content)
     for (int i = 0; i < symbols_array.Size(); i++)
     {
         CJAVal *symbol_obj = &symbols_array.children[i];
-        
+
         // Cada objeto contém um símbolo como chave
         for (int j = 0; j < symbol_obj.Size(); j++)
         {
@@ -305,13 +310,13 @@ bool CConfigManager::CreateContexts()
     for (int i = 0; i < symbols_array.Size(); i++)
     {
         CJAVal *symbol_obj = &symbols_array.children[i];
-        
+
         // Cada objeto contém um símbolo como chave
         for (int j = 0; j < symbol_obj.Size(); j++)
         {
             string symbol = symbol_obj.children[j].key;
             CJAVal *symbol_config = &symbol_obj.children[j];
-            
+
             Print("Processando símbolo: ", symbol);
 
             if (symbol_config == NULL)
