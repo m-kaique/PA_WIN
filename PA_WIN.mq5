@@ -60,17 +60,83 @@ int OnInit()
 
    Print("ConfigManager inicializado com sucesso");
 
-   // Listar contextos criados
+   // Listar contextos de símbolos criados
+   Print("=== CONTEXTOS DE SÍMBOLOS CRIADOS ===");
    string symbols[];
    g_config_manager.GetConfiguredSymbols(symbols);
    for (int i = 0; i < ArraySize(symbols); i++)
    {
       Print("Símbolo configurado: ", symbols[i]);
+      
+      // Listar timeframes para cada símbolo
+      TF_CTX *contexts[];
+      ENUM_TIMEFRAMES timeframes[];
+      int count = g_config_manager.GetSymbolContexts(symbols[i], contexts, timeframes);
+      
+      for (int j = 0; j < count; j++)
+      {
+         if (contexts[j] != NULL)
+         {
+            Print("  - TimeFrame: ", EnumToString(timeframes[j]));
+         }
+      }
    }
 
+   // Listar contextos de estratégias criados
+   Print("=== CONTEXTOS DE ESTRATÉGIAS CRIADOS ===");
+   string strategy_setups[];
+   g_config_manager.GetConfiguredStrategySetups(strategy_setups);
+   
+   if (ArraySize(strategy_setups) == 0)
+   {
+      Print("Nenhum setup de estratégia configurado ou ativo");
+   }
+   else
+   {
+      for (int i = 0; i < ArraySize(strategy_setups); i++)
+      {
+         Print("Setup configurado: ", strategy_setups[i]);
+         
+         // Obter contexto específico e listar estratégias
+         STRATEGY_CTX *strategy_ctx = g_config_manager.GetStrategyContext(strategy_setups[i]);
+         if (strategy_ctx != NULL)
+         {
+            Print("  - Total de estratégias: ", strategy_ctx.GetStrategyCount());
+            
+            // Listar nomes das estratégias
+            string strategy_names[];
+            //strategy_ctx.GetStrategyNames(strategy_names);
+            for (int j = 0; j < ArraySize(strategy_names); j++)
+            {
+               Print("    * Estratégia: ", strategy_names[j]);
+            }
+         }
+         else
+         {
+            Print("  - ERRO: Contexto não encontrado para setup: ", strategy_setups[i]);
+         }
+      }
+   }
+
+   // Obter todos os contextos de estratégia de uma vez (método alternativo)
+   Print("=== VERIFICAÇÃO ADICIONAL DE ESTRATÉGIAS ===");
+   STRATEGY_CTX *all_strategy_contexts[];
+   string all_setup_names[];
+   int total_strategy_contexts = g_config_manager.GetStrategyContexts(all_strategy_contexts, all_setup_names);
+   
+   Print("Total de contextos de estratégia ativos: ", total_strategy_contexts);
+   for (int i = 0; i < total_strategy_contexts; i++)
+   {
+      if (all_strategy_contexts[i] != NULL)
+      {
+         Print("Contexto ", i, ": Setup '", all_setup_names[i], "' - ", 
+               all_strategy_contexts[i].GetStrategyCount(), " estratégias ativas");
+      }
+   }
+
+   Print("=== INICIALIZAÇÃO CONCLUÍDA ===");
    return INIT_SUCCEEDED;
 }
-
 //+------------------------------------------------------------------+
 //| Expert deinitialization function                                 |
 //+------------------------------------------------------------------+

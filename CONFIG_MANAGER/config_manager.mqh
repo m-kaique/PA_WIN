@@ -42,6 +42,15 @@ private:
     bool TestJSONParsing();
     bool ValidateNewStructure(); // Novo método para validar estrutura
 
+    //--- STRATEGY_CTX Related Members
+    STRATEGY_CTX *m_strategy_contexts[];
+    string m_strategy_keys[];
+    CStrategyConfigParser strategy_ctx_parser;
+
+    //--- STRATEGY_CTX Related Methods
+    bool CreateStrategyContexts();
+    string CreateStrategyKey(string setup_name);
+
 public:
     // Construtor e Destrutor
     CConfigManager();
@@ -57,6 +66,12 @@ public:
     int GetSymbolContexts(string symbol, TF_CTX *&contexts[], ENUM_TIMEFRAMES &timeframes[]);
     void Cleanup();
     bool IsInitialized() const { return m_initialized; }
+
+    //--- STRATEGY_CTX Public Methods
+    STRATEGY_CTX *GetStrategyContext(string setup_name);
+    bool IsStrategySetupEnabled(string setup_name);
+    void GetConfiguredStrategySetups(string &setups[]);
+    int GetStrategyContexts(STRATEGY_CTX *&contexts[], string &setup_names[]);
 };
 
 //+------------------------------------------------------------------+
@@ -65,9 +80,16 @@ public:
 CConfigManager::CConfigManager()
 {
     m_initialized = false;
+    // Initialize symbol array
     ArrayResize(m_symbols, 0);
+
+    // Initialize TF_CTX arrays
     ArrayResize(m_contexts, 0);
     ArrayResize(m_context_keys, 0);
+
+    // Initialize STRATEGY_CTX arrays
+    ArrayResize(m_strategy_contexts, 0);
+    ArrayResize(m_strategy_keys, 0);
 }
 
 //+------------------------------------------------------------------+
@@ -78,6 +100,7 @@ CConfigManager::~CConfigManager()
     Cleanup();
     // Cleanup do singleton factory
     CIndicatorFactory::Cleanup();
+    CStrategyFactory::Cleanup();
 }
 
 //+------------------------------------------------------------------+
@@ -100,6 +123,11 @@ bool CConfigManager::InitFromFile(string file_path)
         return false;
     }
 
+    if (!CreateStrategyContexts())
+    {
+        Print("ERRO: Falha ao criar contextos de estratégias");
+        return false;
+    }
     /***
      * Novos parsers devem ser chamados aqui
      *
@@ -111,6 +139,7 @@ bool CConfigManager::InitFromFile(string file_path)
     Print("=== CONFIG MANAGER INICIALIZADO ===");
     Print("Símbolos carregados: ", ArraySize(m_symbols));
     Print("Contextos criados: ", ArraySize(m_contexts));
+    Print("Contextos de estratégia criados: ", ArraySize(m_strategy_contexts));
     return true;
 }
 
@@ -459,7 +488,17 @@ void CConfigManager::Cleanup()
 {
     Print("Limpando recursos do ConfigManager...");
 
-    // Deletar contextos PRIMEIRO (ordem inversa à criação)
+    // Deletar contextos de estratégia PRIMEIRO
+    for (int i = ArraySize(m_strategy_contexts) - 1; i >= 0; i--)
+    {
+        if (m_strategy_contexts[i] != NULL)
+        {
+            delete m_strategy_contexts[i];
+            m_strategy_contexts[i] = NULL;
+        }
+    }
+
+    // Deletar contextos de indicadores
     for (int i = ArraySize(m_contexts) - 1; i >= 0; i--)
     {
         if (m_contexts[i] != NULL)
@@ -471,12 +510,15 @@ void CConfigManager::Cleanup()
 
     ArrayResize(m_contexts, 0);
     ArrayResize(m_context_keys, 0);
+    ArrayResize(m_strategy_contexts, 0);
+    ArrayResize(m_strategy_keys, 0);
     ArrayResize(m_symbols, 0);
     m_config.Clear();
     m_initialized = false;
 
     Print("Recursos limpos com sucesso");
 }
+
 //+------------------------------------------------------------------+
 //| Teste básico de JSON parsing                                    |
 //+------------------------------------------------------------------+
@@ -580,4 +622,158 @@ int CConfigManager::OpenConfigFile(string file_path)
     Print("2. Common_Data_Folder\\Files\\", file_path);
 
     return 0;
+}
+
+//+------------------------------------------------------------------+
+//| STRATEGY_CTX RELATED METHODS                                    |
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//| Criar contextos de estratégia baseados na configuração          |
+//+------------------------------------------------------------------+
+bool CConfigManager::CreateStrategyContexts()
+{
+    Print("=== CRIANDO CONTEXTOS DE ESTRATÉGIA ===");
+
+    CJAVal *strategies_array = m_config["STRATEGIES"];
+    if (strategies_array == NULL)
+    {
+        Print("AVISO: Array STRATEGIES não encontrado - nenhuma estratégia configurada");
+        return true; // Não é erro, apenas não há estratégias
+    }
+
+    // Percorrer cada objeto no array STRATEGIES
+    for (int i = 0; i < strategies_array.Size(); i++)
+    {
+        CJAVal *strategy_obj = &strategies_array.children[i];
+        
+        // Cada objeto contém um setup como chave
+        for (int j = 0; j < strategy_obj.Size(); j++)
+        {
+            string setup_name = strategy_obj.children[j].key;
+            CJAVal *setup_config = &strategy_obj.children[j];
+            
+            Print("Processando setup: ", setup_name);
+
+            if (setup_config == NULL)
+            {
+                Print("ERRO: Configuração não encontrada para setup: ", setup_name);
+                continue;
+            }
+
+            // Verificar se o setup está habilitado
+            if (!setup_config["enabled"].ToBool())
+            {
+                Print("Setup ", setup_name, " está desabilitado");
+                continue;
+            }
+
+            // Obter array de estratégias
+            CJAVal *strategies_list = setup_config["strategies"];
+            if (strategies_list == NULL)
+            {
+                Print("ERRO: Lista de estratégias não encontrada para setup: ", setup_name);
+                continue;
+            }
+
+            // Usar o parser para processar as estratégias do setup
+            SStrategySetupConfig setup_cfg;
+            setup_cfg = strategy_ctx_parser.ParseStrategySetup(setup_config);
+
+            if (!setup_cfg.enabled)
+            {
+                Print("Setup ", setup_name, " está desabilitado no parser");
+                strategy_ctx_parser.CleanupStrategySetup(setup_cfg);
+                continue;
+            }
+
+            // Criar contexto usando o parser
+            STRATEGY_CTX *ctx = strategy_ctx_parser.CreateStrategyContext(setup_name, setup_cfg);
+            if (ctx == NULL)
+            {
+                Print("ERRO: Falha ao criar contexto de estratégia para ", setup_name);
+                strategy_ctx_parser.CleanupStrategySetup(setup_cfg);
+                continue;
+            }
+
+            // Adicionar aos arrays de contextos de estratégia
+            string key = CreateStrategyKey(setup_name);
+            ArrayResize(m_strategy_contexts, ArraySize(m_strategy_contexts) + 1);
+            ArrayResize(m_strategy_keys, ArraySize(m_strategy_keys) + 1);
+
+            m_strategy_contexts[ArraySize(m_strategy_contexts) - 1] = ctx;
+            m_strategy_keys[ArraySize(m_strategy_keys) - 1] = key;
+
+            Print("Contexto de estratégia criado: ", key, " com ", ArraySize(setup_cfg.strategies), " estratégias");
+        }
+    }
+
+    Print("=== CONTEXTOS DE ESTRATÉGIA CRIADOS ===");
+    Print("Total de contextos de estratégia ativos: ", ArraySize(m_strategy_contexts));
+    return true;
+}
+
+//+------------------------------------------------------------------+
+//| Criar chave do contexto de estratégia                           |
+//+------------------------------------------------------------------+
+string CConfigManager::CreateStrategyKey(string setup_name)
+{
+    return setup_name;
+}
+
+//+------------------------------------------------------------------+
+//| Obter contexto de estratégia por nome do setup                  |
+//+------------------------------------------------------------------+
+STRATEGY_CTX *CConfigManager::GetStrategyContext(string setup_name)
+{
+    string key = CreateStrategyKey(setup_name);
+
+    for (int i = 0; i < ArraySize(m_strategy_keys); i++)
+    {
+        if (m_strategy_keys[i] == key)
+        {
+            return m_strategy_contexts[i];
+        }
+    }
+
+    return NULL;
+}
+
+//+------------------------------------------------------------------+
+//| Verificar se setup de estratégia está habilitado                |
+//+------------------------------------------------------------------+
+bool CConfigManager::IsStrategySetupEnabled(string setup_name)
+{
+    return GetStrategyContext(setup_name) != NULL;
+}
+
+//+------------------------------------------------------------------+
+//| Obter setups de estratégia configurados                         |
+//+------------------------------------------------------------------+
+void CConfigManager::GetConfiguredStrategySetups(string &setups[])
+{
+    ArrayResize(setups, 0);
+    
+    for (int i = 0; i < ArraySize(m_strategy_keys); i++)
+    {
+        ArrayResize(setups, ArraySize(setups) + 1);
+        setups[ArraySize(setups) - 1] = m_strategy_keys[i];
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Obter todos os contextos de estratégia                          |
+//+------------------------------------------------------------------+
+int CConfigManager::GetStrategyContexts(STRATEGY_CTX *&contexts[], string &setup_names[])
+{
+    ArrayResize(contexts, ArraySize(m_strategy_contexts));
+    ArrayResize(setup_names, ArraySize(m_strategy_keys));
+
+    for (int i = 0; i < ArraySize(m_strategy_contexts); i++)
+    {
+        contexts[i] = m_strategy_contexts[i];
+        setup_names[i] = m_strategy_keys[i];
+    }
+
+    return ArraySize(contexts);
 }

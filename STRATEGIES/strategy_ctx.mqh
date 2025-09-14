@@ -30,7 +30,7 @@ public:
    CStrategyBase *GetStrategy(string name);
    bool IsInitialized() const { return m_initialized; }
    string GetSetupName() const { return m_setup_name; }
-   void GetStrategyNames(string &names[]);
+   //void GetStrategyNames(string &names[]);
    int GetStrategyCount() const { return ArraySize(m_strategies); };
 };
 
