@@ -9,6 +9,9 @@
 
 #include "../strategies_types.mqh"
 
+// Forward declaration to avoid circular dependency
+class CConfigManager;
+
 //+------------------------------------------------------------------+
 //| Enumerações para estados de estratégia                          |
 //+------------------------------------------------------------------+
@@ -60,13 +63,14 @@ struct SStrategySignal
 class CStrategyBase
 {
 protected:
-   string m_name;
-   string m_type;
-   bool m_enabled;
-   bool m_initialized;
-   ENUM_STRATEGY_STATE m_state;
-   SStrategySignal m_last_signal;
-   datetime m_last_update;
+    string m_name;
+    string m_type;
+    bool m_enabled;
+    bool m_initialized;
+    ENUM_STRATEGY_STATE m_state;
+    SStrategySignal m_last_signal;
+    datetime m_last_update;
+    CConfigManager *m_config_manager;
 
    // Métodos virtuais puros que devem ser implementados pelas classes derivadas
    virtual bool DoInit() = 0;
@@ -92,10 +96,12 @@ public:
    ENUM_STRATEGY_STATE GetState() const { return m_state; }
    SStrategySignal GetLastSignal() const { return m_last_signal; }
    datetime GetLastUpdate() const { return m_last_update; }
+   CConfigManager *GetConfigManager() const { return m_config_manager; }
 
    // Setters
    void SetEnabled(bool enabled) { m_enabled = enabled; }
    void SetState(ENUM_STRATEGY_STATE state) { m_state = state; }
+   void SetConfigManager(CConfigManager *config_manager) { m_config_manager = config_manager; }
 
    // Métodos de utilidade
    bool HasValidSignal() const { return m_last_signal.is_valid; }
@@ -107,13 +113,14 @@ public:
 //+------------------------------------------------------------------+
 CStrategyBase::CStrategyBase()
 {
-   m_name = "";
-   m_type = "";
-   m_enabled = false;
-   m_initialized = false;
-   m_state = STRATEGY_IDLE;
-   m_last_signal.Reset();
-   m_last_update = 0;
+    m_name = "";
+    m_type = "";
+    m_enabled = false;
+    m_initialized = false;
+    m_state = STRATEGY_IDLE;
+    m_last_signal.Reset();
+    m_last_update = 0;
+    m_config_manager = NULL;
 }
 
 //+------------------------------------------------------------------+
@@ -194,7 +201,8 @@ bool CStrategyBase::Update()
 //+------------------------------------------------------------------+
 void CStrategyBase::Reset()
 {
-   m_state = STRATEGY_IDLE;
-   m_last_signal.Reset();
-   m_last_update = 0;
+    m_state = STRATEGY_IDLE;
+    m_last_signal.Reset();
+    m_last_update = 0;
+    m_config_manager = NULL;
 }

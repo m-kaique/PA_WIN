@@ -8,6 +8,7 @@
 #property link "https://www.mql5.com"
 #property version "2.00"
 
+
 #include "../utils/JAson.mqh"
 #include "../utils/conversion.mqh"
 
@@ -18,6 +19,7 @@
 #include "../TF_CTX/tf_ctx.mqh"
 
 #include "config_types.mqh"
+
 
 //+------------------------------------------------------------------+
 //| Classe para gerenciar configurações e contextos                 |
@@ -695,6 +697,9 @@ bool CConfigManager::CreateStrategyContexts()
                 strategy_ctx_parser.CleanupStrategySetup(setup_cfg);
                 continue;
             }
+
+            // Definir o config_manager no contexto de estratégia
+            ctx.SetConfigManager(&this);
 
             // Adicionar aos arrays de contextos de estratégia
             string key = CreateStrategyKey(setup_name);

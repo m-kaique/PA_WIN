@@ -6,15 +6,19 @@
 #include "strategies/strategies_types.mqh"
 #include "strategies/strategy_base/strategy_base.mqh"
 
+// Forward declaration to avoid circular dependency
+class CConfigManager;
+
 class STRATEGY_CTX
 {
 private:
-   // Configurações e instâncias das estratégias
-   CStrategyConfig *m_cfg[];
-   CStrategyBase *m_strategies[];
-   string m_names[];
-   bool m_initialized;
-   string m_setup_name; // Nome do Setup (Conservative_Setup, Risky_Setup, etc)
+    // Configurações e instâncias das estratégias
+    CStrategyConfig *m_cfg[];
+    CStrategyBase *m_strategies[];
+    string m_names[];
+    bool m_initialized;
+    string m_setup_name; // Nome do Setup (Conservative_Setup, Risky_Setup, etc)
+    CConfigManager *m_config_manager;
 
    bool CreateStrategies();
    void AddStrategy(CStrategyBase *strategy, string name);
@@ -32,6 +36,7 @@ public:
    string GetSetupName() const { return m_setup_name; }
    //void GetStrategyNames(string &names[]);
    int GetStrategyCount() const { return ArraySize(m_strategies); };
+   void SetConfigManager(CConfigManager *config_manager);
 };
 
 //+------------------------------------------------------------------+
@@ -39,15 +44,16 @@ public:
 //+------------------------------------------------------------------+
 STRATEGY_CTX::STRATEGY_CTX(string setup_name, CStrategyConfig *&cfg[])
 {
-   m_setup_name = setup_name;
-   m_initialized = false;
-   int sz = ArraySize(cfg);
-   ArrayResize(m_cfg, sz);
-   for (int i = 0; i < sz; i++)
-      m_cfg[i] = cfg[i];
+    m_setup_name = setup_name;
+    m_initialized = false;
+    m_config_manager = NULL;
+    int sz = ArraySize(cfg);
+    ArrayResize(m_cfg, sz);
+    for (int i = 0; i < sz; i++)
+       m_cfg[i] = cfg[i];
 
-   ArrayResize(m_strategies, 0);
-   ArrayResize(m_names, 0);
+    ArrayResize(m_strategies, 0);
+    ArrayResize(m_names, 0);
 }
 
 //+------------------------------------------------------------------+
@@ -98,6 +104,12 @@ bool STRATEGY_CTX::CreateStrategies()
       {
          Print("ERRO: Falaha ao inicializar estratégia ", cfg.name);
          return false;
+      }
+
+      // Definir o config_manager na estratégia
+      if (m_config_manager != NULL)
+      {
+          strategy.SetConfigManager(m_config_manager);
       }
 
       AddStrategy(strategy, cfg.name);
@@ -161,31 +173,49 @@ CStrategyBase *STRATEGY_CTX::GetStrategy(string name)
 }
 
 //+------------------------------------------------------------------+
+//| Definir gerenciador de configuração                              |
+//+------------------------------------------------------------------+
+void STRATEGY_CTX::SetConfigManager(CConfigManager *config_manager)
+{
+    m_config_manager = config_manager;
+
+    // Passar o config_manager para todas as estratégias já criadas
+    for (int i = 0; i < ArraySize(m_strategies); i++)
+    {
+        if (m_strategies[i] != NULL)
+        {
+            m_strategies[i].SetConfigManager(config_manager);
+        }
+    }
+}
+
+//+------------------------------------------------------------------+
 //| Limpar recursos                                                  |
 //+------------------------------------------------------------------+
 void STRATEGY_CTX::CleanUp()
 {
-   // Destruir configurações associadas (evita leaks dos *Config)
-   for (int i = 0; i < ArraySize(m_cfg); i++)
-   {
-      if (m_cfg[i] != NULL)
-      {
-         delete m_cfg[i];
-         m_cfg[i] = NULL;
-      }
-   }
-   ArrayResize(m_cfg, 0);
+    // Destruir configurações associadas (evita leaks dos *Config)
+    for (int i = 0; i < ArraySize(m_cfg); i++)
+    {
+       if (m_cfg[i] != NULL)
+       {
+          delete m_cfg[i];
+          m_cfg[i] = NULL;
+       }
+    }
+    ArrayResize(m_cfg, 0);
 
-   // Destruir estratégias criadas para este contexto
-   for (int i = 0; i < ArraySize(m_strategies); i++)
-   {
-      if (m_strategies[i] != NULL)
-      {
-         delete m_strategies[i];
-         m_strategies[i] = NULL;
-      }
-   }
-   ArrayResize(m_strategies, 0);
-   ArrayResize(m_names, 0);
-   m_initialized = false;
+    // Destruir estratégias criadas para este contexto
+    for (int i = 0; i < ArraySize(m_strategies); i++)
+    {
+       if (m_strategies[i] != NULL)
+       {
+          delete m_strategies[i];
+          m_strategies[i] = NULL;
+       }
+    }
+    ArrayResize(m_strategies, 0);
+    ArrayResize(m_names, 0);
+    m_initialized = false;
+    m_config_manager = NULL;
 }
