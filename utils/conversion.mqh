@@ -1,7 +1,7 @@
 #ifndef __CONVERSION_MQH__
 #define __CONVERSION_MQH__
 
-#include "../TF_CTX/indicators/vwap/vwap_defs.mqh"
+#include "../tf_ctx/indicators/vwap/vwap_defs.mqh"
 
 //+------------------------------------------------------------------+
 //| Helper conversion functions                                      |

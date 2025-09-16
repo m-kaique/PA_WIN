@@ -9,8 +9,8 @@
 #property link "https://mql5.com"
 #property version "2.00"
 
-#include "CONFIG_MANAGER/config_manager.mqh"
-#include "PROVIDER/provider.mqh"
+#include "config_manager/config_manager.mqh"
+#include "provider/provider.mqh"
 #include "utils/tester_qol.mqh"
 
 // Gerenciador de configuração

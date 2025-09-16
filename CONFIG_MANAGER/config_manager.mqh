@@ -19,7 +19,7 @@
 #include "submodules/strategy_parser/strategy_ctx_parser.mqh"
 
 #include "../STRATEGIES/strategy_ctx.mqh"
-#include "../TF_CTX/tf_ctx.mqh"
+#include "../tf_ctx/tf_ctx.mqh"
 
 #include "config_types.mqh"
 

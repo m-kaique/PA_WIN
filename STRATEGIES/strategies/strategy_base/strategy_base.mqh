@@ -11,7 +11,7 @@
 #property version "1.00"
 
 #include "../strategies_types.mqh"
-#include "../../../TF_CTX/tf_ctx.mqh"
+#include "../../../tf_ctx/tf_ctx.mqh"
 #include "../../../interfaces/icontext_provider.mqh"
 
 //+------------------------------------------------------------------+
