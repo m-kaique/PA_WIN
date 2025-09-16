@@ -8,6 +8,7 @@
 #property version "1.00"
 
 #include "../strategies_types.mqh"
+#include "../../../TF_CTX/tf_ctx.mqh"
 
 // Forward declaration to avoid circular dependency
 class CConfigManager;
