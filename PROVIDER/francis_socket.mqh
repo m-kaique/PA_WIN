@@ -14,7 +14,8 @@
    int WSAGetLastError();
 #import
 
-#include "../utils/JAson.mqh"
+#include "../utils/common_types.mqh"
+#include "../interfaces/inetwork_client.mqh"
 
 #define AF_INET     2
 #define SOCK_DGRAM  2   // UDP
@@ -23,7 +24,7 @@
 //+------------------------------------------------------------------+
 //| Classe Singleton para gerenciamento do Socket UDP                |
 //+------------------------------------------------------------------+
-class CFrancisSocket
+class CFrancisSocket : public INetworkClient
 {
 private:
    static CFrancisSocket* m_instance;    // Instância única

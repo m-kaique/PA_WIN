@@ -7,8 +7,8 @@
 #property link "https://www.mql5.com"
 #property version "1.00"
 
-#include "../../../utils/JAson.mqh"
-#include "../../../utils/conversion.mqh"
+#include "../../../utils/common_types.mqh"
+#include "../../../interfaces/icontext_provider.mqh"
 #include "../../../STRATEGIES/strategy_ctx.mqh"
 #include "../../config_types.mqh"
 
@@ -29,7 +29,7 @@ class CStrategyConfigParser
 {
 public:
     SStrategySetupConfig ParseStrategySetup(CJAVal *setup_config);
-    STRATEGY_CTX *CreateStrategyContext(string setup_name, SStrategySetupConfig &config);
+    STRATEGY_CTX *CreateStrategyContext(string setup_name, SStrategySetupConfig &config, IContextProvider *context_provider);
     void CleanupStrategySetup(SStrategySetupConfig &config);
 
 private:
@@ -164,7 +164,7 @@ CEmasBullBuyConfig *CStrategyConfigParser::ParseEmasBuyBullConfig(CJAVal *strate
 //+------------------------------------------------------------------+
 //| Criar contexto de estratégia                                    |
 //+------------------------------------------------------------------+
-STRATEGY_CTX *CStrategyConfigParser::CreateStrategyContext(string setup_name, SStrategySetupConfig &config)
+STRATEGY_CTX *CStrategyConfigParser::CreateStrategyContext(string setup_name, SStrategySetupConfig &config, IContextProvider *context_provider)
 {
     if (!config.enabled || ArraySize(config.strategies) == 0)
     {
@@ -182,7 +182,7 @@ STRATEGY_CTX *CStrategyConfigParser::CreateStrategyContext(string setup_name, SS
     }
 
     // Criar contexto
-    STRATEGY_CTX *ctx = new STRATEGY_CTX(setup_name, cfg_array);
+    STRATEGY_CTX *ctx = new STRATEGY_CTX(setup_name, cfg_array, context_provider);
     if (ctx == NULL)
     {
         Print("ERRO: Falha ao criar STRATEGY_CTX");

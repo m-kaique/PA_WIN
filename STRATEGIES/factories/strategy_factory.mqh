@@ -1,12 +1,13 @@
 #ifndef __PA_STRATEGY_FACTORY_MQH__
 #define __PA_STRATEGY_FACTORY_MQH__
 
+#include "../../interfaces/icontext_provider.mqh"
 #include "../strategies/emas_bull_buy/emas_bull_buy.mqh"
 #include "../strategies/strategies_types.mqh"
 #include "../strategies/strategy_base/strategy_base.mqh"
 
 // Creator function signature
-typedef CStrategyBase *(*StrategyCreatorFunc)(string name, CStrategyConfig *config);
+typedef CStrategyBase *(*StrategyCreatorFunc)(string name, CStrategyConfig *config, IContextProvider *context_provider);
 
 class CStrategyFactory
 {
@@ -27,7 +28,7 @@ private:
 
    void RegisterDefaults();
 
-   static CStrategyBase *CreateEmasBuyBull(string name, CStrategyConfig *cfg);
+   static CStrategyBase *CreateEmasBuyBull(string name, CStrategyConfig *cfg, IContextProvider *context_provider);
    // Adicionar outros creators conforme necessário
    // static CStrategyBase *CreateEmasSellBear(string name, CStrategyConfig *cfg);
 
@@ -59,11 +60,11 @@ public:
       return false;
    }
 
-   CStrategyBase *Create(string type, string name, CStrategyConfig *cfg)
+   CStrategyBase *Create(string type, string name, CStrategyConfig *cfg, IContextProvider *context_provider)
    {
       for (int i = 0; i < ArraySize(m_creators); i++)
          if (m_creators[i].type == type)
-            return m_creators[i].func(name, cfg);
+            return m_creators[i].func(name, cfg, context_provider);
       return NULL;
    }
 
@@ -87,16 +88,16 @@ void CStrategyFactory::RegisterDefaults()
    // Register("emas_sell_bear", CreateEmasSellBear);
 }
 
-CStrategyBase *CStrategyFactory::CreateEmasBuyBull(string name, CStrategyConfig *cfg)
+CStrategyBase *CStrategyFactory::CreateEmasBuyBull(string name, CStrategyConfig *cfg, IContextProvider *context_provider)
 {
-   CEmasBullBuyConfig *c = (CEmasBullBuyConfig *)cfg;
-   if (c == NULL)
-      return NULL;
-   CEmasBuyBull *strategy = new CEmasBuyBull();
-   if (strategy != NULL && strategy.Init(name, *c))
-      return strategy;
-   delete strategy;
-   return NULL;
+    CEmasBullBuyConfig *c = (CEmasBullBuyConfig *)cfg;
+    if (c == NULL)
+       return NULL;
+    CEmasBuyBull *strategy = new CEmasBuyBull(context_provider);
+    if (strategy != NULL && strategy.Init(name, *c))
+       return strategy;
+    delete strategy;
+    return NULL;
 }
 
 #endif // __PA_STRATEGY_FACTORY_MQH__

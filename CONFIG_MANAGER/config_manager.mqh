@@ -12,8 +12,8 @@
 #property version "2.00"
 
 
-#include "../utils/JAson.mqh"
-#include "../utils/conversion.mqh"
+#include "../utils/common_types.mqh"
+#include "../interfaces/icontext_provider.mqh"
 
 #include "submodules/tf_ctx_parser/tf_ctx_parser.mqh"
 #include "submodules/strategy_parser/strategy_ctx_parser.mqh"
@@ -27,7 +27,7 @@
 //+------------------------------------------------------------------+
 //| Classe para gerenciar configurações e contextos                 |
 //+------------------------------------------------------------------+
-class CConfigManager
+class CConfigManager : public IContextProvider
 {
 private:
     CJAVal m_config;
@@ -693,16 +693,13 @@ bool CConfigManager::CreateStrategyContexts()
             }
 
             // Criar contexto usando o parser
-            STRATEGY_CTX *ctx = strategy_ctx_parser.CreateStrategyContext(setup_name, setup_cfg);
+            STRATEGY_CTX *ctx = strategy_ctx_parser.CreateStrategyContext(setup_name, setup_cfg, &this);
             if (ctx == NULL)
             {
                 Print("ERRO: Falha ao criar contexto de estratégia para ", setup_name);
                 strategy_ctx_parser.CleanupStrategySetup(setup_cfg);
                 continue;
             }
-
-            // Definir o config_manager no contexto de estratégia
-            ctx.SetConfigManager(&this);
 
             // Adicionar aos arrays de contextos de estratégia
             string key = CreateStrategyKey(setup_name);

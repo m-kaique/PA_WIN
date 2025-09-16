@@ -8,8 +8,7 @@
 #property link "https://www.mql5.com"
 #property version "1.00"
 
-#include "../../../utils/JAson.mqh"
-#include "../../../utils/conversion.mqh"
+#include "../../../utils/common_types.mqh"
 #include "../../../TF_CTX/tf_ctx.mqh"
 #include "../../config_types.mqh"
 

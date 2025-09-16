@@ -10,7 +10,7 @@
 #property link "https://www.mql5.com"
 #property version "1.00"
 
-#include "../../../CONFIG_MANAGER/config_manager.mqh"
+#include "../../../interfaces/icontext_provider.mqh"
 #include "../strategy_base/strategy_base.mqh"
 #include "../strategies_types.mqh"
 
@@ -20,10 +20,11 @@
 class CEmasBuyBull : public CStrategyBase
 {
 private:
-   CEmasBullBuyConfig m_config;
+    CEmasBullBuyConfig m_config;
+    IContextProvider *m_context_provider;
 
-   string m_symbol;
-   ENUM_TIMEFRAMES m_timeframe;
+    string m_symbol;
+    ENUM_TIMEFRAMES m_timeframe;
 
    double CalculateLotSize();
    double CalculateStopLoss(double entry_price);
@@ -43,20 +44,21 @@ protected:
    virtual bool ValidateSignal(const SStrategySignal &signal) override;
 
 public:
-   CEmasBuyBull();
-   ~CEmasBuyBull();
+    CEmasBuyBull(IContextProvider *context_provider = NULL);
+    ~CEmasBuyBull();
 
-   bool Init(string name, const CEmasBullBuyConfig &config);
+    bool Init(string name, const CEmasBullBuyConfig &config);
    void PrintFullDebugLog();
 };
 
 //+------------------------------------------------------------------+
 //| Construtor                                                       |
 //+------------------------------------------------------------------+
-CEmasBuyBull::CEmasBuyBull()
+CEmasBuyBull::CEmasBuyBull(IContextProvider *context_provider)
 {
-   m_symbol = Symbol();
-   m_timeframe = Period();
+    m_context_provider = context_provider;
+    m_symbol = Symbol();
+    m_timeframe = Period();
 }
 
 //+------------------------------------------------------------------+
@@ -312,8 +314,8 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    signal.Reset();
 
    // Obter contextos dos timeframes
-   TF_CTX *ctx_m15 = m_config_manager.GetContext(m_symbol, PERIOD_M15);
-   TF_CTX *ctx_m3 = m_config_manager.GetContext(m_symbol, PERIOD_M3);
+   TF_CTX *ctx_m15 = m_context_provider.GetContext(m_symbol, PERIOD_M15);
+   TF_CTX *ctx_m3 = m_context_provider.GetContext(m_symbol, PERIOD_M3);
 
    bool have_ctx_m15 = (ctx_m15 != NULL);
    bool have_ctx_m3 = (ctx_m3 != NULL);
@@ -524,8 +526,8 @@ void CEmasBuyBull::PrintFullDebugLog()
     Print("Último Sinal: ", GetLastSignal().is_valid ? "Válido" : "Inválido");
 
     // Obter contextos
-    TF_CTX *ctx_m15 = m_config_manager.GetContext(m_symbol, PERIOD_M15);
-    TF_CTX *ctx_m3 = m_config_manager.GetContext(m_symbol, PERIOD_M3);
+    TF_CTX *ctx_m15 = m_context_provider.GetContext(m_symbol, PERIOD_M15);
+    TF_CTX *ctx_m3 = m_context_provider.GetContext(m_symbol, PERIOD_M3);
 
     if (ctx_m15 == NULL || ctx_m3 == NULL)
     {

@@ -14,7 +14,7 @@ int closesocket(int s);
 int WSAGetLastError();
 #import
 
-#include "../utils/JAson.mqh"
+#include "../utils/common_types.mqh"
 
 #define AF_INET 2
 #define SOCK_DGRAM 2 // UDP

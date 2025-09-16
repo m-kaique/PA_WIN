@@ -5,12 +5,10 @@
 #property link "https://www.mql5.com"
 #property version "2.00"
 
+#include "../interfaces/icontext_provider.mqh"
 #include "factories/strategy_factory.mqh"
 #include "strategies/strategies_types.mqh"
 #include "strategies/strategy_base/strategy_base.mqh"
-
-// Forward declaration to avoid circular dependency
-class CConfigManager;
 
 class STRATEGY_CTX
 {
@@ -21,7 +19,7 @@ private:
     string m_names[];
     bool m_initialized;
     string m_setup_name; // Nome do Setup (Conservative_Setup, Risky_Setup, etc)
-    CConfigManager *m_config_manager;
+    IContextProvider *m_context_provider;
 
    bool CreateStrategies();
    void AddStrategy(CStrategyBase *strategy, string name);
@@ -29,7 +27,7 @@ private:
    void CleanUp();
 
 public:
-   STRATEGY_CTX(string setup_name, CStrategyConfig *&cfg[]);
+   STRATEGY_CTX(string setup_name, CStrategyConfig *&cfg[], IContextProvider *context_provider = NULL);
    ~STRATEGY_CTX();
 
    bool Init();
@@ -39,17 +37,17 @@ public:
    string GetSetupName() const { return m_setup_name; }
    //void GetStrategyNames(string &names[]);
    int GetStrategyCount() const { return ArraySize(m_strategies); };
-   void SetConfigManager(CConfigManager *config_manager);
+   void SetContextProvider(IContextProvider *context_provider);
 };
 
 //+------------------------------------------------------------------+
 //| Construtor                                                       |
 //+------------------------------------------------------------------+
-STRATEGY_CTX::STRATEGY_CTX(string setup_name, CStrategyConfig *&cfg[])
+STRATEGY_CTX::STRATEGY_CTX(string setup_name, CStrategyConfig *&cfg[], IContextProvider *context_provider)
 {
     m_setup_name = setup_name;
     m_initialized = false;
-    m_config_manager = NULL;
+    m_context_provider = context_provider;
     int sz = ArraySize(cfg);
     ArrayResize(m_cfg, sz);
     for (int i = 0; i < sz; i++)
@@ -102,17 +100,11 @@ bool STRATEGY_CTX::CreateStrategies()
          continue;
       }
 
-      CStrategyBase *strategy = factory.Create(cfg.type, cfg.name, cfg);
+      CStrategyBase *strategy = factory.Create(cfg.type, cfg.name, cfg, m_context_provider);
       if (strategy == NULL)
       {
-         Print("ERRO: Falaha ao inicializar estratégia ", cfg.name);
+         Print("ERRO: Falha ao inicializar estratégia ", cfg.name);
          return false;
-      }
-
-      // Definir o config_manager na estratégia
-      if (m_config_manager != NULL)
-      {
-          strategy.SetConfigManager(m_config_manager);
       }
 
       AddStrategy(strategy, cfg.name);
@@ -176,20 +168,11 @@ CStrategyBase *STRATEGY_CTX::GetStrategy(string name)
 }
 
 //+------------------------------------------------------------------+
-//| Definir gerenciador de configuração                              |
+//| Definir provedor de contexto                                     |
 //+------------------------------------------------------------------+
-void STRATEGY_CTX::SetConfigManager(CConfigManager *config_manager)
+void STRATEGY_CTX::SetContextProvider(IContextProvider *context_provider)
 {
-    m_config_manager = config_manager;
-
-    // Passar o config_manager para todas as estratégias já criadas
-    for (int i = 0; i < ArraySize(m_strategies); i++)
-    {
-        if (m_strategies[i] != NULL)
-        {
-            m_strategies[i].SetConfigManager(config_manager);
-        }
-    }
+    m_context_provider = context_provider;
 }
 
 //+------------------------------------------------------------------+
@@ -220,7 +203,7 @@ void STRATEGY_CTX::CleanUp()
     ArrayResize(m_strategies, 0);
     ArrayResize(m_names, 0);
     m_initialized = false;
-    m_config_manager = NULL;
+    m_context_provider = NULL;
 }
 
 #endif
