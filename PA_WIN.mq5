@@ -67,12 +67,12 @@ int OnInit()
    for (int i = 0; i < ArraySize(symbols); i++)
    {
       Print("Símbolo configurado: ", symbols[i]);
-      
+
       // Listar timeframes para cada símbolo
       TF_CTX *contexts[];
       ENUM_TIMEFRAMES timeframes[];
       int count = g_config_manager.GetSymbolContexts(symbols[i], contexts, timeframes);
-      
+
       for (int j = 0; j < count; j++)
       {
          if (contexts[j] != NULL)
@@ -86,7 +86,7 @@ int OnInit()
    Print("=== CONTEXTOS DE ESTRATÉGIAS CRIADOS ===");
    string strategy_setups[];
    g_config_manager.GetConfiguredStrategySetups(strategy_setups);
-   
+
    if (ArraySize(strategy_setups) == 0)
    {
       Print("Nenhum setup de estratégia configurado ou ativo");
@@ -96,16 +96,16 @@ int OnInit()
       for (int i = 0; i < ArraySize(strategy_setups); i++)
       {
          Print("Setup configurado: ", strategy_setups[i]);
-         
+
          // Obter contexto específico e listar estratégias
          STRATEGY_CTX *strategy_ctx = g_config_manager.GetStrategyContext(strategy_setups[i]);
          if (strategy_ctx != NULL)
          {
             Print("  - Total de estratégias: ", strategy_ctx.GetStrategyCount());
-            
+
             // Listar nomes das estratégias
             string strategy_names[];
-            //strategy_ctx.GetStrategyNames(strategy_names);
+            // strategy_ctx.GetStrategyNames(strategy_names);
             for (int j = 0; j < ArraySize(strategy_names); j++)
             {
                Print("    * Estratégia: ", strategy_names[j]);
@@ -123,13 +123,13 @@ int OnInit()
    STRATEGY_CTX *all_strategy_contexts[];
    string all_setup_names[];
    int total_strategy_contexts = g_config_manager.GetStrategyContexts(all_strategy_contexts, all_setup_names);
-   
+
    Print("Total de contextos de estratégia ativos: ", total_strategy_contexts);
    for (int i = 0; i < total_strategy_contexts; i++)
    {
       if (all_strategy_contexts[i] != NULL)
       {
-         Print("Contexto ", i, ": Setup '", all_setup_names[i], "' - ", 
+         Print("Contexto ", i, ": Setup '", all_setup_names[i], "' - ",
                all_strategy_contexts[i].GetStrategyCount(), " estratégias ativas");
       }
    }
@@ -987,6 +987,19 @@ void UpdateSymbolContexts(string symbol)
          if (ctx.GetTimeFrame() == PERIOD_M3)
          {
             bool is_compra = CompraAlta(symbol);
+         }
+
+         // Loop through strategy contexts and call CheckForSignal
+         STRATEGY_CTX *strategy_contexts[];
+         string setup_names[];
+         int strategy_count = g_config_manager.GetStrategyContexts(strategy_contexts, setup_names);
+
+         for (int j = 0; j < strategy_count; j++)
+         {
+            if (strategy_contexts[j] != NULL)
+            {
+               strategy_contexts[j].Update(); // This calls CheckForSignal internally
+            }
          }
       }
    } // Fim loop the atualização de contextos
