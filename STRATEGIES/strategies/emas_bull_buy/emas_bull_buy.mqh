@@ -1,3 +1,6 @@
+#ifndef __EMAS_BULL_BUY_MQH__
+#define __EMAS_BULL_BUY_MQH__
+
 //+------------------------------------------------------------------+
 //|                                                emas_bull_buy.mqh |
 //|                                  Copyright 2025, MetaQuotes Ltd. |
@@ -7,6 +10,7 @@
 #property link "https://www.mql5.com"
 #property version "1.00"
 
+#include "../../../CONFIG_MANAGER/config_manager.mqh"
 #include "../strategy_base/strategy_base.mqh"
 #include "../strategies_types.mqh"
 
@@ -17,15 +21,10 @@ class CEmasBuyBull : public CStrategyBase
 {
 private:
    CEmasBullBuyConfig m_config;
-   int m_ema_fast_handle;
-   int m_ema_slow_handle;
+
    string m_symbol;
    ENUM_TIMEFRAMES m_timeframe;
-   double m_ema_fast_buffer[];
-   double m_ema_slow_buffer[];
 
-   bool CheckEMACrossover();
-   bool CheckTrendDirection();
    double CalculateLotSize();
    double CalculateStopLoss(double entry_price);
    double CalculateTakeProfit(double entry_price, double stop_loss);
@@ -39,7 +38,7 @@ protected:
 public:
    CEmasBuyBull();
    ~CEmasBuyBull();
-   
+
    bool Init(string name, const CEmasBullBuyConfig &config);
 };
 
@@ -48,12 +47,9 @@ public:
 //+------------------------------------------------------------------+
 CEmasBuyBull::CEmasBuyBull()
 {
-   m_ema_fast_handle = INVALID_HANDLE;
-   m_ema_slow_handle = INVALID_HANDLE;
+
    m_symbol = Symbol();
    m_timeframe = Period();
-   ArraySetAsSeries(m_ema_fast_buffer, true);
-   ArraySetAsSeries(m_ema_slow_buffer, true);
 }
 
 //+------------------------------------------------------------------+
@@ -61,10 +57,6 @@ CEmasBuyBull::CEmasBuyBull()
 //+------------------------------------------------------------------+
 CEmasBuyBull::~CEmasBuyBull()
 {
-   if (m_ema_fast_handle != INVALID_HANDLE)
-      IndicatorRelease(m_ema_fast_handle);
-   if (m_ema_slow_handle != INVALID_HANDLE)
-      IndicatorRelease(m_ema_slow_handle);
 }
 
 //+------------------------------------------------------------------+
@@ -81,25 +73,7 @@ bool CEmasBuyBull::Init(string name, const CEmasBullBuyConfig &config)
 //+------------------------------------------------------------------+
 bool CEmasBuyBull::DoInit()
 {
-   // Criar handles para as EMAs
-   m_ema_fast_handle = iMA(m_symbol, m_timeframe, m_config.ema_fast_period, 
-                           0, MODE_EMA, PRICE_CLOSE);
-   if (m_ema_fast_handle == INVALID_HANDLE)
-   {
-      Print("ERRO: Falha ao criar handle para EMA rápida (", m_config.ema_fast_period, ")");
-      return false;
-   }
 
-   m_ema_slow_handle = iMA(m_symbol, m_timeframe, m_config.ema_slow_period, 
-                           0, MODE_EMA, PRICE_CLOSE);
-   if (m_ema_slow_handle == INVALID_HANDLE)
-   {
-      Print("ERRO: Falha ao criar handle para EMA lenta (", m_config.ema_slow_period, ")");
-      return false;
-   }
-
-   Print("EMAs inicializadas - Rápida: ", m_config.ema_fast_period, 
-         ", Lenta: ", m_config.ema_slow_period);
    return true;
 }
 
@@ -108,18 +82,6 @@ bool CEmasBuyBull::DoInit()
 //+------------------------------------------------------------------+
 bool CEmasBuyBull::DoUpdate()
 {
-   // Copiar dados das EMAs
-   if (CopyBuffer(m_ema_fast_handle, 0, 0, 3, m_ema_fast_buffer) != 3)
-   {
-      Print("ERRO: Falha ao copiar dados da EMA rápida");
-      return false;
-   }
-
-   if (CopyBuffer(m_ema_slow_handle, 0, 0, 3, m_ema_slow_buffer) != 3)
-   {
-      Print("ERRO: Falha ao copiar dados da EMA lenta");
-      return false;
-   }
 
    return true;
 }
@@ -129,20 +91,17 @@ bool CEmasBuyBull::DoUpdate()
 //+------------------------------------------------------------------+
 SStrategySignal CEmasBuyBull::CheckForSignal()
 {
+
+   TF_CTX *m3 = m_config_manager.GetContext("WIN$N", PERIOD_M3);
+   CMovingAverages *m_ema_fast_handle = m3.GetIndicator("ema9");
+
+   Print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+   Print(" ");
+   Print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+   Print("VALOR DA EMAAAAAAAAAAAAAAAAAAUYUUUUU    ", m_ema_fast_handle.GetValue(1));
+
    SStrategySignal signal;
    signal.Reset();
-
-   // Verificar se há dados suficientes
-   if (ArraySize(m_ema_fast_buffer) < 3 || ArraySize(m_ema_slow_buffer) < 3)
-      return signal;
-
-   // Verificar cruzamento de EMAs (EMA rápida cruzando acima da lenta)
-   if (!CheckEMACrossover())
-      return signal;
-
-   // Verificar direção da tendência
-   if (!CheckTrendDirection())
-      return signal;
 
    // Criar sinal de compra
    signal.type = SIGNAL_BUY;
@@ -158,49 +117,25 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
 }
 
 //+------------------------------------------------------------------+
-//| Verificar cruzamento das EMAs                                   |
-//+------------------------------------------------------------------+
-bool CEmasBuyBull::CheckEMACrossover()
-{
-   // EMA rápida atual acima da lenta E EMA rápida anterior abaixo da lenta
-   bool current_above = m_ema_fast_buffer[0] > m_ema_slow_buffer[0];
-   bool previous_below = m_ema_fast_buffer[1] <= m_ema_slow_buffer[1];
-   
-   return current_above && previous_below;
-}
-
-//+------------------------------------------------------------------+
-//| Verificar direção da tendência                                  |
-//+------------------------------------------------------------------+
-bool CEmasBuyBull::CheckTrendDirection()
-{
-   // EMAs devem estar em tendência de alta (valores atuais > anteriores)
-   bool fast_rising = m_ema_fast_buffer[0] > m_ema_fast_buffer[1];
-   bool slow_rising = m_ema_slow_buffer[0] > m_ema_slow_buffer[1];
-   
-   return fast_rising && slow_rising;
-}
-
-//+------------------------------------------------------------------+
 //| Calcular tamanho do lote                                        |
 //+------------------------------------------------------------------+
 double CEmasBuyBull::CalculateLotSize()
 {
    double balance = AccountInfoDouble(ACCOUNT_BALANCE);
    double risk_amount = balance * (m_config.risk_percent / 100.0);
-   
+
    // Cálculo básico - pode ser refinado
    double min_lot = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_MIN);
    double max_lot = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_MAX);
    double lot_step = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_STEP);
-   
+
    // Cálculo simples baseado no risco
    double lot_size = MathMax(min_lot, risk_amount / 1000.0); // Simplificado
    lot_size = MathMin(lot_size, max_lot);
-   
+
    // Arredondar para o step correto
    lot_size = MathFloor(lot_size / lot_step) * lot_step;
-   
+
    return lot_size;
 }
 
@@ -230,22 +165,22 @@ bool CEmasBuyBull::ValidateSignal(const SStrategySignal &signal)
    // Verificações básicas de validação
    if (signal.type != SIGNAL_BUY)
       return false;
-      
+
    if (signal.entry_price <= 0 || signal.lot_size <= 0)
       return false;
-      
+
    if (signal.stop_loss >= signal.entry_price)
       return false;
-      
+
    if (signal.take_profit <= signal.entry_price)
       return false;
 
    // Verificações de margem disponível
    double margin_required = 0;
-   if (!OrderCalcMargin(ORDER_TYPE_BUY, m_symbol, signal.lot_size, 
+   if (!OrderCalcMargin(ORDER_TYPE_BUY, m_symbol, signal.lot_size,
                         signal.entry_price, margin_required))
       return false;
-      
+
    double free_margin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
    if (margin_required > free_margin)
    {
@@ -255,3 +190,5 @@ bool CEmasBuyBull::ValidateSignal(const SStrategySignal &signal)
 
    return true;
 }
+
+#endif

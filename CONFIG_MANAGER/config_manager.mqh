@@ -1,3 +1,6 @@
+#ifndef __CONFIG_MANAGER_MQH__
+#define __CONFIG_MANAGER_MQH__
+
 //+------------------------------------------------------------------+
 //|                                           config_manager.mqh     |
 //|                                  Copyright 2025, MetaQuotes Ltd. |
@@ -782,3 +785,5 @@ int CConfigManager::GetStrategyContexts(STRATEGY_CTX *&contexts[], string &setup
 
     return ArraySize(contexts);
 }
+
+#endif

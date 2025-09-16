@@ -1,3 +1,6 @@
+#ifndef __STRATEGY_BASE_MQH__
+#define __STRATEGY_BASE_MQH__
+
 //+------------------------------------------------------------------+
 //|                                                strategy_base.mqh |
 //|                                  Copyright 2025, MetaQuotes Ltd. |
@@ -202,8 +205,10 @@ bool CStrategyBase::Update()
 //+------------------------------------------------------------------+
 void CStrategyBase::Reset()
 {
-    m_state = STRATEGY_IDLE;
-    m_last_signal.Reset();
-    m_last_update = 0;
-    m_config_manager = NULL;
+     m_state = STRATEGY_IDLE;
+     m_last_signal.Reset();
+     m_last_update = 0;
+     m_config_manager = NULL;
 }
+
+#endif
