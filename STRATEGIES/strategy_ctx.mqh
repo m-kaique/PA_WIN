@@ -1,3 +1,6 @@
+#ifndef __STRATEGY_CTX_MQH__
+#define __STRATEGY_CTX_MQH__
+
 #property copyright "Copyright 2025, MetaQuotes Ltd."
 #property link "https://www.mql5.com"
 #property version "2.00"
@@ -219,3 +222,5 @@ void STRATEGY_CTX::CleanUp()
     m_initialized = false;
     m_config_manager = NULL;
 }
+
+#endif
