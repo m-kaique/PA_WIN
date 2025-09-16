@@ -13,15 +13,6 @@
 #include "conversion.mqh"
 
 // Forward declarations for common classes to reduce circular dependencies
-class CConfigManager;
-class TF_CTX;
-class STRATEGY_CTX;
-class CStrategyBase;
-class CIndicatorBase;
-class CFrancisSocket;
-
-// Forward declarations for common classes to reduce circular dependencies
-class CConfigManager;
 class TF_CTX;
 class STRATEGY_CTX;
 class CStrategyBase;

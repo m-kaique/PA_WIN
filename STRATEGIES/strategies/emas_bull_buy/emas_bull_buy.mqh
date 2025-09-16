@@ -10,9 +10,7 @@
 #property link "https://www.mql5.com"
 #property version "1.00"
 
-#include "../../../interfaces/icontext_provider.mqh"
 #include "../strategy_base/strategy_base.mqh"
-#include "../strategies_types.mqh"
 
 //+------------------------------------------------------------------+
 //| Estratégia EMA Buy Bull - Compra em tendência de alta com EMAs  |
@@ -20,8 +18,7 @@
 class CEmasBuyBull : public CStrategyBase
 {
 private:
-    CEmasBullBuyConfig m_config;
-    IContextProvider *m_context_provider;
+    CEmasBullBuyConfig m_config; 
 
     string m_symbol;
     ENUM_TIMEFRAMES m_timeframe;

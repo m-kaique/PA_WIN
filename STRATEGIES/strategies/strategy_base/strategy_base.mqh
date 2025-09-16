@@ -12,9 +12,7 @@
 
 #include "../strategies_types.mqh"
 #include "../../../TF_CTX/tf_ctx.mqh"
-
-// Forward declaration to avoid circular dependency
-class CConfigManager;
+#include "../../../interfaces/icontext_provider.mqh"
 
 //+------------------------------------------------------------------+
 //| Enumerações para estados de estratégia                          |
@@ -74,7 +72,7 @@ protected:
     ENUM_STRATEGY_STATE m_state;
     SStrategySignal m_last_signal;
     datetime m_last_update;
-    CConfigManager *m_config_manager;
+    IContextProvider *m_context_provider;
 
    // Métodos virtuais puros que devem ser implementados pelas classes derivadas
    virtual bool DoInit() = 0;
@@ -100,12 +98,12 @@ public:
    ENUM_STRATEGY_STATE GetState() const { return m_state; }
    SStrategySignal GetLastSignal() const { return m_last_signal; }
    datetime GetLastUpdate() const { return m_last_update; }
-   CConfigManager *GetConfigManager() const { return m_config_manager; }
+   IContextProvider *GetContextProvider() const { return m_context_provider; }
 
    // Setters
    void SetEnabled(bool enabled) { m_enabled = enabled; }
    void SetState(ENUM_STRATEGY_STATE state) { m_state = state; }
-   void SetConfigManager(CConfigManager *config_manager) { m_config_manager = config_manager; }
+   void SetContextProvider(IContextProvider *context_provider) { m_context_provider = context_provider; }
 
    // Métodos de utilidade
    bool HasValidSignal() const { return m_last_signal.is_valid; }
@@ -124,7 +122,7 @@ CStrategyBase::CStrategyBase()
     m_state = STRATEGY_IDLE;
     m_last_signal.Reset();
     m_last_update = 0;
-    m_config_manager = NULL;
+    m_context_provider = NULL;
 }
 
 //+------------------------------------------------------------------+
@@ -208,7 +206,7 @@ void CStrategyBase::Reset()
      m_state = STRATEGY_IDLE;
      m_last_signal.Reset();
      m_last_update = 0;
-     m_config_manager = NULL;
+     m_context_provider = NULL;
 }
 
 #endif
