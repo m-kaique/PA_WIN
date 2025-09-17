@@ -10,6 +10,7 @@
 #include "../../../utils/common_types.mqh"
 #include "../../../interfaces/icontext_provider.mqh"
 #include "../../../STRATEGIES/strategy_ctx.mqh"
+#include "../../../STRATEGIES/strategies/strategies_types.mqh"
 #include "../../config_types.mqh"
 
 //+------------------------------------------------------------------+
@@ -151,11 +152,24 @@ CEmasBullBuyConfig *CStrategyConfigParser::ParseEmasBuyBullConfig(CJAVal *strate
     config.enabled = strategy_json["enabled"].ToBool();
 
     // Configurações específicas da estratégia EMA Buy Bull
-    // Adicionar campos específicos conforme necessário
-    // Por exemplo:
-    // config.ema_fast_period = strategy_json["ema_fast_period"].ToInt();
-    // config.ema_slow_period = strategy_json["ema_slow_period"].ToInt();
-    // config.risk_percent = strategy_json["risk_percent"].ToDouble();
+    config.ema_fast_period = (int)(long)strategy_json["ema_fast_period"].ToDbl();
+    config.ema_slow_period = (int)(long)strategy_json["ema_slow_period"].ToDbl();
+    config.risk_percent = strategy_json["risk_percent"].ToDbl();
+    config.stop_loss_pips = strategy_json["stop_loss_pips"].ToDbl();
+    config.take_profit_ratio = strategy_json["take_profit_ratio"].ToDbl();
+
+    // New configurable parameters
+    config.min_distance_9_21_atr = strategy_json["min_distance_9_21_atr"].ToDbl();
+    config.min_distance_21_50_atr = strategy_json["min_distance_21_50_atr"].ToDbl();
+    config.lookback_candles = (int)(long)strategy_json["lookback_candles"].ToDbl();
+    config.max_distance_atr = strategy_json["max_distance_atr"].ToDbl();
+    config.max_duration_candles = (int)(long)strategy_json["max_duration_candles"].ToDbl();
+    config.lookback_periods = (int)(long)strategy_json["lookback_periods"].ToDbl();
+    config.min_volatility_ratio = strategy_json["min_volatility_ratio"].ToDbl();
+    config.max_volatility_ratio = strategy_json["max_volatility_ratio"].ToDbl();
+    config.bullish_structure_atr_threshold = strategy_json["bullish_structure_atr_threshold"].ToDbl();
+    config.adx_min_value = (int)(long)strategy_json["adx_min_value"].ToDbl();
+    config.adx_max_value = (int)(long)strategy_json["adx_max_value"].ToDbl();
 
     Print("EMA Buy Bull config parseada: ", config.name);
     return config;

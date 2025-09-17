@@ -28,11 +28,11 @@ private:
    double CalculateTakeProfit(double entry_price, double stop_loss);
 
    // Métodos auxiliares migrados da lógica CompraAlta
-   bool IsStrongTrend(TF_CTX *ctx, double min_distance_9_21_atr = 0.3, double min_distance_21_50_atr = 0.5);
-   bool HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3, int lookback_candles = 3);
-   bool IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma, double max_distance_atr = 0.8, int max_duration_candles = 3);
-   bool IsGoodVolatilityEnvironment(TF_CTX *ctx, int lookback_periods = 10, double min_volatility_ratio = 0.7, double max_volatility_ratio = 1.5);
-   bool IsInBullishStructure(TF_CTX *ctx, double atr_value);
+   bool IsStrongTrend(TF_CTX *ctx);
+   bool HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3);
+   bool IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma);
+   bool IsGoodVolatilityEnvironment(TF_CTX *ctx);
+   bool IsInBullishStructure(TF_CTX *ctx);
 
 protected:
    virtual bool DoInit() override;
@@ -93,213 +93,213 @@ bool CEmasBuyBull::DoUpdate()
 //+------------------------------------------------------------------+
 //| Verificar se há tendência forte baseada na distância entre médias |
 //+------------------------------------------------------------------+
-bool CEmasBuyBull::IsStrongTrend(TF_CTX *ctx, double min_distance_9_21_atr = 0.3, double min_distance_21_50_atr = 0.5)
+bool CEmasBuyBull::IsStrongTrend(TF_CTX *ctx)
 {
-   if (ctx == NULL)
-      return false;
+    if (ctx == NULL)
+       return false;
 
-   CMovingAverages *ema9 = ctx.GetIndicator("ema9");
-   CMovingAverages *ema21 = ctx.GetIndicator("ema21");
-   CMovingAverages *ema50 = ctx.GetIndicator("ema50");
-   CATR *atr = ctx.GetIndicator("ATR15");
+    CMovingAverages *ema9 = ctx.GetIndicator("ema9");
+    CMovingAverages *ema21 = ctx.GetIndicator("ema21");
+    CMovingAverages *ema50 = ctx.GetIndicator("ema50");
+    CATR *atr = ctx.GetIndicator("ATR15");
 
-   if (ema9 == NULL || ema21 == NULL || ema50 == NULL || atr == NULL)
-      return false;
+    if (ema9 == NULL || ema21 == NULL || ema50 == NULL || atr == NULL)
+       return false;
 
-   double ema9_val = ema9.GetValue(1);
-   double ema21_val = ema21.GetValue(1);
-   double ema50_val = ema50.GetValue(1);
-   double atr_val = atr.GetValue(1);
+    double ema9_val = ema9.GetValue(1);
+    double ema21_val = ema21.GetValue(1);
+    double ema50_val = ema50.GetValue(1);
+    double atr_val = atr.GetValue(1);
 
-   if (atr_val <= 0)
-      return false;
+    if (atr_val <= 0)
+       return false;
 
-   double dist_9_21 = MathAbs(ema9_val - ema21_val) / atr_val;
-   double dist_21_50 = MathAbs(ema21_val - ema50_val) / atr_val;
+    double dist_9_21 = MathAbs(ema9_val - ema21_val) / atr_val;
+    double dist_21_50 = MathAbs(ema21_val - ema50_val) / atr_val;
 
-   bool strong_trend = (dist_9_21 >= min_distance_9_21_atr && dist_21_50 >= min_distance_21_50_atr);
+    bool strong_trend = (dist_9_21 >= m_config.min_distance_9_21_atr && dist_21_50 >= m_config.min_distance_21_50_atr);
 
-   return strong_trend;
+    return strong_trend;
 }
 
 //+------------------------------------------------------------------+
 //| Verificar momentum bullish através de price action              |
 //+------------------------------------------------------------------+
-bool CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3, int lookback_candles = 3)
+bool CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3)
 {
-   if (ctx_m15 == NULL || ctx_m3 == NULL)
-      return false;
+    if (ctx_m15 == NULL || ctx_m3 == NULL)
+       return false;
 
-   CMovingAverages *ema21_m15 = ctx_m15.GetIndicator("ema21");
-   if (ema21_m15 == NULL)
-      return false;
+    CMovingAverages *ema21_m15 = ctx_m15.GetIndicator("ema21");
+    if (ema21_m15 == NULL)
+       return false;
 
-   string symbol = Symbol();
+    string symbol = Symbol();
 
-   // Critério 1: Verificar se o preço está consistentemente acima da EMA21 no M15
-   int candles_above_ema21 = 0;
-   for (int i = 1; i <= lookback_candles; i++)
-   {
-      double close = iClose(symbol, PERIOD_M15, i);
-      double ema21_val = ema21_m15.GetValue(i);
-      if (close > ema21_val)
-      {
-         candles_above_ema21++;
-      }
-   }
-   bool price_above_ema21 = (candles_above_ema21 >= 2);
+    // Critério 1: Verificar se o preço está consistentemente acima da EMA21 no M15
+    int candles_above_ema21 = 0;
+    for (int i = 1; i <= m_config.lookback_candles; i++)
+    {
+       double close = iClose(symbol, PERIOD_M15, i);
+       double ema21_val = ema21_m15.GetValue(i);
+       if (close > ema21_val)
+       {
+          candles_above_ema21++;
+       }
+    }
+    bool price_above_ema21 = (candles_above_ema21 >= 2);
 
-   // Critério 2: Verificar se não há sinais de pânico de venda
-   bool no_panic_selling = true;
-   for (int i = 1; i <= 2; i++)
-   {
-      double open = iOpen(symbol, PERIOD_M3, i);
-      double close = iClose(symbol, PERIOD_M3, i);
-      double low = iLow(symbol, PERIOD_M3, i);
-      double high = iHigh(symbol, PERIOD_M3, i);
+    // Critério 2: Verificar se não há sinais de pânico de venda
+    bool no_panic_selling = true;
+    for (int i = 1; i <= 2; i++)
+    {
+       double open = iOpen(symbol, PERIOD_M3, i);
+       double close = iClose(symbol, PERIOD_M3, i);
+       double low = iLow(symbol, PERIOD_M3, i);
+       double high = iHigh(symbol, PERIOD_M3, i);
 
-      double body_size = MathAbs(close - open);
-      double lower_shadow = MathMin(open, close) - low;
-      double candle_range = high - low;
+       double body_size = MathAbs(close - open);
+       double lower_shadow = MathMin(open, close) - low;
+       double candle_range = high - low;
 
-      if (candle_range > 0)
-      {
-         double lower_shadow_ratio = lower_shadow / candle_range;
-         if (lower_shadow_ratio > 0.6)
-         {
-            no_panic_selling = false;
-            break;
-         }
-      }
-   }
+       if (candle_range > 0)
+       {
+          double lower_shadow_ratio = lower_shadow / candle_range;
+          if (lower_shadow_ratio > 0.6)
+          {
+             no_panic_selling = false;
+             break;
+          }
+       }
+    }
 
-   // Critério 3: Verificar se a última vela mostra força de alta
-   double last_open = iOpen(symbol, PERIOD_M3, 1);
-   double last_close = iClose(symbol, PERIOD_M3, 1);
-   bool last_candle_bullish = (last_close >= last_open);
+    // Critério 3: Verificar se a última vela mostra força de alta
+    double last_open = iOpen(symbol, PERIOD_M3, 1);
+    double last_close = iClose(symbol, PERIOD_M3, 1);
+    bool last_candle_bullish = (last_close >= last_open);
 
-   return price_above_ema21 && no_panic_selling && last_candle_bullish;
+    return price_above_ema21 && no_panic_selling && last_candle_bullish;
 }
 
 //+------------------------------------------------------------------+
 //| Validar se é um pullback adequado                               |
 //+------------------------------------------------------------------+
-bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma, double max_distance_atr = 0.8, int max_duration_candles = 3)
+bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma)
 {
-   if (ctx == NULL || ma == NULL || atr_value <= 0)
-      return false;
+    if (ctx == NULL || ma == NULL || atr_value <= 0)
+       return false;
 
-   // Critério 1: Verificar se o pullback não é muito profundo
-   if (position_info.distance > max_distance_atr * atr_value)
-   {
-      return false;
-   }
+    // Critério 1: Verificar se o pullback não é muito profundo
+    if (position_info.distance > m_config.max_distance_atr * atr_value)
+    {
+       return false;
+    }
 
-   // Critério 2: Verificar velocidade do pullback
-   string symbol = Symbol();
-   ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
-   bool was_further_away = false;
+    // Critério 2: Verificar velocidade do pullback
+    string symbol = Symbol();
+    ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
+    bool was_further_away = false;
 
-   for (int i = 2; i <= max_duration_candles + 1; i++)
-   {
-      double prev_close = iClose(symbol, tf, i);
-      double prev_ma_value = ma.GetValue(i);
-      double prev_distance = MathAbs(prev_close - prev_ma_value);
+    for (int i = 2; i <= m_config.max_duration_candles + 1; i++)
+    {
+       double prev_close = iClose(symbol, tf, i);
+       double prev_ma_value = ma.GetValue(i);
+       double prev_distance = MathAbs(prev_close - prev_ma_value);
 
-      if (prev_distance > position_info.distance * 1.2)
-      {
-         was_further_away = true;
-         break;
-      }
-   }
+       if (prev_distance > position_info.distance * 1.2)
+       {
+          was_further_away = true;
+          break;
+       }
+    }
 
-   return was_further_away;
+    return was_further_away;
 }
 
 //+------------------------------------------------------------------+
 //| Analisar ambiente de volatilidade                               |
 //+------------------------------------------------------------------+
-bool CEmasBuyBull::IsGoodVolatilityEnvironment(TF_CTX *ctx, int lookback_periods = 10, double min_volatility_ratio = 0.7, double max_volatility_ratio = 1.5)
+bool CEmasBuyBull::IsGoodVolatilityEnvironment(TF_CTX *ctx)
 {
-   if (ctx == NULL)
-      return false;
+    if (ctx == NULL)
+       return false;
 
-   CATR *atr = ctx.GetIndicator("ATR15");
-   if (atr == NULL)
-      return false;
+    CATR *atr = ctx.GetIndicator("ATR15");
+    if (atr == NULL)
+       return false;
 
-   double current_atr = atr.GetValue(1);
-   if (current_atr <= 0)
-      return false;
+    double current_atr = atr.GetValue(1);
+    if (current_atr <= 0)
+       return false;
 
-   double sum_atr = 0;
-   int valid_periods = 0;
+    double sum_atr = 0;
+    int valid_periods = 0;
 
-   for (int i = 1; i <= lookback_periods; i++)
-   {
-      double period_atr = atr.GetValue(i);
-      if (period_atr > 0)
-      {
-         sum_atr += period_atr;
-         valid_periods++;
-      }
-   }
+    for (int i = 1; i <= m_config.lookback_periods; i++)
+    {
+       double period_atr = atr.GetValue(i);
+       if (period_atr > 0)
+       {
+          sum_atr += period_atr;
+          valid_periods++;
+       }
+    }
 
-   if (valid_periods < lookback_periods / 2)
-   {
-      return false;
-   }
+    if (valid_periods < m_config.lookback_periods / 2)
+    {
+       return false;
+    }
 
-   double avg_atr = sum_atr / valid_periods;
-   double volatility_ratio = current_atr / avg_atr;
+    double avg_atr = sum_atr / valid_periods;
+    double volatility_ratio = current_atr / avg_atr;
 
-   return (volatility_ratio >= min_volatility_ratio && volatility_ratio <= max_volatility_ratio);
+    return (volatility_ratio >= m_config.min_volatility_ratio && volatility_ratio <= m_config.max_volatility_ratio);
 }
 
 //+------------------------------------------------------------------+
 //| Verificar se o mercado está em estrutura de alta                |
 //+------------------------------------------------------------------+
-bool CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx, double atr_value)
+bool CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
 {
-   if (ctx == NULL)
-      return false;
+    if (ctx == NULL)
+       return false;
 
-   CMovingAverages *sma200 = ctx.GetIndicator("sma200");
-   CATR *atr = ctx.GetIndicator("ATR15");
+    CMovingAverages *sma200 = ctx.GetIndicator("sma200");
+    CATR *atr = ctx.GetIndicator("ATR15");
 
-   if (sma200 == NULL || atr == NULL)
-      return false;
+    if (sma200 == NULL || atr == NULL)
+       return false;
 
-   string symbol = Symbol();
-   ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
+    string symbol = Symbol();
+    ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
 
-   double current_close = iClose(symbol, tf, 1);
-   double sma200_val = sma200.GetValue(1);
-   double atr_val = atr.GetValue(1);
+    double current_close = iClose(symbol, tf, 1);
+    double sma200_val = sma200.GetValue(1);
+    double atr_val = atr.GetValue(1);
 
-   if (atr_val <= 0)
-      return false;
+    if (atr_val <= 0)
+       return false;
 
-   // Critério 1: Preço deve estar acima da SMA200
-   if (current_close <= sma200_val)
-   {
-      return false;
-   }
+    // Critério 1: Preço deve estar acima da SMA200
+    if (current_close <= sma200_val)
+    {
+       return false;
+    }
 
-   // Critério 2: Preço deve estar a uma distância mínima da SMA200
-   double distance_to_sma200 = (current_close - sma200_val) / atr_val;
-   if (distance_to_sma200 < atr_value)
-   {
-      return false;
-   }
+    // Critério 2: Preço deve estar a uma distância mínima da SMA200
+    double distance_to_sma200 = (current_close - sma200_val) / atr_val;
+    if (distance_to_sma200 < m_config.bullish_structure_atr_threshold)
+    {
+       return false;
+    }
 
-   // Critério 3: SMA200 deve estar inclinada para cima
-   SSlopeValidation sma200_slope = sma200.GetSlopeValidation(atr_val, COPY_MIDDLE);
-   bool sma200_trending_up = (sma200_slope.simple_difference.trend_direction != "BAIXA" ||
+    // Critério 3: SMA200 deve estar inclinada para cima
+    SSlopeValidation sma200_slope = sma200.GetSlopeValidation(atr_val, COPY_MIDDLE);
+    bool sma200_trending_up = (sma200_slope.simple_difference.trend_direction != "BAIXA" ||
                               sma200_slope.discrete_derivative.trend_direction != "BAIXA" ||
                               sma200_slope.linear_regression.trend_direction != "BAIXA");
 
-   return sma200_trending_up;
+    return sma200_trending_up;
 }
 
 //+------------------------------------------------------------------+
@@ -371,11 +371,11 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    }
 
    // === FILTROS DEPENDENTES ===
-   bool strong_trend_m15 = IsStrongTrend(ctx_m15, 0.3, 0.5);
-   bool bullish_momentum = HasBullishMomentum(ctx_m15, ctx_m3, 3);
-   bool good_volatility_m15 = IsGoodVolatilityEnvironment(ctx_m15, 10, 0.7, 1.5);
-   bool bullish_structure_m15 = IsInBullishStructure(ctx_m15, 0.5);
-   bool bullish_structure_m3 = IsInBullishStructure(ctx_m3, 0.5);
+   bool strong_trend_m15 = IsStrongTrend(ctx_m15);
+   bool bullish_momentum = HasBullishMomentum(ctx_m15, ctx_m3);
+   bool good_volatility_m15 = IsGoodVolatilityEnvironment(ctx_m15);
+   bool bullish_structure_m15 = IsInBullishStructure(ctx_m15);
+   bool bullish_structure_m3 = IsInBullishStructure(ctx_m3);
 
    // Verificar ADX
    bool strong_trend_adx_m15 = false;
@@ -384,7 +384,7 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    if (adx_m15 != NULL)
    {
       adx_value_m15 = adx_m15.GetValue(1);
-      strong_trend_adx_m15 = (adx_value_m15 >= 25 && adx_value_m15 <= 60);
+      strong_trend_adx_m15 = (adx_value_m15 >= m_config.adx_min_value && adx_value_m15 <= m_config.adx_max_value);
    }
 
    // === PONTOS DE ENTRADA ===
@@ -392,13 +392,13 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
                                   ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
                                   ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
-   bool valid_pullback_EMA9_M3 = IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3, 0.8, 3);
+   bool valid_pullback_EMA9_M3 = IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3);
 
    SPositionInfo ema21_m3_position = ema21_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
    bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
                                    ema21_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
                                    ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
-   bool valid_pullback_EMA21_M3 = IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3, 0.8, 3);
+   bool valid_pullback_EMA21_M3 = IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3);
 
    // === CRITÉRIO FINAL DE ENTRADA ===
    bool filtros_ok = EMA9_above_EMA21_M15 && EMA21_above_EMA50_M15 &&
@@ -575,12 +575,12 @@ void CEmasBuyBull::PrintFullDebugLog()
     Print("M3 - EMA21 > EMA50: ", EMA21_above_EMA50_M3 ? "Sim" : "Não");
 
     // Filtros dependentes
-    bool strong_trend_m15 = IsStrongTrend(ctx_m15, 0.3, 0.5);
-    bool bullish_momentum = HasBullishMomentum(ctx_m15, ctx_m3, 3);
-    bool good_volatility_m15 = IsGoodVolatilityEnvironment(ctx_m15, 10, 0.7, 1.5);
-    bool bullish_structure_m15 = IsInBullishStructure(ctx_m15, 0.5);
-    bool bullish_structure_m3 = IsInBullishStructure(ctx_m3, 0.5);
-    bool strong_trend_adx_m15 = (adx_m15 != NULL) ? (adx_m15.GetValue(1) >= 25 && adx_m15.GetValue(1) <= 60) : false;
+    bool strong_trend_m15 = IsStrongTrend(ctx_m15);
+    bool bullish_momentum = HasBullishMomentum(ctx_m15, ctx_m3);
+    bool good_volatility_m15 = IsGoodVolatilityEnvironment(ctx_m15);
+    bool bullish_structure_m15 = IsInBullishStructure(ctx_m15);
+    bool bullish_structure_m3 = IsInBullishStructure(ctx_m3);
+    bool strong_trend_adx_m15 = (adx_m15 != NULL) ? (adx_m15.GetValue(1) >= m_config.adx_min_value && adx_m15.GetValue(1) <= m_config.adx_max_value) : false;
 
     Print("--- FILTROS DEPENDENTES ---");
     Print("Tendência Forte (M15): ", strong_trend_m15 ? "Sim" : "Não");
@@ -597,12 +597,12 @@ void CEmasBuyBull::PrintFullDebugLog()
     bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
                                    ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
                                    ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
-    bool valid_pullback_EMA9_M3 = ema9_m3 ? IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3, 0.8, 3) : false;
+    bool valid_pullback_EMA9_M3 = ema9_m3 ? IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3) : false;
 
     bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
                                     ema21_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
                                     ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
-    bool valid_pullback_EMA21_M3 = ema21_m3 ? IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3, 0.8, 3) : false;
+    bool valid_pullback_EMA21_M3 = ema21_m3 ? IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3) : false;
 
     Print("--- PONTOS DE ENTRADA (M3) ---");
     Print("Pullback EMA9: Posição=", EnumToString(ema9_m3_position.position), " | Válido=", valid_pullback_EMA9_M3 ? "Sim" : "Não");
