@@ -561,7 +561,21 @@
                {
                   "enabled": true,
                   "name": "m15_m3_emas_buy_bull",
-                  "type": "emas_buy_bull"
+                  "type": "emas_buy_bull",
+                  "risk_percent": 1.0,
+                  "stop_loss_pips": 50.0,
+                  "take_profit_ratio": 2.0,
+                  "min_distance_9_21_atr": 0.3,
+                  "min_distance_21_50_atr": 0.5,
+                  "lookback_candles": 3,
+                  "max_distance_atr": 0.8,
+                  "max_duration_candles": 3,
+                  "lookback_periods": 10,
+                  "min_volatility_ratio": 0.7,
+                  "max_volatility_ratio": 1.5,
+                  "bullish_structure_atr_threshold": 0.5,
+                  "adx_min_value": 25,
+                  "adx_max_value": 60
                }
             ]
          },
@@ -572,11 +586,16 @@
                   "enabled": false,
                   "name": "m15_m3_risky_emas_buy_bull",
                   "type": "emas_buy_bull"
-               },
+               }
+            ]
+         },
+         "Moderate_Setup": {
+            "enabled": false,
+            "strategies": [
                {
                   "enabled": false,
-                  "name": "m15_m3_risky_emas_sell_bear",
-                  "type": "emas_sell_bear"
+                  "name": "m15_m3_moderate_emas_buy_bull",
+                  "type": "emas_buy_bull"
                }
             ]
          }

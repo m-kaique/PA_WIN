@@ -152,8 +152,6 @@ CEmasBullBuyConfig *CStrategyConfigParser::ParseEmasBuyBullConfig(CJAVal *strate
     config.enabled = strategy_json["enabled"].ToBool();
 
     // Configurações específicas da estratégia EMA Buy Bull
-    config.ema_fast_period = (int)(long)strategy_json["ema_fast_period"].ToDbl();
-    config.ema_slow_period = (int)(long)strategy_json["ema_slow_period"].ToDbl();
     config.risk_percent = strategy_json["risk_percent"].ToDbl();
     config.stop_loss_pips = strategy_json["stop_loss_pips"].ToDbl();
     config.take_profit_ratio = strategy_json["take_profit_ratio"].ToDbl();

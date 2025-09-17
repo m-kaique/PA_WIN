@@ -522,6 +522,26 @@ void CEmasBuyBull::PrintFullDebugLog()
     Print("Estado da Estratégia: ", EnumToString(GetState()));
     Print("Último Sinal: ", GetLastSignal().is_valid ? "Válido" : "Inválido");
 
+    // Configuração
+    Print("--- CONFIGURAÇÃO ---");
+    Print("Nome: ", m_config.name);
+    Print("Tipo: ", m_config.type);
+    Print("Habilitado: ", m_config.enabled ? "Sim" : "Não");
+    Print("Risco %: ", DoubleToString(m_config.risk_percent, 2));
+    Print("Stop Loss Pips: ", DoubleToString(m_config.stop_loss_pips, 1));
+    Print("Take Profit Ratio: ", DoubleToString(m_config.take_profit_ratio, 1));
+    Print("Min Dist 9-21 ATR: ", DoubleToString(m_config.min_distance_9_21_atr, 2));
+    Print("Min Dist 21-50 ATR: ", DoubleToString(m_config.min_distance_21_50_atr, 2));
+    Print("Lookback Candles: ", IntegerToString(m_config.lookback_candles));
+    Print("Max Distance ATR: ", DoubleToString(m_config.max_distance_atr, 2));
+    Print("Max Duration Candles: ", IntegerToString(m_config.max_duration_candles));
+    Print("Lookback Periods: ", IntegerToString(m_config.lookback_periods));
+    Print("Min Volatility Ratio: ", DoubleToString(m_config.min_volatility_ratio, 2));
+    Print("Max Volatility Ratio: ", DoubleToString(m_config.max_volatility_ratio, 2));
+    Print("Bullish Structure ATR Threshold: ", DoubleToString(m_config.bullish_structure_atr_threshold, 2));
+    Print("ADX Min Value: ", IntegerToString(m_config.adx_min_value));
+    Print("ADX Max Value: ", IntegerToString(m_config.adx_max_value));
+
     // Obter contextos
     TF_CTX *ctx_m15 = m_context_provider.GetContext(m_symbol, PERIOD_M15);
     TF_CTX *ctx_m3 = m_context_provider.GetContext(m_symbol, PERIOD_M3);

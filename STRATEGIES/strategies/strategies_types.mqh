@@ -26,8 +26,6 @@ class CEmasBullBuyConfig : public CStrategyConfig
 {
 public:
     // Existing parameters
-    int ema_fast_period;
-    int ema_slow_period;
     double risk_percent;
     double stop_loss_pips;
     double take_profit_ratio;
@@ -48,8 +46,6 @@ public:
     CEmasBullBuyConfig()
     {
        type = "emas_buy_bull";
-       ema_fast_period = 21;
-       ema_slow_period = 50;
        risk_percent = 1.0;
        stop_loss_pips = 50.0;
        take_profit_ratio = 2.0;
