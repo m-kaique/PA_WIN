@@ -13,6 +13,8 @@
 #include "../strategies_types.mqh"
 #include "../../../tf_ctx/tf_ctx.mqh"
 #include "../../../interfaces/icontext_provider.mqh"
+#include "../../../interfaces/inetwork_client.mqh"
+#include "../../../provider/provider.mqh"
 
 //+------------------------------------------------------------------+
 //| Enumerações para estados de estratégia                          |
@@ -65,20 +67,24 @@ struct SStrategySignal
 class CStrategyBase
 {
 protected:
-    string m_name;
-    string m_type;
-    bool m_enabled;
-    bool m_initialized;
-    ENUM_STRATEGY_STATE m_state;
-    SStrategySignal m_last_signal;
-    datetime m_last_update;
-    IContextProvider *m_context_provider;
+     string m_name;
+     string m_type;
+     bool m_enabled;
+     bool m_initialized;
+     ENUM_STRATEGY_STATE m_state;
+     SStrategySignal m_last_signal;
+     datetime m_last_update;
+     IContextProvider *m_context_provider;
+     INetworkClient *m_network_client;
 
    // Métodos virtuais puros que devem ser implementados pelas classes derivadas
    virtual bool DoInit() = 0;
    virtual bool DoUpdate() = 0;
    virtual SStrategySignal CheckForSignal() = 0;
    virtual bool ValidateSignal(const SStrategySignal &signal) = 0;
+
+   // Método para enviar sinal ao servidor
+   virtual void SendSignalToServer();
 
 public:
    // Construtor e destrutor
@@ -99,11 +105,13 @@ public:
    SStrategySignal GetLastSignal() const { return m_last_signal; }
    datetime GetLastUpdate() const { return m_last_update; }
    IContextProvider *GetContextProvider() const { return m_context_provider; }
+   INetworkClient *GetNetworkClient() const { return m_network_client; }
 
    // Setters
    void SetEnabled(bool enabled) { m_enabled = enabled; }
    void SetState(ENUM_STRATEGY_STATE state) { m_state = state; }
    void SetContextProvider(IContextProvider *context_provider) { m_context_provider = context_provider; }
+   void SetNetworkClient(INetworkClient *network_client) { m_network_client = network_client; }
 
    // Métodos de utilidade
    bool HasValidSignal() const { return m_last_signal.is_valid; }
@@ -115,14 +123,15 @@ public:
 //+------------------------------------------------------------------+
 CStrategyBase::CStrategyBase()
 {
-    m_name = "";
-    m_type = "";
-    m_enabled = false;
-    m_initialized = false;
-    m_state = STRATEGY_IDLE;
-    m_last_signal.Reset();
-    m_last_update = 0;
-    m_context_provider = NULL;
+     m_name = "";
+     m_type = "";
+     m_enabled = false;
+     m_initialized = false;
+     m_state = STRATEGY_IDLE;
+     m_last_signal.Reset();
+     m_last_update = 0;
+     m_context_provider = NULL;
+     m_network_client = NULL;
 }
 
 //+------------------------------------------------------------------+
@@ -184,14 +193,16 @@ bool CStrategyBase::Update()
    if (m_state == STRATEGY_IDLE)
    {
       SStrategySignal signal = CheckForSignal();
-      
+
       if (signal.is_valid && ValidateSignal(signal))
       {
          m_last_signal = signal;
          m_state = STRATEGY_SIGNAL_FOUND;
-         
-         Print("SINAL ENCONTRADO - ", m_name, ": ", 
+
+         Print("SINAL ENCONTRADO - ", m_name, ": ",
                EnumToString(signal.type), " @ ", DoubleToString(signal.entry_price, _Digits));
+
+         SendSignalToServer();
       }
    }
 
@@ -207,6 +218,38 @@ void CStrategyBase::Reset()
      m_last_signal.Reset();
      m_last_update = 0;
      m_context_provider = NULL;
+     m_network_client = NULL;
+}
+
+//+------------------------------------------------------------------+
+//| Enviar sinal ao servidor                                         |
+//+------------------------------------------------------------------+
+void CStrategyBase::SendSignalToServer()
+{
+    // Use the global functions from provider.mqh
+    if (!FrancisSocketIsReady())
+    {
+        Print("Network client not available or not initialized for strategy ", m_name);
+        return;
+    }
+
+    string json = StringFormat(
+        "{\"type\":\"signal\",\"strategy\":\"%s\",\"signal_type\":\"%s\",\"entry_price\":%.5f,\"symbol\":\"%s\",\"timestamp\":\"%s\"}",
+        m_name,
+        EnumToString(m_last_signal.type),
+        m_last_signal.entry_price,
+        Symbol(),
+        TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS)
+    );
+
+    if (!FrancisSocketSend(json))
+    {
+        Print("Failed to send signal to server from strategy ", m_name);
+    }
+    else
+    {
+        Print("Signal sent to server from strategy ", m_name);
+    }
 }
 
 #endif
