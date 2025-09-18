@@ -43,6 +43,18 @@ public:
     int adx_min_value;
     int adx_max_value;
 
+    // Validation enable/disable flags
+    bool enable_ema_alignment_m15;
+    bool enable_ema_alignment_m3;
+    bool enable_strong_trend;
+    bool enable_bullish_momentum;
+    bool enable_good_volatility;
+    bool enable_bullish_structure_m15;
+    bool enable_bullish_structure_m3;
+    bool enable_adx_filter;
+    bool enable_pullback_ema9;
+    bool enable_pullback_ema21;
+
     CEmasBullBuyConfig()
     {
        type = "emas_buy_bull";
@@ -62,6 +74,18 @@ public:
        bullish_structure_atr_threshold = 0.5;
        adx_min_value = 25;
        adx_max_value = 60;
+
+       // Initialize validation flags to true by default
+       enable_ema_alignment_m15 = true;
+       enable_ema_alignment_m3 = true;
+       enable_strong_trend = true;
+       enable_bullish_momentum = true;
+       enable_good_volatility = true;
+       enable_bullish_structure_m15 = true;
+       enable_bullish_structure_m3 = true;
+       enable_adx_filter = true;
+       enable_pullback_ema9 = true;
+       enable_pullback_ema21 = true;
     }
 };
 

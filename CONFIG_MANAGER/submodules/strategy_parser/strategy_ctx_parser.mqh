@@ -169,6 +169,18 @@ CEmasBullBuyConfig *CStrategyConfigParser::ParseEmasBuyBullConfig(CJAVal *strate
     config.adx_min_value = (int)(long)strategy_json["adx_min_value"].ToDbl();
     config.adx_max_value = (int)(long)strategy_json["adx_max_value"].ToDbl();
 
+    // Validation enable/disable flags
+    config.enable_ema_alignment_m15 = strategy_json["enable_ema_alignment_m15"].ToBool();
+    config.enable_ema_alignment_m3 = strategy_json["enable_ema_alignment_m3"].ToBool();
+    config.enable_strong_trend = strategy_json["enable_strong_trend"].ToBool();
+    config.enable_bullish_momentum = strategy_json["enable_bullish_momentum"].ToBool();
+    config.enable_good_volatility = strategy_json["enable_good_volatility"].ToBool();
+    config.enable_bullish_structure_m15 = strategy_json["enable_bullish_structure_m15"].ToBool();
+    config.enable_bullish_structure_m3 = strategy_json["enable_bullish_structure_m3"].ToBool();
+    config.enable_adx_filter = strategy_json["enable_adx_filter"].ToBool();
+    config.enable_pullback_ema9 = strategy_json["enable_pullback_ema9"].ToBool();
+    config.enable_pullback_ema21 = strategy_json["enable_pullback_ema21"].ToBool();
+
     Print("EMA Buy Bull config parseada: ", config.name);
     return config;
 }

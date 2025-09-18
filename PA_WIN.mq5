@@ -268,10 +268,14 @@ void UpdateSymbolContexts(string symbol)
                strategy_contexts[j].Update(); // This calls CheckForSignal internally
                //
                CEmasBuyBull *strategy = strategy_contexts[j].GetStrategy("m15_m3_emas_buy_bull");
-               Print("#####################");
-               Print("#####################");
-               Print("#####################");
+               Print("INICIO DO LOG ######################################################################");
+               Print("INICIO DO LOG ######################################################################");
+               Print("INICIO DO LOG ######################################################################");
                strategy.PrintFullDebugLog();
+               Print("FIM DO LOG #########################################################################");
+               Print("FIM DO LOG #########################################################################");
+               Print("FIM DO LOG #########################################################################");
+
                if (strategy != NULL)
                {
                   ENUM_STRATEGY_STATE state = strategy.GetState();
@@ -280,10 +284,6 @@ void UpdateSymbolContexts(string symbol)
                      strategy.SetState(STRATEGY_IDLE);
                   }
                }
-               //
-               Print("#####################");
-               Print("#####################");
-               Print("#####################");
             }
          }
       }
