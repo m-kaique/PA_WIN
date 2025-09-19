@@ -140,7 +140,7 @@ bool CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3)
     int candles_above_ema21 = 0;
     for (int i = 1; i <= m_config.lookback_candles; i++)
     {
-       double close = iClose(symbol, PERIOD_M15, i);
+       double close = iClose(m_current_symbol, PERIOD_M15, i);
        double ema21_val = ema21_m15.GetValue(i);
        if (close > ema21_val)
        {
@@ -153,10 +153,10 @@ bool CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3)
     bool no_panic_selling = true;
     for (int i = 1; i <= 2; i++)
     {
-       double open = iOpen(symbol, PERIOD_M3, i);
-       double close = iClose(symbol, PERIOD_M3, i);
-       double low = iLow(symbol, PERIOD_M3, i);
-       double high = iHigh(symbol, PERIOD_M3, i);
+       double open = iOpen(m_current_symbol, PERIOD_M3, i);
+       double close = iClose(m_current_symbol, PERIOD_M3, i);
+       double low = iLow(m_current_symbol, PERIOD_M3, i);
+       double high = iHigh(m_current_symbol, PERIOD_M3, i);
 
        double body_size = MathAbs(close - open);
        double lower_shadow = MathMin(open, close) - low;
@@ -174,8 +174,8 @@ bool CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3)
     }
 
     // Critério 3: Verificar se a última vela mostra força de alta
-    double last_open = iOpen(symbol, PERIOD_M3, 1);
-    double last_close = iClose(symbol, PERIOD_M3, 1);
+    double last_open = iOpen(m_current_symbol, PERIOD_M3, 1);
+    double last_close = iClose(m_current_symbol, PERIOD_M3, 1);
     bool last_candle_bullish = (last_close >= last_open);
 
     return price_above_ema21 && no_panic_selling && last_candle_bullish;
@@ -196,13 +196,12 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
     }
 
     // Critério 2: Verificar velocidade do pullback
-    string symbol = Symbol();
     ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
     bool was_further_away = false;
 
     for (int i = 2; i <= m_config.max_duration_candles + 1; i++)
     {
-       double prev_close = iClose(symbol, tf, i);
+       double prev_close = iClose(m_current_symbol, tf, i);
        double prev_ma_value = ma.GetValue(i);
        double prev_distance = MathAbs(prev_close - prev_ma_value);
 
@@ -270,10 +269,9 @@ bool CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
     if (sma200 == NULL || atr == NULL)
        return false;
 
-    string symbol = Symbol();
     ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
 
-    double current_close = iClose(symbol, tf, 1);
+    double current_close = iClose(m_current_symbol, tf, 1);
     double sma200_val = sma200.GetValue(1);
     double atr_val = atr.GetValue(1);
 

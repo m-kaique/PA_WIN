@@ -265,7 +265,7 @@ void UpdateSymbolContexts(string symbol)
          {
             if (strategy_contexts[j] != NULL)
             {
-               strategy_contexts[j].Update(); // This calls CheckForSignal internally
+               strategy_contexts[j].Update(symbol); // This calls CheckForSignal internally and passes the symbol
                //
                CEmasBuyBull *strategy = strategy_contexts[j].GetStrategy("m15_m3_emas_buy_bull");
                Print("INICIO DO LOG ######################################################################");

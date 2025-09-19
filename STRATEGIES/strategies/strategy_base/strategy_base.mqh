@@ -76,6 +76,7 @@ protected:
      datetime m_last_update;
      IContextProvider *m_context_provider;
      INetworkClient *m_network_client;
+     string m_current_symbol;
 
    // Métodos virtuais puros que devem ser implementados pelas classes derivadas
    virtual bool DoInit() = 0;
@@ -93,7 +94,7 @@ public:
 
    // Métodos públicos principais
    virtual bool Init(string name, const CStrategyConfig &config);
-   virtual bool Update();
+   virtual bool Update(string symbol = "");
    virtual void Reset();
 
    // Getters
@@ -132,6 +133,7 @@ CStrategyBase::CStrategyBase()
      m_last_update = 0;
      m_context_provider = NULL;
      m_network_client = NULL;
+     m_current_symbol = "";
 }
 
 //+------------------------------------------------------------------+
@@ -175,38 +177,44 @@ bool CStrategyBase::Init(string name, const CStrategyConfig &config)
 //+------------------------------------------------------------------+
 //| Atualização principal                                            |
 //+------------------------------------------------------------------+
-bool CStrategyBase::Update()
+bool CStrategyBase::Update(string symbol = "")
 {
-   if (!m_initialized || !m_enabled)
-      return true;
+    if (!m_initialized || !m_enabled)
+       return true;
 
-   m_last_update = TimeCurrent();
+    // Store the current symbol for use in derived methods
+    if (symbol != "")
+       m_current_symbol = symbol;
+    else if (m_current_symbol == "")
+       m_current_symbol = Symbol(); // Fallback to chart symbol
 
-   // Chamar atualização específica da estratégia derivada
-   if (!DoUpdate())
-   {
-      Print("ERRO: Falha na atualização da estratégia ", m_name);
-      return false;
-   }
+    m_last_update = TimeCurrent();
 
-   // Verificar por novos sinais apenas se estivermos em estado idle
-   if (m_state == STRATEGY_IDLE)
-   {
-      SStrategySignal signal = CheckForSignal();
+    // Chamar atualização específica da estratégia derivada
+    if (!DoUpdate())
+    {
+       Print("ERRO: Falha na atualização da estratégia ", m_name);
+       return false;
+    }
 
-      if (signal.is_valid && ValidateSignal(signal))
-      {
-         m_last_signal = signal;
-         m_state = STRATEGY_SIGNAL_FOUND;
+    // Verificar por novos sinais apenas se estivermos em estado idle
+    if (m_state == STRATEGY_IDLE)
+    {
+       SStrategySignal signal = CheckForSignal();
 
-         Print("SINAL ENCONTRADO - ", m_name, ": ",
-               EnumToString(signal.type), " @ ", DoubleToString(signal.entry_price, _Digits));
+       if (signal.is_valid && ValidateSignal(signal))
+       {
+          m_last_signal = signal;
+          m_state = STRATEGY_SIGNAL_FOUND;
 
-         SendSignalToServer();
-      }
-   }
+          Print("SINAL ENCONTRADO - ", m_name, ": ",
+                EnumToString(signal.type), " @ ", DoubleToString(signal.entry_price, _Digits));
 
-   return true;
+          SendSignalToServer();
+       }
+    }
+
+    return true;
 }
 
 //+------------------------------------------------------------------+
@@ -238,7 +246,7 @@ void CStrategyBase::SendSignalToServer()
         m_name,
         EnumToString(m_last_signal.type),
         m_last_signal.entry_price,
-        Symbol(),
+        m_current_symbol,
         TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS)
     );
 

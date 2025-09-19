@@ -31,7 +31,7 @@ public:
    ~STRATEGY_CTX();
 
    bool Init();
-   bool Update();
+   bool Update(string symbol = "");
    CStrategyBase *GetStrategy(string name);
    bool IsInitialized() const { return m_initialized; }
    string GetSetupName() const { return m_setup_name; }
@@ -139,21 +139,21 @@ int STRATEGY_CTX::FindByName(string name, string &arr[])
 //+------------------------------------------------------------------+
 //| Atualizar estratégias                                            |
 //+------------------------------------------------------------------+
-bool STRATEGY_CTX::Update()
+bool STRATEGY_CTX::Update(string symbol = "")
 {
-   if (!m_initialized)
-      return false;
+    if (!m_initialized)
+       return false;
 
-   bool all_updated = true;
-   for (int i = 0; i < ArraySize(m_strategies); i++)
-   {
-      if (m_strategies[i] != NULL)
-      {
-         all_updated &= m_strategies[i].Update();
-      }
-   }
+    bool all_updated = true;
+    for (int i = 0; i < ArraySize(m_strategies); i++)
+    {
+       if (m_strategies[i] != NULL)
+       {
+          all_updated &= m_strategies[i].Update(symbol);
+       }
+    }
 
-   return all_updated;
+    return all_updated;
 }
 
 //+------------------------------------------------------------------+
