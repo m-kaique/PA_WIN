@@ -45,7 +45,10 @@ public:
     ~CEmasBuyBull();
 
     bool Init(string name, const CEmasBullBuyConfig &config);
-   void PrintFullDebugLog();
+    void PrintFullDebugLog();
+
+    // Override to return strategy configuration
+    virtual CStrategyConfig *GetStrategyConfig() override;
 };
 
 //+------------------------------------------------------------------+
@@ -673,4 +676,13 @@ void CEmasBuyBull::PrintFullDebugLog()
 
     Print("=== FIM DO DEBUG LOG ===");
 }
+
+//+------------------------------------------------------------------+
+//| Retornar configuração da estratégia                              |
+//+------------------------------------------------------------------+
+CStrategyConfig *CEmasBuyBull::GetStrategyConfig()
+{
+    return &m_config;
+}
+
 #endif

@@ -77,6 +77,7 @@ protected:
      IContextProvider *m_context_provider;
      INetworkClient *m_network_client;
      string m_current_symbol;
+     ENUM_TIMEFRAMES m_current_timeframe;
 
    // Métodos virtuais puros que devem ser implementados pelas classes derivadas
    virtual bool DoInit() = 0;
@@ -87,6 +88,32 @@ protected:
    // Método para enviar sinal ao servidor
    virtual void SendSignalToServer();
 
+   // Método para validar se timeframe está autorizado para esta estratégia
+   virtual bool IsTimeframeAuthorized(ENUM_TIMEFRAMES timeframe)
+   {
+       CStrategyConfig *config = GetStrategyConfig();
+       if (config == NULL)
+           return true; // Se não há configuração, permite todos os timeframes
+
+       // Verificar se é uma configuração que suporta timeframes autorizados
+       // Por enquanto, apenas CEmasBullBuyConfig tem essa funcionalidade
+       string config_type = config.type;
+       if (config_type == "emas_buy_bull")
+       {
+           CEmasBullBuyConfig *emas_config = dynamic_cast<CEmasBullBuyConfig*>(config);
+           if (emas_config != NULL)
+           {
+               return emas_config.IsTimeframeAuthorized(timeframe);
+           }
+       }
+
+       // Para outras estratégias sem configuração específica de timeframes, permitir todos
+       return true;
+   }
+
+   // Método auxiliar para obter configuração da estratégia (deve ser implementado pelas classes derivadas)
+   virtual CStrategyConfig *GetStrategyConfig() { return NULL; }
+
 public:
    // Construtor e destrutor
    CStrategyBase();
@@ -94,7 +121,7 @@ public:
 
    // Métodos públicos principais
    virtual bool Init(string name, const CStrategyConfig &config);
-   virtual bool Update(string symbol = "");
+   virtual bool Update(string symbol = "", ENUM_TIMEFRAMES timeframe = PERIOD_CURRENT);
    virtual void Reset();
 
    // Getters
@@ -177,16 +204,21 @@ bool CStrategyBase::Init(string name, const CStrategyConfig &config)
 //+------------------------------------------------------------------+
 //| Atualização principal                                            |
 //+------------------------------------------------------------------+
-bool CStrategyBase::Update(string symbol = "")
+bool CStrategyBase::Update(string symbol, ENUM_TIMEFRAMES timeframe)
 {
     if (!m_initialized || !m_enabled)
        return true;
 
-    // Store the current symbol for use in derived methods
+    // Store the current symbol and timeframe for use in derived methods
     if (symbol != "")
        m_current_symbol = symbol;
     else if (m_current_symbol == "")
-       m_current_symbol = Symbol(); // Fallback to chart symbol
+       Print("CStrategyBase::UPdate - PROBLEMAS !!!!!!!!!!!!!!!!!!!!!!!!");
+
+    if (timeframe != PERIOD_CURRENT)
+       m_current_timeframe = timeframe;
+    else if (m_current_timeframe == PERIOD_CURRENT)
+       Print("CStrategyBase::UPdate - PROBLEMAS !!!!!!!!!!!!!!!!!!!!!!!!");
 
     m_last_update = TimeCurrent();
 
@@ -197,8 +229,8 @@ bool CStrategyBase::Update(string symbol = "")
        return false;
     }
 
-    // Verificar por novos sinais apenas se estivermos em estado idle
-    if (m_state == STRATEGY_IDLE)
+    // Verificar por novos sinais apenas se estivermos em estado idle e timeframe estiver autorizado
+    if (m_state == STRATEGY_IDLE && IsTimeframeAuthorized(m_current_timeframe))
     {
        SStrategySignal signal = CheckForSignal();
 
@@ -207,11 +239,15 @@ bool CStrategyBase::Update(string symbol = "")
           m_last_signal = signal;
           m_state = STRATEGY_SIGNAL_FOUND;
 
-          Print("SINAL ENCONTRADO - ", m_name, ": ",
+          Print("SINAL ENCONTRADO - ", m_name, " (", EnumToString(m_current_timeframe), "): ",
                 EnumToString(signal.type), " @ ", DoubleToString(signal.entry_price, _Digits));
 
           SendSignalToServer();
        }
+    }
+    else if (m_state == STRATEGY_IDLE && !IsTimeframeAuthorized(m_current_timeframe))
+    {
+       Print("AVISO: Estratégia ", m_name, " não está autorizada para timeframe ", EnumToString(m_current_timeframe));
     }
 
     return true;

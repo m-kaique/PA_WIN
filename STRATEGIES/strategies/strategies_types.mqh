@@ -55,6 +55,20 @@ public:
     bool enable_pullback_ema9;
     bool enable_pullback_ema21;
 
+    // Authorized timeframes for signal generation
+    ENUM_TIMEFRAMES authorized_timeframes[];
+
+    // Method to check if timeframe is authorized
+    bool IsTimeframeAuthorized(ENUM_TIMEFRAMES timeframe)
+    {
+        for (int i = 0; i < ArraySize(authorized_timeframes); i++)
+        {
+            if (authorized_timeframes[i] == timeframe)
+                return true;
+        }
+        return false;
+    }
+
     CEmasBullBuyConfig()
     {
        type = "emas_buy_bull";
@@ -86,7 +100,11 @@ public:
        enable_adx_filter = true;
        enable_pullback_ema9 = true;
        enable_pullback_ema21 = true;
-    }
+
+       // Initialize authorized timeframes (default to M15 and M3 for this strategy)
+       ArrayResize(authorized_timeframes, 2);
+       authorized_timeframes[0] = PERIOD_M30;
+   }
 };
 
 //--- Strategy Configuration

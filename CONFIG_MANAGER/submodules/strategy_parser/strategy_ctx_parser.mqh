@@ -36,6 +36,7 @@ public:
 private:
     CStrategyConfig *ParseSingleStrategy(CJAVal *strategy_json);
     CEmasBullBuyConfig *ParseEmasBuyBullConfig(CJAVal *strategy_json);
+    ENUM_TIMEFRAMES StringToTimeframe(string tf_str);
 };
 
 //+------------------------------------------------------------------+
@@ -181,6 +182,27 @@ CEmasBullBuyConfig *CStrategyConfigParser::ParseEmasBuyBullConfig(CJAVal *strate
     config.enable_pullback_ema9 = strategy_json["enable_pullback_ema9"].ToBool();
     config.enable_pullback_ema21 = strategy_json["enable_pullback_ema21"].ToBool();
 
+    // Parse authorized timeframes
+    CJAVal *authorized_tfs = strategy_json["authorized_timeframes"];
+    if (authorized_tfs != NULL && authorized_tfs.Size() > 0)
+    {
+        ArrayResize(config.authorized_timeframes, authorized_tfs.Size());
+        for (int i = 0; i < authorized_tfs.Size(); i++)
+        {
+            string tf_str = authorized_tfs.children[i].ToStr();
+            config.authorized_timeframes[i] = StringToTimeframe(tf_str);
+        }
+        Print("Authorized timeframes parsed: ", authorized_tfs.Size(), " timeframes");
+    }
+    else
+    {
+        // Default to M15 and M3 if not specified
+        ArrayResize(config.authorized_timeframes, 2);
+        config.authorized_timeframes[0] = PERIOD_M15;
+        config.authorized_timeframes[1] = PERIOD_M3;
+        Print("Using default authorized timeframes: M15, M3");
+    }
+
     Print("EMA Buy Bull config parseada: ", config.name);
     return config;
 }
@@ -242,4 +264,24 @@ void CStrategyConfigParser::CleanupStrategySetup(SStrategySetupConfig &config)
     }
     ArrayResize(config.strategies, 0);
     config.enabled = false;
+}
+
+//+------------------------------------------------------------------+
+//| Converter string para timeframe                                  |
+//+------------------------------------------------------------------+
+ENUM_TIMEFRAMES CStrategyConfigParser::StringToTimeframe(string tf_str)
+{
+    if (tf_str == "M1") return PERIOD_M1;
+    if (tf_str == "M3") return PERIOD_M3;
+    if (tf_str == "M5") return PERIOD_M5;
+    if (tf_str == "M15") return PERIOD_M15;
+    if (tf_str == "M30") return PERIOD_M30;
+    if (tf_str == "H1") return PERIOD_H1;
+    if (tf_str == "H4") return PERIOD_H4;
+    if (tf_str == "D1") return PERIOD_D1;
+    if (tf_str == "W1") return PERIOD_W1;
+    if (tf_str == "MN1") return PERIOD_MN1;
+
+    Print("AVISO: Timeframe desconhecido: ", tf_str, ", usando PERIOD_M15 como padrão");
+    return PERIOD_M15;
 }

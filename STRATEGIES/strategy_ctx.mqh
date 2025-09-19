@@ -31,7 +31,7 @@ public:
    ~STRATEGY_CTX();
 
    bool Init();
-   bool Update(string symbol = "");
+   bool Update(string symbol = "", ENUM_TIMEFRAMES timeframe = PERIOD_CURRENT);
    CStrategyBase *GetStrategy(string name);
    bool IsInitialized() const { return m_initialized; }
    string GetSetupName() const { return m_setup_name; }
@@ -139,7 +139,7 @@ int STRATEGY_CTX::FindByName(string name, string &arr[])
 //+------------------------------------------------------------------+
 //| Atualizar estratégias                                            |
 //+------------------------------------------------------------------+
-bool STRATEGY_CTX::Update(string symbol = "")
+bool STRATEGY_CTX::Update(string symbol, ENUM_TIMEFRAMES timeframe)
 {
     if (!m_initialized)
        return false;
@@ -149,7 +149,7 @@ bool STRATEGY_CTX::Update(string symbol = "")
     {
        if (m_strategies[i] != NULL)
        {
-          all_updated &= m_strategies[i].Update(symbol);
+          all_updated &= m_strategies[i].Update(symbol, timeframe);
        }
     }
 

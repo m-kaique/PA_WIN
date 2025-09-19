@@ -265,16 +265,16 @@ void UpdateSymbolContexts(string symbol)
          {
             if (strategy_contexts[j] != NULL)
             {
-               strategy_contexts[j].Update(symbol); // This calls CheckForSignal internally and passes the symbol
+               strategy_contexts[j].Update(symbol, tf); // This calls CheckForSignal internally and passes the symbol and timeframe
                //
                CEmasBuyBull *strategy = strategy_contexts[j].GetStrategy("m15_m3_emas_buy_bull");
-               Print("INICIO DO LOG ######################################################################");
-               Print("INICIO DO LOG ######################################################################");
-               Print("INICIO DO LOG ######################################################################");
-               strategy.PrintFullDebugLog();
-               Print("FIM DO LOG #########################################################################");
-               Print("FIM DO LOG #########################################################################");
-               Print("FIM DO LOG #########################################################################");
+               // Print("INICIO DO LOG ######################################################################");
+               // Print("INICIO DO LOG ######################################################################");
+               // Print("INICIO DO LOG ######################################################################");
+               //strategy.PrintFullDebugLog();
+               // Print("FIM DO LOG #########################################################################");
+               // Print("FIM DO LOG #########################################################################");
+               // Print("FIM DO LOG #########################################################################");
 
                if (strategy != NULL)
                {

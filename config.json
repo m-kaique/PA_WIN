@@ -575,7 +575,18 @@
                   "max_volatility_ratio": 1.5,
                   "bullish_structure_atr_threshold": 0.5,
                   "adx_min_value": 25,
-                  "adx_max_value": 60
+                  "adx_max_value": 60,
+                  "enable_ema_alignment_m15": false,
+                  "enable_ema_alignment_m3": true,
+                  "enable_strong_trend": true,
+                  "enable_bullish_momentum": true,
+                  "enable_good_volatility": true,
+                  "enable_bullish_structure_m15": true,
+                  "enable_bullish_structure_m3": true,
+                  "enable_adx_filter": true,
+                  "enable_pullback_ema9": true,
+                  "enable_pullback_ema21": true,
+                  "authorized_timeframes": ["M15"]
                }
             ]
          },
