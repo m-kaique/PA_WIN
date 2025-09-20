@@ -251,10 +251,9 @@ void UpdateSymbolContexts(string symbol)
       if (ctx.HasNewBar())
       {
          ctx.Update();
-         // CheckSlopePosM15(tf, ctx);
-         // Check_SR(tf, ctx);
 
-         // Check de condições
+         BollAnalysis(tf, ctx);
+ 
 
          // Loop Pelos Contextos de Estratégias e chama CheckForSignal
          STRATEGY_CTX *strategy_contexts[];
@@ -349,4 +348,129 @@ bool ReloadConfig()
 void OnTesterDeinit()
 {
    //---
+}
+
+void BollAnalysis(ENUM_TIMEFRAMES tf, TF_CTX &ctx)
+{
+   // Obter o indicador Bandas de Bollinger do contexto
+   CIndicatorBase *base_indicator = ctx.GetIndicator("boll20");
+   if (base_indicator == NULL)
+   {
+      Print("BollAnalysis: Indicador Bollinger 'boll20' não encontrado no contexto");
+      return;
+   }
+
+   // Converter para CBollinger para acessar métodos de análise de largura
+   CBollinger *bollinger = dynamic_cast<CBollinger*>(base_indicator);
+   if (bollinger == NULL)
+   {
+      Print("BollAnalysis: Falha ao converter indicador para CBollinger");
+      return;
+   }
+
+   // Get complete width analysis for last closed candle
+   SWidthAnalysis analysis = bollinger.GetWidthMetric(1);
+
+   // Get price for last closed candle
+   double current_price = iClose(Symbol(), tf, 1);
+   double upper_band = bollinger.GetUpper(1);
+   double lower_band = bollinger.GetLower(1);
+   double middle_band = bollinger.GetValue(1);
+
+   // Calcular posição relativa às bandas
+   string position_status;
+   if (current_price >= upper_band)
+      position_status = "ACIMA DA BANDA SUPERIOR";
+   else if (current_price <= lower_band)
+      position_status = "ABAIXO DA BANDA INFERIOR";
+   else if (current_price >= middle_band)
+      position_status = "ACIMA DA BANDA MÉDIA";
+   else
+      position_status = "ABAIXO DA BANDA MÉDIA";
+
+   // Registrar análise detalhada das Bandas de Bollinger
+   Print("=== ANÁLISE DAS BANDAS DE BOLLINGER ===");
+   Print("TimeFrame: ", EnumToString(tf));
+   Print("Símbolo: ", Symbol());
+   Print("Horário Atual: ", TimeToString(TimeCurrent()));
+
+   Print("--- VALORES DAS BANDAS ---");
+   Print("Banda Superior: ", DoubleToString(upper_band, 5));
+   Print("Banda Média: ", DoubleToString(middle_band, 5));
+   Print("Banda Inferior: ", DoubleToString(lower_band, 5));
+   Print("Preço Atual: ", DoubleToString(current_price, 5));
+   Print("Status da Posição: ", position_status);
+
+   Print("--- ANÁLISE DA LARGURA ---");
+   Print("Valor da Largura: ", DoubleToString(analysis.width, 5));
+   Print("Percentil: ", DoubleToString(analysis.percentile, 2), "%");
+   Print("Z-Score: ", DoubleToString(analysis.zscore, 3));
+   Print("Valor da Inclinação: ", DoubleToString(analysis.slope_value, 5));
+   Print("Direção da Inclinação: ", analysis.slope_direction);
+
+   Print("--- AVALIAÇÃO DAS CONDIÇÕES DE MERCADO ---");
+
+   // Avaliação da Posição da Largura
+   if (analysis.percentile < 20)
+      Print("POSIÇÃO DA LARGURA: COMPRIMIDA (Bandas estreitas - potencial breakout)");
+   else if (analysis.percentile > 80)
+      Print("POSIÇÃO DA LARGURA: EXPANDIDA (Bandas largas - potencial reversão)");
+   else
+      Print("POSIÇÃO DA LARGURA: NORMAL (Volatilidade padrão)");
+
+   // Avaliação da Tendência da Largura
+   if (analysis.slope_direction == "EXPANDINDO")
+      Print("TENDÊNCIA DA LARGURA: EXPANDINDO (Bandas ficando mais largas)");
+   else if (analysis.slope_direction == "CONTRAINDO")
+      Print("TENDÊNCIA DA LARGURA: CONTRAINDO (Bandas ficando mais estreitas)");
+   else
+      Print("TENDÊNCIA DA LARGURA: ESTÁVEL (Largura inalterada)");
+
+   // Avaliação Combinada de Sinais
+   Print("--- ANÁLISE COMBINADA DE SINAIS ---");
+
+   if (analysis.percentile < 20 && analysis.slope_direction == "EXPANDINDO")
+   {
+      Print("🚀 SINAL DE BREAKOUT: Bandas estreitas expandindo - Alta probabilidade de breakout");
+      if (position_status == "ACIMA DA BANDA SUPERIOR")
+         Print("   + Breakout bullish confirmado (preço acima da banda superior em expansão)");
+      else if (position_status == "ABAIXO DA BANDA INFERIOR")
+         Print("   + Breakout bearish confirmado (preço abaixo da banda inferior em expansão)");
+   }
+   else if (analysis.percentile > 80 && analysis.slope_direction == "CONTRAINDO")
+   {
+      Print("⚠️ SINAL DE REVERSÃO: Bandas largas contraindo - Potencial reversão");
+      if (position_status == "ACIMA DA BANDA SUPERIOR")
+         Print("   + Potencial reversão bearish (preço em banda superior estendida)");
+      else if (position_status == "ABAIXO DA BANDA INFERIOR")
+         Print("   + Potencial reversão bullish (preço em banda inferior estendida)");
+   }
+   else if (analysis.percentile < 20 && analysis.slope_direction == "CONTRAINDO")
+   {
+      Print("📉 SINAL DE CONTINUAÇÃO: Bandas estreitas contraindo - Continuação de tendência provável");
+   }
+   else if (analysis.percentile > 80 && analysis.slope_direction == "EXPANDINDO")
+   {
+      Print("📈 SINAL DE TENDÊNCIA: Bandas largas expandindo - Forte continuação de tendência");
+   }
+   else
+   {
+      Print("🔄 NEUTRO: Nenhum sinal significativo baseado na largura detectado");
+   }
+
+   // Contexto Estatístico
+   Print("--- CONTEXTO ESTATÍSTICO ---");
+   if (analysis.zscore < -2.0)
+      Print("Z-SCORE: Bandas extremamente estreitas (evento raro)");
+   else if (analysis.zscore < -1.0)
+      Print("Z-SCORE: Bandas significativamente estreitas");
+   else if (analysis.zscore > 2.0)
+      Print("Z-SCORE: Bandas extremamente largas (evento raro)");
+   else if (analysis.zscore > 1.0)
+      Print("Z-SCORE: Bandas significativamente largas");
+   else
+      Print("Z-SCORE: Largura normal das bandas");
+
+   Print("=== FIM DA ANÁLISE BOLLINGER ===");
+   Print("");
 }

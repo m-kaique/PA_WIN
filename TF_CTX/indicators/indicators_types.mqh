@@ -118,17 +118,24 @@ public:
 class CBollingerConfig : public CIndicatorConfig
 {
 public:
-  int period;
-  int shift;
-  double deviation;
-  ENUM_APPLIED_PRICE applied_price;
-  CBollingerConfig()
-  {
-    period = 20;
-    shift = 0;
-    deviation = 2.0;
-    applied_price = PRICE_CLOSE;
-  }
+   int period;
+   int shift;
+   double deviation;
+   ENUM_APPLIED_PRICE applied_price;
+
+   // Width analysis configuration
+   int width_lookback_period;     // Historical window for percentile/Z-score (default: 200)
+   bool use_percentile_for_width; // true = use percentile, false = use Z-score
+
+   CBollingerConfig()
+   {
+      period = 20;
+      shift = 0;
+      deviation = 2.0;
+      applied_price = PRICE_CLOSE;
+      width_lookback_period = 200;
+      use_percentile_for_width = true;
+   }
 };
 
 //--- Fibonacci
