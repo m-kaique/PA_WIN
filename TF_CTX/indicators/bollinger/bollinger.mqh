@@ -16,11 +16,31 @@ private:
   int m_shift;
   double m_deviation;
   ENUM_APPLIED_PRICE m_price;
+  double width_array[];
+
+  // Configurable parameters
+  int m_width_history;
+  int m_width_lookback;
+  int m_slope_lookback;
+  int m_percentile_thresholds[4];
+  double m_weights[3]; // band, slope, width
 
   bool CreateHandle();
   void ReleaseHandle();
   double GetBufferValue(int buffer_index, int shift = 0);
+  void CalculateWidths();
+  static double CalculateWidthZScore(const double &width_array[], int length, int lookback);
+  static double CalculateWidthPercentile(const double &width_array[], int length, int lookback);
+  ENUM_WIDTH_REGION ClassifyWidthRegion(double percentile);
+  static ENUM_MARKET_PHASE MapRegionToPhase(ENUM_WIDTH_REGION region);
+  SSlopeResult CalculateWidthSlopeLinearRegression(double atr, int lookback);
+  SSlopeResult CalculateWidthSlopeSimpleDifference(double atr, int lookback);
+  SSlopeResult CalculateWidthSlopeDiscreteDerivative(double atr, int lookback);
+  static ENUM_SLOPE_STATE ClassifySlopeState(double slope_value, double threshold);
   virtual bool OnCopyValuesForSlope(int shift, int count, double &buffer[], COPY_METHOD copy_method) override;
+
+public:
+  SCombinedSignal ComputeCombinedSignal(double atr, int lookback, double threshold);
   virtual double OnGetIndicatorValue(int shift, COPY_METHOD copy_method) override;
   virtual int OnGetSlopeConfigIndex(COPY_METHOD copy_method) override;
 
@@ -49,6 +69,10 @@ public:
 
   virtual bool IsReady();
   virtual bool Update() override;
+
+  // Set configurable parameters
+  void SetConfigurableParameters(int width_history, int width_lookback, int slope_lookback,
+                                 int &percentile_thresholds[], double &weights[]);
 };
 
 //+------------------------------------------------------------------+
@@ -63,6 +87,20 @@ CBollinger::CBollinger()
   m_deviation = 2.0;
   m_price = PRICE_CLOSE;
   handle = INVALID_HANDLE;
+
+  // Initialize configurable parameters with defaults
+  m_width_history = WIDTH_HISTORY;
+  m_width_lookback = WIDTH_LOOKBACK;
+  m_slope_lookback = SLOPE_LOOKBACK;
+  m_percentile_thresholds[0] = PERCENTILE_THRESHOLD_VERY_NARROW;
+  m_percentile_thresholds[1] = PERCENTILE_THRESHOLD_NARROW;
+  m_percentile_thresholds[2] = PERCENTILE_THRESHOLD_NORMAL;
+  m_percentile_thresholds[3] = PERCENTILE_THRESHOLD_WIDE;
+  m_weights[0] = WEIGHT_BAND;
+  m_weights[1] = WEIGHT_SLOPE;
+  m_weights[2] = WEIGHT_WIDTH;
+
+  ArrayResize(width_array, m_width_history);
 }
 
 //+------------------------------------------------------------------+
@@ -230,6 +268,7 @@ bool CBollinger::Update()
   if (BarsCalculated(handle) <= 0)
     return false;
 
+  CalculateWidths();
   return true;
 }
 
@@ -302,6 +341,217 @@ int CBollinger::OnGetSlopeConfigIndex(COPY_METHOD copy_method)
   }
 
   return 1;
+}
+
+//+------------------------------------------------------------------+
+//| Calculate width of bands for each bar                            |
+//+------------------------------------------------------------------+
+void CBollinger::CalculateWidths()
+{
+  ArrayResize(width_array, m_width_history);
+  for(int i = 0; i < m_width_history; i++)
+  {
+    width_array[i] = GetUpper(i) - GetLower(i);
+  }
+}
+
+//+------------------------------------------------------------------+
+//| Calculate Z-score of the most recent width                       |
+//+------------------------------------------------------------------+
+double CBollinger::CalculateWidthZScore(const double &width_array[], int length, int lookback)
+{
+  if (length < 1 || lookback < 1) return 0.0;
+  int actual_lookback = MathMin(lookback, length);
+  double sum = 0.0;
+  for(int i = 0; i < actual_lookback; i++)
+    sum += width_array[i];
+  double mean = sum / actual_lookback;
+  double sum_sq = 0.0;
+  for(int i = 0; i < actual_lookback; i++)
+  {
+    double diff = width_array[i] - mean;
+    sum_sq += diff * diff;
+  }
+  double variance = sum_sq / actual_lookback;
+  double std = MathSqrt(variance);
+  if (std == 0.0) return 0.0;
+  double current = width_array[0];
+  return (current - mean) / std;
+}
+
+//+------------------------------------------------------------------+
+//| Calculate percentile of the most recent width                    |
+//+------------------------------------------------------------------+
+double CBollinger::CalculateWidthPercentile(const double &width_array[], int length, int lookback)
+{
+  if (length < 1 || lookback < 1) return 0.0;
+  int actual_lookback = MathMin(lookback, length);
+  double current = width_array[0];
+  int count_below = 0;
+  for(int i = 0; i < actual_lookback; i++)
+  {
+    if (width_array[i] < current) count_below++;
+  }
+  if (actual_lookback <= 1) return 50.0;
+  return (double)count_below / (actual_lookback - 1) * 100.0;
+}
+
+//+------------------------------------------------------------------+
+//| Classify width region based on percentile                        |
+//+------------------------------------------------------------------+
+ENUM_WIDTH_REGION CBollinger::ClassifyWidthRegion(double percentile)
+{
+  if (percentile < m_percentile_thresholds[0]) return WIDTH_VERY_NARROW;
+  if (percentile >= m_percentile_thresholds[0] && percentile < m_percentile_thresholds[1]) return WIDTH_NARROW;
+  if (percentile >= m_percentile_thresholds[1] && percentile < m_percentile_thresholds[2]) return WIDTH_NORMAL;
+  if (percentile >= m_percentile_thresholds[2] && percentile < m_percentile_thresholds[3]) return WIDTH_WIDE;
+  return WIDTH_VERY_WIDE;
+}
+
+//+------------------------------------------------------------------+
+//| Map width region to market phase                                 |
+//+------------------------------------------------------------------+
+ENUM_MARKET_PHASE CBollinger::MapRegionToPhase(ENUM_WIDTH_REGION region)
+{
+  if (region == WIDTH_VERY_NARROW || region == WIDTH_NARROW) return PHASE_CONTRACTION;
+  if (region == WIDTH_NORMAL) return PHASE_NORMAL;
+  return PHASE_EXPANSION;
+}
+
+//+------------------------------------------------------------------+
+//| Calculate width slope using linear regression                    |
+//+------------------------------------------------------------------+
+SSlopeResult CBollinger::CalculateWidthSlopeLinearRegression(double atr, int lookback)
+{
+  return m_slope.CalculateLinearRegressionSlope(m_symbol, width_array, atr, lookback);
+}
+
+//+------------------------------------------------------------------+
+//| Calculate width slope using simple difference                    |
+//+------------------------------------------------------------------+
+SSlopeResult CBollinger::CalculateWidthSlopeSimpleDifference(double atr, int lookback)
+{
+  return m_slope.CalculateSimpleDifference(m_symbol, width_array, atr, lookback);
+}
+
+//+------------------------------------------------------------------+
+//| Calculate width slope using discrete derivative                  |
+//+------------------------------------------------------------------+
+SSlopeResult CBollinger::CalculateWidthSlopeDiscreteDerivative(double atr, int lookback)
+{
+  return m_slope.CalculateDiscreteDerivative(m_symbol, width_array, atr, lookback);
+}
+
+//+------------------------------------------------------------------+
+//| Classify slope state based on threshold                          |
+//+------------------------------------------------------------------+
+ENUM_SLOPE_STATE CBollinger::ClassifySlopeState(double slope_value, double threshold)
+{
+  if (slope_value >= threshold) return SLOPE_EXPANDING;
+  if (slope_value <= -threshold) return SLOPE_CONTRACTING;
+  return SLOPE_STABLE;
+}
+
+//+------------------------------------------------------------------+
+//| Compute combined signal integrating all components               |
+//+------------------------------------------------------------------+
+SCombinedSignal CBollinger::ComputeCombinedSignal(double atr, int lookback, double threshold)
+{
+  SCombinedSignal signal;
+  signal.confidence = 0.0;
+  signal.direction = "NEUTRAL";
+  signal.reason = "";
+  signal.region = WIDTH_NORMAL;
+  signal.slope_state = SLOPE_STABLE;
+
+  // Get slope validations for each band
+  SSlopeValidation upper_val = GetSlopeValidation(atr, COPY_UPPER);
+  SSlopeValidation middle_val = GetSlopeValidation(atr, COPY_MIDDLE);
+  SSlopeValidation lower_val = GetSlopeValidation(atr, COPY_LOWER);
+
+  // Determine band directions based on linear regression slope
+  int up_count = 0, down_count = 0, neutral_count = 0;
+
+  if (upper_val.linear_regression.slope_value > 0) up_count++;
+  else if (upper_val.linear_regression.slope_value < 0) down_count++;
+  else neutral_count++;
+
+  if (middle_val.linear_regression.slope_value > 0) up_count++;
+  else if (middle_val.linear_regression.slope_value < 0) down_count++;
+  else neutral_count++;
+
+  if (lower_val.linear_regression.slope_value > 0) up_count++;
+  else if (lower_val.linear_regression.slope_value < 0) down_count++;
+  else neutral_count++;
+
+  // Base score: proportion of bands aligned
+  double base_score = 0.0;
+  if (up_count == 3) { base_score = 1.0; signal.direction = "BULL"; }
+  else if (down_count == 3) { base_score = 1.0; signal.direction = "BEAR"; }
+  else if (neutral_count == 3) { base_score = 0.5; signal.direction = "NEUTRAL"; }
+  else { base_score = 0.5; signal.direction = "NEUTRAL"; } // mixed
+
+  // Get width percentile and region
+  double percentile = CalculateWidthPercentile(width_array, ArraySize(width_array), m_width_lookback);
+  signal.region = ClassifyWidthRegion(percentile);
+
+  // Width modifier
+  double width_modifier = 0.0;
+  if (signal.region == WIDTH_VERY_NARROW || signal.region == WIDTH_VERY_WIDE)
+    width_modifier = 0.25;
+
+  // Get width slope
+  SSlopeResult width_slope = CalculateWidthSlopeLinearRegression(atr, m_slope_lookback);
+  signal.slope_state = ClassifySlopeState(width_slope.slope_value, threshold);
+
+  // Slope strength (normalized, capped at 1.0)
+  double slope_strength = MathMin(1.0, MathAbs(width_slope.slope_value));
+
+  // R-squared factor
+  double r_squared_factor = width_slope.r_squared;
+
+  // Calculate confidence using weights
+  double band_component = base_score * m_weights[0];
+  double slope_component = slope_strength * r_squared_factor * m_weights[1];
+  double width_component = width_modifier * m_weights[2];
+  signal.confidence = MathMin(1.0, band_component + slope_component + width_component);
+
+  // Build reason
+  signal.reason = StringFormat("Bands:%dU/%dD/%dN, Width:%s, Slope:%s, Conf:%.2f",
+                               up_count, down_count, neutral_count,
+                               EnumToString(signal.region), EnumToString(signal.slope_state),
+                               signal.confidence);
+
+  return signal;
+}
+
+//+------------------------------------------------------------------+
+//| Set configurable parameters                                      |
+//+------------------------------------------------------------------+
+void CBollinger::SetConfigurableParameters(int width_history, int width_lookback, int slope_lookback,
+                                          int &percentile_thresholds[], double &weights[])
+{
+  m_width_history = width_history > 0 ? width_history : WIDTH_HISTORY;
+  m_width_lookback = width_lookback > 0 ? width_lookback : WIDTH_LOOKBACK;
+  m_slope_lookback = slope_lookback > 0 ? slope_lookback : SLOPE_LOOKBACK;
+
+  if (ArraySize(percentile_thresholds) >= 4)
+  {
+    for(int i = 0; i < 4; i++)
+      m_percentile_thresholds[i] = percentile_thresholds[i];
+  }
+
+  if (ArraySize(weights) >= 3)
+  {
+    for(int i = 0; i < 3; i++)
+      m_weights[i] = weights[i];
+  }
+
+  // Resize width_array if needed
+  if (ArraySize(width_array) != m_width_history)
+  {
+    ArrayResize(width_array, m_width_history);
+  }
 }
 
 #endif // __BOLLINGER_MQH__

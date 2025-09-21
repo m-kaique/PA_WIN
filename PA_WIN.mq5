@@ -251,10 +251,7 @@ void UpdateSymbolContexts(string symbol)
       if (ctx.HasNewBar())
       {
          ctx.Update();
-         // CheckSlopePosM15(tf, ctx);
-         // Check_SR(tf, ctx);
-
-         // Check de condições
+         boll_m3_status(symbol, tf);
 
          // Loop Pelos Contextos de Estratégias e chama CheckForSignal
          STRATEGY_CTX *strategy_contexts[];
@@ -288,6 +285,56 @@ void UpdateSymbolContexts(string symbol)
          }
       }
    } // Fim loop the atualização de contextos
+}
+
+void boll_m3_status(string symbol, ENUM_TIMEFRAMES tf)
+{
+    // Check if timeframe is M3
+    if (tf != PERIOD_M3)
+        return;
+
+    // Get context for M3
+    TF_CTX *ctx = g_config_manager.GetContext(symbol, PERIOD_M3);
+    if (ctx == NULL)
+    {
+        Print("ERRO: Contexto M3 não encontrado para símbolo: ", symbol);
+        return;
+    }
+
+    // Get ATR value for M3 from ATR15 indicator
+    double atr_value = ctx.GetIndicatorValue("ATR15", 1);
+    if (atr_value > 0)
+    {
+        Print("ATR value retrieved: ", DoubleToString(atr_value, 5));
+    }
+    else
+    {
+        Print("WARNING: ATR15 indicator not found or invalid, using default ATR = 0.001");
+        atr_value = 0.001;
+    }
+
+    // Get boll20 indicator from context
+    CBollinger *bollinger = (CBollinger*)ctx.GetIndicator("boll20");
+    if (bollinger == NULL)
+    {
+        Print("WARNING: boll20 indicator not found in M3 context");
+    }
+
+    // Compute combined signal
+    SCombinedSignal signal = bollinger.ComputeCombinedSignal(atr_value, 9, 0.02);
+
+    // Display the information
+    Print("=== BOLLINGER M3 STATUS ===");
+    Print("Symbol: ", symbol);
+    Print("Timeframe: M3");
+    Print("Direction: ", signal.direction);
+    Print("Confidence: ", DoubleToString(signal.confidence, 3));
+    Print("Region: ", EnumToString(signal.region));
+    Print("Slope State: ", EnumToString(signal.slope_state));
+    Print("Reason: ", signal.reason);
+    Print("==========================");
+
+    // Note: Don't delete bollinger as it's managed by TF_CTX
 }
 
 //+------------------------------------------------------------------+

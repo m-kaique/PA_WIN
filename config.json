@@ -350,6 +350,8 @@
                      "applied_price": "CLOSE",
                      "enabled": true,
                      "attach_chart": true,
+                     "width_lookback_period": 200,
+                     "use_percentile_for_width": true,
                      "slope_values": [
                         {
                            "lookback": 5,
@@ -359,6 +361,12 @@
                         },
                         {
                            "lookback": 8,
+                           "linear_reg": 0.06,
+                           "simple_diff": 0.60,
+                           "discrete_der": 0.06
+                        },
+                        {
+                           "lookback": 5,
                            "linear_reg": 0.06,
                            "simple_diff": 0.60,
                            "discrete_der": 0.06
@@ -527,6 +535,7 @@
                      "applied_price": "CLOSE",
                      "enabled": true,
                      "attach_chart": true,
+                     "width_lookback_period": 200,
                      "slope_values": [
                         {
                            "lookback": 5,
@@ -536,6 +545,12 @@
                         },
                         {
                            "lookback": 8,
+                           "linear_reg": 0.06,
+                           "simple_diff": 0.60,
+                           "discrete_der": 0.06
+                        },
+                        {
+                           "lookback": 5,
                            "linear_reg": 0.06,
                            "simple_diff": 0.60,
                            "discrete_der": 0.06
