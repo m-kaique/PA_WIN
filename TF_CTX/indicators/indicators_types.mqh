@@ -118,17 +118,41 @@ public:
 class CBollingerConfig : public CIndicatorConfig
 {
 public:
-  int period;
-  int shift;
-  double deviation;
-  ENUM_APPLIED_PRICE applied_price;
-  CBollingerConfig()
-  {
-    period = 20;
-    shift = 0;
-    deviation = 2.0;
-    applied_price = PRICE_CLOSE;
-  }
+   int period;
+   int shift;
+   double deviation;
+   ENUM_APPLIED_PRICE applied_price;
+
+   // Advanced configurable parameters
+   int width_history;
+   int width_lookback;
+   int slope_lookback;
+   int percentile_thresholds[4];
+   double weights[3];
+
+   CBollingerConfig()
+   {
+     period = 20;
+     shift = 0;
+     deviation = 2.0;
+     applied_price = PRICE_CLOSE;
+
+     // Initialize advanced parameters with defaults
+     width_history = 100;
+     width_lookback = 100;
+     slope_lookback = 9;
+
+     // Default percentile thresholds
+     percentile_thresholds[0] = 10;  // VERY_NARROW
+     percentile_thresholds[1] = 30;  // NARROW
+     percentile_thresholds[2] = 70;  // NORMAL
+     percentile_thresholds[3] = 90;  // WIDE
+
+     // Default weights
+     weights[0] = 0.4;  // Band weight
+     weights[1] = 0.3;  // Slope weight
+     weights[2] = 0.3;  // Width weight
+   }
 };
 
 //--- Fibonacci

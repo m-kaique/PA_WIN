@@ -360,13 +360,46 @@ CVWAPConfig *CTimeframeConfigParser::CreateVWAPConfig(CJAVal *ind)
 //+------------------------------------------------------------------+
 CBollingerConfig *CTimeframeConfigParser::CreateBollingerConfig(CJAVal *ind)
 {
-    CBollingerConfig *p = new CBollingerConfig();
-    FillIndicatorBase(*p, ind, "BOLL");
-    p.period = (int)ind["period"].ToInt();
-    p.shift = (int)ind["shift"].ToInt();
-    p.deviation = ind["deviation"].ToDbl();
-    p.applied_price = StringToAppliedPrice(ind["applied_price"].ToStr());
-    return p;
+     CBollingerConfig *p = new CBollingerConfig();
+     FillIndicatorBase(*p, ind, "BOLL");
+     p.period = (int)ind["period"].ToInt();
+     p.shift = (int)ind["shift"].ToInt();
+     p.deviation = ind["deviation"].ToDbl();
+     p.applied_price = StringToAppliedPrice(ind["applied_price"].ToStr());
+
+     // Read advanced configurable parameters if present in JSON
+     if (ind.HasKey("width_history"))
+         p.width_history = (int)ind["width_history"].ToInt();
+
+     if (ind.HasKey("width_lookback_period"))
+         p.width_lookback = (int)ind["width_lookback_period"].ToInt();
+
+     if (ind.HasKey("slope_lookback"))
+         p.slope_lookback = (int)ind["slope_lookback"].ToInt();
+
+     // Read percentile thresholds array if present
+     if (ind.HasKey("percentile_thresholds"))
+     {
+         CJAVal *thresholds = ind["percentile_thresholds"];
+         if (thresholds.Size() >= 4)
+         {
+             for (int i = 0; i < 4; i++)
+                 p.percentile_thresholds[i] = (int)thresholds[i].ToInt();
+         }
+     }
+
+     // Read weights array if present
+     if (ind.HasKey("weights"))
+     {
+         CJAVal *w = ind["weights"];
+         if (w.Size() >= 3)
+         {
+             for (int i = 0; i < 3; i++)
+                 p.weights[i] = w[i].ToDbl();
+         }
+     }
+
+     return p;
 }
 
 //+------------------------------------------------------------------+

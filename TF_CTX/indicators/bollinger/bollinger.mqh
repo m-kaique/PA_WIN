@@ -179,10 +179,22 @@ bool CBollinger::Init(string symbol, ENUM_TIMEFRAMES timeframe,
 bool CBollinger::Init(string symbol, ENUM_TIMEFRAMES timeframe,
                       CBollingerConfig &config)
 {
-  attach_chart = config.attach_chart;
-  ArrayCopy(slope_values, config.slope_values);
-  return Init(symbol, timeframe, config.period, config.shift,
-              config.deviation, config.applied_price);
+   attach_chart = config.attach_chart;
+   ArrayCopy(slope_values, config.slope_values);
+
+   // Set configurable parameters from config
+   m_width_history = config.width_history;
+   m_width_lookback = config.width_lookback;
+   m_slope_lookback = config.slope_lookback;
+   ArrayCopy(m_percentile_thresholds, config.percentile_thresholds);
+   ArrayCopy(m_weights, config.weights);
+
+   // Validate and apply presets
+   ValidateAndCorrectParameters();
+   LoadPresetForSymbol(symbol);
+
+   return Init(symbol, timeframe, config.period, config.shift,
+               config.deviation, config.applied_price);
 }
 
 //+------------------------------------------------------------------+
