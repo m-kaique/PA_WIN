@@ -262,9 +262,9 @@ void UpdateSymbolContexts(string symbol)
          {
             if (strategy_contexts[j] != NULL)
             {
-               strategy_contexts[j].Update(symbol, tf); // This calls CheckForSignal internally and passes the symbol and timeframe
-               //
-               CEmasBuyBull *strategy = strategy_contexts[j].GetStrategy("m15_m3_emas_buy_bull");
+               // strategy_contexts[j].Update(symbol, tf); // This calls CheckForSignal internally and passes the symbol and timeframe
+               // //
+               // CEmasBuyBull *strategy = strategy_contexts[j].GetStrategy("m15_m3_emas_buy_bull");
                // Print("INICIO DO LOG ######################################################################");
                // Print("INICIO DO LOG ######################################################################");
                // Print("INICIO DO LOG ######################################################################");
@@ -273,14 +273,14 @@ void UpdateSymbolContexts(string symbol)
                // Print("FIM DO LOG #########################################################################");
                // Print("FIM DO LOG #########################################################################");
 
-               if (strategy != NULL)
-               {
-                  ENUM_STRATEGY_STATE state = strategy.GetState();
-                  if (state != STRATEGY_IDLE)
-                  {
-                     strategy.SetState(STRATEGY_IDLE);
-                  }
-               }
+               // if (strategy != NULL)
+               // {
+               //    ENUM_STRATEGY_STATE state = strategy.GetState();
+               //    if (state != STRATEGY_IDLE)
+               //    {
+               //       strategy.SetState(STRATEGY_IDLE);
+               //    }
+               // }
             }
          }
       }
@@ -289,50 +289,195 @@ void UpdateSymbolContexts(string symbol)
 
 void boll_m3_status(string symbol, ENUM_TIMEFRAMES tf)
 {
-    // Check if timeframe is M3
-    if (tf != PERIOD_M3)
-        return;
+     // === VALIDAÇÃO DO TIMEFRAME ===
+     // Explicação: Esta função é específica para análise M3
+     // Apenas processa quando chamado com timeframe M3
+     if (tf != PERIOD_M3)
+         return;
 
-    // Get context for M3
-    TF_CTX *ctx = g_config_manager.GetContext(symbol, PERIOD_M3);
-    if (ctx == NULL)
+     // === OBTENÇÃO DO CONTEXTO M3 ===
+     // Explicação: O TF_CTX contém todos os indicadores configurados
+     // para este símbolo e timeframe específico
+     TF_CTX *ctx = g_config_manager.GetContext(symbol, PERIOD_M3);
+     if (ctx == NULL)
+     {
+         Print("ERRO: Contexto M3 não encontrado para símbolo: ", symbol);
+         return;
+     }
+
+     // === OBTENÇÃO DO ATR ===
+     // Explicação: ATR (Average True Range) mede a volatilidade
+     // Usamos ATR15 (período 15) como referência de volatilidade
+     double atr_value = ctx.GetIndicatorValue("ATR15", 1);
+     if (atr_value > 0)
+     {
+         Print("ATR value retrieved: ", DoubleToString(atr_value, 5));
+     }
+     else
+     {
+         Print("WARNING: ATR15 indicator not found or invalid, using default ATR = 0.001");
+         atr_value = 0.001;
+     }
+
+     // === OBTENÇÃO DO INDICADOR BOLLINGER ===
+     // Explicação: boll20 = Bollinger Bands com período 20
+     // Este indicador foi aprimorado com todas as melhorias implementadas
+     CBollinger *bollinger = (CBollinger*)ctx.GetIndicator("boll20");
+     if (bollinger == NULL)
+     {
+         Print("WARNING: boll20 indicator not found in M3 context");
+     }
+
+     // === CÁLCULO DO SINAL COMBINADO ===
+     // Explicação: Esta é a chamada principal que executa toda a lógica
+     // aprimorada do indicador Bollinger (consenso ponderado, etc.)
+     SCombinedSignal signal = bollinger.ComputeCombinedSignal(atr_value, 9, 0.02);
+
+    // === COLETA DE DADOS DAS BANDAS ===
+    // Explicação: Obter valores atuais de cada banda para análise completa
+    // Estes dados são fundamentais para entender o contexto do sinal
+
+    double upper_band = bollinger.GetUpper(1);
+    // Banda superior (resistência) - nível onde pressão vendedora aumenta
+    double middle_band = bollinger.GetValue(1);
+    // Média móvel (linha central) - tendência de médio prazo
+    double lower_band = bollinger.GetLower(1);
+    // Banda inferior (suporte) - nível onde pressão compradora aumenta
+    double band_width = upper_band - lower_band;
+    // Largura das bandas - medida de volatilidade atual
+
+    /*
+     * INTERPRETAÇÃO DAS BANDAS:
+     * ------------------------
+     * Upper Band: Nível de resistência dinâmica (pressão de venda)
+     * Middle Band: Média móvel (tendência de médio prazo)
+     * Lower Band: Nível de suporte dinâmico (pressão de compra)
+     * Width: Medida de volatilidade (expansion = alta volatilidade)
+     */
+
+    // === ANÁLISE DE POSICIONAMENTO DO PREÇO ===
+    // Explicação: Determinar onde o preço está posicionado dentro das bandas
+    // Fundamental para avaliar se está próximo de suporte/resistência
+
+    double current_price = iClose(symbol, tf, 1);
+    // Preço de fechamento do candle anterior (shift=1)
+
+    // Cálculo da posição percentual dentro das bandas
+    double price_position = 0.0;
+    if (band_width > 0)  // Verificação de segurança
     {
-        Print("ERRO: Contexto M3 não encontrado para símbolo: ", symbol);
-        return;
+        // Fórmula: (preço - banda_inferior) / largura_total * 100
+        price_position = (current_price - lower_band) / band_width * 100.0;
     }
 
-    // Get ATR value for M3 from ATR15 indicator
-    double atr_value = ctx.GetIndicatorValue("ATR15", 1);
-    if (atr_value > 0)
-    {
-        Print("ATR value retrieved: ", DoubleToString(atr_value, 5));
-    }
-    else
-    {
-        Print("WARNING: ATR15 indicator not found or invalid, using default ATR = 0.001");
-        atr_value = 0.001;
+    /*
+     * INTERPRETAÇÃO DA POSIÇÃO:
+     * -------------------------
+     * 0-25%: Preço próximo à banda inferior (possível zona de compra)
+     * 25-75%: Posição intermediária (movimento normal)
+     * 75-100%: Preço próximo à banda superior (possível zona de venda)
+     *
+     * Para WIN$N especificamente:
+     * - Valores abaixo de 20% podem indicar oversold
+     * - Valores acima de 80% podem indicar overbought
+     */
+
+    // Calculate average width from recent history (approximate)
+    double avg_width = band_width; // Default to current
+    double upper_history[], lower_history[];
+    if (bollinger.CopyUpper(0, 20, upper_history) && bollinger.CopyLower(0, 20, lower_history)) {
+        double total_width = 0.0;
+        int valid_count = 0;
+        for (int i = 0; i < ArraySize(upper_history) && i < ArraySize(lower_history); i++) {
+            double w = upper_history[i] - lower_history[i];
+            if (w > 0) {
+                total_width += w;
+                valid_count++;
+            }
+        }
+        if (valid_count > 0) {
+            avg_width = total_width / valid_count;
+        }
     }
 
-    // Get boll20 indicator from context
-    CBollinger *bollinger = (CBollinger*)ctx.GetIndicator("boll20");
-    if (bollinger == NULL)
-    {
-        Print("WARNING: boll20 indicator not found in M3 context");
+    // Get slope details
+    SSlopeValidation upper_slope = bollinger.GetSlopeValidation(atr_value, COPY_UPPER);
+    SSlopeValidation middle_slope = bollinger.GetSlopeValidation(atr_value, COPY_MIDDLE);
+    SSlopeValidation lower_slope = bollinger.GetSlopeValidation(atr_value, COPY_LOWER);
+
+    // Determine market context
+    string market_phase = "NORMAL";
+    if (signal.region == WIDTH_VERY_NARROW || signal.region == WIDTH_NARROW) {
+        market_phase = "CONTRACTION";
+    } else if (signal.region == WIDTH_VERY_WIDE || signal.region == WIDTH_WIDE) {
+        market_phase = "EXPANSION";
     }
 
-    // Compute combined signal
-    SCombinedSignal signal = bollinger.ComputeCombinedSignal(atr_value, 9, 0.02);
+    bool squeeze_detected = (signal.region == WIDTH_VERY_NARROW);
 
-    // Display the information
-    Print("=== BOLLINGER M3 STATUS ===");
-    Print("Symbol: ", symbol);
-    Print("Timeframe: M3");
+    string breakout_potential = "LOW";
+    if (signal.confidence > 0.7) {
+        if (price_position < 20 || price_position > 80) {
+            breakout_potential = "HIGH";
+        } else {
+            breakout_potential = "MEDIUM";
+        }
+    }
+
+    string volatility_state = "NORMAL";
+    double width_atr_ratio = band_width / atr_value;
+    if (width_atr_ratio > 4.0) {
+        volatility_state = "HIGH";
+    } else if (width_atr_ratio < 2.0) {
+        volatility_state = "LOW";
+    }
+
+    // === EXIBIÇÃO DA ANÁLISE DETALHADA ===
+    // Explicação: Apresentar todas as informações coletadas de forma
+    // estruturada e legível para análise técnica do WIN$N em M3
+    Print("=== BOLLINGER M3 DETAILED ANALYSIS ===");
+    Print("Symbol: ", symbol, " | Timeframe: M3");
+    Print("Timestamp: ", TimeToString(TimeCurrent()));
+    Print("");
+    Print("--- SIGNAL ANALYSIS ---");
+    // Seção com informações básicas do sinal (direção, confiança, etc.)
     Print("Direction: ", signal.direction);
     Print("Confidence: ", DoubleToString(signal.confidence, 3));
     Print("Region: ", EnumToString(signal.region));
     Print("Slope State: ", EnumToString(signal.slope_state));
     Print("Reason: ", signal.reason);
-    Print("==========================");
+    Print("");
+    Print("--- BAND VALUES ---");
+    Print("Upper Band: ", DoubleToString(upper_band, 2));
+    Print("Middle Band: ", DoubleToString(middle_band, 2));
+    Print("Lower Band: ", DoubleToString(lower_band, 2));
+    Print("Band Width: ", DoubleToString(band_width, 2));
+    Print("");
+    Print("--- PRICE ANALYSIS ---");
+    Print("Current Price: ", DoubleToString(current_price, 2));
+    Print("Price Position in Bands: ", DoubleToString(price_position, 1), "%");
+    Print("Distance to Upper: ", DoubleToString(upper_band - current_price, 2));
+    Print("Distance to Lower: ", DoubleToString(current_price - lower_band, 2));
+    Print("");
+    Print("--- SLOPE DETAILS ---");
+    Print("Upper Slope: ", DoubleToString(upper_slope.linear_regression.slope_value, 4));
+    Print("Middle Slope: ", DoubleToString(middle_slope.linear_regression.slope_value, 4));
+    Print("Lower Slope: ", DoubleToString(lower_slope.linear_regression.slope_value, 4));
+    Print("Slope R²: Upper=", DoubleToString(upper_slope.linear_regression.r_squared, 3),
+          " Mid=", DoubleToString(middle_slope.linear_regression.r_squared, 3),
+          " Low=", DoubleToString(lower_slope.linear_regression.r_squared, 3));
+    Print("");
+    Print("--- VOLATILITY CONTEXT ---");
+    Print("ATR Value: ", DoubleToString(atr_value, 5));
+    Print("Width vs ATR Ratio: ", DoubleToString(width_atr_ratio, 2));
+    Print("Volatility State: ", volatility_state);
+    Print("Average Width (20 bars): ", DoubleToString(avg_width, 2));
+    Print("");
+    Print("--- MARKET CONTEXT ---");
+    Print("Market Phase: ", market_phase);
+    Print("Squeeze Detected: ", squeeze_detected ? "YES" : "NO");
+    Print("Breakout Potential: ", breakout_potential);
+    Print("========================================");
 
     // Note: Don't delete bollinger as it's managed by TF_CTX
 }
