@@ -289,6 +289,13 @@ void UpdateSymbolContexts(string symbol)
 
 void boll_m3_status(string symbol, ENUM_TIMEFRAMES tf)
 {
+    // === CONSTANTE DE THRESHOLD DE SLOPE ===
+    // VALOR: 0.1 (10% de inclinação)
+    // USO: Define sensibilidade para decisões baseadas em slope nas zonas centrais
+    // INTERPRETAÇÃO: Slope > 0.1 = tendência de alta significativa
+    //                Slope < -0.1 = tendência de baixa significativa
+    #define SLOPE_THRESHOLD 0.1
+
     // === VALIDAÇÃO PRÉVIA ===
     if (tf != PERIOD_M3)
         return;
@@ -342,9 +349,20 @@ void boll_m3_status(string symbol, ENUM_TIMEFRAMES tf)
     }
 
     // === CÁLCULOS ESTATÍSTICOS ===
+    // CÁLCULO DA POSIÇÃO RELATIVA DO PREÇO NAS BANDAS
+    // FÓRMULA: posição_percentual = ((preço_atual - banda_inferior) / largura_banda) × 100
+    // INTERPRETAÇÃO:
+    // - 0%: Preço exatamente na banda inferior (oversold extremo)
+    // - 50%: Preço na banda média (equilíbrio)
+    // - 100%: Preço exatamente na banda superior (overbought extremo)
+    // - < 0%: Preço abaixo da banda inferior (quebra de suporte)
+    // - > 100%: Preço acima da banda superior (quebra de resistência)
     double price_position = ((current_price - lower) / band_width) * 100.0;
-    double distance_to_upper = upper - current_price;
-    double distance_to_lower = current_price - lower;
+
+    // DISTÂNCIAS PARA ANÁLISE DE PROXIMIDADE
+    // FÓRMULA: distância = |banda - preço_atual|
+    double distance_to_upper = upper - current_price;  // Positivo = espaço para cima
+    double distance_to_lower = current_price - lower;  // Positivo = espaço para baixo
 
     // === ANÁLISE HISTÓRICA ===
     double width_history[20];
@@ -421,17 +439,149 @@ void boll_m3_status(string symbol, ENUM_TIMEFRAMES tf)
 
     // === RECOMENDAÇÕES ===
     string recommendation = "MONITOR";
-    if (signal.direction == "BULL" && signal.confidence > 0.7 && price_position < 30)
-        recommendation = "BUY_SIGNAL";
-    else if (signal.direction == "BEAR" && signal.confidence > 0.7 && price_position > 70)
-        recommendation = "SELL_SIGNAL";
-    else if (squeeze_detected)
-        recommendation = "WAIT_BREAKOUT";
-    else if (expansion_detected && signal.confidence < 0.5)
-        recommendation = "REDUCE_POSITION";
+    string alerts = ""; // Declare alerts early for risk management use
+
+    // === SISTEMA DE CONFIANÇA AJUSTADO POR RISCO ===
+    // CONCEITO: Thresholds dinâmicos baseados no nível de risco identificado
+    // LÓGICA: Riscos maiores exigem confiança maior para evitar perdas
+    // FÓRMULA: confiança_mínima = base + ajuste_por_risco
+    double min_confidence = 0.55;              // BASE: 55% confiança padrão
+    if (risk_level == "HIGH") min_confidence = 0.70;      // ALTO RISCO: +15% (70%)
+    if (risk_level == "VERY_HIGH") min_confidence = 0.80; // MUITO ALTO: +25% (80%)
+
+    // VALIDAÇÃO DE CONFIANÇA: Bloqueia sinais abaixo do threshold de risco
+    // OBJETIVO: Prevenir trades em condições de baixa probabilidade
+    if (signal.confidence < min_confidence) {
+        recommendation = "INSUFFICIENT_CONFIDENCE";  // Sinal de confiança insuficiente
+        alerts += "LOW_CONFIDENCE ";                 // Alerta para monitoramento
+        return; // ENCERRA EXECUÇÃO: Não processa sinais de baixa confiança
+    }
+
+
+    // === DETECÇÃO DE "PRICE RIDING BAND" ===
+    // CONCEITO: Identifica quando preço está "cavalgando" a banda por N candles consecutivos
+    // LÓGICA: Pressão consistente contra a banda indica força direcional excepcional
+    // PARÂMETROS:
+    // - riding_candles_required: Número mínimo de candles consecutivos (3)
+    // - riding_epsilon: Tolerância baseada em ATR (10% do ATR atual)
+    int riding_candles_required = 3;  // N candles consecutivos mínimos
+    double riding_epsilon = atr_value * 0.1;  // Buffer ATR-based (10% da volatilidade)
+
+    // === DETECÇÃO DE RIDING UPPER BAND (SINAL FORTE DE COMPRA) ===
+    // CONDIÇÕES: Bandas WIDE/VERY_WIDE + slope superior positivo + N candles consecutivos
+    // INTERPRETAÇÃO: Preço pressionando resistência consistentemente = força compradora forte
+    bool riding_upper_band = false;
+    if ((signal.region == WIDTH_WIDE || signal.region == WIDTH_VERY_WIDE) &&
+        upper_slope.linear_regression.slope_value > 0) {
+
+        // INÍCIO DA VERIFICAÇÃO: Assume verdadeiro, prova falso
+        riding_upper_band = true;
+
+        // LOOP DE VALIDAÇÃO: Verifica cada candle dos últimos N
+        // FÓRMULA: close[i] > upper[i] - epsilon (preço acima da banda com tolerância)
+        for (int i = 0; i < riding_candles_required && riding_upper_band; i++) {
+            double close_i = iClose(symbol, tf, i);        // Preço de fechamento do candle i
+            double upper_i = bollinger.GetUpper(i);        // Banda superior do candle i
+            if (!(close_i > upper_i - riding_epsilon)) {   // Condição: close > upper - epsilon
+                riding_upper_band = false;                 // Quebra a sequência se falhar
+            }
+        }
+    }
+
+    // === DETECÇÃO DE RIDING LOWER BAND (SINAL FORTE DE VENDA) ===
+    // CONDIÇÕES: Bandas WIDE/VERY_WIDE + slope inferior negativo + N candles consecutivos
+    // INTERPRETAÇÃO: Preço pressionando suporte consistentemente = força vendedora forte
+    bool riding_lower_band = false;
+    if ((signal.region == WIDTH_WIDE || signal.region == WIDTH_VERY_WIDE) &&
+        lower_slope.linear_regression.slope_value < 0) {
+
+        // INÍCIO DA VERIFICAÇÃO: Assume verdadeiro, prova falso
+        riding_lower_band = true;
+
+        // LOOP DE VALIDAÇÃO: Verifica cada candle dos últimos N
+        // FÓRMULA: close[i] < lower[i] + epsilon (preço abaixo da banda com tolerância)
+        for (int i = 0; i < riding_candles_required && riding_lower_band; i++) {
+            double close_i = iClose(symbol, tf, i);        // Preço de fechamento do candle i
+            double lower_i = bollinger.GetLower(i);        // Banda inferior do candle i
+            if (!(close_i < lower_i + riding_epsilon)) {   // Condição: close < lower + epsilon
+                riding_lower_band = false;                 // Quebra a sequência se falhar
+            }
+        }
+    }
+
+    // Detectar condições de breakout
+    bool is_breakout_up = (price_position > 95 && signal.direction == "BULL");
+    bool is_breakout_down = (price_position < 5 && signal.direction == "BEAR");
+
+    // Detectar momentum (expansão das bandas)
+    bool has_momentum = (signal.region == WIDTH_WIDE || signal.region == WIDTH_VERY_WIDE) &&
+                       (signal.slope_state == SLOPE_EXPANDING);
+
+    // === SINAIS DE RIDING BAND (ALTA PRIORIDADE) ===
+    // CONCEITO: Sinais fortes quando preço "cavalga" a banda consistentemente
+    // LÓGICA: Pressão consecutiva contra banda indica força excepcional
+    // PRIORIDADE: Substitui sinais normais quando detectado
+    if (riding_upper_band && signal.confidence > 0.45) {
+        recommendation = "STRONG_BUY_SIGNAL";        // SINAL FORTE DE COMPRA
+        alerts += "PRICE_RIDING_UPPER ";             // ALERTA: Riding upper detectado
+    }
+    else if (riding_lower_band && signal.confidence > 0.45) {
+        recommendation = "STRONG_SELL_SIGNAL";       // SINAL FORTE DE VENDA
+        alerts += "PRICE_RIDING_LOWER ";             // ALERTA: Riding lower detectado
+    }
+    // If no riding band signals, use zone-based logic
+    else {
+        // === LÓGICA DE ZONAS BASEADA EM POSIÇÃO DO PREÇO ===
+        // ESTRATÉGIA: Divide as bandas em 3 zonas com requisitos diferentes
+        // OBJETIVO: Mais permissivo próximo às bandas, mais conservador no centro
+        double slope = middle_slope.linear_regression.slope_value; // Slope da banda média (tendência principal)
+
+        // === SINAIS DE COMPRA (BULL) ===
+        if (signal.direction == "BULL")
+        {
+            // ZONA 1: PERTO DA BANDA INFERIOR (< 40%) - COMPRA DIRETA
+            // LÓGICA: Preço próximo ao suporte = oportunidade de reversão/compra
+            // CONDIÇÃO: Apenas direção BULL (sem requisitos adicionais)
+            if (price_position < 40)
+                recommendation = "BUY_SIGNAL";
+
+            // ZONA 2: REGIÃO CENTRAL (40-70%) - COMPRA COM SLOPE POSITIVO
+            // LÓGICA: Área de equilíbrio = confirmação de tendência necessária
+            // CONDIÇÃO: Direção BULL + slope > threshold (tendência confirmada)
+            else if (price_position >= 40 && price_position <= 70 && slope > SLOPE_THRESHOLD)
+                recommendation = "BUY_SIGNAL";
+
+            // ZONA 3: PERTO DA BANDA SUPERIOR (> 70%) - COMPRA COM MOMENTUM
+            // LÓGICA: Preço alto = contra-tendência, precisa força excepcional
+            // CONDIÇÃO: Direção BULL + momentum (bandas expandindo)
+            else if (price_position > 70 && has_momentum)
+                recommendation = "BUY_SIGNAL";
+        }
+
+        // === SINAIS DE VENDA (BEAR) ===
+        else if (signal.direction == "BEAR")
+        {
+            // ZONA 1: PERTO DA BANDA SUPERIOR (> 60%) - VENDA DIRETA
+            // LÓGICA: Preço próximo à resistência = oportunidade de reversão/venda
+            // CONDIÇÃO: Apenas direção BEAR (sem requisitos adicionais)
+            if (price_position > 60)
+                recommendation = "SELL_SIGNAL";
+
+            // ZONA 2: REGIÃO CENTRAL (30-60%) - VENDA COM SLOPE NEGATIVO
+            // LÓGICA: Área de equilíbrio = confirmação de tendência de baixa necessária
+            // CONDIÇÃO: Direção BEAR + slope < -threshold (queda confirmada)
+            else if (price_position >= 30 && price_position <= 60 && slope < -SLOPE_THRESHOLD)
+                recommendation = "SELL_SIGNAL";
+
+            // ZONA 3: PERTO DA BANDA INFERIOR (< 30%) - VENDA COM MOMENTUM
+            // LÓGICA: Preço baixo = contra-tendência, precisa força excepcional
+            // CONDIÇÃO: Direção BEAR + momentum (bandas expandindo para baixo)
+            else if (price_position < 30 && has_momentum)
+                recommendation = "SELL_SIGNAL";
+        }
+    }
 
     // === ALERTAS ===
-    string alerts = "";
     if (squeeze_detected) alerts += "SQUEEZE_ALERT ";
     if (expansion_detected && width_change_pct > 50) alerts += "RAPID_EXPANSION ";
     if (MathAbs(upper_slope.linear_regression.slope_value) > 0.1) alerts += "STRONG_UPPER_TREND ";
@@ -440,68 +590,73 @@ void boll_m3_status(string symbol, ENUM_TIMEFRAMES tf)
     if (signal.confidence > 0.8) alerts += "HIGH_CONFIDENCE_SIGNAL ";
     if (alerts == "") alerts = "NONE";
 
-    // === EXIBIÇÃO COMPLETA ===
-    Print("=== BOLLINGER M3 COMPREHENSIVE ANALYSIS ===");
-    Print("Symbol: ", symbol, " | Timeframe: M3 | Timestamp: ", TimeToString(TimeCurrent()));
-    Print("");
 
-    // SIGNAL ANALYSIS
-    Print("--- PRIMARY SIGNAL ---");
-    Print("Direction: ", signal.direction, " | Confidence: ", DoubleToString(signal.confidence, 3));
-    Print("Region: ", EnumToString(signal.region), " | Slope State: ", EnumToString(signal.slope_state));
-    Print("Reason: ", signal.reason);
-    Print("");
+    // === EXIBIÇÃO COMPLETA - APENAS PARA SINAIS DE COMPRA/VENDA ===
+    if (recommendation == "BUY_SIGNAL" || recommendation == "SELL_SIGNAL" ||
+        recommendation == "STRONG_BUY_SIGNAL" || recommendation == "STRONG_SELL_SIGNAL")
+    {
+        Print("=== BOLLINGER M3 COMPREHENSIVE ANALYSIS ===");
+        Print("Symbol: ", symbol, " | Timeframe: M3 | Timestamp: ", TimeToString(TimeCurrent()));
+        Print("");
 
-    // BAND VALUES
-    Print("--- BAND METRICS ---");
-    Print("Upper Band: ", DoubleToString(upper, 2), " | Middle: ", DoubleToString(middle, 2), " | Lower: ", DoubleToString(lower, 2));
-    Print("Band Width: ", DoubleToString(band_width, 2), " | Avg Width (20): ", DoubleToString(avg_width_20, 2));
-    Print("Width Change: ", DoubleToString(width_change_pct, 1), "%");
-    Print("");
+        // SIGNAL ANALYSIS
+        Print("--- PRIMARY SIGNAL ---");
+        Print("Direction: ", signal.direction, " | Confidence: ", DoubleToString(signal.confidence, 3));
+        Print("Region: ", EnumToString(signal.region), " | Slope State: ", EnumToString(signal.slope_state));
+        Print("Reason: ", signal.reason);
+        Print("");
 
-    // PRICE ANALYSIS
-    Print("--- PRICE POSITION ---");
-    Print("Current Price: ", DoubleToString(current_price, 2), " | Position in Bands: ", DoubleToString(price_position, 1), "%");
-    Print("Distance to Upper: ", DoubleToString(distance_to_upper, 2), " | Distance to Lower: ", DoubleToString(distance_to_lower, 2));
-    Print("");
+        // BAND VALUES
+        Print("--- BAND METRICS ---");
+        Print("Upper Band: ", DoubleToString(upper, 2), " | Middle: ", DoubleToString(middle, 2), " | Lower: ", DoubleToString(lower, 2));
+        Print("Band Width: ", DoubleToString(band_width, 2), " | Avg Width (20): ", DoubleToString(avg_width_20, 2));
+        Print("Width Change: ", DoubleToString(width_change_pct, 1), "%");
+        Print("");
 
-    // SLOPE ANALYSIS
-    Print("--- SLOPE ANALYSIS ---");
-    Print("Upper Slope: ", DoubleToString(upper_slope.linear_regression.slope_value, 4),
-          " (R²=", DoubleToString(upper_slope.linear_regression.r_squared, 3), ")");
-    Print("Middle Slope: ", DoubleToString(middle_slope.linear_regression.slope_value, 4),
-          " (R²=", DoubleToString(middle_slope.linear_regression.r_squared, 3), ")");
-    Print("Lower Slope: ", DoubleToString(lower_slope.linear_regression.slope_value, 4),
-          " (R²=", DoubleToString(lower_slope.linear_regression.r_squared, 3), ")");
-    Print("");
+        // PRICE ANALYSIS
+        Print("--- PRICE POSITION ---");
+        Print("Current Price: ", DoubleToString(current_price, 2), " | Position in Bands: ", DoubleToString(price_position, 1), "%");
+        Print("Distance to Upper: ", DoubleToString(distance_to_upper, 2), " | Distance to Lower: ", DoubleToString(distance_to_lower, 2));
+        Print("");
 
-    // VOLATILITY ANALYSIS
-    Print("--- VOLATILITY CONTEXT ---");
-    Print("ATR Value: ", DoubleToString(atr_value, 5), " | Width/ATR Ratio: ", DoubleToString(width_atr_ratio, 2));
-    Print("Volatility State: ", volatility_state, " | Market Phase: ", market_phase);
-    Print("");
+        // SLOPE ANALYSIS
+        Print("--- SLOPE ANALYSIS ---");
+        Print("Upper Slope: ", DoubleToString(upper_slope.linear_regression.slope_value, 4),
+              " (R²=", DoubleToString(upper_slope.linear_regression.r_squared, 3), ")");
+        Print("Middle Slope: ", DoubleToString(middle_slope.linear_regression.slope_value, 4),
+              " (R²=", DoubleToString(middle_slope.linear_regression.r_squared, 3), ")");
+        Print("Lower Slope: ", DoubleToString(lower_slope.linear_regression.slope_value, 4),
+              " (R²=", DoubleToString(lower_slope.linear_regression.r_squared, 3), ")");
+        Print("");
 
-    // PATTERN DETECTION
-    Print("--- PATTERN DETECTION ---");
-    Print("Squeeze Detected: ", squeeze_detected ? "YES" : "NO");
-    Print("Expansion Detected: ", expansion_detected ? "YES" : "NO");
-    Print("Convergence Detected: ", convergence_detected ? "YES" : "NO");
-    Print("Momentum State: ", momentum_state);
-    Print("");
+        // VOLATILITY ANALYSIS
+        Print("--- VOLATILITY CONTEXT ---");
+        Print("ATR Value: ", DoubleToString(atr_value, 5), " | Width/ATR Ratio: ", DoubleToString(width_atr_ratio, 2));
+        Print("Volatility State: ", volatility_state, " | Market Phase: ", market_phase);
+        Print("");
 
-    // RISK & OPPORTUNITY
-    Print("--- RISK & OPPORTUNITY ---");
-    Print("Breakout Potential: ", breakout_potential, " | Risk Level: ", risk_level);
-    Print("Recommendation: ", recommendation);
-    Print("Active Alerts: ", alerts);
-    Print("");
+        // PATTERN DETECTION
+        Print("--- PATTERN DETECTION ---");
+        Print("Squeeze Detected: ", squeeze_detected ? "YES" : "NO");
+        Print("Expansion Detected: ", expansion_detected ? "YES" : "NO");
+        Print("Convergence Detected: ", convergence_detected ? "YES" : "NO");
+        Print("Momentum State: ", momentum_state);
+        Print("");
 
-    // STATISTICAL SUMMARY
-    Print("--- STATISTICAL SUMMARY ---");
-    Print("Valid Width Samples: ", valid_widths, "/20");
-    Print("Width StdDev Estimate: ", DoubleToString(MathAbs(band_width - avg_width_20), 2));
-    Print("Slope Consensus: ", (upper_slope.linear_regression.slope_value * middle_slope.linear_regression.slope_value > 0) ? "ALIGNED" : "DIVERGENT");
-    Print("==================================================");
+        // RISK & OPPORTUNITY
+        Print("--- RISK & OPPORTUNITY ---");
+        Print("Breakout Potential: ", breakout_potential, " | Risk Level: ", risk_level);
+        Print("Recommendation: ", recommendation);
+        Print("Active Alerts: ", alerts);
+        Print("");
+
+        // STATISTICAL SUMMARY
+        Print("--- STATISTICAL SUMMARY ---");
+        Print("Valid Width Samples: ", valid_widths, "/20");
+        Print("Width StdDev Estimate: ", DoubleToString(MathAbs(band_width - avg_width_20), 2));
+        Print("Slope Consensus: ", (upper_slope.linear_regression.slope_value * middle_slope.linear_regression.slope_value > 0) ? "ALIGNED" : "DIVERGENT");
+        Print("==================================================");
+    }
 }
 
 //+------------------------------------------------------------------+

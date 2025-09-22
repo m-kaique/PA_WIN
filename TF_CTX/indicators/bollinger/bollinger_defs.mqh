@@ -21,8 +21,8 @@ enum ENUM_BOLL_APPLIED_PRICE
 #define WIDTH_LOOKBACK 100
 #define SLOPE_LOOKBACK 9
 
-// Default percentile thresholds
-#define PERCENTILE_THRESHOLD_VERY_NARROW 10
+// Default percentile thresholds - adjusted for WIN$N squeeze detection
+#define PERCENTILE_THRESHOLD_VERY_NARROW 8
 #define PERCENTILE_THRESHOLD_NARROW 30
 #define PERCENTILE_THRESHOLD_NORMAL 70
 #define PERCENTILE_THRESHOLD_WIDE 90

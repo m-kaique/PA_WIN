@@ -418,80 +418,112 @@ void CBollinger::CalculateWidths()
 
 //+------------------------------------------------------------------+
 //| Calculate Z-score of the most recent width                       |
-//+------------------------------------------------------------------+
+//| FÓRMULA MATEMÁTICA: Z-score = (valor_atual - média) / desvio_padrão |
+//| LÓGICA: Mede quantos desvios padrão o valor atual está da média histórica |
+//| INTERPRETAÇÃO: Z > 0 = acima da média, Z < 0 = abaixo da média |
+//| EXEMPLO: Z = 2.0 significa valor 2 desvios acima da média (evento raro) |
 double CBollinger::CalculateWidthZScore(const double &width_array[], int length, int lookback)
 {
-  if (length < 1 || lookback < 1) return 0.0;
-  int actual_lookback = MathMin(lookback, length);
-  double sum = 0.0;
-  for(int i = 0; i < actual_lookback; i++)
-    sum += width_array[i];
-  double mean = sum / actual_lookback;
-  double sum_sq = 0.0;
-  for(int i = 0; i < actual_lookback; i++)
-  {
-    double diff = width_array[i] - mean;
-    sum_sq += diff * diff;
-  }
-  double variance = sum_sq / actual_lookback;
-  double std = MathSqrt(variance);
-  if (std == 0.0) return 0.0;
-  double current = width_array[0];
-  return (current - mean) / std;
+   // VALIDAÇÃO: Z-score precisa de pelo menos 1 valor, mas estatisticamente 2+ é melhor
+   if (length < 1 || lookback < 1) return 0.0; // Retorna neutro se dados insuficientes
+
+   int actual_lookback = MathMin(lookback, length); // Limita ao tamanho disponível
+
+   // CÁLCULO DA MÉDIA ARITMÉTICA: Soma todos os valores e divide por quantidade
+   // FÓRMULA: média = Σ(valores) / n
+   double sum = 0.0;
+   for(int i = 0; i < actual_lookback; i++)
+     sum += width_array[i];
+   double mean = sum / actual_lookback;
+
+   // CÁLCULO DA VARIÂNCIA: Mede dispersão dos dados em torno da média
+   // FÓRMULA: variância = Σ(diferenças_ao_quadrado) / n
+   // ONDE: diferença = valor - média
+   double sum_sq = 0.0;
+   for(int i = 0; i < actual_lookback; i++)
+   {
+     double diff = width_array[i] - mean;     // Diferença em relação à média
+     sum_sq += diff * diff;                    // Soma dos quadrados das diferenças
+   }
+   double variance = sum_sq / actual_lookback; // Variância populacional
+
+   // DESVIO PADRÃO: Raiz quadrada da variância (mede volatilidade)
+   // FÓRMULA: σ = √(variância)
+   double std = MathSqrt(variance);
+
+   // PREVENÇÃO DE DIVISÃO POR ZERO: Se todos os valores são iguais
+   if (std == 0.0) return 0.0; // Z-score = 0 (valor na média)
+
+   // CÁLCULO FINAL DO Z-SCORE
+   double current = width_array[0]; // Valor mais recente
+   return (current - mean) / std;   // Normalização: quantos σ o valor está da média
 }
 
 //+------------------------------------------------------------------+
 //| Calculate percentile of the most recent width (improved with sorting) |
-//+------------------------------------------------------------------+
+//| FÓRMULA MATEMÁTICA: Percentil = [posição_ordenada / (n-1)] × 100 |
+//| LÓGICA: Ordena histórico de larguras e encontra posição relativa do valor atual |
+//| INTERPOLAÇÃO: Para valores entre posições, usa interpolação linear |
+//| EXEMPLO: Se valor atual é 3º em array de 10 elementos → percentil = (3/9)×100 = 33.33% |
 double CBollinger::CalculateWidthPercentile(const double &width_array[], int length, int lookback)
 {
-   if (length < 2 || lookback < 2) return 50.0;
+    // VALIDAÇÃO ESTATÍSTICA: Percentil precisa de mínimo 2 valores para distribuição válida
+    if (length < 2 || lookback < 2) return 50.0; // Retorna mediana (50%) como valor padrão
 
-   int actual_lookback = MathMin(lookback, length);
-   if (actual_lookback < 2) return 50.0;
+    int actual_lookback = MathMin(lookback, length); // Garante não ultrapassar tamanho do array
+    if (actual_lookback < 2) return 50.0;
 
-   // Create sorted copy for accurate percentile calculation
-   double sorted[];
-   ArrayResize(sorted, actual_lookback);
-   ArrayCopy(sorted, width_array, 0, 0, actual_lookback);
+    // CRIAÇÃO DE CÓPIA ORDENADA: Preserva array original para outros cálculos
+    // Array ordenado necessário para cálculo preciso de percentil
+    double sorted[];
+    ArrayResize(sorted, actual_lookback);
+    ArrayCopy(sorted, width_array, 0, 0, actual_lookback);
 
-   // Sort in ascending order
-   for(int i = 0; i < actual_lookback - 1; i++)
-   {
-      for(int j = i + 1; j < actual_lookback; j++)
-      {
-         if (sorted[i] > sorted[j])
-         {
-            double temp = sorted[i];
-            sorted[i] = sorted[j];
-            sorted[j] = temp;
-         }
-      }
-   }
+    // ALGORITMO DE ORDENAÇÃO: Bubble Sort O(n²) - aceitável para arrays pequenos (< 200 elementos)
+    // ORDENAÇÃO CRESCENTE: Valores menores primeiro, maiores depois
+    for(int i = 0; i < actual_lookback - 1; i++)
+    {
+       for(int j = i + 1; j < actual_lookback; j++)
+       {
+          if (sorted[i] > sorted[j])
+          {
+             // TROCA DE ELEMENTOS: Move valores maiores para posições posteriores
+             double temp = sorted[i];
+             sorted[i] = sorted[j];
+             sorted[j] = temp;
+          }
+       }
+    }
 
-   double current = width_array[0];
+    double current = width_array[0]; // Valor mais recente (candle atual)
 
-   // Find position in sorted array
-   int pos = 0;
-   while (pos < actual_lookback && sorted[pos] < current) pos++;
+    // BUSCA SEQUENCIAL: Encontra posição do valor atual na distribuição ordenada
+    // Complexidade O(n) mas array pequeno justifica abordagem simples
+    int pos = 0;
+    while (pos < actual_lookback && sorted[pos] < current) pos++;
 
-   if (pos == 0) return 0.0;
-   if (pos >= actual_lookback) return 100.0;
+    // TRATAMENTO DE CASOS EXTREMOS:
+    if (pos == 0) return 0.0;                    // Valor menor que todos = percentil mínimo
+    if (pos >= actual_lookback) return 100.0;    // Valor maior que todos = percentil máximo
 
-   // Interpolate for more precision
-   if (sorted[pos] == current)
-   {
-      // Exact match
-      return (double)pos / (actual_lookback - 1) * 100.0;
-   }
-   else
-   {
-      // Interpolate between pos-1 and pos
-      double lower = sorted[pos-1];
-      double upper = sorted[pos];
-      double fraction = (current - lower) / (upper - lower);
-      return ((pos - 1 + fraction) / (actual_lookback - 1)) * 100.0;
-   }
+    // CÁLCULO DE PERCENTIL COM INTERPOLAÇÃO:
+    if (sorted[pos] == current)
+    {
+       // CORRESPONDÊNCIA EXATA: Cálculo direto da posição relativa
+       // FÓRMULA: percentil = (posição_encontrada / total_posições) × 100
+       // NOTA: Divide por (n-1) para normalização correta
+       return (double)pos / (actual_lookback - 1) * 100.0;
+    }
+    else
+    {
+       // INTERPOLAÇÃO LINEAR: Valor entre duas posições ordenadas
+       // FÓRMULA: percentil = [(posição - 1) + fração_interpolada] / (n-1) × 100
+       // ONDE: fração = (valor_atual - valor_inferior) / (valor_superior - valor_inferior)
+       double lower = sorted[pos-1];    // Valor na posição anterior
+       double upper = sorted[pos];      // Valor na posição atual
+       double fraction = (current - lower) / (upper - lower); // Fração linear entre posições
+       return ((pos - 1 + fraction) / (actual_lookback - 1)) * 100.0;
+    }
 }
 
 //+------------------------------------------------------------------+
@@ -788,68 +820,97 @@ bool CBollinger::DetectSqueeze(double threshold)
 
 //+------------------------------------------------------------------+
 //| Calculate weighted direction consensus from band slopes         |
-//+------------------------------------------------------------------+
+//| FÓRMULA: Consenso = Σ(força_direção × peso_banda) |
+//| LÓGICA: Sistema de votação ponderada onde cada banda tem influência diferente |
+//| PESOS: Upper=50% (resistência), Middle=30% (tendência), Lower=20% (suporte) |
+//| RESULTADO: Score de 0-1 onde 0.6+ = BULL, 0.4- = BEAR, meio = NEUTRAL |
 double CBollinger::CalculateWeightedDirectionConsensus(const SSlopeValidation &upper,
-                                                     const SSlopeValidation &middle,
-                                                     const SSlopeValidation &lower)
+                                                      const SSlopeValidation &middle,
+                                                      const SSlopeValidation &lower)
 {
-  // Weights: upper band has highest influence, lower has least
-  const double UPPER_WEIGHT = 0.5;
-  const double MIDDLE_WEIGHT = 0.3;
-  const double LOWER_WEIGHT = 0.2;
+   // DEFINIÇÃO DE PESOS: Baseado na importância técnica de cada banda
+   // Upper Band (50%): Resistência dinâmica - mais importante para pressão vendedora
+   // Middle Band (30%): Tendência central - indicador principal de direção
+   // Lower Band (20%): Suporte dinâmico - menos influente que resistência
+   const double UPPER_WEIGHT = 0.5;
+   const double MIDDLE_WEIGHT = 0.3;
+   const double LOWER_WEIGHT = 0.2;
 
-  double total_up = 0.0;
-  double total_down = 0.0;
+   // ACUMULADORES: Separam força de alta e baixa
+   double total_up = 0.0;    // Soma das forças direcionais de alta
+   double total_down = 0.0;  // Soma das forças direcionais de baixa
 
-  // Upper band
-  double upper_strength = MathAbs(upper.linear_regression.slope_value) * UPPER_WEIGHT;
-  if (upper.linear_regression.slope_value > 0)
-     total_up += upper_strength;
-  else if (upper.linear_regression.slope_value < 0)
-     total_down += upper_strength;
+   // ANÁLISE BANDA SUPERIOR: Resistência mais importante
+   double upper_strength = MathAbs(upper.linear_regression.slope_value) * UPPER_WEIGHT;
+   if (upper.linear_regression.slope_value > 0)
+      total_up += upper_strength;     // Banda superior subindo = pressão compradora
+   else if (upper.linear_regression.slope_value < 0)
+      total_down += upper_strength;   // Banda superior descendo = pressão vendedora
 
-  // Middle band
-  double middle_strength = MathAbs(middle.linear_regression.slope_value) * MIDDLE_WEIGHT;
-  if (middle.linear_regression.slope_value > 0)
-     total_up += middle_strength;
-  else if (middle.linear_regression.slope_value < 0)
-     total_down += middle_strength;
+   // ANÁLISE BANDA CENTRAL: Tendência principal
+   double middle_strength = MathAbs(middle.linear_regression.slope_value) * MIDDLE_WEIGHT;
+   if (middle.linear_regression.slope_value > 0)
+      total_up += middle_strength;    // Tendência central de alta
+   else if (middle.linear_regression.slope_value < 0)
+      total_down += middle_strength;  // Tendência central de baixa
 
-  // Lower band
-  double lower_strength = MathAbs(lower.linear_regression.slope_value) * LOWER_WEIGHT;
-  if (lower.linear_regression.slope_value > 0)
-     total_up += lower_strength;
-  else if (lower.linear_regression.slope_value < 0)
-     total_down += lower_strength;
+   // ANÁLISE BANDA INFERIOR: Suporte menos influente
+   double lower_strength = MathAbs(lower.linear_regression.slope_value) * LOWER_WEIGHT;
+   if (lower.linear_regression.slope_value > 0)
+      total_up += lower_strength;     // Suporte subindo = força compradora
+   else if (lower.linear_regression.slope_value < 0)
+      total_down += lower_strength;   // Suporte descendo = força vendedora
 
-  // Consensus score: -1 (all down) to +1 (all up)
-  double consensus = total_up - total_down;
+   // CÁLCULO DO CONSENSO: Diferença entre forças opostas
+   // FÓRMULA: consenso = força_alta_total - força_baixa_total
+   // INTERVALO: [-1, +1] onde +1 = todas as bandas subindo, -1 = todas descendo
+   double consensus = total_up - total_down;
 
-  // Normalize to 0-1 range
-  return (consensus + 1.0) / 2.0;
+   // NORMALIZAÇÃO: Converte para escala 0-1 para facilitar interpretação
+   // FÓRMULA: score_normalizado = (consenso_bruto + 1) / 2
+   // RESULTADO: 0.0 = consenso total de baixa, 1.0 = consenso total de alta
+   return (consensus + 1.0) / 2.0;
 }
 
 //+------------------------------------------------------------------+
 //| Calculate integrated confidence score                            |
-//+------------------------------------------------------------------+
+//| FÓRMULA: Confiança = Σ(componente × peso) + bônus_condicional |
+//| COMPONENTES: direção_bandas(40%), slope(40%), width(20%) + extras(10% cada) |
+//| LÓGICA: Combina múltiplos fatores técnicos em score unificado 0-1 |
+//| BÔNUS: +20% para squeeze (condições de alta probabilidade) |
 double CBollinger::CalculateIntegratedConfidence(double direction_score, double slope_strength,
-                                               double width_modifier, double position_strength,
-                                               double convergence_factor, bool is_squeeze)
+                                                double width_modifier, double position_strength,
+                                                double convergence_factor, bool is_squeeze)
 {
-  // Base components using existing weights
-  double band_component = direction_score * m_weights[0];
-  double slope_component = slope_strength * m_weights[1];
-  double width_component = width_modifier * m_weights[2];
+   // COMPONENTES PRINCIPAIS: Usam pesos configuráveis do sistema
+   // 1. DIREÇÃO DAS BANDAS: Score de consenso (0-1) × peso_banda
+   double band_component = direction_score * m_weights[0];
 
-  // Additional components
-  double position_component = position_strength * 0.1;  // 10% weight for position
-  double convergence_component = convergence_factor * 0.1;  // 10% weight for convergence
-  double squeeze_bonus = is_squeeze ? 0.2 : 0.0;  // 20% bonus for squeeze
+   // 2. FORÇA DO SLOPE: Intensidade da inclinação × peso_slope
+   double slope_component = slope_strength * m_weights[1];
 
-  double total_confidence = band_component + slope_component + width_component +
-                          position_component + convergence_component + squeeze_bonus;
+   // 3. MODIFICADOR DE LARGURA: Bonus para regiões extremas × peso_width
+   double width_component = width_modifier * m_weights[2];
 
-  return MathMin(1.0, MathMax(0.0, total_confidence));
+   // COMPONENTES ADICIONAIS: Pesos fixos para fatores complementares
+   // 4. POSIÇÃO DO PREÇO: Força relativa nas bandas (10% do total)
+   double position_component = position_strength * 0.1;
+
+   // 5. CONVERGÊNCIA DAS BANDAS: Fator de squeeze/contração (10% do total)
+   double convergence_component = convergence_factor * 0.1;
+
+   // BÔNUS CONDICIONAL: Recompensa condições especiais
+   // 6. SQUEEZE BONUS: +20% quando detectado squeeze (alta probabilidade)
+   double squeeze_bonus = is_squeeze ? 0.2 : 0.0;
+
+   // SOMA INTEGRADA: Combinação linear de todos os fatores
+   // FÓRMULA: confiança_total = Σ(componentes) + bônus
+   double total_confidence = band_component + slope_component + width_component +
+                           position_component + convergence_component + squeeze_bonus;
+
+   // NORMALIZAÇÃO: Garante que resultado esteja no intervalo [0, 1]
+   // IMPORTANTE: Previne valores negativos ou > 100%
+   return MathMin(1.0, MathMax(0.0, total_confidence));
 }
 
 //+------------------------------------------------------------------+
@@ -1027,70 +1088,73 @@ void CBollinger::CacheWidthStats()
 
 //+------------------------------------------------------------------+
 //| CalibrateForWinIndex - Calibração Específica para WIN$N         |
-//| Propósito: Ajustar parâmetros baseado no timeframe do WIN$N     |
-//| Motivo: Cada timeframe tem características de volatilidade      |
-//|         distintas que requerem parâmetros específicos           |
-//+------------------------------------------------------------------+
+//| PROPÓSITO: Ajustar parâmetros baseado no timeframe do WIN$N     |
+//| FUNDAMENTO: Cada timeframe tem características de volatilidade distintas |
+//| MÉTODO: Switch case com configurações otimizadas por timeframe |
+//| VALIDAÇÃO: Parâmetros corrigidos automaticamente após calibração |
 void CBollinger::CalibrateForWinIndex(ENUM_TIMEFRAMES timeframe)
 {
-    /*
-     * FUNDAMENTO TÉCNICO:
-     * ------------------
-     * O WIN$N (Mini Índice Ibovespa) possui características específicas:
-     * - Tick size: 5 pontos (0.05)
-     * - Volatilidade alta durante pregão (9:00-17:00)
-     * - Patterns diferentes por timeframe
-     *
-     * Cada timeframe requer calibração específica:
-     * - M1: Mais ruído, precisa filtros mais rigorosos
-     * - M3: Baseado em análise de dados históricos reais
-     * - M15+: Trends mais claros, permite lookback maior
-     */
+     /*
+      * FUNDAMENTO TÉCNICO DO WIN$N:
+      * ----------------------------
+      * WIN$N (Mini Índice Ibovespa) características específicas:
+      * - Tick size: 5 pontos (R$ 0,05 por ponto)
+      * - Volatilidade: Alta durante pregão (9:00-17:00 B3)
+      * - Padrões: Diferentes por timeframe devido ao ruído
+      *
+      * ESTRATÉGIA DE CALIBRAÇÃO:
+      * - M1: Filtros rigorosos contra ruído de alta frequência
+      * - M3: Balance otimizado baseado em dados históricos reais
+      * - M15+: Lookback maior pois trends são mais claras
+      */
 
-    switch(timeframe)
-    {
-       case PERIOD_M1:
-          /*
-           * CONFIGURAÇÃO M1 (1 minuto):
-           * - Timeframe mais sensível a ruído
-           * - Lookback menor para reação rápida
-           * - Pesos equilibrados entre banda e slope
-           */
-          m_width_history = 150;      // Histórico maior para suavizar ruído
-          m_width_lookback = 30;      // Lookback curto para reatividade
-          m_slope_lookback = 6;       // Slope rápido para sinais imediatos
+     switch(timeframe)
+     {
+        case PERIOD_M1:
+           /*
+            * CONFIGURAÇÃO M1 (1 MINUTO):
+            * OBJETIVO: Filtrar ruído mantendo reatividade
+            * LÓGICA: Histórico maior + lookback curto = suavização com resposta rápida
+            */
+           m_width_history = 150;      // HISTÓRICO AMPLIO: Suaviza ruído de 1min
+           m_width_lookback = 30;      // LOOKBACK CURTO: Reage rápido a mudanças
+           m_slope_lookback = 6;       // SLOPE RÁPIDO: Detecção imediata de tendência
 
-          // Thresholds ajustados para maior sensibilidade
-          m_percentile_thresholds[0] = 20;  // Very narrow
-          m_percentile_thresholds[1] = 40;  // Narrow
-          m_percentile_thresholds[2] = 60;  // Normal
-          m_percentile_thresholds[3] = 80;  // Wide
+           // THRESHOLDS MAIS SENSÍVEIS: Capturam mudanças rápidas
+           m_percentile_thresholds[0] = 20;  // Very narrow (mais permissivo)
+           m_percentile_thresholds[1] = 40;  // Narrow
+           m_percentile_thresholds[2] = 60;  // Normal
+           m_percentile_thresholds[3] = 80;  // Wide
 
-          // Pesos balanceados para M1
-          m_weights[0] = 0.4;  // WEIGHT_BAND: Bandas
-          m_weights[1] = 0.4;  // WEIGHT_SLOPE: Inclinação
-          m_weights[2] = 0.2;  // WEIGHT_WIDTH: Largura
-          break;
+           // PESOS EQUILIBRADOS: Banda e slope têm mesma importância
+           m_weights[0] = 0.4;  // Band: 40% (resistência/suporte)
+           m_weights[1] = 0.4;  // Slope: 40% (inclinação - crítico em M1)
+           m_weights[2] = 0.2;  // Width: 20% (volatilidade)
+           break;
 
-       case PERIOD_M3:
-          /*
-           * CONFIGURAÇÃO M3 (3 minutos):
-           * - Baseada em análise do log real fornecido
-           * - Otimizada para características observadas do WIN$N
-           * - Balance entre sensibilidade e robustez
-           */
-          // Configurações baseadas em dados reais do log 08/08/2025
-          m_width_lookback = 50;      // Reduzido de 100 para maior reatividade
+        case PERIOD_M3:
+           /*
+            * CONFIGURAÇÃO M3 (3 MINUTOS) - OTIMIZADA:
+            * BASE: Análise de dados históricos reais do WIN$N
+            * OBJETIVO: Melhor balance entre sensibilidade e robustez
+            * MÉTODO: Parâmetros ajustados para capturar oportunidades reais
+            */
+           // PARÂMETROS DE HISTÓRICO: Otimizados para WIN$N M3
+           m_width_history = 100;      // BASE DE DADOS: 100 candles históricos
+           m_width_lookback = 40;      // ANÁLISE: 40 candles para estatísticas (aumentado de 50)
+           m_slope_lookback = 8;       // MOMENTUM: 8 candles para detecção rápida
 
-          // Thresholds ajustados conforme observado no log
-          m_percentile_thresholds[0] = 15;  // Mais restritivo para VERY_NARROW
-          m_percentile_thresholds[1] = 35;  // Ajustado conforme volatilidade M3
-          m_percentile_thresholds[2] = 65;  //
-          m_percentile_thresholds[3] = 85;  //
-          m_weights[0] = 0.5;  // Bandas têm maior peso para M3 (mais confiável neste timeframe)
-          m_weights[1] = 0.3;  // Slope moderado
-          m_weights[2] = 0.2;  // Width menor peso
-          break;
+           // THRESHOLDS PERMISSIVOS: Facilitam detecção de squeezes/expansões
+           m_percentile_thresholds[0] = 20;  // Very narrow (mais permissivo que padrão)
+           m_percentile_thresholds[1] = 40;  // Narrow
+           m_percentile_thresholds[2] = 60;  // Normal
+           m_percentile_thresholds[3] = 80;  // Wide
+
+           // PESOS BALANCEADOS: Ênfase em slope para momentum
+           m_weights[0] = 0.4;  // Band: 40% (direção das bandas)
+           m_weights[1] = 0.4;  // Slope: 40% (maior peso - momentum crítico)
+           m_weights[2] = 0.2;  // Width: 20% (modificadores de volatilidade)
+           break;
 
       case PERIOD_M5:
          // M5: More filters, balanced approach
