@@ -19,19 +19,22 @@
 class CBollinger : public CIndicatorBase
 {
 private:
-   int m_period;              // Período da média móvel (ex: 20 candles)
-   int m_shift;               // Deslocamento das bandas (normalmente 0)
-   double m_deviation;        // Desvio padrão multiplicador (normalmente 2.0)
-   ENUM_APPLIED_PRICE m_price; // Tipo de preço usado (ex: PRICE_CLOSE)
-   double width_array[];      // Array para armazenar larguras das bandas
+    int m_period;              // Período da média móvel (ex: 20 candles)
+    int m_shift;               // Deslocamento das bandas (normalmente 0)
+    double m_deviation;        // Desvio padrão multiplicador (normalmente 2.0)
+    ENUM_APPLIED_PRICE m_price; // Tipo de preço usado (ex: PRICE_CLOSE)
+    double width_array[];      // Array para armazenar larguras das bandas
 
-   // Parâmetros configuráveis - ajustáveis pelo usuário
-   int m_width_history;       // Quantidade de candles para histórico de largura
-   int m_width_lookback;      // Período para análise estatística da largura
-   int m_slope_lookback;      // Período para cálculo da inclinação
-   double m_slope_threshold;  // Threshold para classificação de inclinação
-   int m_percentile_thresholds[4]; // Limites percentuais para classificação de regiões
-   double m_weights[3];       // Pesos para: banda, inclinação, largura
+    // Parâmetros configuráveis - ajustáveis pelo usuário
+    int m_width_history;       // Quantidade de candles para histórico de largura
+    int m_width_lookback;      // Período para análise estatística da largura
+    int m_slope_lookback;      // Período para cálculo da inclinação
+    double m_slope_threshold;  // Threshold para classificação de inclinação
+    int m_percentile_thresholds[4]; // Limites percentuais para classificação de regiões
+    double m_weights[3];       // Pesos para: banda, inclinação, largura
+
+    // Threshold adaptativo baseado no ATR passado como parâmetro
+    double m_adaptive_threshold_ratio; // Ratio para threshold adaptativo (0.12 = 12%)
 
    // Otimização do cálculo de largura - evita recálculos desnecessários
    bool m_width_data_dirty;   // Flag indicando se dados precisam ser recalculados
@@ -52,6 +55,10 @@ private:
   SSlopeResult CalculateWidthSlopeDiscreteDerivative(double atr, int lookback); // Inclinação por derivada discreta
   static ENUM_SLOPE_STATE ClassifySlopeState(double slope_value, double threshold); // Classifica estado da inclinação
   virtual bool OnCopyValuesForSlope(int shift, int count, double &buffer[], COPY_METHOD copy_method) override; // Método virtual para cópia de valores
+
+  // Métodos aprimorados para detecção de squeeze
+  bool DetectAdvancedSqueeze(); // Detecção avançada de squeeze
+  static double CalculateWidthChangeRate(const double &width_array[], int length, int periods); // Taxa de mudança da largura
 
   // Novos métodos auxiliares para computação aprimorada de sinais
   double CalculatePositionStrength(); // Calcula força da posição do preço
@@ -97,6 +104,7 @@ public:
    virtual double GetValue(int shift = 0); // Banda média (linha central)
    double GetUpper(int shift = 0);         // Banda superior
    double GetLower(int shift = 0);         // Banda inferior
+   double GetNormalizedWidth(double atr, int shift = 0); // Largura normalizada pelo ATR
 
    virtual bool CopyValues(int shift, int count, double &buffer[]); // Copia valores da banda média
    bool CopyUpper(int shift, int count, double &buffer[]);          // Copia valores da banda superior
@@ -123,6 +131,9 @@ CBollinger::CBollinger()
    m_deviation = 2.0;         // Desvio padrão padrão
    m_price = PRICE_CLOSE;     // Usa preço de fechamento
    handle = INVALID_HANDLE;   // Handle ainda não criado
+
+   // Inicializa ratio para threshold adaptativo baseado no ATR passado como parâmetro
+   m_adaptive_threshold_ratio = 0.12; // 12% do ATR para threshold adaptativo
 
    // Inicializa parâmetros configuráveis com valores padrão
    m_width_history = WIDTH_HISTORY;
@@ -174,11 +185,18 @@ bool CBollinger::Init(string symbol, ENUM_TIMEFRAMES timeframe,
     // Calibração automática para símbolos WIN$N baseada no timeframe
     // WIN$N tem características específicas que exigem ajustes
     if (StringFind(m_symbol, "WIN") >= 0)
-       CalibrateForWinIndex(m_timeframe);
+        CalibrateForWinIndex(m_timeframe);
 
     // Libera handle anterior se existir e cria novo
     ReleaseHandle();
-    return CreateHandle();
+    if (!CreateHandle())
+        return false;
+
+    // Dados de largura serão calculados na primeira chamada de Update() ou quando necessário
+    // Isso evita o warning inicial quando BarsCalculated ainda é 0
+    m_width_data_dirty = true;
+
+    return true;
 }
 
 //+------------------------------------------------------------------+
@@ -223,16 +241,17 @@ bool CBollinger::Init(string symbol, ENUM_TIMEFRAMES timeframe,
 //+------------------------------------------------------------------+
 bool CBollinger::CreateHandle()
 {
-   // Cria handle para o indicador Bands (Bandas de Bollinger)
-   // Parâmetros: símbolo, timeframe, período, deslocamento, desvio, tipo de preço
-   handle = iBands(m_symbol, m_timeframe, m_period, m_shift, m_deviation, m_price);
-   if (handle == INVALID_HANDLE)
-   {
-     // Erro crítico: não foi possível criar o indicador
-     //Print("ERRO: Falha ao criar handle Bollinger para ", m_symbol);
-     return false;
-   }
-   return true; // Handle criado com sucesso
+    // Cria handle para o indicador Bands (Bandas de Bollinger)
+    // Parâmetros: símbolo, timeframe, período, deslocamento, desvio, tipo de preço
+    handle = iBands(m_symbol, m_timeframe, m_period, m_shift, m_deviation, m_price);
+    if (handle == INVALID_HANDLE)
+    {
+      // Erro crítico: não foi possível criar o indicador
+      //Print("ERRO: Falha ao criar handle Bollinger para ", m_symbol);
+      return false;
+    }
+
+    return true; // Handle criado com sucesso
 }
 
 //+------------------------------------------------------------------+
@@ -240,13 +259,14 @@ bool CBollinger::CreateHandle()
 //+------------------------------------------------------------------+
 void CBollinger::ReleaseHandle()
 {
-   // Verifica se existe um handle válido antes de liberar
-   if (handle != INVALID_HANDLE)
-   {
-     // Libera recursos do indicador no MetaTrader
-     IndicatorRelease(handle);
-     handle = INVALID_HANDLE; // Marca como inválido
-   }
+    // Verifica se existe um handle válido antes de liberar
+    if (handle != INVALID_HANDLE)
+    {
+      // Libera recursos do indicador no MetaTrader
+      IndicatorRelease(handle);
+      handle = INVALID_HANDLE; // Marca como inválido
+    }
+
 }
 
 //+------------------------------------------------------------------+
@@ -288,8 +308,17 @@ double CBollinger::GetUpper(int shift)
 //+------------------------------------------------------------------+
 double CBollinger::GetLower(int shift)
 {
-   // LOWER_BAND = 1 (constante definida em bollinger_defs.mqh)
-   return GetBufferValue(LOWER_BAND, shift);
+    // LOWER_BAND = 1 (constante definida em bollinger_defs.mqh)
+    return GetBufferValue(LOWER_BAND, shift);
+}
+
+//+------------------------------------------------------------------+
+//| Largura normalizada pelo ATR - Medida relativa de volatilidade  |
+//+------------------------------------------------------------------+
+double CBollinger::GetNormalizedWidth(double atr, int shift)
+{
+    double width = GetUpper(shift) - GetLower(shift);
+    return (atr > 0) ? width / atr : 0.0;
 }
 
 //+------------------------------------------------------------------+
@@ -337,8 +366,10 @@ bool CBollinger::CopyLower(int shift, int count, double &buffer[])
 //+------------------------------------------------------------------+
 bool CBollinger::IsReady()
 {
-   // Verifica se o indicador calculou pelo menos 1 barra
-   return (BarsCalculated(handle) > 0);
+     // Verifica se o indicador calculou pelo menos o período necessário para cálculos básicos
+     // Para WIN$N, requer pelo menos o período das bandas + algum buffer
+     int min_bars = MathMax(m_period + 5, 20); // Pelo menos período + 5 ou 20 candles mínimo
+     return (BarsCalculated(handle) >= min_bars);
 }
 
 //+------------------------------------------------------------------+
@@ -638,6 +669,22 @@ ENUM_WIDTH_REGION CBollinger::ClassifyWidthRegion(double percentile)
 }
 
 //+------------------------------------------------------------------+
+//| Calcula taxa de mudança da largura (usada para detecção de squeeze) |
+//+------------------------------------------------------------------+
+double CBollinger::CalculateWidthChangeRate(const double &width_array[], int length, int periods)
+{
+   if (length < periods + 1 || periods < 1) return 0.0;
+
+   // Calcula mudança percentual sobre os últimos 'periods' candles
+   double current = width_array[0];
+   double past = width_array[periods];
+
+   if (past <= 0.0) return 0.0;
+
+   return (current - past) / past; // Taxa de mudança
+}
+
+//+------------------------------------------------------------------+
 //| Mapeia região de largura para fase de mercado                    |
 //|                                                                  |
 //| CONTRACÇÃO: Bandas muito estreitas/estreitas = baixa volatilidade |
@@ -774,6 +821,10 @@ SCombinedSignal CBollinger::ComputeCombinedSignal(double atr)
   else if (lower_val.linear_regression.slope_value < 0) down_count++;
   else neutral_count++;
 
+  // Garante que os dados de largura estão calculados antes de usar
+  if (m_width_data_dirty || ArraySize(width_array) == 0)
+      CalculateWidths();
+
   // Obtém percentil e região da largura
   double percentile = CalculateWidthPercentile(width_array, ArraySize(width_array), m_width_lookback);
   signal.region = ClassifyWidthRegion(percentile);
@@ -785,7 +836,10 @@ SCombinedSignal CBollinger::ComputeCombinedSignal(double atr)
 
   // Obtém inclinação da largura
   SSlopeResult width_slope = CalculateWidthSlopeLinearRegression(atr, m_slope_lookback);
-  signal.slope_state = ClassifySlopeState(width_slope.slope_value, m_slope_threshold);
+
+  // Calcula threshold adaptativo baseado no ATR (10-12% do ATR)
+  double adaptive_threshold = (atr > 0.0) ? atr * m_adaptive_threshold_ratio : m_slope_threshold;
+  signal.slope_state = ClassifySlopeState(width_slope.slope_value, adaptive_threshold);
 
   // Força da inclinação (normalizada, limitada a 1.0)
   double slope_strength = MathMin(1.0, MathAbs(width_slope.slope_value));
@@ -933,13 +987,17 @@ double CBollinger::CalculatePositionStrength()
 //+------------------------------------------------------------------+
 double CBollinger::GetBandConvergence(double atr)
 {
-   double current_width = GetUpper(0) - GetLower(0);
+    // Garante que os dados de largura estão calculados
+    if (m_width_data_dirty || ArraySize(width_array) == 0)
+        CalculateWidths();
 
-   // DEBUG: Adicionar logs diagnósticos para investigar por que Conv sempre retorna 0.00
-   Print("DEBUG Conv - current_width: ", current_width,
-         " atr: ", atr,
-         " array_size: ", ArraySize(width_array),
-         " width_data_dirty: ", m_width_data_dirty);
+    double current_width = GetUpper(0) - GetLower(0);
+
+    // DEBUG: Adicionar logs diagnósticos para investigar por que Conv sempre retorna 0.00
+    Print("DEBUG Conv - current_width: ", current_width,
+          " atr: ", atr,
+          " array_size: ", ArraySize(width_array),
+          " width_data_dirty: ", m_width_data_dirty);
 
    // VALIDAÇÃO: Verificações de segurança adicionais
    if (ArraySize(width_array) == 0)
@@ -1002,6 +1060,28 @@ double CBollinger::GetBandConvergence(double atr)
 }
 
 //+------------------------------------------------------------------+
+//| DetectAdvancedSqueeze - Detecção Avançada de Squeeze             |
+//|                                                                  |
+//| PROPÓSITO: Detectar condições de squeeze usando múltiplos       |
+//| fatores: percentil da largura E taxa de mudança negativa.       |
+//|                                                                  |
+//| CRITÉRIOS: Largura < 20º percentil E mudança < -5%              |
+//| RETORNO: true se squeeze avançado detectado, false caso contrário |
+//|                                                                  |
+//| MELHORIA: Mais preciso que detecção simples, reduz falsos positivos |
+//+------------------------------------------------------------------+
+bool CBollinger::DetectAdvancedSqueeze()
+{
+    // Garante que os dados de largura estão calculados
+    if (m_width_data_dirty || ArraySize(width_array) == 0)
+        CalculateWidths();
+
+    double current_percentile = CalculateWidthPercentile(width_array, ArraySize(width_array), m_width_lookback);
+    double width_change_rate = CalculateWidthChangeRate(width_array, ArraySize(width_array), 5);
+    return (current_percentile < 20.0 && width_change_rate < -0.05);
+}
+
+//+------------------------------------------------------------------+
 //| DetectSqueeze - Detecta Condições de Squeeze                     |
 //|                                                                  |
 //| PROPÓSITO: Identificar quando as bandas estão muito contraídas  |
@@ -1016,16 +1096,8 @@ double CBollinger::GetBandConvergence(double atr)
 //+------------------------------------------------------------------+
 bool CBollinger::DetectSqueeze()
 {
-   // Obtém percentil e região da largura atual
-   double percentile = CalculateWidthPercentile(width_array, ArraySize(width_array), m_width_lookback);
-   ENUM_WIDTH_REGION region = ClassifyWidthRegion(percentile);
-
-   // Obtém inclinação da largura
-   SSlopeResult width_slope = CalculateWidthSlopeLinearRegression(0, m_slope_lookback); // atr=0 para simplicidade
-   ENUM_SLOPE_STATE slope_state = ClassifySlopeState(width_slope.slope_value, m_slope_threshold);
-
-   // Squeeze: bandas muito estreitas E inclinação contrátil
-   return (region == WIDTH_VERY_NARROW && slope_state == SLOPE_CONTRACTING);
+    // Usa detecção avançada de squeeze com múltiplos fatores
+    return DetectAdvancedSqueeze();
 }
 
 //+------------------------------------------------------------------+
@@ -1446,28 +1518,28 @@ void CBollinger::CalibrateForWinIndex(ENUM_TIMEFRAMES timeframe)
 
         case PERIOD_M3:
            /*
-            * CONFIGURAÇÃO M3 (3 MINUTOS) - OTIMIZADA:
+            * CONFIGURAÇÃO M3 (3 MINUTOS) - OTIMIZADA PARA WIN$N:
             * BASE: Análise de dados históricos reais do WIN$N
             * OBJETIVO: Melhor balance entre sensibilidade e robustez
             * MÉTODO: Parâmetros ajustados para capturar oportunidades reais
             */
            // PARÂMETROS DE HISTÓRICO: Otimizados para WIN$N M3
            m_width_history = 100;      // BASE DE DADOS: 100 candles históricos
-           m_width_lookback = 40;      // ANÁLISE: 40 candles para estatísticas (aumentado de 50)
-           m_slope_lookback = 8;       // MOMENTUM: 8 candles para detecção rápida
+           m_width_lookback = 40;      // ANÁLISE: 40 candles para estatísticas
+           m_slope_lookback = 6;       // MOMENTUM: 6 candles para resposta mais rápida
 
-           // THRESHOLDS PERMISSIVOS: Facilitam detecção de squeezes/expansões
-           m_percentile_thresholds[0] = 20;  // Very narrow (mais permissivo que padrão)
-           m_percentile_thresholds[1] = 40;  // Narrow
-           m_percentile_thresholds[2] = 60;  // Normal
-           m_percentile_thresholds[3] = 80;  // Wide
+           // THRESHOLDS MAIS SENSÍVEIS: Para detectar squeezes no WIN$N
+           m_percentile_thresholds[0] = 15;  // Very narrow (mais sensível)
+           m_percentile_thresholds[1] = 35;  // Narrow
+           m_percentile_thresholds[2] = 65;  // Normal
+           m_percentile_thresholds[3] = 85;  // Wide
 
-           // THRESHOLD DE INCLINAÇÃO: Balanceado para M3
-           m_slope_threshold = 0.02;  // 2% threshold para detecção confiável
+           // THRESHOLD DE INCLINAÇÃO: Usará threshold adaptativo baseado em ATR
+           m_slope_threshold = 0.02;  // Valor base, será adaptado por ATR
 
-           // PESOS BALANCEADOS: Ênfase em slope para momentum
-           m_weights[0] = 0.4;  // Band: 40% (direção das bandas)
-           m_weights[1] = 0.4;  // Slope: 40% (maior peso - momentum crítico)
+           // PESOS AJUSTADOS: Maior ênfase no slope para WIN$N
+           m_weights[0] = 0.3;  // Band: 30% (direção das bandas)
+           m_weights[1] = 0.5;  // Slope: 50% (maior peso - momentum crítico para WIN$N)
            m_weights[2] = 0.2;  // Width: 20% (modificadores de volatilidade)
            break;
 
