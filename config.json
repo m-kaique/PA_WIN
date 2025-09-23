@@ -560,8 +560,8 @@
                            "linear_reg": 0.06,
                            "simple_diff": 0.60,
                            "discrete_der": 0.06
-                        }
-                     ]
+                        }  
+                     ]                                                                                                                          
                   }
                ]
             }

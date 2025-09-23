@@ -29,7 +29,6 @@ private:
     int m_width_history;       // Quantidade de candles para histórico de largura
     int m_width_lookback;      // Período para análise estatística da largura
     int m_slope_lookback;      // Período para cálculo da inclinação
-    double m_slope_threshold;  // Threshold para classificação de inclinação
     int m_percentile_thresholds[4]; // Limites percentuais para classificação de regiões
     double m_weights[3];       // Pesos para: banda, inclinação, largura
 
@@ -53,7 +52,7 @@ private:
   SSlopeResult CalculateWidthSlopeLinearRegression(double atr, int lookback); // Inclinação por regressão linear
   SSlopeResult CalculateWidthSlopeSimpleDifference(double atr, int lookback); // Inclinação por diferença simples
   SSlopeResult CalculateWidthSlopeDiscreteDerivative(double atr, int lookback); // Inclinação por derivada discreta
-  static ENUM_SLOPE_STATE ClassifySlopeState(double slope_value, double threshold); // Classifica estado da inclinação
+  static ENUM_SLOPE_STATE ClassifySlopeState(double slope_value); // Classifica estado da inclinação
   virtual bool OnCopyValuesForSlope(int shift, int count, double &buffer[], COPY_METHOD copy_method) override; // Método virtual para cópia de valores
 
   // Métodos aprimorados para detecção de squeeze
@@ -62,7 +61,8 @@ private:
 
   // Novos métodos auxiliares para computação aprimorada de sinais
   double CalculatePositionStrength(); // Calcula força da posição do preço
-  double GetBandConvergence(double atr); // Obtém fator de convergência das bandas
+  double GetBandConvergence(); // Obtém fator de convergência das bandas
+  double CalculateDirectWidthSlope(int lookback); // Calcula inclinação direta da largura (fallback)
   bool DetectSqueeze(); // Detecta condições de squeeze
   double CalculateWeightedDirectionConsensus(const SSlopeValidation &upper, const SSlopeValidation &middle, const SSlopeValidation &lower); // Consenso ponderado de direção
   double CalculateIntegratedConfidence(double direction_score, double slope_strength, double width_modifier, double position_strength, double convergence_factor, bool is_squeeze); // Confiança integrada
@@ -82,7 +82,7 @@ private:
   void CalibrateForWinIndex(ENUM_TIMEFRAMES timeframe); // Calibra para índice WIN$N
 
 public:
- SCombinedSignal ComputeCombinedSignal(double atr); // Computa sinal combinado aprimorado
+ SCombinedSignal ComputeCombinedSignal(double atr, int lookback = -1); // Computa sinal combinado aprimorado
    virtual double OnGetIndicatorValue(int shift, COPY_METHOD copy_method) override; // Método virtual para obter valor do indicador
    virtual int OnGetSlopeConfigIndex(COPY_METHOD copy_method) override; // Método virtual para índice de configuração de inclinação
 
@@ -139,7 +139,6 @@ CBollinger::CBollinger()
    m_width_history = WIDTH_HISTORY;
    m_width_lookback = WIDTH_LOOKBACK;
    m_slope_lookback = SLOPE_LOOKBACK;
-   m_slope_threshold = 0.02;      // Threshold padrão para classificação de inclinação
    m_percentile_thresholds[0] = PERCENTILE_THRESHOLD_VERY_NARROW;
    m_percentile_thresholds[1] = PERCENTILE_THRESHOLD_NARROW;
    m_percentile_thresholds[2] = PERCENTILE_THRESHOLD_NORMAL;
@@ -708,8 +707,28 @@ ENUM_MARKET_PHASE CBollinger::MapRegionToPhase(ENUM_WIDTH_REGION region)
 //+------------------------------------------------------------------+
 SSlopeResult CBollinger::CalculateWidthSlopeLinearRegression(double atr, int lookback)
 {
-   // Delegação para classe especializada em cálculos de inclinação
-   return m_slope.CalculateLinearRegressionSlope(m_symbol, width_array, atr, lookback);
+    // Delegação para classe especializada em cálculos de inclinação
+    SSlopeResult result = m_slope.CalculateLinearRegressionSlope(m_symbol, width_array, atr, lookback);
+
+    // LOG DIAGNÓSTICO DETALHADO
+    Print("=== SLOPE ANALYSIS ===");
+    Print("Raw slope: ", DoubleToString(result.slope_value, 8));
+    Print("ATR normalization: ", DoubleToString(atr, 2));
+    Print("Lookback periods: ", lookback);
+    Print("R-squared quality: ", DoubleToString(result.r_squared, 4));
+
+    // Log mudança de largura percentual
+    if (ArraySize(width_array) >= lookback && lookback > 0)
+    {
+       double current_width = width_array[0];
+       double past_width = width_array[lookback-1];
+       double width_change_pct = (past_width > 0) ? ((current_width - past_width) / past_width) * 100.0 : 0.0;
+
+       Print("Width change: ", DoubleToString(current_width, 2), " → ", DoubleToString(past_width, 2));
+       Print("Width change %: ", DoubleToString(width_change_pct, 2), "%");
+    }
+
+    return result;
 }
 
 //+------------------------------------------------------------------+
@@ -737,18 +756,53 @@ SSlopeResult CBollinger::CalculateWidthSlopeDiscreteDerivative(double atr, int l
 }
 
 //+------------------------------------------------------------------+
+//| Calcula inclinação direta da largura (fallback)                  |
+//+------------------------------------------------------------------+
+double CBollinger::CalculateDirectWidthSlope(int lookback)
+{
+   if (ArraySize(width_array) < lookback || lookback < 2)
+      return 0.0;
+
+   double current = width_array[0];
+   double past = width_array[lookback-1];
+
+   if (past <= 0.0)
+      return 0.0;
+
+   // Retorna variação percentual simples
+   return (current - past) / past;
+}
+
+//+------------------------------------------------------------------+
 //| Classifica estado da inclinação baseado em threshold            |
 //|                                                                  |
 //| EXPANDINDO: Inclinação positiva ≥ threshold (volatilidade crescendo) |
 //| CONTRAINDO: Inclinação negativa ≤ -threshold (volatilidade diminuindo) |
 //| ESTÁVEL: Inclinação entre -threshold e +threshold             |
 //+------------------------------------------------------------------+
-ENUM_SLOPE_STATE CBollinger::ClassifySlopeState(double slope_value, double threshold)
+ENUM_SLOPE_STATE CBollinger::ClassifySlopeState(double slope_value)
 {
-   // Classificação baseada na magnitude e direção da inclinação
-   if (slope_value >= threshold) return SLOPE_EXPANDING;     // Crescendo
-   if (slope_value <= -threshold) return SLOPE_CONTRACTING;  // Diminuindo
-   return SLOPE_STABLE;  // Estável dentro do threshold
+   const double NUMERICAL_PRECISION = 1e-10;
+   
+   Print("=== SLOPE CLASSIFICATION ===");
+   Print("Slope value: ", DoubleToString(slope_value, 10));
+   Print("Abs(slope): ", DoubleToString(MathAbs(slope_value), 10));
+   Print("Precision threshold: ", DoubleToString(NUMERICAL_PRECISION, 12));
+   
+   if (slope_value > NUMERICAL_PRECISION)
+   {
+      Print("→ Result: SLOPE_EXPANDING (bands widening)");
+      return SLOPE_EXPANDING;
+   }
+   
+   if (slope_value < -NUMERICAL_PRECISION)
+   {
+      Print("→ Result: SLOPE_CONTRACTING (bands narrowing)");
+      return SLOPE_CONTRACTING;
+   }
+   
+   Print("→ Result: SLOPE_STABLE (no significant change)");
+   return SLOPE_STABLE;
 }
 
 //+------------------------------------------------------------------+
@@ -765,7 +819,7 @@ ENUM_SLOPE_STATE CBollinger::ClassifySlopeState(double slope_value, double thres
 //|                                                                  |
 //| RESULTADO: Sinal com direção, confiança e explicação detalhada  |
 //+------------------------------------------------------------------+
-SCombinedSignal CBollinger::ComputeCombinedSignal(double atr)
+SCombinedSignal CBollinger::ComputeCombinedSignal(double atr, int lookback = -1)
 {
   SCombinedSignal signal;
   signal.confidence = 0.0;
@@ -773,6 +827,8 @@ SCombinedSignal CBollinger::ComputeCombinedSignal(double atr)
   signal.reason = "";
   signal.region = WIDTH_NORMAL;
   signal.slope_state = SLOPE_STABLE;
+
+  int actual_lookback = (lookback == -1) ? m_slope_lookback : lookback;
 
   // === ANÁLISE DAS BANDAS INDIVIDUAIS ===
   // Explicação: Cada banda (superior, média, inferior) tem uma inclinação
@@ -835,11 +891,18 @@ SCombinedSignal CBollinger::ComputeCombinedSignal(double atr)
     width_modifier = 0.25; // +25% de confiança para extremos
 
   // Obtém inclinação da largura
-  SSlopeResult width_slope = CalculateWidthSlopeLinearRegression(atr, m_slope_lookback);
+  SSlopeResult width_slope = CalculateWidthSlopeLinearRegression(atr, actual_lookback);
 
-  // Calcula threshold adaptativo baseado no ATR (10-12% do ATR)
-  double adaptive_threshold = (atr > 0.0) ? atr * m_adaptive_threshold_ratio : m_slope_threshold;
-  signal.slope_state = ClassifySlopeState(width_slope.slope_value, adaptive_threshold);
+  // FALLBACK: Se slope muito pequeno, usar cálculo direto
+  if (MathAbs(width_slope.slope_value) < 1e-12)
+  {
+     Print("WARNING: Slope muito pequeno, usando cálculo direto");
+     double direct_slope = CalculateDirectWidthSlope(actual_lookback);
+     width_slope.slope_value = direct_slope;
+     Print("Direct slope: ", DoubleToString(direct_slope, 8));
+  }
+
+  signal.slope_state = ClassifySlopeState(width_slope.slope_value);
 
   // Força da inclinação (normalizada, limitada a 1.0)
   double slope_strength = MathMin(1.0, MathAbs(width_slope.slope_value));
@@ -849,7 +912,7 @@ SCombinedSignal CBollinger::ComputeCombinedSignal(double atr)
 
   // Calcula fatores adicionais para análise aprimorada
   double position_strength = CalculatePositionStrength();    // Força da posição do preço
-  double convergence_factor = GetBandConvergence(atr);       // Fator de convergência das bandas
+  double convergence_factor = GetBandConvergence();       // Fator de convergência das bandas
   bool is_squeeze = DetectSqueeze();                          // Detecta squeeze (contração extrema)
 
   // Calcula confiança integrada combinando todos os fatores
@@ -861,6 +924,13 @@ SCombinedSignal CBollinger::ComputeCombinedSignal(double atr)
   signal.reason = BuildEnhancedReason(up_count, down_count, neutral_count,
                                       signal.region, signal.slope_state,
                                       position_strength, convergence_factor, is_squeeze);
+
+  Print("=== SIGNAL SUMMARY ===");
+  Print("Width region: ", EnumToString(signal.region));
+  Print("Slope state: ", EnumToString(signal.slope_state));
+  Print("Direction: ", signal.direction);
+  Print("Confidence: ", DoubleToString(signal.confidence, 3));
+  Print("=====================");
 
   return signal;
 }
@@ -985,7 +1055,7 @@ double CBollinger::CalculatePositionStrength()
 //|                                                                  |
 //| USO: Aumenta confiança do sinal quando bandas estão contraídas. |
 //+------------------------------------------------------------------+
-double CBollinger::GetBandConvergence(double atr)
+double CBollinger::GetBandConvergence()
 {
     // Garante que os dados de largura estão calculados
     if (m_width_data_dirty || ArraySize(width_array) == 0)
@@ -993,9 +1063,8 @@ double CBollinger::GetBandConvergence(double atr)
 
     double current_width = GetUpper(0) - GetLower(0);
 
-    // DEBUG: Adicionar logs diagnósticos para investigar por que Conv sempre retorna 0.00
+    // DEBUG: Logs diagnósticos para análise de convergência
     Print("DEBUG Conv - current_width: ", current_width,
-          " atr: ", atr,
           " array_size: ", ArraySize(width_array),
           " width_data_dirty: ", m_width_data_dirty);
 
@@ -1006,11 +1075,6 @@ double CBollinger::GetBandConvergence(double atr)
       return 0.0;
    }
 
-   if (atr <= 0.0)
-   {
-      Print("ERRO: ATR inválido (<= 0.0) - usando valor neutro");
-      return 0.0;
-   }
 
    if (current_width <= 0.0)
    {
@@ -1045,15 +1109,14 @@ double CBollinger::GetBandConvergence(double atr)
    }
 
    // Fator de convergência: maior quando largura atual é menor que média
+   // Removida normalização por ATR - convergência é medida relativa ao histórico próprio
    double convergence = 1.0 - (current_width / avg_width);
-
-   // Normaliza pelo ATR para ajuste de volatilidade
-   convergence /= (atr > 0.0 ? atr : 1.0);
 
    double result = MathMax(0.0, MathMin(1.0, convergence));
 
    Print("DEBUG Conv - avg_width: ", avg_width,
-         " convergence_raw: ", convergence,
+         " current_width: ", current_width,
+         " convergence: ", convergence,
          " result: ", result);
 
    return result;
@@ -1126,21 +1189,21 @@ double CBollinger::CalculateWeightedDirectionConsensus(const SSlopeValidation &u
     int bull_votes = 0, bear_votes = 0;
 
     // CONTAGEM DE VOTOS BANDA SUPERIOR
-    if (upper.linear_regression.slope_value > m_slope_threshold)
+    if (upper.linear_regression.slope_value > 1e-10)
        bull_votes++;     // Banda superior subindo = voto BULL
-    else if (upper.linear_regression.slope_value < -m_slope_threshold)
+    else if (upper.linear_regression.slope_value < -1e-10)
        bear_votes++;     // Banda superior descendo = voto BEAR
 
     // CONTAGEM DE VOTOS BANDA CENTRAL
-    if (middle.linear_regression.slope_value > m_slope_threshold)
+    if (middle.linear_regression.slope_value > 1e-10)
        bull_votes++;     // Tendência central de alta = voto BULL
-    else if (middle.linear_regression.slope_value < -m_slope_threshold)
+    else if (middle.linear_regression.slope_value < -1e-10)
        bear_votes++;     // Tendência central de baixa = voto BEAR
 
     // CONTAGEM DE VOTOS BANDA INFERIOR
-    if (lower.linear_regression.slope_value > m_slope_threshold)
+    if (lower.linear_regression.slope_value > 1e-10)
        bull_votes++;     // Suporte subindo = voto BULL
-    else if (lower.linear_regression.slope_value < -m_slope_threshold)
+    else if (lower.linear_regression.slope_value < -1e-10)
        bear_votes++;     // Suporte descendo = voto BEAR
 
     // DECISÃO POR MAIORIA SIMPLES
@@ -1507,8 +1570,6 @@ void CBollinger::CalibrateForWinIndex(ENUM_TIMEFRAMES timeframe)
            m_percentile_thresholds[2] = 60;  // Normal
            m_percentile_thresholds[3] = 80;  // Wide
 
-           // THRESHOLD DE INCLINAÇÃO: Mais sensível para M1
-           m_slope_threshold = 0.05;  // 5% threshold para detectar mudanças rápidas
 
            // PESOS EQUILIBRADOS: Banda e slope têm mesma importância
            m_weights[0] = 0.4;  // Band: 40% (resistência/suporte)
@@ -1534,8 +1595,6 @@ void CBollinger::CalibrateForWinIndex(ENUM_TIMEFRAMES timeframe)
            m_percentile_thresholds[2] = 65;  // Normal
            m_percentile_thresholds[3] = 85;  // Wide
 
-           // THRESHOLD DE INCLINAÇÃO: Usará threshold adaptativo baseado em ATR
-           m_slope_threshold = 0.02;  // Valor base, será adaptado por ATR
 
            // PESOS AJUSTADOS: Maior ênfase no slope para WIN$N
            m_weights[0] = 0.3;  // Band: 30% (direção das bandas)
@@ -1548,7 +1607,6 @@ void CBollinger::CalibrateForWinIndex(ENUM_TIMEFRAMES timeframe)
          m_width_history = 80;
          m_width_lookback = 80;
          m_slope_lookback = 12;
-         m_slope_threshold = 0.015;  // Threshold intermediário para M5
          m_percentile_thresholds[0] = 10;  // Muito estreito
          m_percentile_thresholds[1] = 30;  // Estreito
          m_percentile_thresholds[2] = 70;  // Normal
@@ -1563,7 +1621,6 @@ void CBollinger::CalibrateForWinIndex(ENUM_TIMEFRAMES timeframe)
          m_width_history = 80;
          m_width_lookback = 80;
          m_slope_lookback = 12;
-         m_slope_threshold = 0.01;  // Threshold mais conservador para M15
          m_percentile_thresholds[0] = 10;  // Muito estreito
          m_percentile_thresholds[1] = 30;  // Estreito
          m_percentile_thresholds[2] = 70;  // Normal
@@ -1578,7 +1635,6 @@ void CBollinger::CalibrateForWinIndex(ENUM_TIMEFRAMES timeframe)
          m_width_history = 60;
          m_width_lookback = 60;
          m_slope_lookback = 15;
-         m_slope_threshold = 0.005;  // Threshold muito conservador para H1
          m_percentile_thresholds[0] = 5;   // Muito estreito
          m_percentile_thresholds[1] = 25;  // Estreito
          m_percentile_thresholds[2] = 75;  // Normal
