@@ -53,19 +53,29 @@ enum ENUM_MARKET_PHASE
 // Slope state classification
 enum ENUM_SLOPE_STATE
 {
-  SLOPE_EXPANDING,
-  SLOPE_CONTRACTING,
-  SLOPE_STABLE
+   SLOPE_EXPANDING,
+   SLOPE_CONTRACTING,
+   SLOPE_STABLE
+};
+
+// Channel direction classification (collective band movement)
+enum ENUM_CHANNEL_DIRECTION
+{
+   CHANNEL_ASCENDING,    // All bands sloping up
+   CHANNEL_DESCENDING,   // All bands sloping down
+   CHANNEL_SIDEWAYS      // All bands relatively flat
 };
 
 // Combined signal structure
 struct SCombinedSignal
 {
-  double confidence;
-  string direction;
-  string reason;
-  ENUM_WIDTH_REGION region;
-  ENUM_SLOPE_STATE slope_state;
+   double confidence;
+   string direction;
+   string reason;
+   ENUM_WIDTH_REGION region;
+   ENUM_SLOPE_STATE slope_state;
+   double width_slope_value;  // Valor da inclinação da largura das bandas
+   ENUM_CHANNEL_DIRECTION channel_direction;  // Direção coletiva do canal das bandas
 };
 
 #endif // __BOLLINGER_DEFS_MQH__

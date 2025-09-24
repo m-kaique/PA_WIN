@@ -53,6 +53,7 @@ private:
   SSlopeResult CalculateWidthSlopeSimpleDifference(double atr, int lookback); // Inclinação por diferença simples
   SSlopeResult CalculateWidthSlopeDiscreteDerivative(double atr, int lookback); // Inclinação por derivada discreta
   static ENUM_SLOPE_STATE ClassifySlopeState(double slope_value); // Classifica estado da inclinação
+  static ENUM_CHANNEL_DIRECTION ClassifyChannelDirection(double upper_slope, double middle_slope, double lower_slope); // Classifica direção coletiva do canal
   virtual bool OnCopyValuesForSlope(int shift, int count, double &buffer[], COPY_METHOD copy_method) override; // Método virtual para cópia de valores
 
   // Métodos aprimorados para detecção de squeeze
@@ -64,9 +65,9 @@ private:
   double GetBandConvergence(); // Obtém fator de convergência das bandas
   double CalculateDirectWidthSlope(int lookback); // Calcula inclinação direta da largura (fallback)
   bool DetectSqueeze(); // Detecta condições de squeeze
-  double CalculateWeightedDirectionConsensus(const SSlopeValidation &upper, const SSlopeValidation &middle, const SSlopeValidation &lower); // Consenso ponderado de direção
+  double CalculateWeightedDirectionConsensus(const SSlopeValidation &upper, const SSlopeValidation &middle, const SSlopeValidation &lower); // Consenso específico: BULL(resistência↑+tendência↑), BEAR(suporte↓+tendência↓)
   double CalculateIntegratedConfidence(double direction_score, double slope_strength, double width_modifier, double position_strength, double convergence_factor, bool is_squeeze); // Confiança integrada
-  string BuildEnhancedReason(int up_count, int down_count, int neutral_count, ENUM_WIDTH_REGION region, ENUM_SLOPE_STATE slope_state, double position_strength, double convergence_factor, bool is_squeeze); // Constrói razão aprimorada
+  string BuildEnhancedReason(int up_count, int down_count, int neutral_count, ENUM_WIDTH_REGION region, ENUM_SLOPE_STATE slope_state, double position_strength, double convergence_factor, bool is_squeeze, double width_slope_value, ENUM_CHANNEL_DIRECTION channel_direction); // Constrói razão aprimorada
 
   // Novos métodos auxiliares para refinamento de parâmetros
   void ValidateAndCorrectParameters(); // Valida e corrige parâmetros
@@ -782,27 +783,79 @@ double CBollinger::CalculateDirectWidthSlope(int lookback)
 //+------------------------------------------------------------------+
 ENUM_SLOPE_STATE CBollinger::ClassifySlopeState(double slope_value)
 {
-   const double NUMERICAL_PRECISION = 1e-10;
-   
+   const double NUMERICAL_PRECISION = 0.01;
+
    Print("=== SLOPE CLASSIFICATION ===");
    Print("Slope value: ", DoubleToString(slope_value, 10));
    Print("Abs(slope): ", DoubleToString(MathAbs(slope_value), 10));
    Print("Precision threshold: ", DoubleToString(NUMERICAL_PRECISION, 12));
-   
+
    if (slope_value > NUMERICAL_PRECISION)
    {
       Print("→ Result: SLOPE_EXPANDING (bands widening)");
       return SLOPE_EXPANDING;
    }
-   
+
    if (slope_value < -NUMERICAL_PRECISION)
    {
       Print("→ Result: SLOPE_CONTRACTING (bands narrowing)");
       return SLOPE_CONTRACTING;
    }
-   
+
    Print("→ Result: SLOPE_STABLE (no significant change)");
    return SLOPE_STABLE;
+}
+
+//+------------------------------------------------------------------+
+//| Classifica direção coletiva do canal das bandas                   |
+//|                                                                  |
+//| PROPÓSITO: Determinar se as três bandas estão formando um canal |
+//| ascendente, descendente ou lateral coletivamente.               |
+//|                                                                  |
+//| LÓGICA: Verifica se todas as bandas têm inclinação na mesma     |
+//| direção (todas positivas = ascendente, todas negativas =        |
+//| descendente, mistas ou próximas de zero = lateral).             |
+//|                                                                  |
+//| RETORNO: CHANNEL_ASCENDING, CHANNEL_DESCENDING, ou CHANNEL_SIDEWAYS |
+//+------------------------------------------------------------------+
+ENUM_CHANNEL_DIRECTION CBollinger::ClassifyChannelDirection(double upper_slope, double middle_slope, double lower_slope)
+{
+   const double NUMERICAL_PRECISION = 1e-10;
+
+   Print("=== CHANNEL DIRECTION CLASSIFICATION ===");
+   Print("Upper slope: ", DoubleToString(upper_slope, 8));
+   Print("Middle slope: ", DoubleToString(middle_slope, 8));
+   Print("Lower slope: ", DoubleToString(lower_slope, 8));
+   Print("Precision threshold: ", DoubleToString(NUMERICAL_PRECISION, 12));
+
+   // Verifica se todas as bandas estão subindo (canal ascendente)
+   bool all_ascending = (upper_slope > NUMERICAL_PRECISION) &&
+                       (middle_slope > NUMERICAL_PRECISION) &&
+                       (lower_slope > NUMERICAL_PRECISION);
+
+   // Verifica se todas as bandas estão descendo (canal descendente)
+   bool all_descending = (upper_slope < -NUMERICAL_PRECISION) &&
+                        (middle_slope < -NUMERICAL_PRECISION) &&
+                        (lower_slope < -NUMERICAL_PRECISION);
+
+   Print("All ascending: ", all_ascending ? "TRUE" : "FALSE");
+   Print("All descending: ", all_descending ? "TRUE" : "FALSE");
+
+   if (all_ascending)
+   {
+      Print("→ Result: CHANNEL_ASCENDING (all bands sloping up)");
+      return CHANNEL_ASCENDING;
+   }
+   else if (all_descending)
+   {
+      Print("→ Result: CHANNEL_DESCENDING (all bands sloping down)");
+      return CHANNEL_DESCENDING;
+   }
+   else
+   {
+      Print("→ Result: CHANNEL_SIDEWAYS (bands not aligned or flat)");
+      return CHANNEL_SIDEWAYS;
+   }
 }
 
 //+------------------------------------------------------------------+
@@ -821,12 +874,14 @@ ENUM_SLOPE_STATE CBollinger::ClassifySlopeState(double slope_value)
 //+------------------------------------------------------------------+
 SCombinedSignal CBollinger::ComputeCombinedSignal(double atr, int lookback = -1)
 {
-  SCombinedSignal signal;
-  signal.confidence = 0.0;
-  signal.direction = "NEUTRAL";
-  signal.reason = "";
-  signal.region = WIDTH_NORMAL;
-  signal.slope_state = SLOPE_STABLE;
+   SCombinedSignal signal;
+   signal.confidence = 0.0;
+   signal.direction = "NEUTRAL";
+   signal.reason = "";
+   signal.region = WIDTH_NORMAL;
+   signal.slope_state = SLOPE_STABLE;
+   signal.width_slope_value = 0.0;
+   signal.channel_direction = CHANNEL_SIDEWAYS;
 
   int actual_lookback = (lookback == -1) ? m_slope_lookback : lookback;
 
@@ -844,6 +899,11 @@ SCombinedSignal CBollinger::ComputeCombinedSignal(double atr, int lookback = -1)
 
   SSlopeValidation lower_val = GetSlopeValidation(atr, COPY_LOWER);
   // Banda inferior - nível de suporte dinâmico
+
+  // === CLASSIFICAÇÃO DA DIREÇÃO COLETIVA DO CANAL ===
+  signal.channel_direction = ClassifyChannelDirection(upper_val.linear_regression.slope_value,
+                                                     middle_val.linear_regression.slope_value,
+                                                     lower_val.linear_regression.slope_value);
 
   // === SISTEMA DE CONSENSO PONDERADO ===
   // Explicação: Substituímos a contagem simples (alta/baixa) por um sistema
@@ -902,6 +962,9 @@ SCombinedSignal CBollinger::ComputeCombinedSignal(double atr, int lookback = -1)
      Print("Direct slope: ", DoubleToString(direct_slope, 8));
   }
 
+  // Armazena o valor da inclinação da largura no sinal
+  signal.width_slope_value = width_slope.slope_value;
+
   signal.slope_state = ClassifySlopeState(width_slope.slope_value);
 
   // Força da inclinação (normalizada, limitada a 1.0)
@@ -923,11 +986,14 @@ SCombinedSignal CBollinger::ComputeCombinedSignal(double atr, int lookback = -1)
   // Constrói razão aprimorada com todos os fatores analisados
   signal.reason = BuildEnhancedReason(up_count, down_count, neutral_count,
                                       signal.region, signal.slope_state,
-                                      position_strength, convergence_factor, is_squeeze);
+                                      position_strength, convergence_factor, is_squeeze,
+                                      signal.width_slope_value, signal.channel_direction);
 
   Print("=== SIGNAL SUMMARY ===");
   Print("Width region: ", EnumToString(signal.region));
   Print("Slope state: ", EnumToString(signal.slope_state));
+  Print("Width slope: ", DoubleToString(signal.width_slope_value, 8));
+  Print("Channel direction: ", EnumToString(signal.channel_direction));
   Print("Direction: ", signal.direction);
   Print("Confidence: ", DoubleToString(signal.confidence, 3));
   Print("=====================");
@@ -1140,7 +1206,7 @@ bool CBollinger::DetectAdvancedSqueeze()
         CalculateWidths();
 
     double current_percentile = CalculateWidthPercentile(width_array, ArraySize(width_array), m_width_lookback);
-    double width_change_rate = CalculateWidthChangeRate(width_array, ArraySize(width_array), 5);
+    double width_change_rate = CalculateWidthChangeRate(width_array, ArraySize(width_array), 9);
     return (current_percentile < 20.0 && width_change_rate < -0.05);
 }
 
@@ -1164,77 +1230,96 @@ bool CBollinger::DetectSqueeze()
 }
 
 //+------------------------------------------------------------------+
-//| CalculateWeightedDirectionConsensus - Consenso Ponderado de Direção |
+//| CalculateWeightedDirectionConsensus - Consenso Específico Bollinger |
 //|                                                                     |
-//| PROPÓSITO: Combinar as inclinações das três bandas em um score    |
-//| unificado de direção, considerando a importância relativa de cada |
-//| banda no contexto técnico.                                         |
+//| PROPÓSITO: Sistema de consenso rigoroso baseado na análise técnica |
+//| tradicional de Bandas de Bollinger, exigindo alinhamento específico |
+//| das bandas para gerar sinais confiáveis.                           |
 //|                                                                     |
-//| FÓRMULA: Consenso = Σ(força_direção × peso_banda)                  |
-//| LÓGICA: Sistema de votação ponderada onde cada banda tem          |
-//| influência diferente baseada em sua função técnica.                |
+//| LÓGICA DE SINAIS:                                                   |
+//| - BULL: Banda Superior↑ E Banda Média↑ (resistência+tendência)     |
+//| - BEAR: Banda Inferior↓ E Banda Média↓ (suporte+tendência)         |
+//| - NEUTRAL: Qualquer outra combinação ou cálculo ponderado          |
 //|                                                                     |
-//| PESOS: Superior=50% (resistência), Médio=30% (tendência),          |
-//| Inferior=20% (suporte)                                             |
-//|                                                                     |
-//| RESULTADO: Score de 0-1 onde 0.6+ = BULL, 0.4- = BEAR, meio = NEUTRAL |
+//| RESULTADO: Score de 0-1 onde:                                       |
+//| - 0.8 = BULL forte (condições perfeitas)                           |
+//| - 0.2 = BEAR forte (condições perfeitas)                           |
+//| - 0.3-0.7 = NEUTRAL (cálculo ponderado)                            |
 double CBollinger::CalculateWeightedDirectionConsensus(const SSlopeValidation &upper,
-                                                       const SSlopeValidation &middle,
-                                                       const SSlopeValidation &lower)
+                                                        const SSlopeValidation &middle,
+                                                        const SSlopeValidation &lower)
 {
-    // === SISTEMA DE CONSENSO POR MAIORIA ===
-    // Implementa votação simples baseada na direção de cada banda
-    // Threshold configurável determina o que conta como "subindo" ou "descendo"
+     // === SISTEMA DE CONSENSO ESPECÍFICO PARA BOLLINGER BANDS ===
+     // Lógica baseada na análise técnica tradicional:
+     // - BULL: Banda Superior (resistência) E Banda Média (tendência) devem subir
+     // - BEAR: Banda Inferior (suporte) E Banda Média (tendência) devem descer
+     // - NEUTRAL: Qualquer outra combinação
 
-    int bull_votes = 0, bear_votes = 0;
+     // DEBUG: Log das inclinações das bandas
+     Print("=== BAND CONSENSUS ANALYSIS ===");
+     Print("Upper band slope: ", DoubleToString(upper.linear_regression.slope_value, 8));
+     Print("Middle band slope: ", DoubleToString(middle.linear_regression.slope_value, 8));
+     Print("Lower band slope: ", DoubleToString(lower.linear_regression.slope_value, 8));
 
-    // CONTAGEM DE VOTOS BANDA SUPERIOR
-    if (upper.linear_regression.slope_value > 1e-10)
-       bull_votes++;     // Banda superior subindo = voto BULL
-    else if (upper.linear_regression.slope_value < -1e-10)
-       bear_votes++;     // Banda superior descendo = voto BEAR
+     // Verifica condições para sinal BULL
+     // Banda superior subindo + banda média subindo = resistência dinâmica subindo + tendência de alta
+     bool bull_condition = (upper.linear_regression.slope_value > 1e-10) &&
+                          (middle.linear_regression.slope_value > 1e-10);
 
-    // CONTAGEM DE VOTOS BANDA CENTRAL
-    if (middle.linear_regression.slope_value > 1e-10)
-       bull_votes++;     // Tendência central de alta = voto BULL
-    else if (middle.linear_regression.slope_value < -1e-10)
-       bear_votes++;     // Tendência central de baixa = voto BEAR
+     // Verifica condições para sinal BEAR
+     // Banda inferior descendo + banda média descendo = suporte dinâmico descendo + tendência de baixa
+     bool bear_condition = (lower.linear_regression.slope_value < -1e-10) &&
+                          (middle.linear_regression.slope_value < -1e-10);
 
-    // CONTAGEM DE VOTOS BANDA INFERIOR
-    if (lower.linear_regression.slope_value > 1e-10)
-       bull_votes++;     // Suporte subindo = voto BULL
-    else if (lower.linear_regression.slope_value < -1e-10)
-       bear_votes++;     // Suporte descendo = voto BEAR
+     Print("Bull condition (upper↑ + middle↑): ", bull_condition ? "TRUE" : "FALSE");
+     Print("Bear condition (lower↓ + middle↓): ", bear_condition ? "TRUE" : "FALSE");
 
-    // DECISÃO POR MAIORIA SIMPLES
-    if (bull_votes > bear_votes)
-       return 0.7;  // BULL claro (maioria votou alta)
-    if (bear_votes > bull_votes)
-       return 0.3;  // BEAR claro (maioria votou baixa)
+     // DECISÃO BASEADA EM CONDIÇÕES ESPECÍFICAS
+     if (bull_condition && !bear_condition)
+     {
+        // Sinal BULL forte: resistência e tendência alinhadas para cima
+        Print("→ Decision: BULL (resistance↑ + trend↑)");
+        return 0.8;  // BULL confiante
+     }
+     else if (bear_condition && !bull_condition)
+     {
+        // Sinal BEAR forte: suporte e tendência alinhadas para baixo
+        Print("→ Decision: BEAR (support↓ + trend↓)");
+        return 0.2;  // BEAR confiante
+     }
+     else
+     {
+        // NEUTRAL: Condições não atendidas ou conflitantes
+        Print("→ Decision: NEUTRAL (conditions not met or conflicting)");
 
-    // EMPATE: Usa cálculo ponderado como desempate
-    // DEFINIÇÃO DE PESOS: Baseado na importância técnica de cada banda
-    const double UPPER_WEIGHT = 0.5;
-    const double MIDDLE_WEIGHT = 0.3;
-    const double LOWER_WEIGHT = 0.2;
+        // Usa cálculo ponderado para casos intermediários
+        const double UPPER_WEIGHT = 0.4;   // Resistência
+        const double MIDDLE_WEIGHT = 0.4;  // Tendência (mais importante)
+        const double LOWER_WEIGHT = 0.2;   // Suporte
 
-    double total_up = 0.0, total_down = 0.0;
+        double total_up = 0.0, total_down = 0.0;
 
-    // ANÁLISE PONDERADA PARA DESEMPATE
-    double upper_strength = MathAbs(upper.linear_regression.slope_value) * UPPER_WEIGHT;
-    if (upper.linear_regression.slope_value > 0) total_up += upper_strength;
-    else if (upper.linear_regression.slope_value < 0) total_down += upper_strength;
+        // Cálculo ponderado para casos neutros
+        double upper_strength = MathAbs(upper.linear_regression.slope_value) * UPPER_WEIGHT;
+        if (upper.linear_regression.slope_value > 1e-10) total_up += upper_strength;
+        else if (upper.linear_regression.slope_value < -1e-10) total_down += upper_strength;
 
-    double middle_strength = MathAbs(middle.linear_regression.slope_value) * MIDDLE_WEIGHT;
-    if (middle.linear_regression.slope_value > 0) total_up += middle_strength;
-    else if (middle.linear_regression.slope_value < 0) total_down += middle_strength;
+        double middle_strength = MathAbs(middle.linear_regression.slope_value) * MIDDLE_WEIGHT;
+        if (middle.linear_regression.slope_value > 1e-10) total_up += middle_strength;
+        else if (middle.linear_regression.slope_value < -1e-10) total_down += middle_strength;
 
-    double lower_strength = MathAbs(lower.linear_regression.slope_value) * LOWER_WEIGHT;
-    if (lower.linear_regression.slope_value > 0) total_up += lower_strength;
-    else if (lower.linear_regression.slope_value < 0) total_down += lower_strength;
+        double lower_strength = MathAbs(lower.linear_regression.slope_value) * LOWER_WEIGHT;
+        if (lower.linear_regression.slope_value > 1e-10) total_up += lower_strength;
+        else if (lower.linear_regression.slope_value < -1e-10) total_down += lower_strength;
 
-    double consensus = total_up - total_down;
-    return (consensus + 1.0) / 2.0;  // Normaliza para 0-1
+        // Normaliza para 0.3-0.7 (faixa neutra)
+        double consensus = total_up - total_down;
+        double normalized = (consensus + 1.0) / 2.0;  // 0-1
+        double final_score = MathMax(0.3, MathMin(0.7, normalized));
+
+        Print("→ Neutral score: ", DoubleToString(final_score, 3), " (weighted calculation)");
+        return final_score;
+     }
 }
 
 //+------------------------------------------------------------------+
@@ -1300,12 +1385,13 @@ double CBollinger::CalculateIntegratedConfidence(double direction_score, double 
 //+------------------------------------------------------------------+
 string CBollinger::BuildEnhancedReason(int up_count, int down_count, int neutral_count,
                                      ENUM_WIDTH_REGION region, ENUM_SLOPE_STATE slope_state,
-                                     double position_strength, double convergence_factor, bool is_squeeze)
+                                     double position_strength, double convergence_factor, bool is_squeeze,
+                                     double width_slope_value, ENUM_CHANNEL_DIRECTION channel_direction)
 {
-   return StringFormat("Bands:%dU/%dD/%dN, Width:%s, Slope:%s, Pos:%.2f, Conv:%.2f, Squeeze:%s",
-                      up_count, down_count, neutral_count,
-                      EnumToString(region), EnumToString(slope_state),
-                      position_strength, convergence_factor, is_squeeze ? "YES" : "NO");
+    return StringFormat("Bands:%dU/%dD/%dN, Width:%s, Slope:%s, WidthSlope:%.6f, Channel:%s, Pos:%.2f, Conv:%.2f, Squeeze:%s",
+                       up_count, down_count, neutral_count,
+                       EnumToString(region), EnumToString(slope_state),
+                       width_slope_value, EnumToString(channel_direction), position_strength, convergence_factor, is_squeeze ? "YES" : "NO");
 }
 
 //+------------------------------------------------------------------+
@@ -1398,8 +1484,8 @@ void CBollinger::AdaptParametersToMarket(double atr)
     // Baixa volatilidade: diminui lookbacks para reatividade
     else if (atr_ratio < 0.2) // ATR < 0.2% do preço
     {
-       m_width_lookback = (int)MathMax(5, m_width_lookback * 0.8);
-       m_slope_lookback = (int)MathMax(3, m_slope_lookback * 0.8);
+       m_width_lookback = (int)MathMax(5, m_width_lookback * 1);
+       m_slope_lookback = (int)MathMax(3, m_slope_lookback * 1);
     }
 
     // Revalida após adaptação
@@ -1585,9 +1671,9 @@ void CBollinger::CalibrateForWinIndex(ENUM_TIMEFRAMES timeframe)
             * MÉTODO: Parâmetros ajustados para capturar oportunidades reais
             */
            // PARÂMETROS DE HISTÓRICO: Otimizados para WIN$N M3
-           m_width_history = 100;      // BASE DE DADOS: 100 candles históricos
-           m_width_lookback = 40;      // ANÁLISE: 40 candles para estatísticas
-           m_slope_lookback = 6;       // MOMENTUM: 6 candles para resposta mais rápida
+           m_width_history = 50;      // BASE DE DADOS: 100 candles históricos
+           m_width_lookback = 20;      // ANÁLISE: 40 candles para estatísticas
+           m_slope_lookback = 9;       // MOMENTUM: 6 candles para resposta mais rápida
 
            // THRESHOLDS MAIS SENSÍVEIS: Para detectar squeezes no WIN$N
            m_percentile_thresholds[0] = 15;  // Very narrow (mais sensível)
