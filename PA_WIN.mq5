@@ -308,7 +308,7 @@ void boll20_values(TF_CTX &ctx, ENUM_TIMEFRAMES tf)
 
    Print("=== BANDS VALUES ===");
    Print("UPPER: ", upper_band_value);
-   Print("MIDDLE: ", upper_band_value);
+   Print("MIDDLE: ", middle_band_value);
    Print("LOWER: ", lower_band_value);
    Print("WIDTH: ", band_width);
 
@@ -320,14 +320,14 @@ void boll20_values(TF_CTX &ctx, ENUM_TIMEFRAMES tf)
    Print("# Simple Diff.: ", slope_upper.simple_difference.slope_value, " Direction: ", slope_upper.simple_difference.trend_direction);
 
    Print("## MIDDLE");
-   Print("# Linear Regr.: ", slope_middle.linear_regression.slope_value, " Direction: ", slope_upper.linear_regression.trend_direction);
-   Print("# Discrt. Der.: ", slope_middle.discrete_derivative.slope_value, " Direction: ", slope_upper.discrete_derivative.trend_direction);
-   Print("# Simple Diff.: ", slope_middle.simple_difference.slope_value, " Direction: ", slope_upper.simple_difference.trend_direction);
+   Print("# Linear Regr.: ", slope_middle.linear_regression.slope_value, " Direction: ", slope_middle.linear_regression.trend_direction);
+   Print("# Discrt. Der.: ", slope_middle.discrete_derivative.slope_value, " Direction: ", slope_middle.discrete_derivative.trend_direction);
+   Print("# Simple Diff.: ", slope_middle.simple_difference.slope_value, " Direction: ", slope_middle.simple_difference.trend_direction);
 
    Print("## LOWER");
-   Print("# Linear Regr.: ", slope_lower.linear_regression.slope_value, " Direction: ", slope_upper.linear_regression.trend_direction);
-   Print("# Discrt. Der.: ", slope_lower.discrete_derivative.slope_value, " Direction: ", slope_upper.discrete_derivative.trend_direction);
-   Print("# Simple Diff.: ", slope_lower.simple_difference.slope_value, " Direction: ", slope_upper.simple_difference.trend_direction);
+   Print("# Linear Regr.: ", slope_lower.linear_regression.slope_value, " Direction: ", slope_lower.linear_regression.trend_direction);
+   Print("# Discrt. Der.: ", slope_lower.discrete_derivative.slope_value, " Direction: ", slope_lower.discrete_derivative.trend_direction);
+   Print("# Simple Diff.: ", slope_lower.simple_difference.slope_value, " Direction: ", slope_lower.simple_difference.trend_direction);
 
 };
 

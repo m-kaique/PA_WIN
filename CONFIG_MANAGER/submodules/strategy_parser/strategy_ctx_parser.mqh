@@ -158,8 +158,10 @@ CEmasBullBuyConfig *CStrategyConfigParser::ParseEmasBuyBullConfig(CJAVal *strate
     config.take_profit_ratio = strategy_json["take_profit_ratio"].ToDbl();
 
     // New configurable parameters
-    config.min_distance_9_21_atr = strategy_json["min_distance_9_21_atr"].ToDbl();
-    config.min_distance_21_50_atr = strategy_json["min_distance_21_50_atr"].ToDbl();
+    config.min_distance_9_21_atr_m3 = strategy_json["min_distance_9_21_atr_m3"].ToDbl();
+    config.min_distance_21_50_atr_m3 = strategy_json["min_distance_21_50_atr_m3"].ToDbl();
+    config.min_distance_9_21_atr_m15 = strategy_json["min_distance_9_21_atr_m15"].ToDbl();
+    config.min_distance_21_50_atr_m15 = strategy_json["min_distance_21_50_atr_m15"].ToDbl();
     config.lookback_candles = (int)(long)strategy_json["lookback_candles"].ToDbl();
     config.max_distance_atr = strategy_json["max_distance_atr"].ToDbl();
     config.max_duration_candles = (int)(long)strategy_json["max_duration_candles"].ToDbl();
@@ -173,7 +175,8 @@ CEmasBullBuyConfig *CStrategyConfigParser::ParseEmasBuyBullConfig(CJAVal *strate
     // Validation enable/disable flags
     config.enable_ema_alignment_m15 = strategy_json["enable_ema_alignment_m15"].ToBool();
     config.enable_ema_alignment_m3 = strategy_json["enable_ema_alignment_m3"].ToBool();
-    config.enable_strong_trend = strategy_json["enable_strong_trend"].ToBool();
+    config.enable_strong_trend_m15 = strategy_json["enable_strong_trend_m15"].ToBool();
+    config.enable_strong_trend_m3 = strategy_json["enable_strong_trend_m3"].ToBool();
     config.enable_bullish_momentum = strategy_json["enable_bullish_momentum"].ToBool();
     config.enable_good_volatility = strategy_json["enable_good_volatility"].ToBool();
     config.enable_bullish_structure_m15 = strategy_json["enable_bullish_structure_m15"].ToBool();
@@ -221,7 +224,7 @@ STRATEGY_CTX *CStrategyConfigParser::CreateStrategyContext(string setup_name, SS
     // Criar array de configurações para o construtor
     CStrategyConfig *cfg_array[];
     ArrayResize(cfg_array, ArraySize(config.strategies));
-    
+
     for (int i = 0; i < ArraySize(config.strategies); i++)
     {
         cfg_array[i] = config.strategies[i];
@@ -271,16 +274,26 @@ void CStrategyConfigParser::CleanupStrategySetup(SStrategySetupConfig &config)
 //+------------------------------------------------------------------+
 ENUM_TIMEFRAMES CStrategyConfigParser::StringToTimeframe(string tf_str)
 {
-    if (tf_str == "M1") return PERIOD_M1;
-    if (tf_str == "M3") return PERIOD_M3;
-    if (tf_str == "M5") return PERIOD_M5;
-    if (tf_str == "M15") return PERIOD_M15;
-    if (tf_str == "M30") return PERIOD_M30;
-    if (tf_str == "H1") return PERIOD_H1;
-    if (tf_str == "H4") return PERIOD_H4;
-    if (tf_str == "D1") return PERIOD_D1;
-    if (tf_str == "W1") return PERIOD_W1;
-    if (tf_str == "MN1") return PERIOD_MN1;
+    if (tf_str == "M1")
+        return PERIOD_M1;
+    if (tf_str == "M3")
+        return PERIOD_M3;
+    if (tf_str == "M5")
+        return PERIOD_M5;
+    if (tf_str == "M15")
+        return PERIOD_M15;
+    if (tf_str == "M30")
+        return PERIOD_M30;
+    if (tf_str == "H1")
+        return PERIOD_H1;
+    if (tf_str == "H4")
+        return PERIOD_H4;
+    if (tf_str == "D1")
+        return PERIOD_D1;
+    if (tf_str == "W1")
+        return PERIOD_W1;
+    if (tf_str == "MN1")
+        return PERIOD_MN1;
 
     Print("AVISO: Timeframe desconhecido: ", tf_str, ", usando PERIOD_M15 como padrão");
     return PERIOD_M15;
