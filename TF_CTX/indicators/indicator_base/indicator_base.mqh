@@ -131,6 +131,10 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy
   validation.derivative_config_value = slope_values[slope_conf_index].discrete_der;
   validation.lookback_config_value = slope_values[slope_conf_index].lookback;
 
+  validation.bullish_count = m_slope.CountBullishSlopes(validation);
+  validation.bearish_count = m_slope.CountBearishSlopes(validation);
+  validation.side_count = m_slope.CountSideWalkSlopes(validation);
+
   return validation;
 }
 

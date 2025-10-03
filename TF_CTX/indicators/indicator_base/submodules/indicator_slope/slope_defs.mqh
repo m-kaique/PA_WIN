@@ -42,6 +42,7 @@ struct SSlopeValidation
   double consensus_strength; // Força do consenso entre métodos
   int methods_agreement;     // Quantos métodos concordam
   bool is_reliable;          // Se o sinal é confiável
+  int bullish_count, bearish_count, side_count;
 
   // Pesos e scores
   double weighted_slope; // Inclinação ponderada

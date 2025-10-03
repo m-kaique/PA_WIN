@@ -38,6 +38,7 @@ private:
    bool IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma);
    bool IsGoodVolatilityEnvironment(TF_CTX *ctx);
    bool IsInBullishStructure(TF_CTX *ctx);
+   bool BollingerHasValidStructure(TF_CTX *ctx);
 
 protected:
    virtual bool DoInit() override;
@@ -303,43 +304,101 @@ bool CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
    if (ctx == NULL)
       return false;
 
-   CMovingAverages *sma200 = ctx.GetIndicator("sma200");
+   CMovingAverages *ema50 = ctx.GetIndicator("ema50");
    CATR *atr = ctx.GetIndicator("ATR15");
 
-   if (sma200 == NULL || atr == NULL)
+   if (ema50 == NULL || atr == NULL)
       return false;
 
    ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
 
    double current_close = iClose(m_current_symbol, tf, 1);
-   double sma200_val = sma200.GetValue(1);
+   double ema50_val = ema50.GetValue(1);
    double atr_val = atr.GetValue(1);
 
    if (atr_val <= 0)
       return false;
 
-   // Critério 1: Preço deve estar acima da SMA200
-   if (current_close <= sma200_val)
+   // Critério 1: Preço deve estar acima da ema50
+   if (current_close <= ema50_val)
    {
       return false;
    }
 
-   // Critério 2: Preço deve estar a uma distância mínima da SMA200
-   double distance_to_sma200 = (current_close - sma200_val) / atr_val;
-   if (distance_to_sma200 < m_config.bullish_structure_atr_threshold)
+   // Critério 2: Preço deve estar a uma distância mínima da ema50
+   double distance_to_ema50 = (current_close - ema50_val) / atr_val;
+   if (distance_to_ema50 < m_config.bullish_structure_atr_threshold)
    {
       return false;
    }
 
-   // Critério 3: SMA200 deve estar inclinada para cima
-   SSlopeValidation sma200_slope = sma200.GetSlopeValidation(atr_val, COPY_MIDDLE);
-   bool sma200_trending_up = (sma200_slope.simple_difference.trend_direction != "BAIXA" ||
-                              sma200_slope.discrete_derivative.trend_direction != "BAIXA" ||
-                              sma200_slope.linear_regression.trend_direction != "BAIXA");
+   // Critério 3: ema50 deve estar inclinada para cima
+   SSlopeValidation ema50_slope = ema50.GetSlopeValidation(atr_val, COPY_MIDDLE);
+   bool ema50_trending_up = (ema50_slope.simple_difference.trend_direction != "BAIXA" ||
+                             ema50_slope.discrete_derivative.trend_direction != "BAIXA" ||
+                             ema50_slope.linear_regression.trend_direction != "BAIXA");
 
-   return sma200_trending_up;
+   return ema50_trending_up;
 }
 
+//+------------------------------------------------------------------+
+//| Filtro Bollinger                                                 |
+//+------------------------------------------------------------------+
+bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
+{
+   // Valores min e max de largura
+   double valid_min_width, valid_max_width;
+   valid_min_width = 500;
+   valid_max_width = 3000;
+
+   // Acesso ao indicador e copia dos valores min e max
+   CBollinger *boll_ind = ctx.GetIndicator("boll20");
+   double upper_band_value = boll_ind.GetUpper(1);
+   double lower_band_value = boll_ind.GetLower(1);
+
+   // Largura da banda
+   double boll_width = MathAbs(upper_band_value - lower_band_value);
+
+   // Se a largura não está na faixa adequada, retorna falso
+   if (boll_width < valid_min_width || boll_width > valid_max_width)
+   {
+      return false;
+   }
+
+   CATR *atr = ctx.GetIndicator("ATR15");
+   double atr_value = atr.GetValue(1);
+
+   SSlopeValidation slope_upper = boll_ind.GetSlopeValidation(atr_value, COPY_UPPER);
+   SSlopeValidation slope_middle = boll_ind.GetSlopeValidation(atr_value, COPY_MIDDLE);
+   SSlopeValidation slope_lower = boll_ind.GetSlopeValidation(atr_value, COPY_LOWER);
+
+   // Contracting
+   bool contracting_1 = slope_upper.bearish_count >= 2;
+   bool contracting_2 = slope_lower.bullish_count >= 2;
+   bool contracting_condition = contracting_1 && contracting_2;
+
+   if (contracting_condition)
+   {
+      return false;
+   }
+
+   // Micro Inclinação Banda Superior
+   // sidewalk >=2 && bear == 0
+   bool c1 = slope_upper.side_count >= 2;
+   if (c1)
+   {
+      bool c2 = slope_upper.linear_regression.slope_value >= 0.02;
+      bool c3 = slope_upper.discrete_derivative.slope_value >= 0.02;
+      bool c4 = slope_upper.simple_difference.slope_value >= 0.10;
+
+      if (!c2 || !c3 || !c4)
+      {
+         return false;
+      }
+   }
+
+   return true;
+}
 //+------------------------------------------------------------------+
 //| Verificar por sinal de entrada - LÓGICA MIGRADA DA CompraAlta   |
 //+------------------------------------------------------------------+
@@ -446,12 +505,14 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    bool ema_alignment_m15_ok = m_config.enable_ema_alignment_m15 ? (EMA9_above_EMA21_M15 && EMA21_above_EMA50_M15) : true;
    bool ema_alignment_m3_ok = m_config.enable_ema_alignment_m3 ? (EMA9_above_EMA21_M3 && EMA21_above_EMA50_M3) : true;
 
+   bool is_bollinger_valid = BollingerHasValidStructure(ctx_m3);
+
    bool filtros_ok = ema_alignment_m15_ok && ema_alignment_m3_ok &&
                      strong_trend_m15 && strong_trend_m3 &&
                      bullish_momentum &&
                      good_volatility_m15 &&
                      bullish_structure_m15 && bullish_structure_m3 &&
-                     strong_trend_adx_m15;
+                     strong_trend_adx_m15 && is_bollinger_valid;
 
    bool pullback_ema9_ok = m_config.enable_pullback_ema9 ? (price_pullback_EMA9_M3 && valid_pullback_EMA9_M3) : false;
    bool pullback_ema21_ok = m_config.enable_pullback_ema21 ? (price_pullback_EMA21_M3 && valid_pullback_EMA21_M3) : false;

@@ -16,6 +16,9 @@ public:
   SSlopeResult CalculateDiscreteDerivative(string m_symbol, double &ma_values[], double atr, int lookback);
   SSlopeResult CalculateAngleDegrees(string m_symbol, double &ma_values[], int lookback);
   // SSlopeValidation AnalyzeMethodsConsensus(SSlopeValidation &validation, bool use_weighted_analysis);
+  int CountSideWalkSlopes(const SSlopeValidation &slope);
+  int CountBearishSlopes(const SSlopeValidation &slope);
+  int CountBullishSlopes(const SSlopeValidation &slope);
 };
 
 //+---------------------------------------------------------------------------------------------------------------+
@@ -143,6 +146,49 @@ SSlopeResult CSlope::CalculateAngleDegrees(string m_symbol, double &ma_values[],
 //| Funções de Análise                                                                                          |
 //
 //+---------------------------------------------------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//| Contar slopes LATERAL em uma validação de slope                  |
+//+------------------------------------------------------------------+
+int CSlope::CountSideWalkSlopes(const SSlopeValidation &slope)
+{
+  int count = 0;
+  if (slope.simple_difference.trend_direction == "LATERAL")
+    count++;
+  if (slope.discrete_derivative.trend_direction == "LATERAL")
+    count++;
+  if (slope.linear_regression.trend_direction == "LATERAL")
+    count++;
+  return count;
+}
+//+------------------------------------------------------------------+
+//| Contar slopes bearish em uma validação de slope                  |
+//+------------------------------------------------------------------+
+int CSlope::CountBearishSlopes(const SSlopeValidation &slope)
+{
+  int count = 0;
+  if (slope.simple_difference.trend_direction == "BAIXA")
+    count++;
+  if (slope.discrete_derivative.trend_direction == "BAIXA")
+    count++;
+  if (slope.linear_regression.trend_direction == "BAIXA")
+    count++;
+  return count;
+}
+//+------------------------------------------------------------------+
+//| Contar slopes bullish em uma validação de slope                  |
+//+------------------------------------------------------------------+
+int CSlope::CountBullishSlopes(const SSlopeValidation &slope)
+{
+  int count = 0;
+  if (slope.simple_difference.trend_direction == "ALTA")
+    count++;
+  if (slope.discrete_derivative.trend_direction == "ALTA")
+    count++;
+  if (slope.linear_regression.trend_direction == "ALTA")
+    count++;
+  return count;
+}
 
 //+------------------------------------------------------------------+
 //| Função auxiliar para debug detalhado                           |
