@@ -334,9 +334,9 @@ bool CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
 
    // Critério 3: ema50 deve estar inclinada para cima
    SSlopeValidation ema50_slope = ema50.GetSlopeValidation(atr_val, COPY_MIDDLE);
-   bool ema50_trending_up = (ema50_slope.simple_difference.trend_direction != "BAIXA" ||
-                             ema50_slope.discrete_derivative.trend_direction != "BAIXA" ||
-                             ema50_slope.linear_regression.trend_direction != "BAIXA");
+   bool ema50_trending_up = (ema50_slope.simple_difference.trend_direction != _DOWN ||
+                             ema50_slope.discrete_derivative.trend_direction != _DOWN ||
+                             ema50_slope.linear_regression.trend_direction != _DOWN);
 
    return ema50_trending_up;
 }
@@ -385,11 +385,19 @@ bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
    // Micro Inclinação Banda Superior
    // sidewalk >=2 && bear == 0
    bool c1 = slope_upper.side_count >= 2;
+   Print("Contagem de Lateral: ", slope_upper.side_count);
+   Print("Contagem de Bull: ", slope_upper.bullish_count);
+   Print("Contagem de Bear: ", slope_upper.bearish_count);
    if (c1)
    {
       bool c2 = slope_upper.linear_regression.slope_value >= 0.02;
       bool c3 = slope_upper.discrete_derivative.slope_value >= 0.02;
       bool c4 = slope_upper.simple_difference.slope_value >= 0.10;
+
+      Print("SLOPE VALUES MICRO INCLINAÇÃO: &&&&&&&&&&&&&&&");
+      Print("LR: ", slope_upper.linear_regression.slope_value);
+      Print("DD: ", slope_upper.discrete_derivative.slope_value);
+      Print("SD: ", slope_upper.simple_difference.slope_value);
 
       if (!c2 || !c3 || !c4)
       {

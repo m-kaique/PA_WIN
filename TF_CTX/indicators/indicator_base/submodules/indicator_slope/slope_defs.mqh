@@ -14,13 +14,23 @@ enum ENUM_SLOPE_METHOD
 };
 
 //+------------------------------------------------------------------+
+//| Enumeração para de inclinação                                   |
+//+------------------------------------------------------------------+
+enum SLOPE_DIRECTION
+{
+  _UP,
+  _DOWN,
+  _SIDEWALK
+};
+
+//+------------------------------------------------------------------+
 //| Estrutura para resultado da análise de inclinação              |
 //+------------------------------------------------------------------+
 struct SSlopeResult
 {
   double slope_value;     // Valor da inclinação
   double r_squared;       // Coeficiente de determinação (apenas para regressão linear)
-  string trend_direction; // "ALTA", "BAIXA", "LATERAL"
+  SLOPE_DIRECTION trend_direction; // "ALTA", "BAIXA", "LATERAL"
   double trend_strength;  // Força da tendência (0-100)
 };
 
@@ -68,5 +78,7 @@ struct SSlopeValues
     linear_reg = 999.99;
     discrete_der = 999.99;
   }
+
+
 };
 #endif
