@@ -334,9 +334,9 @@ bool CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
 
    // Critério 3: ema50 deve estar inclinada para cima
    SSlopeValidation ema50_slope = ema50.GetSlopeValidation(atr_val, COPY_MIDDLE);
-   bool ema50_trending_up = (ema50_slope.simple_difference.trend_direction != _DOWN ||
-                             ema50_slope.discrete_derivative.trend_direction != _DOWN ||
-                             ema50_slope.linear_regression.trend_direction != _DOWN);
+   bool ema50_trending_up = (ema50_slope.simple_difference.trend_direction != SLOPE_DOWN ||
+                             ema50_slope.discrete_derivative.trend_direction != SLOPE_DOWN ||
+                             ema50_slope.linear_regression.trend_direction != SLOPE_DOWN);
 
    return ema50_trending_up;
 }

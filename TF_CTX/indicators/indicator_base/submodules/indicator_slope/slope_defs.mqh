@@ -18,9 +18,9 @@ enum ENUM_SLOPE_METHOD
 //+------------------------------------------------------------------+
 enum SLOPE_DIRECTION
 {
-  _UP,
-  _DOWN,
-  _SIDEWALK
+  SLOPE_UP,
+  SLOPE_DOWN,
+  SLOPE_SIDEWALK
 };
 
 //+------------------------------------------------------------------+

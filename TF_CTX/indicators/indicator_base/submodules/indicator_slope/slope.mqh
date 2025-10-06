@@ -153,11 +153,11 @@ SSlopeResult CSlope::CalculateAngleDegrees(string m_symbol, double &ma_values[],
 int CSlope::CountSideWalkSlopes(const SSlopeValidation &slope)
 {
   int count = 0;
-  if (slope.simple_difference.trend_direction == _SIDEWALK)
+  if (slope.simple_difference.trend_direction == SLOPE_SIDEWALK)
     count++;
-  if (slope.discrete_derivative.trend_direction == _SIDEWALK)
+  if (slope.discrete_derivative.trend_direction == SLOPE_SIDEWALK)
     count++;
-  if (slope.linear_regression.trend_direction == _SIDEWALK)
+  if (slope.linear_regression.trend_direction == SLOPE_SIDEWALK)
     count++;
   return count;
 }
@@ -167,11 +167,11 @@ int CSlope::CountSideWalkSlopes(const SSlopeValidation &slope)
 int CSlope::CountBearishSlopes(const SSlopeValidation &slope)
 {
   int count = 0;
-  if (slope.simple_difference.trend_direction == _DOWN)
+  if (slope.simple_difference.trend_direction == SLOPE_DOWN)
     count++;
-  if (slope.discrete_derivative.trend_direction == _DOWN)
+  if (slope.discrete_derivative.trend_direction == SLOPE_DOWN)
     count++;
-  if (slope.linear_regression.trend_direction == _DOWN)
+  if (slope.linear_regression.trend_direction == SLOPE_DOWN)
     count++;
   return count;
 }
@@ -181,11 +181,11 @@ int CSlope::CountBearishSlopes(const SSlopeValidation &slope)
 int CSlope::CountBullishSlopes(const SSlopeValidation &slope)
 {
   int count = 0;
-  if (slope.simple_difference.trend_direction == _UP)
+  if (slope.simple_difference.trend_direction == SLOPE_UP)
     count++;
-  if (slope.discrete_derivative.trend_direction == _UP)
+  if (slope.discrete_derivative.trend_direction == SLOPE_UP)
     count++;
-  if (slope.linear_regression.trend_direction == _UP)
+  if (slope.linear_regression.trend_direction == SLOPE_UP)
     count++;
   return count;
 }
