@@ -586,7 +586,37 @@
                   "enable_adx_filter": true,
                   "enable_pullback_ema9": true,
                   "enable_pullback_ema21": true,
-                  "authorized_timeframes": ["M15"]
+                  "authorized_timeframes": ["M3"]
+               },
+               {
+                  "enabled": true,
+                  "name": "m15_m3_emas_sell_bear",
+                  "type": "emas_sell_bear",
+                  "risk_percent": 1.0,
+                  "stop_loss_pips": 50.0,
+                  "take_profit_ratio": 2.0,
+                  "min_distance_9_21_atr": 0.3,
+                  "min_distance_21_50_atr": 0.5,
+                  "lookback_candles": 3,
+                  "max_distance_atr": 0.8,
+                  "max_duration_candles": 3,
+                  "lookback_periods": 10,
+                  "min_volatility_ratio": 0.7,
+                  "max_volatility_ratio": 1.5,
+                  "bearish_structure_atr_threshold": 0.5,
+                  "adx_min_value": 25,
+                  "adx_max_value": 60,
+                  "enable_ema_alignment_m15": true,
+                  "enable_ema_alignment_m3": true,
+                  "enable_strong_trend": true,
+                  "enable_bearish_momentum": false,
+                  "enable_good_volatility": true,
+                  "enable_bearish_structure_m15": true,
+                  "enable_bearish_structure_m3": true,
+                  "enable_adx_filter": true,
+                  "enable_pullback_ema9": true,
+                  "enable_pullback_ema21": true,
+                  "authorized_timeframes": ["M3"]
                }
             ]
          },

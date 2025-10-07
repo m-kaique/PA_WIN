@@ -113,6 +113,101 @@ public:
    }
 };
 
+
+//+------------------------------------------------------------------+
+//| Configuração para estratégia EMA Buy Bull                       |
+//+------------------------------------------------------------------+
+class CEmasBearSellConfig : public CStrategyConfig
+{
+public:
+   // Existing parameters
+   double risk_percent;
+   double stop_loss_pips;
+   double take_profit_ratio;
+
+   // New configurable parameters for trend and momentum
+   double min_distance_9_21_atr_m3;
+   double min_distance_21_50_atr_m3;
+   double min_distance_9_21_atr_m15;
+   double min_distance_21_50_atr_m15;
+   int lookback_candles;
+   double max_distance_atr;
+   int max_duration_candles;
+   int lookback_periods;
+   double min_volatility_ratio;
+   double max_volatility_ratio;
+   double bearish_structure_atr_threshold;
+   int adx_min_value;
+   int adx_max_value;
+
+   // Validation enable/disable flags
+   bool enable_ema_alignment_m15;
+   bool enable_ema_alignment_m3;
+   bool enable_strong_trend_m15;
+   bool enable_strong_trend_m3;
+   bool enable_bearish_momentum;
+   bool enable_good_volatility;
+   bool enable_bearish_structure_m15;
+   bool enable_bearish_structure_m3;
+   bool enable_adx_filter;
+   bool enable_pullback_ema9;
+   bool enable_pullback_ema21;
+
+   // Authorized timeframes for signal generation
+   ENUM_TIMEFRAMES authorized_timeframes[];
+
+   // Method to check if timeframe is authorized
+   bool IsTimeframeAuthorized(ENUM_TIMEFRAMES timeframe)
+   {
+      for (int i = 0; i < ArraySize(authorized_timeframes); i++)
+      {
+         if (authorized_timeframes[i] == timeframe)
+            return true;
+      }
+      return false;
+   }
+
+   CEmasBearSellConfig()
+   {
+      type = "emas_bear_sell";
+      risk_percent = 1.0;
+      stop_loss_pips = 50.0;
+      take_profit_ratio = 2.0;
+
+      // Initialize new parameters with default values
+      min_distance_9_21_atr_m3 = 0.3;
+      min_distance_21_50_atr_m3 = 0.5;
+      min_distance_9_21_atr_m15 = 0.3;
+      min_distance_21_50_atr_m15 = 0.5;
+      lookback_candles = 3;
+      max_distance_atr = 0.8;
+      max_duration_candles = 3;
+      lookback_periods = 10;
+      min_volatility_ratio = 0.7;
+      max_volatility_ratio = 1.5;
+      bearish_structure_atr_threshold = 0.5;
+      adx_min_value = 25;
+      adx_max_value = 60;
+
+      // Initialize validation flags to true by default
+      enable_ema_alignment_m15 = true;
+      enable_ema_alignment_m3 = true;
+      enable_strong_trend_m15 = true;
+      enable_strong_trend_m3 = true;
+      enable_bearish_momentum = true;
+      enable_good_volatility = true;
+      enable_bearish_structure_m15 = true;
+      enable_bearish_structure_m3 = true;
+      enable_adx_filter = true;
+      enable_pullback_ema9 = true;
+      enable_pullback_ema21 = true;
+
+      // Initialize authorized timeframes (default to M15 and M3 for this strategy)
+      ArrayResize(authorized_timeframes, 2);
+      authorized_timeframes[0] = PERIOD_M30;
+   }
+};
+
 //--- Strategy Configuration
 struct SStrategyConfig
 {

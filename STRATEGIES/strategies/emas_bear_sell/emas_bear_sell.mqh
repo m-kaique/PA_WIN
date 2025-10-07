@@ -1,32 +1,35 @@
-#ifndef __EMAS_BULL_BUY_MQH__
-#define __EMAS_BULL_BUY_MQH__
+#ifndef __EMAS_BEAR_SELL_MQH__
+#define __EMAS_BEAR_SELL_MQH_
 
 //+------------------------------------------------------------------+
-//|                                                emas_bull_buy.mqh |
-//|                                  Copyright 2025, MetaQuotes Ltd. |
-//|                                             https://www.mql5.com |
+//|                                                       PA_WIN.mq5 |
+//|                                                   Copyright 2025 |
+//|                                                 https://mql5.com |
+//| 22.06.2025 - Updated with ConfigManager                          |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2025, MetaQuotes Ltd."
-#property link "https://www.mql5.com"
-#property version "1.00"
+
+#property copyright "Copyright 2025"
+#property link "https://mql5.com"
+#property version "2.00"
 
 #include "../strategy_base/strategy_base.mqh"
-#include "emas_bull_buy_defs.mqh"
+#include "emas_bear_sell_defs.mqh"
+
 
 //+------------------------------------------------------------------+
-//| Estratégia EMA Buy Bull - Compra em tendência de alta com EMAs  |
+//| Estratégia EMA Sell bear - Compra em tendência de alta com EMAs  |
 //+------------------------------------------------------------------+
-class CEmasBuyBull : public CStrategyBase
+class CEmasSellBear : public CStrategyBase
 {
 private:
-   CEmasBullBuyConfig m_config;
+   CEmasBearSellConfig m_config;
 
    string m_symbol;
    ENUM_TIMEFRAMES m_timeframe;
 
    // Estruturas de Dados
-   SDistance_MA distance_ma_m3;
-   SDistance_MA distance_ma_m15;
+   SDistance_MA_BEAR distance_ma_m3;
+   SDistance_MA_BEAR distance_ma_m15;
 
    double CalculateLotSize();
    double CalculateStopLoss(double entry_price);
@@ -34,10 +37,10 @@ private:
 
    // Métodos auxiliares migrados da lógica CompraAlta
    bool IsStrongTrend(TF_CTX *ctx);
-   bool HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3);
+   bool HasBearishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3);
    bool IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma);
    bool IsGoodVolatilityEnvironment(TF_CTX *ctx);
-   bool IsInBullishStructure(TF_CTX *ctx);
+   bool IsInbearishStructure(TF_CTX *ctx);
    bool BollingerHasValidStructure(TF_CTX *ctx);
 
 protected:
@@ -47,10 +50,10 @@ protected:
    virtual bool ValidateSignal(const SStrategySignal &signal) override;
 
 public:
-   CEmasBuyBull(IContextProvider *context_provider = NULL);
-   ~CEmasBuyBull();
+   CEmasSellBear(IContextProvider *context_provider = NULL);
+   ~CEmasSellBear();
 
-   bool Init(string name, const CEmasBullBuyConfig &config);
+   bool Init(string name, const CEmasBearSellConfig &config);
    void PrintFullDebugLog();
 
    // Override to return strategy configuration
@@ -60,7 +63,7 @@ public:
 //+------------------------------------------------------------------+
 //| Construtor                                                       |
 //+------------------------------------------------------------------+
-CEmasBuyBull::CEmasBuyBull(IContextProvider *context_provider)
+CEmasSellBear::CEmasSellBear(IContextProvider *context_provider)
 {
    m_context_provider = context_provider;
    m_symbol = Symbol();
@@ -70,14 +73,14 @@ CEmasBuyBull::CEmasBuyBull(IContextProvider *context_provider)
 //+------------------------------------------------------------------+
 //| Destrutor                                                        |
 //+------------------------------------------------------------------+
-CEmasBuyBull::~CEmasBuyBull()
+CEmasSellBear::~CEmasSellBear()
 {
 }
 
 //+------------------------------------------------------------------+
 //| Inicialização com configuração específica                       |
 //+------------------------------------------------------------------+
-bool CEmasBuyBull::Init(string name, const CEmasBullBuyConfig &config)
+bool CEmasSellBear::Init(string name, const CEmasBearSellConfig &config)
 {
    m_config = config;
    return CStrategyBase::Init(name, config);
@@ -86,7 +89,7 @@ bool CEmasBuyBull::Init(string name, const CEmasBullBuyConfig &config)
 //+------------------------------------------------------------------+
 //| Inicialização específica da estratégia                          |
 //+------------------------------------------------------------------+
-bool CEmasBuyBull::DoInit()
+bool CEmasSellBear::DoInit()
 {
    return true;
 }
@@ -94,7 +97,7 @@ bool CEmasBuyBull::DoInit()
 //+------------------------------------------------------------------+
 //| Atualização específica da estratégia                            |
 //+------------------------------------------------------------------+
-bool CEmasBuyBull::DoUpdate()
+bool CEmasSellBear::DoUpdate()
 {
    return true;
 }
@@ -102,7 +105,7 @@ bool CEmasBuyBull::DoUpdate()
 //+------------------------------------------------------------------+
 //| Verificar se há tendência forte baseada na distância entre médias |
 //+------------------------------------------------------------------+
-bool CEmasBuyBull::IsStrongTrend(TF_CTX *ctx)
+bool CEmasSellBear::IsStrongTrend(TF_CTX *ctx)
 {
    if (ctx == NULL)
       return false;
@@ -138,7 +141,7 @@ bool CEmasBuyBull::IsStrongTrend(TF_CTX *ctx)
       distance_ma_m15.ema_9_21_by_atr = MathAbs(ema21_val - ema9_val) / atr_val;
       distance_ma_m15.ema_9_50_by_atr = MathAbs(ema50_val - ema9_val) / atr_val;
 
-      // Print("Estou usando M15 - #### CEmasBuyBull::IsStrongTrend");
+      // Print("Estou usando M15 - #### CEmasSellBear::IsStrongTrend");
       strong_trend = (dist_9_21 >= m_config.min_distance_9_21_atr_m15 && dist_21_50 >= m_config.min_distance_21_50_atr_m15);
    }
 
@@ -152,21 +155,21 @@ bool CEmasBuyBull::IsStrongTrend(TF_CTX *ctx)
       distance_ma_m3.ema_9_21_by_atr = MathAbs(ema21_val - ema9_val) / atr_val;
       distance_ma_m3.ema_9_50_by_atr = MathAbs(ema50_val - ema9_val) / atr_val;
 
-      // Print("Estou usando M3 - #### CEmasBuyBull::IsStrongTrend");
+      // Print("Estou usando M3 - #### CEmasSellBear::IsStrongTrend");
       strong_trend = (dist_9_21 >= m_config.min_distance_9_21_atr_m3 && dist_21_50 >= m_config.min_distance_21_50_atr_m3);
    }
    else
    {
-      Print("!!!!!!!!!!!!!!!!!!!!!!!!!! STRONG TREND NÃO CONFIGURADA EM CEmasBuyBull::IsStrongTrend  - !M3 ou M15!");
+      Print("!!!!!!!!!!!!!!!!!!!!!!!!!! STRONG TREND NÃO CONFIGURADA EM CEmasSellBear::IsStrongTrend  - !M3 ou M15!");
    }
 
    return strong_trend;
 }
 
 //+------------------------------------------------------------------+
-//| Verificar momentum bullish através de price action              |
+//| Verificar momentum bearish através de price action              |
 //+------------------------------------------------------------------+
-bool CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3)
+bool CEmasSellBear::HasBearishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3)
 {
    if (ctx_m15 == NULL || ctx_m3 == NULL)
       return false;
@@ -177,18 +180,18 @@ bool CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3)
 
    string symbol = Symbol();
 
-   // Critério 1: Verificar se o preço está consistentemente acima da EMA21 no M15
-   int candles_above_ema21 = 0;
+   // Critério 1: Verificar se o preço está consistentemente abaixo da EMA21 no M15
+   int candles_below_ema21 = 0;
    for (int i = 1; i <= m_config.lookback_candles; i++)
    {
       double close = iClose(m_current_symbol, PERIOD_M15, i);
       double ema21_val = ema21_m15.GetValue(i);
-      if (close > ema21_val)
+      if (close < ema21_val)
       {
-         candles_above_ema21++;
+         candles_below_ema21++;
       }
    }
-   bool price_above_ema21 = (candles_above_ema21 >= 2);
+   bool price_below_ema21 = (candles_below_ema21 >= 2);
 
    // Critério 2: Verificar se não há sinais de pânico de venda
    bool no_panic_selling = true;
@@ -200,13 +203,13 @@ bool CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3)
       double high = iHigh(m_current_symbol, PERIOD_M3, i);
 
       double body_size = MathAbs(close - open);
-      double lower_shadow = MathMin(open, close) - low;
+      double upper_shadow = MathMin(open, close) - high;
       double candle_range = high - low;
 
       if (candle_range > 0)
       {
-         double lower_shadow_ratio = lower_shadow / candle_range;
-         if (lower_shadow_ratio > 0.6)
+         double upper_shadow_ratio = upper_shadow / candle_range;
+         if (upper_shadow_ratio < 0.6)
          {
             no_panic_selling = false;
             break;
@@ -214,18 +217,18 @@ bool CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3)
       }
    }
 
-   // Critério 3: Verificar se a última vela mostra força de alta
+   // Critério 3: Verificar se a última vela mostra força de Baixa
    double last_open = iOpen(m_current_symbol, PERIOD_M3, 1);
    double last_close = iClose(m_current_symbol, PERIOD_M3, 1);
-   bool last_candle_bullish = (last_close >= last_open);
+   bool last_candle_bearish = (last_open <= last_close);
 
-   return price_above_ema21 && no_panic_selling && last_candle_bullish;
+   return price_below_ema21 && no_panic_selling && last_candle_bearish;
 }
 
 //+------------------------------------------------------------------+
 //| Validar se é um pullback adequado                               |
 //+------------------------------------------------------------------+
-bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma)
+bool CEmasSellBear::IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma)
 {
    if (ctx == NULL || ma == NULL || atr_value <= 0)
       return false;
@@ -259,7 +262,7 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
 //+------------------------------------------------------------------+
 //| Analisar ambiente de volatilidade                               |
 //+------------------------------------------------------------------+
-bool CEmasBuyBull::IsGoodVolatilityEnvironment(TF_CTX *ctx)
+bool CEmasSellBear::IsGoodVolatilityEnvironment(TF_CTX *ctx)
 {
    if (ctx == NULL)
       return false;
@@ -299,7 +302,7 @@ bool CEmasBuyBull::IsGoodVolatilityEnvironment(TF_CTX *ctx)
 //+------------------------------------------------------------------+
 //| Verificar se o mercado está em estrutura de alta                |
 //+------------------------------------------------------------------+
-bool CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
+bool CEmasSellBear::IsInbearishStructure(TF_CTX *ctx)
 {
    if (ctx == NULL)
       return false;
@@ -319,32 +322,32 @@ bool CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
    if (atr_val <= 0)
       return false;
 
-   // Critério 1: Preço deve estar acima da ema50
+   // Critério 1: Preço deve estar Abaixo da ema50
    if (current_close <= ema50_val)
    {
       return false;
    }
 
    // Critério 2: Preço deve estar a uma distância mínima da ema50
-   double distance_to_ema50 = (current_close - ema50_val) / atr_val;
-   if (distance_to_ema50 < m_config.bullish_structure_atr_threshold)
+   double distance_to_ema50 = MathAbs(current_close - ema50_val) / atr_val;
+   if (distance_to_ema50 < m_config.bearish_structure_atr_threshold)
    {
       return false;
    }
 
-   // Critério 3: ema50 deve estar inclinada para cima
+   // Critério 3: ema50 deve estar inclinada para baixo
    SSlopeValidation ema50_slope = ema50.GetSlopeValidation(atr_val, COPY_MIDDLE);
-   bool ema50_trending_up = (ema50_slope.simple_difference.trend_direction != SLOPE_DOWN ||
-                             ema50_slope.discrete_derivative.trend_direction != SLOPE_DOWN ||
-                             ema50_slope.linear_regression.trend_direction != SLOPE_DOWN);
+   bool ema50_trending_down = (ema50_slope.simple_difference.trend_direction != SLOPE_UP ||
+                             ema50_slope.discrete_derivative.trend_direction != SLOPE_UP ||
+                             ema50_slope.linear_regression.trend_direction != SLOPE_UP);
 
-   return ema50_trending_up;
+   return ema50_trending_down;
 }
 
 //+------------------------------------------------------------------+
 //| Filtro Bollinger                                                 |
 //+------------------------------------------------------------------+
-bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
+bool CEmasSellBear::BollingerHasValidStructure(TF_CTX *ctx)
 {
    // Valores min e max de largura
    double valid_min_width, valid_max_width;
@@ -374,7 +377,7 @@ bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
 
    // Contracting
    bool contracting_1 = slope_upper.bearish_count >= 2;
-   bool contracting_2 = slope_lower.bullish_count >= 2;
+   bool contracting_2 = slope_lower.bearish_count >= 2;
    bool contracting_condition = contracting_1 && contracting_2;
 
    if (contracting_condition)
@@ -382,22 +385,22 @@ bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
       return false;
    }
 
-   // Micro Inclinação Banda Superior
+   // Micro Inclinação Banda Inferior
    // sidewalk >=2 && bear == 0
-   bool c1 = slope_upper.side_count >= 2;
-   Print("Contagem de Lateral: ", slope_upper.side_count);
-   Print("Contagem de Bull: ", slope_upper.bullish_count);
-   Print("Contagem de Bear: ", slope_upper.bearish_count);
+   bool c1 = slope_lower.side_count >= 2;
+   Print("Contagem de Lateral: ", slope_lower.side_count);
+   Print("Contagem de bear: ", slope_lower.bearish_count);
+   Print("Contagem de Bear: ", slope_lower.bearish_count);
    if (c1)
    {
-      bool c2 = slope_upper.linear_regression.slope_value >= 0.02;
-      bool c3 = slope_upper.discrete_derivative.slope_value >= 0.02;
-      bool c4 = slope_upper.simple_difference.slope_value >= 0.10;
+      bool c2 = slope_lower.linear_regression.slope_value <= -0.02;
+      bool c3 = slope_lower.discrete_derivative.slope_value <= -0.02;
+      bool c4 = slope_lower.simple_difference.slope_value <= -0.10;
 
       Print("SLOPE VALUES MICRO INCLINAÇÃO: &&&&&&&&&&&&&&&");
-      Print("LR: ", slope_upper.linear_regression.slope_value);
-      Print("DD: ", slope_upper.discrete_derivative.slope_value);
-      Print("SD: ", slope_upper.simple_difference.slope_value);
+      Print("LR: ", slope_lower.linear_regression.slope_value);
+      Print("DD: ", slope_lower.discrete_derivative.slope_value);
+      Print("SD: ", slope_lower.simple_difference.slope_value);
 
       if (!c2 || !c3 || !c4)
       {
@@ -411,7 +414,7 @@ bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
 //+------------------------------------------------------------------+
 //| Verificar por sinal de entrada - LÓGICA MIGRADA DA CompraAlta   |
 //+------------------------------------------------------------------+
-SStrategySignal CEmasBuyBull::CheckForSignal()
+SStrategySignal CEmasSellBear::CheckForSignal()
 {
    SStrategySignal signal;
    signal.Reset();
@@ -446,8 +449,8 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    double ema21_value_m15 = ema21_m15.GetValue(1);
    double ema50_value_m15 = ema50_m15.GetValue(1);
 
-   bool EMA9_above_EMA21_M15 = (ema9_value_m15 > ema21_value_m15);
-   bool EMA21_above_EMA50_M15 = (ema21_value_m15 > ema50_value_m15);
+   bool EMA9_below_EMA21_M15 = (ema9_value_m15 < ema21_value_m15);
+   bool EMA21_below_EMA50_M15 = (ema21_value_m15 < ema50_value_m15);
 
    // === INDICADORES M3 ===
    CMovingAverages *ema9_m3 = ctx_m3.GetIndicator("ema9");
@@ -466,8 +469,8 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    double ema21_value_m3 = ema21_m3.GetValue(1);
    double ema50_value_m3 = ema50_m3.GetValue(1);
 
-   bool EMA9_above_EMA21_M3 = (ema9_value_m3 > ema21_value_m3);
-   bool EMA21_above_EMA50_M3 = (ema21_value_m3 > ema50_value_m3);
+   bool EMA9_below_EMA21_M3 = (ema9_value_m3 < ema21_value_m3);
+   bool EMA21_below_EMA50_M3 = (ema21_value_m3 < ema50_value_m3);
 
    double atr_value = (atr_m3 != NULL) ? atr_m3.GetValue(1) : 0.0;
    if (atr_m3 == NULL || atr_value <= 0.0)
@@ -480,10 +483,10 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
 
    bool strong_trend_m3 = m_config.enable_strong_trend_m3 ? IsStrongTrend(ctx_m3) : true;
    bool strong_trend_m15 = m_config.enable_strong_trend_m15 ? IsStrongTrend(ctx_m15) : true;
-   bool bullish_momentum = m_config.enable_bullish_momentum ? HasBullishMomentum(ctx_m15, ctx_m3) : true;
+   bool bearish_momentum = m_config.enable_bearish_momentum ? HasBearishMomentum(ctx_m15, ctx_m3) : true;
    bool good_volatility_m15 = m_config.enable_good_volatility ? IsGoodVolatilityEnvironment(ctx_m15) : true;
-   bool bullish_structure_m15 = m_config.enable_bullish_structure_m15 ? IsInBullishStructure(ctx_m15) : true;
-   bool bullish_structure_m3 = m_config.enable_bullish_structure_m3 ? IsInBullishStructure(ctx_m3) : true;
+   bool bearish_structure_m15 = m_config.enable_bearish_structure_m15 ? IsInbearishStructure(ctx_m15) : true;
+   bool bearish_structure_m3 = m_config.enable_bearish_structure_m3 ? IsInbearishStructure(ctx_m3) : true;
 
    // Verificar ADX
    bool strong_trend_adx_m15 = false;
@@ -499,28 +502,28 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
 
    // === PONTOS DE ENTRADA ===
    SPositionInfo ema9_m3_position = ema9_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
-   bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
-                                  ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
+   bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
+                                  ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY ||
                                   ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
    bool valid_pullback_EMA9_M3 = IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3);
 
    SPositionInfo ema21_m3_position = ema21_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
-   bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
-                                   ema21_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
+   bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
+                                   ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY ||
                                    ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
    bool valid_pullback_EMA21_M3 = IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3);
 
    // === CRITÉRIO FINAL DE ENTRADA ===
-   bool ema_alignment_m15_ok = m_config.enable_ema_alignment_m15 ? (EMA9_above_EMA21_M15 && EMA21_above_EMA50_M15) : true;
-   bool ema_alignment_m3_ok = m_config.enable_ema_alignment_m3 ? (EMA9_above_EMA21_M3 && EMA21_above_EMA50_M3) : true;
+   bool ema_alignment_m15_ok = m_config.enable_ema_alignment_m15 ? (EMA9_below_EMA21_M15 && EMA21_below_EMA50_M15) : true;
+   bool ema_alignment_m3_ok = m_config.enable_ema_alignment_m3 ? (EMA9_below_EMA21_M3 && EMA21_below_EMA50_M3) : true;
 
    bool is_bollinger_valid = BollingerHasValidStructure(ctx_m3);
 
    bool filtros_ok = ema_alignment_m15_ok && ema_alignment_m3_ok &&
                      strong_trend_m15 && strong_trend_m3 &&
-                     bullish_momentum &&
+                     bearish_momentum &&
                      good_volatility_m15 &&
-                     bullish_structure_m15 && bullish_structure_m3 &&
+                     bearish_structure_m15 && bearish_structure_m3 &&
                      strong_trend_adx_m15 && is_bollinger_valid;
 
    bool pullback_ema9_ok = m_config.enable_pullback_ema9 ? (price_pullback_EMA9_M3 && valid_pullback_EMA9_M3) : false;
@@ -533,27 +536,27 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    // === LOG SIMPLIFICADO ===
    if (entrada_valida)
    {
-      Print("✅ EMA Bull Buy - SINAL VÁLIDO para ", m_symbol);
-      Print("   Filtros: Alinhamento EMAs ✓, Tendência forte ✓, Momentum bullish ✓");
+      Print("✅ EMA Bear Sell - SINAL VÁLIDO para ", m_symbol);
+      Print("   Filtros: Alinhamento EMAs ✓, Tendência forte ✓, Momentum bearish ✓");
       Print("   Entrada: Pullback válido detectado em ",
             (price_pullback_EMA9_M3 && valid_pullback_EMA9_M3) ? "EMA9" : "EMA21", " M3");
    }
    else
    {
-      Print("❌ EMA Bull Buy - Sinal inválido para ", m_symbol);
+      Print("❌ EMA Bear Sell - Sinal inválido para ", m_symbol);
       Print("   Filtros OK: ", filtros_ok ? "Sim" : "Não", " | Setup OK: ", entrada_setup_ok ? "Sim" : "Não");
    }
 
    // Criar sinal se válido
    if (entrada_valida)
    {
-      signal.type = SIGNAL_BUY;
+      signal.type = SIGNAL_SELL;
       signal.entry_price = SymbolInfoDouble(m_symbol, SYMBOL_ASK);
       signal.lot_size = CalculateLotSize();
       signal.stop_loss = CalculateStopLoss(signal.entry_price);
       signal.take_profit = CalculateTakeProfit(signal.entry_price, signal.stop_loss);
       signal.signal_time = TimeCurrent();
-      signal.comment = "EMA Bull Buy - " + m_name;
+      signal.comment = "EMA Bear Sell - " + m_name;
       signal.is_valid = true;
    }
 
@@ -563,7 +566,7 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
 //+------------------------------------------------------------------+
 //| Calcular tamanho do lote                                        |
 //+------------------------------------------------------------------+
-double CEmasBuyBull::CalculateLotSize()
+double CEmasSellBear::CalculateLotSize()
 {
    double balance = AccountInfoDouble(ACCOUNT_BALANCE);
    double risk_amount = balance * (m_config.risk_percent / 100.0);
@@ -583,7 +586,7 @@ double CEmasBuyBull::CalculateLotSize()
 //+------------------------------------------------------------------+
 //| Calcular stop loss                                              |
 //+------------------------------------------------------------------+
-double CEmasBuyBull::CalculateStopLoss(double entry_price)
+double CEmasSellBear::CalculateStopLoss(double entry_price)
 {
    double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
    return entry_price - (m_config.stop_loss_pips * point);
@@ -592,7 +595,7 @@ double CEmasBuyBull::CalculateStopLoss(double entry_price)
 //+------------------------------------------------------------------+
 //| Calcular take profit                                            |
 //+------------------------------------------------------------------+
-double CEmasBuyBull::CalculateTakeProfit(double entry_price, double stop_loss)
+double CEmasSellBear::CalculateTakeProfit(double entry_price, double stop_loss)
 {
    double risk_distance = entry_price - stop_loss;
    return entry_price + (risk_distance * m_config.take_profit_ratio);
@@ -601,31 +604,31 @@ double CEmasBuyBull::CalculateTakeProfit(double entry_price, double stop_loss)
 //+------------------------------------------------------------------+
 //| Validar sinal                                                   |
 //+------------------------------------------------------------------+
-bool CEmasBuyBull::ValidateSignal(const SStrategySignal &signal)
+bool CEmasSellBear::ValidateSignal(const SStrategySignal &signal)
 {
-   if (signal.type != SIGNAL_BUY)
+   if (signal.type != SIGNAL_SELL)
       return false;
 
-   if (signal.entry_price <= 0 || signal.lot_size <= 0)
-      return false;
+   // if (signal.entry_price <= 0 || signal.lot_size <= 0)
+   //    return false;
 
-   if (signal.stop_loss >= signal.entry_price)
-      return false;
+   // if (signal.stop_loss >= signal.entry_price)
+   //    return false;
 
-   if (signal.take_profit <= signal.entry_price)
-      return false;
+   // if (signal.take_profit <= signal.entry_price)
+   //    return false;
 
-   double margin_required = 0;
-   if (!OrderCalcMargin(ORDER_TYPE_BUY, m_symbol, signal.lot_size,
-                        signal.entry_price, margin_required))
-      return false;
+   // double margin_required = 0;
+   // if (!OrderCalcMargin(ORDER_TYPE_SELL, m_symbol, signal.lot_size,
+   //                      signal.entry_price, margin_required))
+   //    return false;
 
-   double free_margin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
-   if (margin_required > free_margin)
-   {
-      Print("AVISO: Margem insuficiente para o sinal");
-      return false;
-   }
+   // double free_margin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
+   // if (margin_required > free_margin)
+   // {
+   //    Print("AVISO: Margem insuficiente para o sinal");
+   //    return false;
+   // }
 
    return true;
 }
@@ -633,9 +636,9 @@ bool CEmasBuyBull::ValidateSignal(const SStrategySignal &signal)
 //+------------------------------------------------------------------+
 //| Método especial para log completo de debug da estratégia         |
 //+------------------------------------------------------------------+
-void CEmasBuyBull::PrintFullDebugLog()
+void CEmasSellBear::PrintFullDebugLog()
 {
-   Print("=== DEBUG LOG COMPLETO - EMA Bull Buy ===");
+   Print("=== DEBUG LOG COMPLETO - EMA Bear Sell ===");
    Print("Símbolo: ", m_symbol, " | Timeframe Atual: ", EnumToString(m_timeframe));
    Print("Estado da Estratégia: ", EnumToString(GetState()));
    Print("Último Sinal: ", GetLastSignal().is_valid ? "Válido" : "Inválido");
@@ -658,17 +661,17 @@ void CEmasBuyBull::PrintFullDebugLog()
    Print("Lookback Periods: ", IntegerToString(m_config.lookback_periods));
    Print("Min Volatility Ratio: ", DoubleToString(m_config.min_volatility_ratio, 2));
    Print("Max Volatility Ratio: ", DoubleToString(m_config.max_volatility_ratio, 2));
-   Print("Bullish Structure ATR Threshold: ", DoubleToString(m_config.bullish_structure_atr_threshold, 2));
+   Print("bearish Structure ATR Threshold: ", DoubleToString(m_config.bearish_structure_atr_threshold, 2));
    Print("ADX Min Value: ", IntegerToString(m_config.adx_min_value));
    Print("ADX Max Value: ", IntegerToString(m_config.adx_max_value));
    Print("Enable EMA Alignment M15: ", m_config.enable_ema_alignment_m15 ? "Sim" : "Não");
    Print("Enable EMA Alignment M3: ", m_config.enable_ema_alignment_m3 ? "Sim" : "Não");
    Print("Enable Strong Trend M15: ", m_config.enable_strong_trend_m15 ? "Sim" : "Não");
    Print("Enable Strong Trend M3: ", m_config.enable_strong_trend_m3 ? "Sim" : "Não");
-   Print("Enable Bullish Momentum: ", m_config.enable_bullish_momentum ? "Sim" : "Não");
+   Print("Enable bearish Momentum: ", m_config.enable_bearish_momentum ? "Sim" : "Não");
    Print("Enable Good Volatility: ", m_config.enable_good_volatility ? "Sim" : "Não");
-   Print("Enable Bullish Structure M15: ", m_config.enable_bullish_structure_m15 ? "Sim" : "Não");
-   Print("Enable Bullish Structure M3: ", m_config.enable_bullish_structure_m3 ? "Sim" : "Não");
+   Print("Enable bearish Structure M15: ", m_config.enable_bearish_structure_m15 ? "Sim" : "Não");
+   Print("Enable bearish Structure M3: ", m_config.enable_bearish_structure_m3 ? "Sim" : "Não");
    Print("Enable ADX Filter: ", m_config.enable_adx_filter ? "Sim" : "Não");
    Print("Enable Pullback EMA9: ", m_config.enable_pullback_ema9 ? "Sim" : "Não");
    Print("Enable Pullback EMA21: ", m_config.enable_pullback_ema21 ? "Sim" : "Não");
@@ -735,45 +738,45 @@ void CEmasBuyBull::PrintFullDebugLog()
    Print("ATR Value (M3): ", DoubleToString(atr_value, 5));
 
    // Condições booleanas
-   bool EMA9_above_EMA21_M15 = (ema9_m15 && ema21_m15) ? (ema9_m15.GetValue(1) > ema21_m15.GetValue(1)) : false;
-   bool EMA21_above_EMA50_M15 = (ema21_m15 && ema50_m15) ? (ema21_m15.GetValue(1) > ema50_m15.GetValue(1)) : false;
-   bool EMA9_above_EMA21_M3 = (ema9_m3 && ema21_m3) ? (ema9_m3.GetValue(1) > ema21_m3.GetValue(1)) : false;
-   bool EMA21_above_EMA50_M3 = (ema21_m3 && ema50_m3) ? (ema21_m3.GetValue(1) > ema50_m3.GetValue(1)) : false;
+   bool EMA9_below_EMA21_M15 = (ema9_m15 && ema21_m15) ? (ema9_m15.GetValue(1) < ema21_m15.GetValue(1)) : false;
+   bool EMA21_below_EMA50_M15 = (ema21_m15 && ema50_m15) ? (ema21_m15.GetValue(1) < ema50_m15.GetValue(1)) : false;
+   bool EMA9_below_EMA21_M3 = (ema9_m3 && ema21_m3) ? (ema9_m3.GetValue(1) < ema21_m3.GetValue(1)) : false;
+   bool EMA21_below_EMA50_M3 = (ema21_m3 && ema50_m3) ? (ema21_m3.GetValue(1) < ema50_m3.GetValue(1)) : false;
 
    Print("--- VALIDAÇÕES HABILITADAS ---");
    Print("EMA Alignment M15: ", m_config.enable_ema_alignment_m15 ? "Habilitada" : "Desabilitada");
    Print("EMA Alignment M3: ", m_config.enable_ema_alignment_m3 ? "Habilitada" : "Desabilitada");
    Print("Strong Trend: ", m_config.enable_strong_trend_m15 ? "Habilitada" : "Desabilitada");
-   Print("Bullish Momentum: ", m_config.enable_bullish_momentum ? "Habilitada" : "Desabilitada");
+   Print("bearish Momentum: ", m_config.enable_bearish_momentum ? "Habilitada" : "Desabilitada");
    Print("Good Volatility: ", m_config.enable_good_volatility ? "Habilitada" : "Desabilitada");
-   Print("Bullish Structure M15: ", m_config.enable_bullish_structure_m15 ? "Habilitada" : "Desabilitada");
-   Print("Bullish Structure M3: ", m_config.enable_bullish_structure_m3 ? "Habilitada" : "Desabilitada");
+   Print("bearish Structure M15: ", m_config.enable_bearish_structure_m15 ? "Habilitada" : "Desabilitada");
+   Print("bearish Structure M3: ", m_config.enable_bearish_structure_m3 ? "Habilitada" : "Desabilitada");
    Print("ADX Filter: ", m_config.enable_adx_filter ? "Habilitada" : "Desabilitada");
    Print("Pullback EMA9: ", m_config.enable_pullback_ema9 ? "Habilitada" : "Desabilitada");
    Print("Pullback EMA21: ", m_config.enable_pullback_ema21 ? "Habilitada" : "Desabilitada");
 
    Print("--- CONDIÇÕES DE ALINHAMENTO EMAs ---");
-   Print("M15 - EMA9 > EMA21: ", EMA9_above_EMA21_M15 ? "Sim" : "Não");
-   Print("M15 - EMA21 > EMA50: ", EMA21_above_EMA50_M15 ? "Sim" : "Não");
-   Print("M3 - EMA9 > EMA21: ", EMA9_above_EMA21_M3 ? "Sim" : "Não");
-   Print("M3 - EMA21 > EMA50: ", EMA21_above_EMA50_M3 ? "Sim" : "Não");
+   Print("M15 - EMA9 < EMA21: ", EMA9_below_EMA21_M15 ? "Sim" : "Não");
+   Print("M15 - EMA21 < EMA50: ", EMA21_below_EMA50_M15 ? "Sim" : "Não");
+   Print("M3 - EMA9 < EMA21: ", EMA9_below_EMA21_M3 ? "Sim" : "Não");
+   Print("M3 - EMA21 < EMA50: ", EMA21_below_EMA50_M3 ? "Sim" : "Não");
 
    // Filtros dependentes
    bool strong_trend_m15 = IsStrongTrend(ctx_m15);
    bool strong_trend_m3 = IsStrongTrend(ctx_m3);
-   bool bullish_momentum = HasBullishMomentum(ctx_m15, ctx_m3);
+   bool bearish_momentum = HasBearishMomentum(ctx_m15, ctx_m3);
    bool good_volatility_m15 = IsGoodVolatilityEnvironment(ctx_m15);
-   bool bullish_structure_m15 = IsInBullishStructure(ctx_m15);
-   bool bullish_structure_m3 = IsInBullishStructure(ctx_m3);
+   bool bearish_structure_m15 = IsInbearishStructure(ctx_m15);
+   bool bearish_structure_m3 = IsInbearishStructure(ctx_m3);
    bool strong_trend_adx_m15 = (adx_m15 != NULL) ? (adx_m15.GetValue(1) >= m_config.adx_min_value && adx_m15.GetValue(1) <= m_config.adx_max_value) : false;
 
    Print("--- FILTROS DEPENDENTES ---");
    Print("Tendência Forte (M15): ", strong_trend_m15 ? "Sim" : "Não");
    Print("Tendência Forte (M3): ", strong_trend_m3 ? "Sim" : "Não");
-   Print("Momentum Bullish: ", bullish_momentum ? "Sim" : "Não");
+   Print("Momentum bearish: ", bearish_momentum ? "Sim" : "Não");
    Print("Volatilidade Boa (M15): ", good_volatility_m15 ? "Sim" : "Não");
-   Print("Estrutura Bullish (M15): ", bullish_structure_m15 ? "Sim" : "Não");
-   Print("Estrutura Bullish (M3): ", bullish_structure_m3 ? "Sim" : "Não");
+   Print("Estrutura bearish (M15): ", bearish_structure_m15 ? "Sim" : "Não");
+   Print("Estrutura bearish (M3): ", bearish_structure_m3 ? "Sim" : "Não");
    Print("ADX Forte (M15): ", strong_trend_adx_m15 ? "Sim" : "Não");
 
    // Pontos de entrada
@@ -795,10 +798,10 @@ void CEmasBuyBull::PrintFullDebugLog()
    Print("Pullback EMA21: Posição=", EnumToString(ema21_m3_position.position), " | Válido=", valid_pullback_EMA21_M3 ? "Sim" : "Não");
 
    // Critérios finais
-   bool filtros_ok = EMA9_above_EMA21_M15 && EMA21_above_EMA50_M15 &&
-                     EMA9_above_EMA21_M3 && EMA21_above_EMA50_M3 &&
-                     strong_trend_m15 && bullish_momentum && good_volatility_m15 &&
-                     bullish_structure_m15 && bullish_structure_m3 &&
+   bool filtros_ok = EMA9_below_EMA21_M15 && EMA21_below_EMA50_M15 &&
+                     EMA9_below_EMA21_M3 && EMA21_below_EMA50_M3 &&
+                     strong_trend_m15 && bearish_momentum && good_volatility_m15 &&
+                     bearish_structure_m15 && bearish_structure_m3 &&
                      strong_trend_adx_m15;
 
    bool entrada_setup_ok = (price_pullback_EMA9_M3 && valid_pullback_EMA9_M3) ||
@@ -817,7 +820,7 @@ void CEmasBuyBull::PrintFullDebugLog()
 //+------------------------------------------------------------------+
 //| Retornar configuração da estratégia                              |
 //+------------------------------------------------------------------+
-CStrategyConfig *CEmasBuyBull::GetStrategyConfig()
+CStrategyConfig *CEmasSellBear::GetStrategyConfig()
 {
    return &m_config;
 }
