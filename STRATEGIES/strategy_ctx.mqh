@@ -37,6 +37,7 @@ public:
    string GetSetupName() const { return m_setup_name; }
    //void GetStrategyNames(string &names[]);
    int GetStrategyCount() const { return ArraySize(m_strategies); };
+   void GetAllStrategies(CStrategyBase *&strategies[]);
    void SetContextProvider(IContextProvider *context_provider);
 };
 
@@ -161,10 +162,23 @@ bool STRATEGY_CTX::Update(string symbol, ENUM_TIMEFRAMES timeframe)
 //+------------------------------------------------------------------+
 CStrategyBase *STRATEGY_CTX::GetStrategy(string name)
 {
-   int idx = FindByName(name, m_names);
-   if (idx >= 0)
-      return m_strategies[idx];
-   return NULL;
+    int idx = FindByName(name, m_names);
+    if (idx >= 0)
+       return m_strategies[idx];
+    return NULL;
+}
+
+//+------------------------------------------------------------------+
+//| Obter todas as estratégias do contexto                           |
+//+------------------------------------------------------------------+
+void STRATEGY_CTX::GetAllStrategies(CStrategyBase *&strategies[])
+{
+    int count = ArraySize(m_strategies);
+    ArrayResize(strategies, count);
+    for (int i = 0; i < count; i++)
+    {
+        strategies[i] = m_strategies[i];
+    }
 }
 
 //+------------------------------------------------------------------+

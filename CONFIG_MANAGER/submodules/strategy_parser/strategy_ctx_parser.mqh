@@ -36,6 +36,7 @@ public:
 private:
     CStrategyConfig *ParseSingleStrategy(CJAVal *strategy_json);
     CEmasBullBuyConfig *ParseEmasBuyBullConfig(CJAVal *strategy_json);
+    CEmasBearSellConfig *ParseEmasBearSellConfig(CJAVal *strategy_json);
     ENUM_TIMEFRAMES StringToTimeframe(string tf_str);
 };
 
@@ -128,11 +129,11 @@ CStrategyConfig *CStrategyConfigParser::ParseSingleStrategy(CJAVal *strategy_jso
     {
         return ParseEmasBuyBullConfig(strategy_json);
     }
+    else if (strategy_type == "emas_sell_bear")
+    {
+        return ParseEmasBearSellConfig(strategy_json);
+    }
     // Adicionar outros tipos conforme necessário
-    // else if (strategy_type == "emas_sell_bear")
-    // {
-    //     return ParseEmasSellBearConfig(strategy_json);
-    // }
 
     Print("ERRO: Tipo de estratégia não suportado: ", strategy_type);
     return NULL;
@@ -207,6 +208,78 @@ CEmasBullBuyConfig *CStrategyConfigParser::ParseEmasBuyBullConfig(CJAVal *strate
     }
 
     Print("EMA Buy Bull config parseada: ", config.name);
+    return config;
+}
+
+//+------------------------------------------------------------------+
+//| Parsear configuração EMA Bear Sell                               |
+//+------------------------------------------------------------------+
+CEmasBearSellConfig *CStrategyConfigParser::ParseEmasBearSellConfig(CJAVal *strategy_json)
+{
+    CEmasBearSellConfig *config = new CEmasBearSellConfig();
+    if (config == NULL)
+        return NULL;
+
+    // Configurações básicas
+    config.name = strategy_json["name"].ToStr();
+    config.type = strategy_json["type"].ToStr();
+    config.enabled = strategy_json["enabled"].ToBool();
+
+    // Configurações específicas da estratégia EMA Bear Sell
+    config.risk_percent = strategy_json["risk_percent"].ToDbl();
+    config.stop_loss_pips = strategy_json["stop_loss_pips"].ToDbl();
+    config.take_profit_ratio = strategy_json["take_profit_ratio"].ToDbl();
+
+    // New configurable parameters
+    config.min_distance_9_21_atr_m3 = strategy_json["min_distance_9_21_atr_m3"].ToDbl();
+    config.min_distance_21_50_atr_m3 = strategy_json["min_distance_21_50_atr_m3"].ToDbl();
+    config.min_distance_9_21_atr_m15 = strategy_json["min_distance_9_21_atr_m15"].ToDbl();
+    config.min_distance_21_50_atr_m15 = strategy_json["min_distance_21_50_atr_m15"].ToDbl();
+    config.lookback_candles = (int)(long)strategy_json["lookback_candles"].ToDbl();
+    config.max_distance_atr = strategy_json["max_distance_atr"].ToDbl();
+    config.max_duration_candles = (int)(long)strategy_json["max_duration_candles"].ToDbl();
+    config.lookback_periods = (int)(long)strategy_json["lookback_periods"].ToDbl();
+    config.min_volatility_ratio = strategy_json["min_volatility_ratio"].ToDbl();
+    config.max_volatility_ratio = strategy_json["max_volatility_ratio"].ToDbl();
+    config.bearish_structure_atr_threshold = strategy_json["bearish_structure_atr_threshold"].ToDbl();
+    config.adx_min_value = (int)(long)strategy_json["adx_min_value"].ToDbl();
+    config.adx_max_value = (int)(long)strategy_json["adx_max_value"].ToDbl();
+
+    // Validation enable/disable flags
+    config.enable_ema_alignment_m15 = strategy_json["enable_ema_alignment_m15"].ToBool();
+    config.enable_ema_alignment_m3 = strategy_json["enable_ema_alignment_m3"].ToBool();
+    config.enable_strong_trend_m15 = strategy_json["enable_strong_trend_m15"].ToBool();
+    config.enable_strong_trend_m3 = strategy_json["enable_strong_trend_m3"].ToBool();
+    config.enable_bearish_momentum = strategy_json["enable_bearish_momentum"].ToBool();
+    config.enable_good_volatility = strategy_json["enable_good_volatility"].ToBool();
+    config.enable_bearish_structure_m15 = strategy_json["enable_bearish_structure_m15"].ToBool();
+    config.enable_bearish_structure_m3 = strategy_json["enable_bearish_structure_m3"].ToBool();
+    config.enable_adx_filter = strategy_json["enable_adx_filter"].ToBool();
+    config.enable_pullback_ema9 = strategy_json["enable_pullback_ema9"].ToBool();
+    config.enable_pullback_ema21 = strategy_json["enable_pullback_ema21"].ToBool();
+
+    // Parse authorized timeframes
+    CJAVal *authorized_tfs = strategy_json["authorized_timeframes"];
+    if (authorized_tfs != NULL && authorized_tfs.Size() > 0)
+    {
+        ArrayResize(config.authorized_timeframes, authorized_tfs.Size());
+        for (int i = 0; i < authorized_tfs.Size(); i++)
+        {
+            string tf_str = authorized_tfs.children[i].ToStr();
+            config.authorized_timeframes[i] = StringToTimeframe(tf_str);
+        }
+        Print("Authorized timeframes parsed: ", authorized_tfs.Size(), " timeframes");
+    }
+    else
+    {
+        // Default to M15 and M3 if not specified
+        ArrayResize(config.authorized_timeframes, 2);
+        config.authorized_timeframes[0] = PERIOD_M15;
+        config.authorized_timeframes[1] = PERIOD_M3;
+        Print("Using default authorized timeframes: M15, M3");
+    }
+
+    Print("EMA Bear Sell config parseada: ", config.name);
     return config;
 }
 

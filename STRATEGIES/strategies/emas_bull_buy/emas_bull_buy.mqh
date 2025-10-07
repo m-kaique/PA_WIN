@@ -41,17 +41,17 @@ private:
    bool BollingerHasValidStructure(TF_CTX *ctx);
 
 protected:
-   virtual bool DoInit() override;
-   virtual bool DoUpdate() override;
-   virtual SStrategySignal CheckForSignal() override;
-   virtual bool ValidateSignal(const SStrategySignal &signal) override;
+    virtual bool DoInit() override;
+    virtual bool DoUpdate() override;
+    virtual SStrategySignal CheckForSignal() override;
+    virtual bool ValidateSignal(const SStrategySignal &signal) override;
+    virtual void DoLog() override;
 
 public:
    CEmasBuyBull(IContextProvider *context_provider = NULL);
    ~CEmasBuyBull();
 
    bool Init(string name, const CEmasBullBuyConfig &config);
-   void PrintFullDebugLog();
 
    // Override to return strategy configuration
    virtual CStrategyConfig *GetStrategyConfig() override;
@@ -632,7 +632,7 @@ bool CEmasBuyBull::ValidateSignal(const SStrategySignal &signal)
 //+------------------------------------------------------------------+
 //| Método especial para log completo de debug da estratégia         |
 //+------------------------------------------------------------------+
-void CEmasBuyBull::PrintFullDebugLog()
+void CEmasBuyBull::DoLog()
 {
    Print("=== DEBUG LOG COMPLETO - EMA Bull Buy ===");
    Print("Símbolo: ", m_symbol, " | Timeframe Atual: ", EnumToString(m_timeframe));

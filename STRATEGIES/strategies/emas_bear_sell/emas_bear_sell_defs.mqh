@@ -1,0 +1,1 @@
+// SDistance_MA is defined in emas_bull_buy_defs.mqh

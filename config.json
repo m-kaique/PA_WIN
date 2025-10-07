@@ -586,7 +586,7 @@
                   "enable_adx_filter": true,
                   "enable_pullback_ema9": true,
                   "enable_pullback_ema21": true,
-                  "authorized_timeframes": ["M15"]
+                  "authorized_timeframes": ["M3"]
                }
             ]
          },
