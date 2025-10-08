@@ -9,8 +9,7 @@
 #property copyright "Copyright 2025, MetaQuotes Ltd."
 #property link "https://www.mql5.com"
 
-#include "../strategy_base/strategy_base.mqh"
-#include "../emas_bull_buy/emas_bull_buy_defs.mqh"
+#include "../strategy_base/strategy_base.mqh" 
 #include "emas_bear_sell_defs.mqh"
 
 //+------------------------------------------------------------------+
@@ -25,8 +24,8 @@ private:
     ENUM_TIMEFRAMES m_timeframe;
 
     // Estruturas de Dados
-    SDistance_MA distance_ma_m3;
-    SDistance_MA distance_ma_m15;
+    SDistance_MA_sell distance_ma_m3;
+    SDistance_MA_sell distance_ma_m15;
 
     double CalculateLotSize();
     double CalculateStopLoss(double entry_price);
@@ -342,16 +341,15 @@ bool CEmasBearSell::IsInBearishStructure(TF_CTX *ctx)
 }
 
 //+------------------------------------------------------------------+
-//| Filtro Bollinger                                                 |
+//| Filtro Bollinger CORRIGIDO para Bear Sell                       |
 //+------------------------------------------------------------------+
 bool CEmasBearSell::BollingerHasValidStructure(TF_CTX *ctx)
 {
     // Valores min e max de largura
-    double valid_min_width, valid_max_width;
-    valid_min_width = 500;
-    valid_max_width = 3000;
+    double valid_min_width = 500;
+    double valid_max_width = 3000;
 
-    // Acesso ao indicador e copia dos valores min e max
+    // Acesso ao indicador
     CBollinger *boll_ind = ctx.GetIndicator("boll20");
     double upper_band_value = boll_ind.GetUpper(1);
     double lower_band_value = boll_ind.GetLower(1);
@@ -362,6 +360,7 @@ bool CEmasBearSell::BollingerHasValidStructure(TF_CTX *ctx)
     // Se a largura não está na faixa adequada, retorna falso
     if (boll_width < valid_min_width || boll_width > valid_max_width)
     {
+       Print("Bollinger: Largura fora da faixa (", boll_width, ")");
        return false;
     }
 
@@ -372,41 +371,49 @@ bool CEmasBearSell::BollingerHasValidStructure(TF_CTX *ctx)
     SSlopeValidation slope_middle = boll_ind.GetSlopeValidation(atr_value, COPY_MIDDLE);
     SSlopeValidation slope_lower = boll_ind.GetSlopeValidation(atr_value, COPY_LOWER);
 
-    // Expanding for selling (opposite of contracting for buying)
-    bool expanding_1 = slope_upper.bullish_count >= 2;
-    bool expanding_2 = slope_lower.bearish_count >= 2;
-    bool expanding_condition = expanding_1 && expanding_2;
+    // CORREÇÃO 1: Para vendas, rejeitar CONTRAÇÃO (bandas se aproximando)
+    // Contração = banda superior descendo E banda inferior subindo
+    bool contracting_1 = slope_upper.bearish_count >= 2;  // Upper descendo
+    bool contracting_2 = slope_lower.bullish_count >= 2;  // Lower subindo
+    bool contracting_condition = contracting_1 && contracting_2;
 
-    if (expanding_condition)
+    if (contracting_condition)
     {
+       Print("Bollinger: Rejeitado por contração das bandas");
        return false;
     }
 
-    // Micro Inclinação Banda Superior (inverted for selling)
-    // sidewalk >=2 && bear == 0
+    // CORREÇÃO 2: Micro Inclinação - mais flexível para vendas
+    // Aceitar banda superior lateral com leve inclinação de baixa
     bool c1 = slope_upper.side_count >= 2;
-    Print("Contagem de Lateral: ", slope_upper.side_count);
-    Print("Contagem de Bull: ", slope_upper.bullish_count);
-    Print("Contagem de Bear: ", slope_upper.bearish_count);
+    
+    Print("Bollinger - Contagem Lateral Upper: ", slope_upper.side_count);
+    Print("Bollinger - Contagem Bull Upper: ", slope_upper.bullish_count);
+    Print("Bollinger - Contagem Bear Upper: ", slope_upper.bearish_count);
+    
     if (c1)
     {
-       bool c2 = slope_upper.linear_regression.slope_value <= -0.02;
-       bool c3 = slope_upper.discrete_derivative.slope_value <= -0.02;
-       bool c4 = slope_upper.simple_difference.slope_value <= -0.10;
+       // MAIS FLEXÍVEL: aceitar inclinação negativa OU muito próxima de zero
+       bool c2 = slope_upper.linear_regression.slope_value <= 0.02;      // Permite leve alta
+       bool c3 = slope_upper.discrete_derivative.slope_value <= 0.02;    // Permite leve alta
+       bool c4 = slope_upper.simple_difference.slope_value <= 0.10;      // Permite leve alta
 
-       Print("SLOPE VALUES MICRO INCLINAÇÃO: &&&&&&&&&&&&&&&");
-       Print("LR: ", slope_upper.linear_regression.slope_value);
-       Print("DD: ", slope_upper.discrete_derivative.slope_value);
-       Print("SD: ", slope_upper.simple_difference.slope_value);
+       Print("Bollinger - SLOPE VALUES:");
+       Print("  LR: ", slope_upper.linear_regression.slope_value);
+       Print("  DD: ", slope_upper.discrete_derivative.slope_value);
+       Print("  SD: ", slope_upper.simple_difference.slope_value);
 
        if (!c2 || !c3 || !c4)
        {
+          Print("Bollinger: Rejeitado por micro inclinação inadequada");
           return false;
        }
     }
 
+    Print("Bollinger: VALIDADO para venda");
     return true;
 }
+
 //+------------------------------------------------------------------+
 //| Verificar por sinal de entrada - LÓGICA MIGRADA DA VendaBaixa   |
 //+------------------------------------------------------------------+
@@ -732,6 +739,37 @@ void CEmasBearSell::DoLog()
     // Valores calculados
     double atr_value = (atr_m3 != NULL) ? atr_m3.GetValue(1) : 0.0;
     Print("ATR Value (M3): ", DoubleToString(atr_value, 5));
+
+    // Bollinger Bands M3
+    CBollinger *boll_m3 = ctx_m3.GetIndicator("boll20");
+    if (boll_m3 != NULL)
+    {
+        double upper_band = boll_m3.GetUpper(1);
+        double middle_band = boll_m3.GetValue(1);
+        double lower_band = boll_m3.GetLower(1);
+        double band_width = upper_band - lower_band;
+
+        Print("--- BOLLINGER BANDS M3 ---");
+        Print("Upper: ", DoubleToString(upper_band, _Digits));
+        Print("Middle: ", DoubleToString(middle_band, _Digits));
+        Print("Lower: ", DoubleToString(lower_band, _Digits));
+        Print("Width: ", DoubleToString(band_width, 2));
+
+        SSlopeValidation slope_upper = boll_m3.GetSlopeValidation(atr_value, COPY_UPPER);
+        SSlopeValidation slope_middle = boll_m3.GetSlopeValidation(atr_value, COPY_MIDDLE);
+        SSlopeValidation slope_lower = boll_m3.GetSlopeValidation(atr_value, COPY_LOWER);
+
+        Print("--- BOLLINGER SLOPES M3 ---");
+        Print("Upper - Linear Regr: ", DoubleToString(slope_upper.linear_regression.slope_value, 5), " Dir: ", EnumToString(slope_upper.linear_regression.trend_direction));
+        Print("Upper - Discrt Der: ", DoubleToString(slope_upper.discrete_derivative.slope_value, 5), " Dir: ", EnumToString(slope_upper.discrete_derivative.trend_direction));
+        Print("Upper - Simple Diff: ", DoubleToString(slope_upper.simple_difference.slope_value, 5), " Dir: ", EnumToString(slope_upper.simple_difference.trend_direction));
+        Print("Middle - Linear Regr: ", DoubleToString(slope_middle.linear_regression.slope_value, 5), " Dir: ", EnumToString(slope_middle.linear_regression.trend_direction));
+        Print("Middle - Discrt Der: ", DoubleToString(slope_middle.discrete_derivative.slope_value, 5), " Dir: ", EnumToString(slope_middle.discrete_derivative.trend_direction));
+        Print("Middle - Simple Diff: ", DoubleToString(slope_middle.simple_difference.slope_value, 5), " Dir: ", EnumToString(slope_middle.simple_difference.trend_direction));
+        Print("Lower - Linear Regr: ", DoubleToString(slope_lower.linear_regression.slope_value, 5), " Dir: ", EnumToString(slope_lower.linear_regression.trend_direction));
+        Print("Lower - Discrt Der: ", DoubleToString(slope_lower.discrete_derivative.slope_value, 5), " Dir: ", EnumToString(slope_lower.discrete_derivative.trend_direction));
+        Print("Lower - Simple Diff: ", DoubleToString(slope_lower.simple_difference.slope_value, 5), " Dir: ", EnumToString(slope_lower.simple_difference.trend_direction));
+    }
 
     // Condições booleanas
     bool EMA9_below_EMA21_M15 = (ema9_m15 && ema21_m15) ? (ema9_m15.GetValue(1) < ema21_m15.GetValue(1)) : false;

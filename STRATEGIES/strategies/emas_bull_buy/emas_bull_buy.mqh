@@ -733,6 +733,37 @@ void CEmasBuyBull::DoLog()
    double atr_value = (atr_m3 != NULL) ? atr_m3.GetValue(1) : 0.0;
    Print("ATR Value (M3): ", DoubleToString(atr_value, 5));
 
+   // Bollinger Bands M3
+   CBollinger *boll_m3 = ctx_m3.GetIndicator("boll20");
+   if (boll_m3 != NULL)
+   {
+       double upper_band = boll_m3.GetUpper(1);
+       double middle_band = boll_m3.GetValue(1);
+       double lower_band = boll_m3.GetLower(1);
+       double band_width = upper_band - lower_band;
+
+       Print("--- BOLLINGER BANDS M3 ---");
+       Print("Upper: ", DoubleToString(upper_band, _Digits));
+       Print("Middle: ", DoubleToString(middle_band, _Digits));
+       Print("Lower: ", DoubleToString(lower_band, _Digits));
+       Print("Width: ", DoubleToString(band_width, 2));
+
+       SSlopeValidation slope_upper = boll_m3.GetSlopeValidation(atr_value, COPY_UPPER);
+       SSlopeValidation slope_middle = boll_m3.GetSlopeValidation(atr_value, COPY_MIDDLE);
+       SSlopeValidation slope_lower = boll_m3.GetSlopeValidation(atr_value, COPY_LOWER);
+
+       Print("--- BOLLINGER SLOPES M3 ---");
+       Print("Upper - Linear Regr: ", DoubleToString(slope_upper.linear_regression.slope_value, 5), " Dir: ", EnumToString(slope_upper.linear_regression.trend_direction));
+       Print("Upper - Discrt Der: ", DoubleToString(slope_upper.discrete_derivative.slope_value, 5), " Dir: ", EnumToString(slope_upper.discrete_derivative.trend_direction));
+       Print("Upper - Simple Diff: ", DoubleToString(slope_upper.simple_difference.slope_value, 5), " Dir: ", EnumToString(slope_upper.simple_difference.trend_direction));
+       Print("Middle - Linear Regr: ", DoubleToString(slope_middle.linear_regression.slope_value, 5), " Dir: ", EnumToString(slope_middle.linear_regression.trend_direction));
+       Print("Middle - Discrt Der: ", DoubleToString(slope_middle.discrete_derivative.slope_value, 5), " Dir: ", EnumToString(slope_middle.discrete_derivative.trend_direction));
+       Print("Middle - Simple Diff: ", DoubleToString(slope_middle.simple_difference.slope_value, 5), " Dir: ", EnumToString(slope_middle.simple_difference.trend_direction));
+       Print("Lower - Linear Regr: ", DoubleToString(slope_lower.linear_regression.slope_value, 5), " Dir: ", EnumToString(slope_lower.linear_regression.trend_direction));
+       Print("Lower - Discrt Der: ", DoubleToString(slope_lower.discrete_derivative.slope_value, 5), " Dir: ", EnumToString(slope_lower.discrete_derivative.trend_direction));
+       Print("Lower - Simple Diff: ", DoubleToString(slope_lower.simple_difference.slope_value, 5), " Dir: ", EnumToString(slope_lower.simple_difference.trend_direction));
+   }
+
    // Condições booleanas
    bool EMA9_above_EMA21_M15 = (ema9_m15 && ema21_m15) ? (ema9_m15.GetValue(1) > ema21_m15.GetValue(1)) : false;
    bool EMA21_above_EMA50_M15 = (ema21_m15 && ema50_m15) ? (ema21_m15.GetValue(1) > ema50_m15.GetValue(1)) : false;
