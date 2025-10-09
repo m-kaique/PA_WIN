@@ -527,24 +527,25 @@
                      "applied_price": "CLOSE",
                      "enabled": true,
                      "attach_chart": true,
+                     "width_lookback_period": 5,
                      "slope_values": [
                         {
                            "lookback": 5,
-                           "linear_reg": 0.06,
-                           "simple_diff": 0.60,
-                           "discrete_der": 0.06
+                           "linear_reg": 0.08,
+                           "simple_diff": 0.80,
+                           "discrete_der": 0.08
                         },
                         {
                            "lookback": 8,
-                           "linear_reg": 0.06,
-                           "simple_diff": 0.60,
-                           "discrete_der": 0.06
+                           "linear_reg": 0.08,
+                           "simple_diff": 0.80,
+                           "discrete_der": 0.08
                         },
                         {
                            "lookback": 5,
-                           "linear_reg": 0.06,
-                           "simple_diff": 0.60,
-                           "discrete_der": 0.06
+                           "linear_reg": 0.08,
+                           "simple_diff": 0.80,
+                           "discrete_der": 0.08
                         }
                      ]
                   }
@@ -558,15 +559,17 @@
          "Conservative_Setup": {
             "enabled": true,
             "strategies": [
-               {
+{
                   "enabled": true,
                   "name": "m15_m3_emas_buy_bull",
                   "type": "emas_buy_bull",
                   "risk_percent": 1.0,
                   "stop_loss_pips": 50.0,
                   "take_profit_ratio": 2.0,
-                  "min_distance_9_21_atr": 0.3,
-                  "min_distance_21_50_atr": 0.5,
+                  "min_distance_9_21_atr_m3": 0.05,
+                  "min_distance_21_50_atr_m3": 0.10,
+                  "min_distance_9_21_atr_m15": 0.09,
+                  "min_distance_21_50_atr_m15": 0.15,
                   "lookback_candles": 3,
                   "max_distance_atr": 0.8,
                   "max_duration_candles": 3,
@@ -574,15 +577,49 @@
                   "min_volatility_ratio": 0.7,
                   "max_volatility_ratio": 1.5,
                   "bullish_structure_atr_threshold": 0.5,
-                  "adx_min_value": 25,
-                  "adx_max_value": 60,
-                  "enable_ema_alignment_m15": false,
+                  "adx_min_value": 17,
+                  "adx_max_value": 70,
+                  "enable_ema_alignment_m15": true,
                   "enable_ema_alignment_m3": true,
-                  "enable_strong_trend": true,
-                  "enable_bullish_momentum": true,
+                  "enable_strong_trend_m15": true,
+                  "enable_strong_trend_m3": true,
+                  "enable_bullish_momentum": false,
                   "enable_good_volatility": true,
                   "enable_bullish_structure_m15": true,
                   "enable_bullish_structure_m3": true,
+                  "enable_adx_filter": true,
+                  "enable_pullback_ema9": true,
+                  "enable_pullback_ema21": true,
+                  "authorized_timeframes": ["M3"]
+               },
+               {
+                  "enabled": true,
+                  "name": "m15_m3_emas_sell_bear",
+                  "type": "emas_sell_bear",
+                  "risk_percent": 1.0,
+                  "stop_loss_pips": 50.0,
+                  "take_profit_ratio": 2.0,
+                  "min_distance_9_21_atr_m3": 0.05,
+                  "min_distance_21_50_atr_m3": 0.10,
+                  "min_distance_9_21_atr_m15": 0.09,
+                  "min_distance_21_50_atr_m15": 0.15,
+                  "lookback_candles": 3,
+                  "max_distance_atr": 0.8,
+                  "max_duration_candles": 3,
+                  "lookback_periods": 10,
+                  "min_volatility_ratio": 0.7,
+                  "max_volatility_ratio": 1.5,
+                  "bearish_structure_atr_threshold": 0.5,
+                  "adx_min_value": 17,
+                  "adx_max_value": 70,
+                  "enable_ema_alignment_m15": true,
+                  "enable_ema_alignment_m3": true,
+                  "enable_strong_trend_m15": true,
+                  "enable_strong_trend_m3": true,
+                  "enable_bearish_momentum": false,
+                  "enable_good_volatility": true,
+                  "enable_bearish_structure_m15": true,
+                  "enable_bearish_structure_m3": true,
                   "enable_adx_filter": true,
                   "enable_pullback_ema9": true,
                   "enable_pullback_ema21": true,
