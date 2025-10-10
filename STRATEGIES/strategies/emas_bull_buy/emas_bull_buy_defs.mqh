@@ -8,3 +8,9 @@ struct SDistance_MA
    double ema_21_50_by_atr;
    double ema_9_50_by_atr;
 };
+ 
+struct SVolatilityEnv_M15_buy_bull
+{
+   double avg_atr;
+   double volatility_ratio;
+};

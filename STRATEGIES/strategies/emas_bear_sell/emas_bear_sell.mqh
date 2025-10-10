@@ -27,6 +27,7 @@ private:
    // Estruturas de Dados
    SDistance_MA_sell distance_ma_m3;
    SDistance_MA_sell distance_ma_m15;
+   SVolatilityEnv_M15_sell_bear volatilityEnv_M15;
 
    double CalculateLotSize();
    double CalculateStopLoss(double entry_price);
@@ -293,6 +294,10 @@ bool CEmasBearSell::IsGoodVolatilityEnvironment(TF_CTX *ctx)
 
    double avg_atr = sum_atr / valid_periods;
    double volatility_ratio = current_atr / avg_atr;
+
+
+   volatilityEnv_M15.avg_atr = avg_atr;
+   volatilityEnv_M15.volatility_ratio = volatility_ratio;
 
    return (volatility_ratio >= m_config.min_volatility_ratio && volatility_ratio <= m_config.max_volatility_ratio);
 }
@@ -733,6 +738,14 @@ void CEmasBearSell::DoLog()
    if (atr_m15)
    {
       Print("ATR: ", DoubleToString(atr_m15.GetValue(1), 5));
+      Print("Average Period: ", m_config.lookback_candles);
+      Print("Average ATR:", volatilityEnv_M15.avg_atr);
+
+      Print("Volatilidade Boa (M15): ", IsGoodVolatilityEnvironment(ctx_m15) ? "Sim" : "Não");
+      Print("Current Volatility Ratio:", volatilityEnv_M15.volatility_ratio);
+      Print(".config Min Volatility Ratio: ", m_config.min_volatility_ratio);
+      Print(".config Max Volatility Ratio: ", m_config.max_volatility_ratio);
+
    }
    if (adx_m15)
    {

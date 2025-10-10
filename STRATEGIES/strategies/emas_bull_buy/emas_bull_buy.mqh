@@ -27,6 +27,7 @@ private:
    // Estruturas de Dados
    SDistance_MA distance_ma_m3;
    SDistance_MA distance_ma_m15;
+   SVolatilityEnv_M15_buy_bull volatilityEnv_M15;
 
    double CalculateLotSize();
    double CalculateStopLoss(double entry_price);
@@ -292,6 +293,9 @@ bool CEmasBuyBull::IsGoodVolatilityEnvironment(TF_CTX *ctx)
 
    double avg_atr = sum_atr / valid_periods;
    double volatility_ratio = current_atr / avg_atr;
+
+   volatilityEnv_M15.avg_atr = avg_atr;
+   volatilityEnv_M15.volatility_ratio = volatility_ratio;
 
    return (volatility_ratio >= m_config.min_volatility_ratio && volatility_ratio <= m_config.max_volatility_ratio);
 }
@@ -706,29 +710,36 @@ void CEmasBuyBull::DoLog()
    {
       Print("EMA9: ", DoubleToString(ema9_m15.GetValue(1), _Digits));
       SSlopeValidation ema9_slopes_m15 = ema9_m15.GetSlopeValidation(atr_m15.GetValue());
-      Print("-- EMA9 LR: ", ema9_slopes_m15.linear_regression.slope_value, " " ,EnumToString(ema9_slopes_m15.linear_regression.trend_direction));
-      Print("-- EMA9 DD: ", ema9_slopes_m15.discrete_derivative.slope_value, " " ,EnumToString(ema9_slopes_m15.discrete_derivative.trend_direction));
-      Print("-- EMA9 SD: ", ema9_slopes_m15.simple_difference.slope_value, " " ,EnumToString(ema9_slopes_m15.simple_difference.trend_direction));
+      Print("-- EMA9 LR: ", ema9_slopes_m15.linear_regression.slope_value, " ", EnumToString(ema9_slopes_m15.linear_regression.trend_direction));
+      Print("-- EMA9 DD: ", ema9_slopes_m15.discrete_derivative.slope_value, " ", EnumToString(ema9_slopes_m15.discrete_derivative.trend_direction));
+      Print("-- EMA9 SD: ", ema9_slopes_m15.simple_difference.slope_value, " ", EnumToString(ema9_slopes_m15.simple_difference.trend_direction));
    }
    if (ema21_m15)
    {
       Print("EMA21: ", DoubleToString(ema21_m15.GetValue(1), _Digits));
       SSlopeValidation ema21_slopes_m15 = ema21_m15.GetSlopeValidation(atr_m15.GetValue());
-      Print("-- EMA21 LR: ", ema21_slopes_m15.linear_regression.slope_value, " " ,EnumToString(ema21_slopes_m15.linear_regression.trend_direction));
-      Print("-- EMA21 DD: ", ema21_slopes_m15.discrete_derivative.slope_value, " " ,EnumToString(ema21_slopes_m15.discrete_derivative.trend_direction));
-      Print("-- EMA21 SD: ", ema21_slopes_m15.simple_difference.slope_value, " " ,EnumToString(ema21_slopes_m15.simple_difference.trend_direction));
+      Print("-- EMA21 LR: ", ema21_slopes_m15.linear_regression.slope_value, " ", EnumToString(ema21_slopes_m15.linear_regression.trend_direction));
+      Print("-- EMA21 DD: ", ema21_slopes_m15.discrete_derivative.slope_value, " ", EnumToString(ema21_slopes_m15.discrete_derivative.trend_direction));
+      Print("-- EMA21 SD: ", ema21_slopes_m15.simple_difference.slope_value, " ", EnumToString(ema21_slopes_m15.simple_difference.trend_direction));
    }
    if (ema50_m15)
    {
       Print("EMA50: ", DoubleToString(ema50_m15.GetValue(1), _Digits));
       SSlopeValidation ema50_slopes_m15 = ema50_m15.GetSlopeValidation(atr_m15.GetValue());
-      Print("-- EMA50 LR: ", ema50_slopes_m15.linear_regression.slope_value, " " ,EnumToString(ema50_slopes_m15.linear_regression.trend_direction));
-      Print("-- EMA50 DD: ", ema50_slopes_m15.discrete_derivative.slope_value, " " ,EnumToString(ema50_slopes_m15.discrete_derivative.trend_direction));
-      Print("-- EMA50 SD: ", ema50_slopes_m15.simple_difference.slope_value, " " ,EnumToString(ema50_slopes_m15.simple_difference.trend_direction));
+      Print("-- EMA50 LR: ", ema50_slopes_m15.linear_regression.slope_value, " ", EnumToString(ema50_slopes_m15.linear_regression.trend_direction));
+      Print("-- EMA50 DD: ", ema50_slopes_m15.discrete_derivative.slope_value, " ", EnumToString(ema50_slopes_m15.discrete_derivative.trend_direction));
+      Print("-- EMA50 SD: ", ema50_slopes_m15.simple_difference.slope_value, " ", EnumToString(ema50_slopes_m15.simple_difference.trend_direction));
    }
    if (atr_m15)
    {
       Print("ATR: ", DoubleToString(atr_m15.GetValue(1), 5));
+      Print("Average Period: ", m_config.lookback_candles);
+      Print("Average ATR:", volatilityEnv_M15.avg_atr);
+
+      Print("Volatilidade Boa (M15): ", IsGoodVolatilityEnvironment(ctx_m15) ? "Sim" : "Não");
+      Print("Current Volatility Ratio:", volatilityEnv_M15.volatility_ratio);
+      Print(".config Min Volatility Ratio: ", m_config.min_volatility_ratio);
+      Print(".config Max Volatility Ratio: ", m_config.max_volatility_ratio);
    }
    if (adx_m15)
    {
@@ -752,26 +763,26 @@ void CEmasBuyBull::DoLog()
    {
       Print("EMA9: ", DoubleToString(ema9_m3.GetValue(1), _Digits));
       SSlopeValidation ema9_slopes_m3 = ema9_m3.GetSlopeValidation(atr_m3.GetValue());
-      Print("-- EMA9 LR: ", ema9_slopes_m3.linear_regression.slope_value, " " ,EnumToString(ema9_slopes_m3.linear_regression.trend_direction));
-      Print("-- EMA9 DD: ", ema9_slopes_m3.discrete_derivative.slope_value, " " ,EnumToString(ema9_slopes_m3.discrete_derivative.trend_direction));
-      Print("-- EMA9 SD: ", ema9_slopes_m3.simple_difference.slope_value, " " ,EnumToString(ema9_slopes_m3.simple_difference.trend_direction));
+      Print("-- EMA9 LR: ", ema9_slopes_m3.linear_regression.slope_value, " ", EnumToString(ema9_slopes_m3.linear_regression.trend_direction));
+      Print("-- EMA9 DD: ", ema9_slopes_m3.discrete_derivative.slope_value, " ", EnumToString(ema9_slopes_m3.discrete_derivative.trend_direction));
+      Print("-- EMA9 SD: ", ema9_slopes_m3.simple_difference.slope_value, " ", EnumToString(ema9_slopes_m3.simple_difference.trend_direction));
    }
    // cavalo
    if (ema21_m3)
    {
       Print("EMA21: ", DoubleToString(ema21_m3.GetValue(1), _Digits));
       SSlopeValidation ema21_slopes_m3 = ema21_m3.GetSlopeValidation(atr_m3.GetValue());
-      Print("-- EMA21 LR: ", ema21_slopes_m3.linear_regression.slope_value, " " ,EnumToString(ema21_slopes_m3.linear_regression.trend_direction));
-      Print("-- EMA21 DD: ", ema21_slopes_m3.discrete_derivative.slope_value, " " ,EnumToString(ema21_slopes_m3.discrete_derivative.trend_direction));
-      Print("-- EMA21 SD: ", ema21_slopes_m3.simple_difference.slope_value, " " ,EnumToString(ema21_slopes_m3.simple_difference.trend_direction));
+      Print("-- EMA21 LR: ", ema21_slopes_m3.linear_regression.slope_value, " ", EnumToString(ema21_slopes_m3.linear_regression.trend_direction));
+      Print("-- EMA21 DD: ", ema21_slopes_m3.discrete_derivative.slope_value, " ", EnumToString(ema21_slopes_m3.discrete_derivative.trend_direction));
+      Print("-- EMA21 SD: ", ema21_slopes_m3.simple_difference.slope_value, " ", EnumToString(ema21_slopes_m3.simple_difference.trend_direction));
    }
    if (ema50_m3)
    {
       Print("EMA50: ", DoubleToString(ema50_m3.GetValue(1), _Digits));
       SSlopeValidation ema50_slopes_m3 = ema50_m3.GetSlopeValidation(atr_m3.GetValue());
-      Print("-- EMA50 LR: ", ema50_slopes_m3.linear_regression.slope_value, " " ,EnumToString(ema50_slopes_m3.linear_regression.trend_direction));
-      Print("-- EMA50 DD: ", ema50_slopes_m3.discrete_derivative.slope_value, " " ,EnumToString(ema50_slopes_m3.discrete_derivative.trend_direction));
-      Print("-- EMA50 SD: ", ema50_slopes_m3.simple_difference.slope_value, " " ,EnumToString(ema50_slopes_m3.simple_difference.trend_direction));
+      Print("-- EMA50 LR: ", ema50_slopes_m3.linear_regression.slope_value, " ", EnumToString(ema50_slopes_m3.linear_regression.trend_direction));
+      Print("-- EMA50 DD: ", ema50_slopes_m3.discrete_derivative.slope_value, " ", EnumToString(ema50_slopes_m3.discrete_derivative.trend_direction));
+      Print("-- EMA50 SD: ", ema50_slopes_m3.simple_difference.slope_value, " ", EnumToString(ema50_slopes_m3.simple_difference.trend_direction));
    }
    if (atr_m3)
    {
