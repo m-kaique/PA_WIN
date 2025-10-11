@@ -1,4 +1,4 @@
-struct SDistance_MA_sell
+struct SDistance_MA
 {
    double ema_9_21;
    double ema_21_50;
@@ -9,7 +9,7 @@ struct SDistance_MA_sell
    double ema_9_50_by_atr;
 };
 
-struct SVolatilityEnv_M15_sell_bear
+struct SVolatilityEnv
 {
    double avg_atr;
    double volatility_ratio;
