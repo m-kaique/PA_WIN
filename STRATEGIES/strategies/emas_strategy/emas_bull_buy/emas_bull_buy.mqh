@@ -225,37 +225,69 @@ bool CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3)
 }
 
 //+------------------------------------------------------------------+
-//| Validar se é um pullback adequado                               |
+//| Validar se é um pullback adequado (para BAIXO, até suporte EMA) |
 //+------------------------------------------------------------------+
 bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma)
 {
    if (ctx == NULL || ma == NULL || atr_value <= 0)
       return false;
 
-   // Critério 1: Verificar se o pullback não é muito profundo
-   if (position_info.distance > m_config.max_distance_atr * atr_value)
-   {
-      return false;
-   }
-
-   // Critério 2: Verificar velocidade do pullback
    ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
-   bool was_further_away = false;
+   double current_close = iClose(m_current_symbol, tf, 0);
+   double current_ma = ma.GetValue(0);
 
+   // Critério 1: Preço deve estar ABAIXO da EMA (pullback para baixo)
+   if (current_close >= current_ma)
+      return false;
+
+   // Critério 2: Distância não pode ser excessiva (limite de profundidade)
+   double current_distance = current_ma - current_close;
+   if (current_distance > m_config.max_distance_atr * atr_value)
+      return false;
+
+   // Critério 3: Verificar se estava MAIS DISTANTE (ACIMA) da EMA anteriormente
+   // Isso confirma que o preço desceu de um nível mais alto
+   bool was_further_above = false;
+   
    for (int i = 2; i <= m_config.max_duration_candles + 1; i++)
    {
       double prev_close = iClose(m_current_symbol, tf, i);
-      double prev_ma_value = ma.GetValue(i);
-      double prev_distance = MathAbs(prev_close - prev_ma_value);
+      double prev_ma = ma.GetValue(i);
 
-      if (prev_distance > position_info.distance * 1.2)
+      // Verificar se estava ACIMA da EMA
+      if (prev_close > prev_ma)
       {
-         was_further_away = true;
-         break;
+         double prev_distance = prev_close - prev_ma;
+         
+         // Se a distância anterior era significativamente maior (estava mais longe ACIMA)
+         if (prev_distance > current_distance * 1.2)
+         {
+            was_further_above = true;
+            break;
+         }
       }
    }
 
-   return was_further_away;
+   if (!was_further_above)
+      return false;
+
+   // Critério 4: Validar movimento progressivo de queda (aproximando da EMA)
+   // Não apenas estar próximo, mas estar em processo contínuo
+   double ma_2_bars_ago = ma.GetValue(2);
+   double close_2_bars_ago = iClose(m_current_symbol, tf, 2);
+   
+   // Deve estar descendo em direção à EMA (progresso do pullback)
+   bool is_moving_down = current_close < close_2_bars_ago;
+   
+   if (!is_moving_down)
+      return false;
+
+   // Critério 5: Verificar se NÃO desceu abaixo da EMA (não inverte a tendência)
+   // Caso contrário, não é um pullback, é uma reversão
+   if (current_close < current_ma * (1.0 - 0.001))  // Pequena margem
+      return false;
+
+   return true;
 }
 
 //+------------------------------------------------------------------+

@@ -220,34 +220,35 @@ bool CEmasBearSell::HasBearishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3)
    return price_below_ema21 && no_panic_buying && last_candle_bearish;
 }
 
-//+------------------------------------------------------------------+
-//| Validar se é um pullback adequado (para CIMA, até resistência)  |
-//+------------------------------------------------------------------+
 bool CEmasBearSell::IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma)
 {
    if (ctx == NULL || ma == NULL || atr_value <= 0)
       return false;
 
-   // Critério 1: Verificar se o pullback não é muito profundo (não subiu demais)
-   if (position_info.distance > m_config.max_distance_atr * atr_value)
-   {
-      return false;
-   }
-
-   // Critério 2: Verificar se estava mais distante (ABAIXO) da EMA e agora aproximou (SUBIU)
    ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
-   bool was_further_below = false;
+   double current_close = iClose(m_current_symbol, tf, 0);
+   double current_ma = ma.GetValue(0);
 
+   // 1. Preço está acima da EMA? (pullback para cima)
+   if (current_close <= current_ma)
+      return false;
+
+   // 2. Distância não é excessiva
+   double current_distance = current_close - current_ma;
+   if (current_distance > m_config.max_distance_atr * atr_value)
+      return false;
+
+   // 3. Verificar se estava mais distante ABAIXO anteriormente
+   bool was_further_below = false;
    for (int i = 2; i <= m_config.max_duration_candles + 1; i++)
    {
       double prev_close = iClose(m_current_symbol, tf, i);
-      double prev_ma_value = ma.GetValue(i);
+      double prev_ma = ma.GetValue(i);
 
-      // Verificar se estava mais distante ABAIXO da MA
-      if (prev_close < prev_ma_value)
+      if (prev_close < prev_ma)
       {
-         double prev_distance = MathAbs(prev_close - prev_ma_value);
-         if (prev_distance > position_info.distance * 1.2)
+         double prev_distance = prev_ma - prev_close;
+         if (prev_distance > current_distance * 1.2)  // configurável
          {
             was_further_below = true;
             break;
@@ -255,7 +256,15 @@ bool CEmasBearSell::IsValidPullback(SPositionInfo &position_info, double atr_val
       }
    }
 
-   return was_further_below;
+   // 4. ADICIONADO: Validar que está em MOVIMENTO de subida (não apenas próximo)
+   if (was_further_below)
+   {
+      double ma_2_bars_ago = ma.GetValue(2);
+      bool is_moving_up = current_close > ma_2_bars_ago; // progresso
+      return is_moving_up;
+   }
+
+   return false;
 }
 
 //+------------------------------------------------------------------+
