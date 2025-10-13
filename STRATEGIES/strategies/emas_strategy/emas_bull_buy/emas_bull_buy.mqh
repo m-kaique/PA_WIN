@@ -29,6 +29,7 @@ private:
    SDistance_MA distance_ma_m3;
    SDistance_MA distance_ma_m15;
    SVolatilityEnv volatilityEnv_M15;
+   SStrongTrendADX SStrong_trend_ADX_m15;
 
    double CalculateLotSize();
    double CalculateStopLoss(double entry_price);
@@ -233,22 +234,25 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
       return false;
 
    ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
-   double current_close = iClose(m_current_symbol, tf, 0);
-   double current_ma = ma.GetValue(0);
+   double last_close = iClose(m_current_symbol, tf, 1);
+   double current_ma = ma.GetValue(1);
 
    // Critério 1: Preço deve estar ABAIXO da EMA (pullback para baixo)
-   if (current_close >= current_ma)
+   if (last_close >= current_ma)
+   {
       return false;
+   }
 
    // Critério 2: Distância não pode ser excessiva (limite de profundidade)
-   double current_distance = current_ma - current_close;
-   if (current_distance > m_config.max_distance_atr * atr_value)
+   if (position_info.distance > m_config.max_distance_atr * atr_value)
+   {
       return false;
+   }
 
    // Critério 3: Verificar se estava MAIS DISTANTE (ACIMA) da EMA anteriormente
    // Isso confirma que o preço desceu de um nível mais alto
    bool was_further_above = false;
-   
+
    for (int i = 2; i <= m_config.max_duration_candles + 1; i++)
    {
       double prev_close = iClose(m_current_symbol, tf, i);
@@ -258,9 +262,9 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
       if (prev_close > prev_ma)
       {
          double prev_distance = prev_close - prev_ma;
-         
+
          // Se a distância anterior era significativamente maior (estava mais longe ACIMA)
-         if (prev_distance > current_distance * 1.2)
+         if (prev_distance > position_info.distance * 1.2)
          {
             was_further_above = true;
             break;
@@ -275,16 +279,16 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    // Não apenas estar próximo, mas estar em processo contínuo
    double ma_2_bars_ago = ma.GetValue(2);
    double close_2_bars_ago = iClose(m_current_symbol, tf, 2);
-   
+
    // Deve estar descendo em direção à EMA (progresso do pullback)
-   bool is_moving_down = current_close < close_2_bars_ago;
-   
+   bool is_moving_down = last_close < close_2_bars_ago;
+
    if (!is_moving_down)
       return false;
 
    // Critério 5: Verificar se NÃO desceu abaixo da EMA (não inverte a tendência)
    // Caso contrário, não é um pullback, é uma reversão
-   if (current_close < current_ma * (1.0 - 0.001))  // Pequena margem
+   if (last_close < current_ma * (1.0 - 0.001)) // Pequena margem
       return false;
 
    return true;
@@ -427,9 +431,9 @@ bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
    Print("Contagem de Bear: ", slope_upper.bearish_count);
    if (c1)
    {
-      bool c2 = slope_upper.linear_regression.slope_value >= 0.02;
-      bool c3 = slope_upper.discrete_derivative.slope_value >= 0.02;
-      bool c4 = slope_upper.simple_difference.slope_value >= 0.10;
+      bool c2 = slope_upper.linear_regression.slope_value >= 0.05;
+      bool c3 = slope_upper.discrete_derivative.slope_value >= 0.04;
+      bool c4 = slope_upper.simple_difference.slope_value >= 0.20;
 
       Print("SLOPE VALUES MICRO INCLINAÇÃO: &&&&&&&&&&&&&&&");
       Print("LR: ", slope_upper.linear_regression.slope_value);
@@ -445,9 +449,9 @@ bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
    bool slope_lower_is_side_walk = slope_lower.side_count >= 2;
    if (slope_lower_is_side_walk)
    {
-      bool c5 = slope_lower.linear_regression.slope_value <= 0.02 && slope_lower.linear_regression.slope_value >= -0.02;
-      bool c6 = slope_lower.discrete_derivative.slope_value <= 0.02 && slope_lower.discrete_derivative.slope_value >= -0.02;
-      bool c7 = slope_lower.simple_difference.slope_value <= 0.10 && slope_lower.simple_difference.slope_value >= -0.10;
+      bool c5 = slope_lower.linear_regression.slope_value <= 0.05 && slope_lower.linear_regression.slope_value >= -0.05;
+      bool c6 = slope_lower.discrete_derivative.slope_value <= 0.04 && slope_lower.discrete_derivative.slope_value >= -0.04;
+      bool c7 = slope_lower.simple_difference.slope_value <= 0.2 && slope_lower.simple_difference.slope_value >= -0.2;
 
       if (c5 || c6 || c7)
       {
@@ -545,17 +549,27 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    if (!m_config.enable_adx_filter)
       strong_trend_adx_m15 = true;
 
+   SStrong_trend_ADX_m15.adx_value_tf = adx_value_m15;
+   SStrong_trend_ADX_m15.config_max_value = m_config.adx_max_value;
+   SStrong_trend_ADX_m15.config_min_value = m_config.adx_min_value;
+   SStrong_trend_ADX_m15.isStrongTrendADX = strong_trend_adx_m15;
+
    // === PONTOS DE ENTRADA ===
    SPositionInfo ema9_m3_position = ema9_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
-   bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
+   bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
+                                  ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY ||
                                   ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
-                                  ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
+                                  ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW
+                                  // ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY
+   );
    bool valid_pullback_EMA9_M3 = IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3);
 
    SPositionInfo ema21_m3_position = ema21_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
-   bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
-                                   ema21_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
-                                   ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
+   bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
+                                   ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY
+                                   //||
+                                   // ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY
+   );
    bool valid_pullback_EMA21_M3 = IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3);
 
    // === CRITÉRIO FINAL DE ENTRADA ===
@@ -776,7 +790,10 @@ void CEmasBuyBull::DoLog()
    }
    if (adx_m15)
    {
-      Print("ADX: ", DoubleToString(adx_m15.GetValue(1), 2));
+      Print("ADX: ", SStrong_trend_ADX_m15.adx_value_tf);
+      Print("Conf.min.value: ", SStrong_trend_ADX_m15.config_min_value);
+      Print("Conf.max.value: ", SStrong_trend_ADX_m15.config_max_value);
+      Print("Is Strong Trend: ", SStrong_trend_ADX_m15.isStrongTrendADX ? "Sim" : "Não");
    }
 
    Print("EMA9 - EMA 21 Distance: ", distance_ma_m15.ema_9_21);
@@ -909,14 +926,19 @@ void CEmasBuyBull::DoLog()
    SPositionInfo ema9_m3_position = ema9_m3 ? ema9_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value) : SPositionInfo();
    SPositionInfo ema21_m3_position = ema21_m3 ? ema21_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value) : SPositionInfo();
 
-   bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
+   bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
+                                  ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY ||
                                   ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
-                                  ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
+                                  ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW
+                                  // ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY
+   );
    bool valid_pullback_EMA9_M3 = ema9_m3 ? IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3) : false;
 
-   bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
-                                   ema21_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
-                                   ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
+   bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
+                                   ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY
+                                   //||
+                                   // ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY
+   );
    bool valid_pullback_EMA21_M3 = ema21_m3 ? IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3) : false;
 
    Print("--- PONTOS DE ENTRADA (M3) ---");
