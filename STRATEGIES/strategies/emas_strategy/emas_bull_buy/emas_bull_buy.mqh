@@ -353,11 +353,11 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    // Aceita qualquer coisa que indique aproximação da EMA
    
    bool invalid_position_for_pullback = (
-      position_info.position == INDICATOR_CROSSES_CENTER_BODY ||
-      position_info.position == INDICATOR_CROSSES_LOWER_SHADOW ||
+      position_info.position == INDICATOR_CROSSES_UPPER_SHADOW ||   // EMA acima da vela -> preço perdeu suporte
       position_info.position == CANDLE_BELOW ||
-      position_info.position == CANDLE_COMPLETELY_BELOW ||  // Muito abaixo (reversão completa)
-      position_info.position == CANDLE_BELOW_WITH_DISTANCE         // Abaixo (já reversão)
+      position_info.position == CANDLE_COMPLETELY_BELOW ||          // Muito abaixo (reversão completa)
+      position_info.position == CANDLE_BELOW_WITH_DISTANCE ||       // Abaixo (já reversão)
+      position_info.position == INDICATOR_CANDLE_POSITION_FAILED    // Posição não confiável
    );
    
    if (invalid_position_for_pullback)
@@ -496,11 +496,11 @@ void CEmasBuyBull::DiagnoseFailedPullback(SPositionInfo &position_info, double a
    
    // Teste Critério 4
    bool invalid_position = (
-      position_info.position == INDICATOR_CROSSES_CENTER_BODY ||
-      position_info.position == INDICATOR_CROSSES_LOWER_SHADOW ||
+      position_info.position == INDICATOR_CROSSES_UPPER_SHADOW ||
       position_info.position == CANDLE_BELOW ||
-      position_info.position == CANDLE_COMPLETELY_BELOW ||  // Muito abaixo (reversão completa)
-      position_info.position == CANDLE_BELOW_WITH_DISTANCE         // Abaixo (já reversão)
+      position_info.position == CANDLE_COMPLETELY_BELOW ||
+      position_info.position == CANDLE_BELOW_WITH_DISTANCE ||
+      position_info.position == INDICATOR_CANDLE_POSITION_FAILED
    );
    
    if (!invalid_position)
@@ -796,20 +796,23 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
 
    // === PONTOS DE ENTRADA ===
    SPositionInfo ema9_m3_position = ema9_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
-   bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
-                                  ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY ||
-                                  ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
-                                  ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW
-                                  // ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY
+   // Aceitamos apenas padrões onde a EMA atua como suporte (dentro/abaixo do candle).
+   // Mantemos a mesma regra adotada em logs/validações para facilitar a leitura do diagnóstico.
+   bool price_pullback_EMA9_M3 = (
+      ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
+      ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
+      ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY ||
+      ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY
    );
    bool valid_pullback_EMA9_M3 = IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3);
    DiagnoseFailedPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3);
 
    SPositionInfo ema21_m3_position = ema21_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
-   bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
-                                   ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY
-                                   //||
-                                   // ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY
+   bool price_pullback_EMA21_M3 = (
+      ema21_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
+      ema21_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
+      ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY ||
+      ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY
    );
    bool valid_pullback_EMA21_M3 = IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3);
    DiagnoseFailedPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3);
@@ -1168,18 +1171,20 @@ void CEmasBuyBull::DoLog()
    SPositionInfo ema9_m3_position = ema9_m3 ? ema9_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value) : SPositionInfo();
    SPositionInfo ema21_m3_position = ema21_m3 ? ema21_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value) : SPositionInfo();
 
-   bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
-                                  ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY ||
-                                  ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
-                                  ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW
-                                  // ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY
+   // Reutilizamos a mesma regra de suporte para garantir que os logs espelhem os filtros do sinal.
+   bool price_pullback_EMA9_M3 = (
+      ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
+      ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
+      ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY ||
+      ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY
    );
    bool valid_pullback_EMA9_M3 = ema9_m3 ? IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3) : false;
 
-   bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
-                                   ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY
-                                   //||
-                                   // ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY
+   bool price_pullback_EMA21_M3 = (
+      ema21_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
+      ema21_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
+      ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY ||
+      ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY
    );
    bool valid_pullback_EMA21_M3 = ema21_m3 ? IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3) : false;
 
