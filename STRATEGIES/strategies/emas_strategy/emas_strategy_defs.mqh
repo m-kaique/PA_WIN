@@ -209,6 +209,7 @@ struct SEMAAlignmentState
    bool ema21_vs_ema50;
    bool is_valid;
    bool is_enabled;
+   bool is_evaluated;
 
    void Reset()
    {
@@ -220,6 +221,7 @@ struct SEMAAlignmentState
       ema21_vs_ema50 = false;
       is_valid = false;
       is_enabled = false;
+      is_evaluated = false;
    }
 };
 
