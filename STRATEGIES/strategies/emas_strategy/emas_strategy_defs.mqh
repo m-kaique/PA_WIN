@@ -22,3 +22,15 @@ struct SStrongTrendADX
    double config_max_value;
    bool isStrongTrendADX;
 };
+
+
+struct SBollingerValidStructure
+{
+   bool is_valid;
+   double valid_min_width;
+   double valid_max_width;
+   double upper_band_value;
+   double lower_band_value;
+   double boll_width;
+   double atr_value;
+};

@@ -30,6 +30,7 @@ private:
    SDistance_MA distance_ma_m15;
    SVolatilityEnv volatilityEnv_M15;
    SStrongTrendADX SStrong_trend_ADX_m15;
+   SBollingerValidStructure bollStructure_M3;
 
    double CalculateLotSize();
    double CalculateStopLoss(double entry_price);
@@ -698,6 +699,8 @@ bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
          return false;
       }
    }
+
+   bollStructure_M3.is_valid = true;
    return true;
 }
 //+------------------------------------------------------------------+
@@ -1150,7 +1153,6 @@ void CEmasBuyBull::DoLog()
    Print("M3 - EMA21 > EMA50: ", EMA21_above_EMA50_M3 ? "Sim" : "Não");
 
    // Filtros dependentes
-   bool strong_trend_m15 = IsStrongTrend(ctx_m15);
    bool strong_trend_m3 = IsStrongTrend(ctx_m3);
    bool bullish_momentum = HasBullishMomentum(ctx_m15, ctx_m3);
    bool good_volatility_m15 = IsGoodVolatilityEnvironment(ctx_m15);
@@ -1159,7 +1161,8 @@ void CEmasBuyBull::DoLog()
    bool strong_trend_adx_m15 = (adx_m15 != NULL) ? (adx_m15.GetValue(1) >= m_config.adx_min_value && adx_m15.GetValue(1) <= m_config.adx_max_value) : false;
 
    Print("--- FILTROS DEPENDENTES ---");
-   Print("Tendência Forte (M15): ", strong_trend_m15 ? "Sim" : "Não");
+   Print("Bollinger Válida (M3): ", bollStructure_M3.is_valid ? "Sim" : "Não");
+   Print("Tendência Forte (M15): ", SStrong_trend_ADX_m15.isStrongTrendADX ? "Sim" : "Não");
    Print("Tendência Forte (M3): ", strong_trend_m3 ? "Sim" : "Não");
    Print("Momentum Bullish: ", bullish_momentum ? "Sim" : "Não");
    Print("Volatilidade Boa (M15): ", good_volatility_m15 ? "Sim" : "Não");
@@ -1195,7 +1198,7 @@ void CEmasBuyBull::DoLog()
    // Critérios finais
    bool filtros_ok = EMA9_above_EMA21_M15 && EMA21_above_EMA50_M15 &&
                      EMA9_above_EMA21_M3 && EMA21_above_EMA50_M3 &&
-                     strong_trend_m15 && bullish_momentum && good_volatility_m15 &&
+                     SStrong_trend_ADX_m15.isStrongTrendADX && bullish_momentum && good_volatility_m15 &&
                      bullish_structure_m15 && bullish_structure_m3 &&
                      strong_trend_adx_m15;
 
