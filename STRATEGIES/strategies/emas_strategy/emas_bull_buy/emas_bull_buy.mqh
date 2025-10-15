@@ -57,10 +57,11 @@ private:
    // Métodos auxiliares migrados da lógica CompraAlta
    bool IsStrongTrend(TF_CTX *ctx);
    bool HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3);
-   bool IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma, SPullbackValidation *validation_state = NULL);
+   bool IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma, SPullbackValidation &validation_state);
    bool IsGoodVolatilityEnvironment(TF_CTX *ctx);
    void DiagnoseFailedPullback(const SPullbackValidation &validation_state);
    bool IsInBullishStructure(TF_CTX *ctx);
+   bool EvaluateBullishStructure(TF_CTX *ctx, SBullishStructure &structure_state);
    bool BollingerHasValidStructure(TF_CTX *ctx);
 
 protected:
@@ -326,29 +327,23 @@ bool CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3)
 // 4. O importante é que veio de distância anterior MAIOR
 //+------------------------------------------------------------------+
 
-bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma, SPullbackValidation *validation_state)
+bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma, SPullbackValidation &validation_state)
 {
-   if (validation_state != NULL)
-   {
-      string label = validation_state.label;
-      validation_state.Reset();
-      validation_state.label = label;
-      validation_state.is_enabled = true;
-      validation_state.is_valid = false;
-   }
+   string label = validation_state.label;
+   validation_state.Reset();
+   validation_state.label = label;
+   validation_state.is_enabled = true;
+   validation_state.is_valid = false;
 
    if (ctx == NULL || ma == NULL || atr_value <= 0)
    {
       Print("[PULLBACK DEBUG] Contexto ou indicadores nulos. Retornando false.");
 
-      if (validation_state != NULL)
-      {
-         validation_state.timeframe = (ctx != NULL) ? ctx.GetTimeFrame() : PERIOD_CURRENT;
-         validation_state.position_info = position_info;
-         validation_state.atr_value = atr_value;
-         validation_state.inputs_valid = false;
-         validation_state.is_evaluated = true;
-      }
+      validation_state.timeframe = (ctx != NULL) ? ctx.GetTimeFrame() : PERIOD_CURRENT;
+      validation_state.position_info = position_info;
+      validation_state.atr_value = atr_value;
+      validation_state.inputs_valid = false;
+      validation_state.is_evaluated = true;
 
       return false;
    }
@@ -357,21 +352,17 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    double point = SymbolInfoDouble(m_current_symbol, SYMBOL_POINT);
    double pip_value = (digits == 3 || digits == 5) ? point * 10.0 : point;
 
-   if (validation_state != NULL)
-      validation_state.pip_value = pip_value;
+   validation_state.pip_value = pip_value;
 
    if (pip_value <= 0)
    {
       Print("[PULLBACK DEBUG] Pip value inválido. Retornando false.");
 
-      if (validation_state != NULL)
-      {
-         validation_state.timeframe = ctx.GetTimeFrame();
-         validation_state.position_info = position_info;
-         validation_state.atr_value = atr_value;
-         validation_state.inputs_valid = false;
-         validation_state.is_evaluated = true;
-      }
+      validation_state.timeframe = ctx.GetTimeFrame();
+      validation_state.position_info = position_info;
+      validation_state.atr_value = atr_value;
+      validation_state.inputs_valid = false;
+      validation_state.is_evaluated = true;
 
       return false;
    }
@@ -386,18 +377,15 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    double current_ma = ma.GetValue(1);
    string tf_name = EnumToString(tf);
 
-   if (validation_state != NULL)
-   {
-      validation_state.timeframe = tf;
-      validation_state.position_info = position_info;
-      validation_state.atr_value = atr_value;
-      validation_state.current_ma = current_ma;
-      validation_state.last_close = last_close;
-      validation_state.last_low = last_low;
-      validation_state.distance_price = distance_price;
-      validation_state.inputs_valid = true;
-      validation_state.is_evaluated = true;
-   }
+   validation_state.timeframe = tf;
+   validation_state.position_info = position_info;
+   validation_state.atr_value = atr_value;
+   validation_state.current_ma = current_ma;
+   validation_state.last_close = last_close;
+   validation_state.last_low = last_low;
+   validation_state.distance_price = distance_price;
+   validation_state.inputs_valid = true;
+   validation_state.is_evaluated = true;
 
    Print("[PULLBACK DEBUG] ========================================");
    Print("[PULLBACK DEBUG] Iniciando validação de pullback para ", tf_name);
@@ -414,11 +402,8 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    double max_depth = (m_config.max_distance_atr + 0.5) * atr_value;
    bool depth_ok = (distance_price <= max_depth);
 
-   if (validation_state != NULL)
-   {
-      validation_state.max_depth = max_depth;
-      validation_state.depth_ok = depth_ok;
-   }
+   validation_state.max_depth = max_depth;
+   validation_state.depth_ok = depth_ok;
 
    if (!depth_ok)
    {
@@ -440,12 +425,9 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    double best_previous_atr = 0.0;
    int found_at_bar = -1;
 
-   if (validation_state != NULL)
-   {
-      validation_state.lookback_start = lookback_start;
-      validation_state.lookback_end = lookback_end;
-      validation_state.current_distance_atr = current_distance_atr;
-   }
+   validation_state.lookback_start = lookback_start;
+   validation_state.lookback_end = lookback_end;
+   validation_state.current_distance_atr = current_distance_atr;
 
    Print("[PULLBACK DEBUG] Procurando por distância anterior MAIOR (barras ", lookback_start, " a ", lookback_end, ")");
 
@@ -474,12 +456,9 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
       }
    }
 
-   if (validation_state != NULL)
-   {
-      validation_state.was_further_above = was_further_above;
-      validation_state.found_at_bar = found_at_bar;
-      validation_state.best_previous_distance_atr = best_previous_atr;
-   }
+   validation_state.was_further_above = was_further_above;
+   validation_state.found_at_bar = found_at_bar;
+   validation_state.best_previous_distance_atr = best_previous_atr;
 
    if (!was_further_above)
    {
@@ -499,8 +478,7 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
       position_info.position == INDICATOR_CANDLE_POSITION_FAILED
    );
 
-   if (validation_state != NULL)
-      validation_state.invalid_position_for_pullback = invalid_position_for_pullback;
+   validation_state.invalid_position_for_pullback = invalid_position_for_pullback;
 
    if (invalid_position_for_pullback)
    {
@@ -516,12 +494,9 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    double penetration = MathMax(0, current_ma - last_low);
    bool penetration_ok = (penetration <= max_penetration_below_ema);
 
-   if (validation_state != NULL)
-   {
-      validation_state.max_penetration_allowed = max_penetration_below_ema;
-      validation_state.penetration = penetration;
-      validation_state.penetration_ok = penetration_ok;
-   }
+   validation_state.max_penetration_allowed = max_penetration_below_ema;
+   validation_state.penetration = penetration;
+   validation_state.penetration_ok = penetration_ok;
 
    if (!penetration_ok)
    {
@@ -535,8 +510,7 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    Print("[PULLBACK DEBUG] ✓ Critério 5 OK: Penetração abaixo da EMA dentro dos limites (",
          DoubleToString(penetration, 5), " pontos)");
 
-   if (validation_state != NULL)
-      validation_state.is_valid = true;
+   validation_state.is_valid = true;
 
    Print("[PULLBACK DEBUG] ✅ PULLBACK VÁLIDO CONFIRMADO - ESTRUTURA DE ALTA COMPROVADA");
    Print("[PULLBACK DEBUG] ========================================");
@@ -682,96 +656,78 @@ bool CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
    if (ctx == NULL)
       return false;
 
+   ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
+
+   if (tf == PERIOD_M15)
+      return EvaluateBullishStructure(ctx, bullishStructureState_M15);
+
+   if (tf == PERIOD_M3)
+      return EvaluateBullishStructure(ctx, bullishStructureState_M3);
+
+   SBullishStructure temp_state;
+   temp_state.Reset();
+   return EvaluateBullishStructure(ctx, temp_state);
+}
+
+bool CEmasBuyBull::EvaluateBullishStructure(TF_CTX *ctx, SBullishStructure &structure_state)
+{
    CMovingAverages *ema50 = ctx.GetIndicator("ema50");
    CATR *atr = ctx.GetIndicator("ATR15");
 
    if (ema50 == NULL || atr == NULL)
       return false;
 
-   ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
-   SBullishStructure *structure_state = NULL;
+   structure_state.Reset();
+   structure_state.timeframe = ctx.GetTimeFrame();
+   structure_state.is_enabled = true;
 
-   if (tf == PERIOD_M15)
-      structure_state = &bullishStructureState_M15;
-   else if (tf == PERIOD_M3)
-      structure_state = &bullishStructureState_M3;
-
-   if (structure_state != NULL)
-   {
-      structure_state.Reset();
-      structure_state.timeframe = tf;
-      structure_state.is_enabled = true;
-   }
-
-   double current_close = iClose(m_current_symbol, tf, 1);
+   double current_close = iClose(m_current_symbol, structure_state.timeframe, 1);
    double ema50_val = ema50.GetValue(1);
    double atr_val = atr.GetValue(1);
 
    if (atr_val <= 0)
    {
-      if (structure_state != NULL)
-      {
-         structure_state.atr_value = atr_val;
-         structure_state.is_valid = false;
-         structure_state.is_evaluated = true;
-      }
+      structure_state.atr_value = atr_val;
+      structure_state.is_valid = false;
+      structure_state.is_evaluated = true;
       return false;
    }
 
-   if (structure_state != NULL)
-   {
-      structure_state.current_close = current_close;
-      structure_state.ema50_value = ema50_val;
-      structure_state.atr_value = atr_val;
-      structure_state.threshold_config = m_config.bullish_structure_atr_threshold;
-      structure_state.is_evaluated = true;
-   }
+   structure_state.current_close = current_close;
+   structure_state.ema50_value = ema50_val;
+   structure_state.atr_value = atr_val;
+   structure_state.threshold_config = m_config.bullish_structure_atr_threshold;
+   structure_state.is_evaluated = true;
 
-   // Critério 1: Preço deve estar acima da ema50
    if (current_close <= ema50_val)
    {
-      if (structure_state != NULL)
-      {
-         structure_state.price_above_ema50 = false;
-         structure_state.is_valid = false;
-      }
+      structure_state.price_above_ema50 = false;
+      structure_state.is_valid = false;
       return false;
    }
 
-   if (structure_state != NULL)
-      structure_state.price_above_ema50 = true;
+   structure_state.price_above_ema50 = true;
 
-   // Critério 2: Preço deve estar a uma distância mínima da ema50
    double distance_to_ema50 = (current_close - ema50_val) / atr_val;
+   structure_state.distance_to_ema50 = distance_to_ema50;
+
    if (distance_to_ema50 < m_config.bullish_structure_atr_threshold)
    {
-      if (structure_state != NULL)
-      {
-         structure_state.distance_to_ema50 = distance_to_ema50;
-         structure_state.distance_ok = false;
-         structure_state.is_valid = false;
-      }
+      structure_state.distance_ok = false;
+      structure_state.is_valid = false;
       return false;
    }
 
-   if (structure_state != NULL)
-   {
-      structure_state.distance_to_ema50 = distance_to_ema50;
-      structure_state.distance_ok = true;
-   }
+   structure_state.distance_ok = true;
 
-   // Critério 3: ema50 deve estar inclinada para cima
    SSlopeValidation ema50_slope = ema50.GetSlopeValidation(atr_val, COPY_MIDDLE);
    bool ema50_trending_up = (ema50_slope.simple_difference.trend_direction != SLOPE_DOWN ||
                              ema50_slope.discrete_derivative.trend_direction != SLOPE_DOWN ||
                              ema50_slope.linear_regression.trend_direction != SLOPE_DOWN);
 
-   if (structure_state != NULL)
-   {
-      structure_state.ema50_slope = ema50_slope;
-      structure_state.ema50_trending_up = ema50_trending_up;
-      structure_state.is_valid = ema50_trending_up;
-   }
+   structure_state.ema50_slope = ema50_slope;
+   structure_state.ema50_trending_up = ema50_trending_up;
+   structure_state.is_valid = ema50_trending_up;
 
    return ema50_trending_up;
 }
@@ -1117,7 +1073,7 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    bool valid_pullback_EMA9_M3 = false;
    if (m_config.enable_pullback_ema9)
    {
-      valid_pullback_EMA9_M3 = IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3, &pullbackEMA9State_M3);
+      valid_pullback_EMA9_M3 = IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3, pullbackEMA9State_M3);
       DiagnoseFailedPullback(pullbackEMA9State_M3);
    }
 
@@ -1133,7 +1089,7 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    bool valid_pullback_EMA21_M3 = false;
    if (m_config.enable_pullback_ema21)
    {
-      valid_pullback_EMA21_M3 = IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3, &pullbackEMA21State_M3);
+      valid_pullback_EMA21_M3 = IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3, pullbackEMA21State_M3);
       DiagnoseFailedPullback(pullbackEMA21State_M3);
    }
 
