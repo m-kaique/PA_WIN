@@ -41,6 +41,14 @@ private:
    SLastSignalEvaluation lastSignalEvaluation;
 
    void ResetValidationState();
+   void PopulateDistanceState(SDistance_MA &state,
+                              ENUM_TIMEFRAMES timeframe,
+                              double ema9_val,
+                              double ema21_val,
+                              double ema50_val,
+                              double atr_val,
+                              double min_distance_9_21_cfg,
+                              double min_distance_21_50_cfg);
 
    double CalculateLotSize();
    double CalculateStopLoss(double entry_price);
@@ -134,6 +142,35 @@ void CEmasBuyBull::ResetValidationState()
    lastSignalEvaluation.Reset();
 }
 
+void CEmasBuyBull::PopulateDistanceState(SDistance_MA &state,
+                                         ENUM_TIMEFRAMES timeframe,
+                                         double ema9_val,
+                                         double ema21_val,
+                                         double ema50_val,
+                                         double atr_val,
+                                         double min_distance_9_21_cfg,
+                                         double min_distance_21_50_cfg)
+{
+   state.Reset();
+   state.timeframe = timeframe;
+   state.is_enabled = true;
+   state.is_evaluated = true;
+   state.ema9_value = ema9_val;
+   state.ema21_value = ema21_val;
+   state.ema50_value = ema50_val;
+   state.atr_value = atr_val;
+   state.min_distance_9_21_config = min_distance_9_21_cfg;
+   state.min_distance_21_50_config = min_distance_21_50_cfg;
+
+   state.ema_21_50 = MathAbs(ema50_val - ema21_val);
+   state.ema_9_21 = MathAbs(ema21_val - ema9_val);
+   state.ema_9_50 = MathAbs(ema50_val - ema9_val);
+
+   state.ema_21_50_by_atr = state.ema_21_50 / atr_val;
+   state.ema_9_21_by_atr = state.ema_9_21 / atr_val;
+   state.ema_9_50_by_atr = state.ema_9_50 / atr_val;
+}
+
 //+------------------------------------------------------------------+
 //| Verificar se há tendência forte baseada na distância entre médias |
 //+------------------------------------------------------------------+
@@ -163,47 +200,26 @@ bool CEmasBuyBull::IsStrongTrend(TF_CTX *ctx)
 
    bool strong_trend = false;
    ENUM_TIMEFRAMES timeframe = ctx.GetTimeFrame();
-   SDistance_MA *distance_state = NULL;
    double min_distance_9_21_cfg = 0.0;
    double min_distance_21_50_cfg = 0.0;
 
    if (timeframe == PERIOD_M15)
    {
-      distance_state = &distance_ma_m15;
       min_distance_9_21_cfg = m_config.min_distance_9_21_atr_m15;
       min_distance_21_50_cfg = m_config.min_distance_21_50_atr_m15;
+      PopulateDistanceState(distance_ma_m15, timeframe, ema9_val, ema21_val, ema50_val, atr_val,
+                            min_distance_9_21_cfg, min_distance_21_50_cfg);
    }
    else if (timeframe == PERIOD_M3)
    {
-      distance_state = &distance_ma_m3;
       min_distance_9_21_cfg = m_config.min_distance_9_21_atr_m3;
       min_distance_21_50_cfg = m_config.min_distance_21_50_atr_m3;
+      PopulateDistanceState(distance_ma_m3, timeframe, ema9_val, ema21_val, ema50_val, atr_val,
+                            min_distance_9_21_cfg, min_distance_21_50_cfg);
    }
    else
    {
       Print("!!!!!!!!!!!!!!!!!!!!!!!!!! STRONG TREND NÃO CONFIGURADA EM CEmasBuyBull::IsStrongTrend  - !M3 ou M15!");
-   }
-
-   if (distance_state != NULL)
-   {
-      distance_state.Reset();
-      distance_state.timeframe = timeframe;
-      distance_state.is_enabled = true;
-      distance_state.is_evaluated = true;
-      distance_state.ema9_value = ema9_val;
-      distance_state.ema21_value = ema21_val;
-      distance_state.ema50_value = ema50_val;
-      distance_state.atr_value = atr_val;
-      distance_state.min_distance_9_21_config = min_distance_9_21_cfg;
-      distance_state.min_distance_21_50_config = min_distance_21_50_cfg;
-
-      distance_state.ema_21_50 = MathAbs(ema50_val - ema21_val);
-      distance_state.ema_9_21 = MathAbs(ema21_val - ema9_val);
-      distance_state.ema_9_50 = MathAbs(ema50_val - ema9_val);
-
-      distance_state.ema_21_50_by_atr = MathAbs(ema50_val - ema21_val) / atr_val;
-      distance_state.ema_9_21_by_atr = MathAbs(ema21_val - ema9_val) / atr_val;
-      distance_state.ema_9_50_by_atr = MathAbs(ema50_val - ema9_val) / atr_val;
    }
 
    if (timeframe == PERIOD_M15)
@@ -215,8 +231,14 @@ bool CEmasBuyBull::IsStrongTrend(TF_CTX *ctx)
       strong_trend = (dist_9_21 >= m_config.min_distance_9_21_atr_m3 && dist_21_50 >= m_config.min_distance_21_50_atr_m3);
    }
 
-   if (distance_state != NULL)
-      distance_state.is_strong_trend = strong_trend;
+   if (timeframe == PERIOD_M15)
+   {
+      distance_ma_m15.is_strong_trend = strong_trend;
+   }
+   else if (timeframe == PERIOD_M3)
+   {
+      distance_ma_m3.is_strong_trend = strong_trend;
+   }
 
    return strong_trend;
 }

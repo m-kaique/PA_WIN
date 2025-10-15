@@ -1,3 +1,9 @@
+#ifndef __EMAS_STRATEGY_DEFS_MQH__
+#define __EMAS_STRATEGY_DEFS_MQH__
+
+#include "../../../TF_CTX/indicators/indicator_base/submodules/indicator_slope/slope_defs.mqh"
+#include "../../../TF_CTX/indicators/indicator_base/submodules/indicator_candle_distance/candle_distance_defs.mqh"
+
 struct SDistance_MA
 {
    ENUM_TIMEFRAMES timeframe;
@@ -128,9 +134,9 @@ struct SBollingerValidStructure
       slope_lower_sidewalk = false;
       slope_upper_micro_ok = false;
       slope_lower_micro_ok = false;
-      slope_upper = SSlopeValidation();
-      slope_middle = SSlopeValidation();
-      slope_lower = SSlopeValidation();
+      ZeroMemory(slope_upper);
+      ZeroMemory(slope_middle);
+      ZeroMemory(slope_lower);
    }
 };
 
@@ -189,7 +195,7 @@ struct SBullishStructure
       is_valid = false;
       is_enabled = false;
       is_evaluated = false;
-      ema50_slope = SSlopeValidation();
+      ZeroMemory(ema50_slope);
    }
 };
 
@@ -253,7 +259,7 @@ struct SPullbackValidation
    {
       label = "";
       timeframe = PERIOD_CURRENT;
-      position_info = SPositionInfo();
+      ZeroMemory(position_info);
       atr_value = 0.0;
       pip_value = 0.0;
       distance_price = 0.0;
@@ -295,3 +301,5 @@ struct SLastSignalEvaluation
       atr_value_m3 = 0.0;
    }
 };
+
+#endif // __EMAS_STRATEGY_DEFS_MQH__
