@@ -186,6 +186,39 @@ CEmasBullBuyConfig *CStrategyConfigParser::ParseEmasBuyBullConfig(CJAVal *strate
     config.enable_pullback_ema9 = strategy_json["enable_pullback_ema9"].ToBool();
     config.enable_pullback_ema21 = strategy_json["enable_pullback_ema21"].ToBool();
 
+    // New configurable parameters for Bollinger Bands micro inclination validation
+    CJAVal *bollinger_filter_settings = strategy_json["bollinger_filter_settings"];
+    if (bollinger_filter_settings != NULL)
+    {
+        config.boll_micro_min_width = bollinger_filter_settings["min_width"].ToDbl();
+        config.boll_micro_max_width = bollinger_filter_settings["max_width"].ToDbl();
+
+        CJAVal *micro_upper_slopes = bollinger_filter_settings["micro_upper_slopes"];
+        if (micro_upper_slopes != NULL)
+        {
+            config.boll_micro_upper_lr_min = micro_upper_slopes["lr_min"].ToDbl();
+            config.boll_micro_upper_dd_min = micro_upper_slopes["dd_min"].ToDbl();
+            config.boll_micro_upper_sd_min = micro_upper_slopes["sd_min"].ToDbl();
+        }
+
+        CJAVal *micro_lower_slopes = bollinger_filter_settings["micro_lower_slopes"];
+        if (micro_lower_slopes != NULL)
+        {
+            config.boll_micro_lower_lr_abs_max = micro_lower_slopes["lr_abs_max"].ToDbl();
+            config.boll_micro_lower_dd_abs_max = micro_lower_slopes["dd_abs_max"].ToDbl();
+            config.boll_micro_lower_sd_abs_max = micro_lower_slopes["sd_abs_max"].ToDbl();
+        }
+    }
+
+    // New configurable parameters for pullback validation
+    CJAVal *pullback = strategy_json["pullback"];
+    if (pullback != NULL)
+    {
+        config.pullback_depth_buffer_atr = pullback["depth_buffer_atr"].ToDbl();
+        config.pullback_max_penetration_atr = pullback["max_penetration_atr"].ToDbl();
+        config.pullback_improvement_factor = pullback["improvement_factor"].ToDbl();
+    }
+
     // Parse authorized timeframes
     CJAVal *authorized_tfs = strategy_json["authorized_timeframes"];
     if (authorized_tfs != NULL && authorized_tfs.Size() > 0)

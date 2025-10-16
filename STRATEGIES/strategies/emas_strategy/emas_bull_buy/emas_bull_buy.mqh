@@ -289,14 +289,14 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    // CRITÉRIO 2: Distância não pode ser excessiva (limite de profundidade)
    // ========================================================================
    // O pullback não pode descer mais que a profundidade máxima permitida
-   double max_depth = (m_config.max_distance_atr + 0.5) * atr_value;
+   double max_depth = (m_config.max_distance_atr + m_config.pullback_depth_buffer_atr) * atr_value;
 
    if (distance_price > max_depth)
    {
       Print("[PULLBACK DEBUG] ❌ CRITÉRIO 2 FALHOU: Pullback muito profundo");
       Print("[PULLBACK DEBUG]    Distance: ", DoubleToString(distance_price, 5),
-            " > Max permitido: ", DoubleToString(max_depth, 5),
-            " (config: ", DoubleToString(m_config.max_distance_atr, 2), " ATR + 0.5 buffer)");
+               " > Max permitido: ", DoubleToString(max_depth, 5),
+               " (config: ", DoubleToString(m_config.max_distance_atr, 2), " ATR + ", DoubleToString(m_config.pullback_depth_buffer_atr, 2), " buffer)");
       return false;
    }
    Print("[PULLBACK DEBUG] ✓ Critério 2 OK: Profundidade dentro dos limites (",
@@ -326,9 +326,9 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
          double prev_distance_atr = prev_distance / atr_value;
          double current_distance_atr = distance_price / atr_value;
          
-         // IMPORTANTE: 1.15x (15%) é suficiente para provar que é pullback
+         // IMPORTANTE: improvement_factor é suficiente para provar que é pullback
          // Não exigir 1.3x (30%) que é muito restritivo
-         if (prev_distance_atr > current_distance_atr * 1.15)
+         if (prev_distance_atr > current_distance_atr * m_config.pullback_improvement_factor)
          {
             was_further_above = true;
             Print("[PULLBACK DEBUG] ✓ Encontrado pullback válido na barra ", i);
@@ -373,11 +373,11 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    // ========================================================================
    // CRITÉRIO 5: Penetração abaixo da EMA não é excessiva
    // ========================================================================
-   // Um pullback pode penetrar levemente abaixo da EMA (até 1.5% ATR)
+   // Um pullback pode penetrar levemente abaixo da EMA (até max_penetration_atr ATR)
    // Isso é normal e esperado em price action real
    // O stop loss será colocado abaixo dessa penetração
-   
-   double max_penetration_below_ema = 1.5 * atr_value;
+
+   double max_penetration_below_ema = m_config.pullback_max_penetration_atr * atr_value;
 
    // Usamos o fundo da última vela para medir a penetração real. Assim,
    // pavios longos (que caracterizam pullbacks saudáveis) não são ignorados.
@@ -387,8 +387,8 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    {
       Print("[PULLBACK DEBUG] ❌ CRITÉRIO 5 FALHOU: Penetração muito profunda abaixo da EMA");
       Print("[PULLBACK DEBUG]    Penetração: ", DoubleToString(penetration, 5),
-            " > Max permitido: ", DoubleToString(max_penetration_below_ema, 5),
-            " (1.5 ATR)");
+               " > Max permitido: ", DoubleToString(max_penetration_below_ema, 5),
+               " (", DoubleToString(m_config.pullback_max_penetration_atr, 2), " ATR)");
       return false;
    }
    Print("[PULLBACK DEBUG] ✓ Critério 5 OK: Penetração abaixo da EMA dentro dos limites (", 
@@ -441,7 +441,7 @@ void CEmasBuyBull::DiagnoseFailedPullback(SPositionInfo &position_info, double a
    criteria_passed++;
    
    // Teste Critério 2
-   double max_depth = (m_config.max_distance_atr + 0.5) * atr_value;
+   double max_depth = (m_config.max_distance_atr + m_config.pullback_depth_buffer_atr) * atr_value;
    if (distance_price <= max_depth)
    {
       Print("[DIAGNÓSTICO] ✓ Critério 2: Profundidade OK");
@@ -472,7 +472,7 @@ void CEmasBuyBull::DiagnoseFailedPullback(SPositionInfo &position_info, double a
          if (prev_distance_atr > best_previous_atr)
             best_previous_atr = prev_distance_atr;
          
-         if (prev_distance_atr > current_distance_atr * 1.15)
+         if (prev_distance_atr > current_distance_atr * m_config.pullback_improvement_factor)
          {
             was_further = true;
             found_at_bar = i;
@@ -492,7 +492,7 @@ void CEmasBuyBull::DiagnoseFailedPullback(SPositionInfo &position_info, double a
       Print("[DIAGNÓSTICO] ❌ Critério 3 FALHOU: Sem distância anterior 15% maior");
       Print("[DIAGNÓSTICO]    Distância atual: ", DoubleToString(distance_price / atr_value, 2), " ATR");
       Print("[DIAGNÓSTICO]    Melhor distância anterior: ", DoubleToString(best_previous_atr, 2), " ATR");
-      Print("[DIAGNÓSTICO]    Necessário: ", DoubleToString((distance_price / atr_value) * 1.15, 2), " ATR");
+      Print("[DIAGNÓSTICO]    Necessário: ", DoubleToString((distance_price / atr_value) * m_config.pullback_improvement_factor, 2), " ATR");
    }
    
    // Teste Critério 4
@@ -516,7 +516,7 @@ void CEmasBuyBull::DiagnoseFailedPullback(SPositionInfo &position_info, double a
    }
    
    // Teste Critério 5
-   double max_penetration_below_ema = 1.5 * atr_value;
+   double max_penetration_below_ema = m_config.pullback_max_penetration_atr * atr_value;
    double penetration = MathMax(0, current_ma - last_low);
    
    if (penetration <= max_penetration_below_ema)
@@ -528,7 +528,8 @@ void CEmasBuyBull::DiagnoseFailedPullback(SPositionInfo &position_info, double a
    {
       Print("[DIAGNÓSTICO] ❌ Critério 5 FALHOU: Penetração excessiva");
       Print("[DIAGNÓSTICO]    Penetração: ", DoubleToString(penetration, 5),
-            " | Max permitido: ", DoubleToString(max_penetration_below_ema, 5));
+               " | Max permitido: ", DoubleToString(max_penetration_below_ema, 5),
+               " (", DoubleToString(m_config.pullback_max_penetration_atr, 2), " ATR)");
    }
    
    Print("[DIAGNÓSTICO] ==========================================");
@@ -628,10 +629,9 @@ bool CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
 //+------------------------------------------------------------------+
 bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
 {
-   // Valores min e max de largura
-   double valid_min_width, valid_max_width;
-   valid_min_width = 500;
-   valid_max_width = 3000;
+    // Valores min e max de largura from config
+    double valid_min_width = m_config.boll_micro_min_width;
+    double valid_max_width = m_config.boll_micro_max_width;
 
    // Acesso ao indicador e copia dos valores min e max
    CBollinger *boll_ind = ctx.GetIndicator("boll20");
@@ -672,9 +672,9 @@ bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
    Print("Contagem de Bear: ", slope_upper.bearish_count);
    if (c1)
    {
-      bool c2 = slope_upper.linear_regression.slope_value >= 0.05;
-      bool c3 = slope_upper.discrete_derivative.slope_value >= 0.04;
-      bool c4 = slope_upper.simple_difference.slope_value >= 0.20;
+      bool c2 = slope_upper.linear_regression.slope_value >= m_config.boll_micro_upper_lr_min;
+      bool c3 = slope_upper.discrete_derivative.slope_value >= m_config.boll_micro_upper_dd_min;
+      bool c4 = slope_upper.simple_difference.slope_value >= m_config.boll_micro_upper_sd_min;
 
       Print("SLOPE VALUES MICRO INCLINAÇÃO: &&&&&&&&&&&&&&&");
       Print("LR: ", slope_upper.linear_regression.slope_value);
@@ -690,9 +690,9 @@ bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
    bool slope_lower_is_side_walk = slope_lower.side_count >= 2;
    if (slope_lower_is_side_walk)
    {
-      bool c5 = slope_lower.linear_regression.slope_value <= 0.05 && slope_lower.linear_regression.slope_value >= -0.05;
-      bool c6 = slope_lower.discrete_derivative.slope_value <= 0.04 && slope_lower.discrete_derivative.slope_value >= -0.04;
-      bool c7 = slope_lower.simple_difference.slope_value <= 0.2 && slope_lower.simple_difference.slope_value >= -0.2;
+      bool c5 = slope_lower.linear_regression.slope_value <= m_config.boll_micro_lower_lr_abs_max && slope_lower.linear_regression.slope_value >= -m_config.boll_micro_lower_lr_abs_max;
+      bool c6 = slope_lower.discrete_derivative.slope_value <= m_config.boll_micro_lower_dd_abs_max && slope_lower.discrete_derivative.slope_value >= -m_config.boll_micro_lower_dd_abs_max;
+      bool c7 = slope_lower.simple_difference.slope_value <= m_config.boll_micro_lower_sd_abs_max && slope_lower.simple_difference.slope_value >= -m_config.boll_micro_lower_sd_abs_max;
 
       if (c5 || c6 || c7)
       {

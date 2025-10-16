@@ -58,6 +58,21 @@ public:
    bool enable_pullback_ema9;
    bool enable_pullback_ema21;
 
+   // New configurable parameters for Bollinger Bands micro inclination validation
+   double boll_micro_min_width;
+   double boll_micro_max_width;
+   double boll_micro_upper_lr_min;
+   double boll_micro_upper_dd_min;
+   double boll_micro_upper_sd_min;
+   double boll_micro_lower_lr_abs_max;
+   double boll_micro_lower_dd_abs_max;
+   double boll_micro_lower_sd_abs_max;
+
+   // New configurable parameters for pullback validation
+   double pullback_depth_buffer_atr;
+   double pullback_max_penetration_atr;
+   double pullback_improvement_factor;
+
    // Authorized timeframes for signal generation
    ENUM_TIMEFRAMES authorized_timeframes[];
 
@@ -93,6 +108,21 @@ public:
       bullish_structure_atr_threshold = 0.5;
       adx_min_value = 25;
       adx_max_value = 60;
+
+      // Initialize new Bollinger micro inclination parameters with current hardcoded values
+      boll_micro_min_width = 500;
+      boll_micro_max_width = 3000;
+      boll_micro_upper_lr_min = 0.05;
+      boll_micro_upper_dd_min = 0.04;
+      boll_micro_upper_sd_min = 0.20;
+      boll_micro_lower_lr_abs_max = 0.05;
+      boll_micro_lower_dd_abs_max = 0.04;
+      boll_micro_lower_sd_abs_max = 0.20;
+
+      // Initialize new pullback parameters with current hardcoded values
+      pullback_depth_buffer_atr = 0.5;
+      pullback_max_penetration_atr = 1.5;
+      pullback_improvement_factor = 1.15;
 
       // Initialize validation flags to true by default
       enable_ema_alignment_m15 = true;
@@ -151,6 +181,21 @@ public:
    bool enable_adx_filter;
    bool enable_pullback_ema9;
    bool enable_pullback_ema21;
+
+   // New configurable parameters for Bollinger Bands micro inclination validation
+   double boll_micro_min_width;
+   double boll_micro_max_width;
+   double boll_micro_upper_lr_min;
+   double boll_micro_upper_dd_min;
+   double boll_micro_upper_sd_min;
+   double boll_micro_lower_lr_abs_max;
+   double boll_micro_lower_dd_abs_max;
+   double boll_micro_lower_sd_abs_max;
+
+   // New configurable parameters for pullback validation
+   double pullback_depth_buffer_atr;
+   double pullback_max_penetration_atr;
+   double pullback_improvement_factor;
 
    // Authorized timeframes for signal generation
    ENUM_TIMEFRAMES authorized_timeframes[];
