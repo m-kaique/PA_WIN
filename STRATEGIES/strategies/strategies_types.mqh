@@ -57,6 +57,7 @@ public:
    bool enable_adx_filter;
    bool enable_pullback_ema9;
    bool enable_pullback_ema21;
+   bool enable_bollinger_filter;
 
    // New configurable parameters for Bollinger Bands micro inclination validation
    double boll_micro_min_width;
@@ -136,6 +137,7 @@ public:
       enable_adx_filter = true;
       enable_pullback_ema9 = true;
       enable_pullback_ema21 = true;
+      enable_bollinger_filter = true;
 
       // Initialize authorized timeframes (default to M15 and M3 for this strategy)
       ArrayResize(authorized_timeframes, 2);

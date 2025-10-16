@@ -185,6 +185,7 @@ CEmasBullBuyConfig *CStrategyConfigParser::ParseEmasBuyBullConfig(CJAVal *strate
     config.enable_adx_filter = strategy_json["enable_adx_filter"].ToBool();
     config.enable_pullback_ema9 = strategy_json["enable_pullback_ema9"].ToBool();
     config.enable_pullback_ema21 = strategy_json["enable_pullback_ema21"].ToBool();
+    config.enable_bollinger_filter = strategy_json["enable_bollinger_filter"].ToBool();
 
     // New configurable parameters for Bollinger Bands micro inclination validation
     CJAVal *bollinger_filter_settings = strategy_json["bollinger_filter_settings"];

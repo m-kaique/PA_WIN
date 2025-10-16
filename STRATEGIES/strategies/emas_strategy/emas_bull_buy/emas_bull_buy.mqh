@@ -824,7 +824,7 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    bool ema_alignment_m15_ok = m_config.enable_ema_alignment_m15 ? (EMA9_above_EMA21_M15 && EMA21_above_EMA50_M15) : true;
    bool ema_alignment_m3_ok = m_config.enable_ema_alignment_m3 ? (EMA9_above_EMA21_M3 && EMA21_above_EMA50_M3) : true;
 
-   bool is_bollinger_valid = BollingerHasValidStructure(ctx_m3);
+   bool is_bollinger_valid = m_config.enable_bollinger_filter ? BollingerHasValidStructure(ctx_m3) : true;
 
    bool filtros_ok = ema_alignment_m15_ok && ema_alignment_m3_ok &&
                      strong_trend_m15 && strong_trend_m3 &&
@@ -982,6 +982,7 @@ void CEmasBuyBull::DoLog()
    Print("Enable ADX Filter: ", m_config.enable_adx_filter ? "Sim" : "Não");
    Print("Enable Pullback EMA9: ", m_config.enable_pullback_ema9 ? "Sim" : "Não");
    Print("Enable Pullback EMA21: ", m_config.enable_pullback_ema21 ? "Sim" : "Não");
+   Print("Enable Bollinger Filter: ", m_config.enable_bollinger_filter ? "Sim" : "Não");
 
    // Obter contextos
    TF_CTX *ctx_m15 = m_context_provider.GetContext(m_symbol, PERIOD_M15);
@@ -1145,6 +1146,7 @@ void CEmasBuyBull::DoLog()
    Print("ADX Filter: ", m_config.enable_adx_filter ? "Habilitada" : "Desabilitada");
    Print("Pullback EMA9: ", m_config.enable_pullback_ema9 ? "Habilitada" : "Desabilitada");
    Print("Pullback EMA21: ", m_config.enable_pullback_ema21 ? "Habilitada" : "Desabilitada");
+   Print("Bollinger Filter: ", m_config.enable_bollinger_filter ? "Habilitada" : "Desabilitada");
 
    Print("--- CONDIÇÕES DE ALINHAMENTO EMAs ---");
    Print("M15 - EMA9 > EMA21: ", EMA9_above_EMA21_M15 ? "Sim" : "Não");
