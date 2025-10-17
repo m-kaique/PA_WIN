@@ -224,96 +224,158 @@ bool CEmasBearSell::HasBearishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3)
 bool CEmasBearSell::IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma)
 {
    if (ctx == NULL || ma == NULL || atr_value <= 0)
+   {
+      Print("[PULLBACK DEBUG BEAR] Contexto ou indicadores nulos. Retornando false.");
       return false;
+   }
+
+   int digits = (int)SymbolInfoInteger(m_current_symbol, SYMBOL_DIGITS);
+   double point = SymbolInfoDouble(m_current_symbol, SYMBOL_POINT);
+   double pip_value = (digits == 3 || digits == 5) ? point * 10.0 : point;
+
+   if (pip_value <= 0)
+   {
+      Print("[PULLBACK DEBUG BEAR] Pip value inválido. Retornando false.");
+      return false;
+   }
+
+   // position_info.distance vem em pips. Convertendo para preço para comparar com ATR (preço).
+   double distance_price = position_info.distance * pip_value;
 
    ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
    double last_close = iClose(m_current_symbol, tf, 1);
+   double last_high = iHigh(m_current_symbol, tf, 1);
    double current_ma = ma.GetValue(1);
+   string tf_name = EnumToString(tf);
 
    Print("[PULLBACK DEBUG BEAR] ========================================");
+   Print("[PULLBACK DEBUG BEAR] Iniciando validação de pullback (", tf_name, ")");
    Print("[PULLBACK DEBUG BEAR] Preço Atual: ", DoubleToString(last_close, _Digits));
    Print("[PULLBACK DEBUG BEAR] EMA Atual: ", DoubleToString(current_ma, _Digits));
-   Print("[PULLBACK DEBUG BEAR] Distance: ", DoubleToString(position_info.distance, 5));
+   Print("[PULLBACK DEBUG BEAR] Distance (preço): ", DoubleToString(distance_price, 5));
+   Print("[PULLBACK DEBUG BEAR] Position Type: ", EnumToString(position_info.position));
 
-   // CRITÉRIO 1: SKIPPED (validado por Critério 3)
-   Print("[PULLBACK DEBUG BEAR] ✓ Critério 1 SKIP");
+   // ========================================================================
+   // CRITÉRIO 1 (CORRIGIDO): Estava em estrutura de baixa anteriormente
+   // ========================================================================
+   // NÃO exigir que o preço atual esteja abaixo
+   // Apenas validar que VEIO de uma posição abaixo (Critério 3)
+   // Um pullback POR DEFINIÇÃO começa quando o preço cruza/toca a resistência (EMA)
+   Print("[PULLBACK DEBUG BEAR] ✓ Critério 1 SKIP: Será validado pelo Critério 3 (estrutura anterior)");
 
-   // CRITÉRIO 2: Profundidade máxima
-   // Em Bear: preço sobe na recuperação, distância é (preço - EMA)
-   double max_depth = (m_config.max_distance_atr + 0.5) * atr_value;
-   
-   if (position_info.distance > max_depth)
+   // ========================================================================
+   // CRITÉRIO 2: Distância não pode ser excessiva (limite de profundidade)
+   // ========================================================================
+   // O pullback não pode subir mais que a profundidade máxima permitida
+   double max_depth = (m_config.max_distance_atr + m_config.pullback_depth_buffer_atr) * atr_value;
+
+   if (distance_price > max_depth)
    {
       Print("[PULLBACK DEBUG BEAR] ❌ CRITÉRIO 2 FALHOU: Pullback muito profundo");
+      Print("[PULLBACK DEBUG BEAR]    Distance: ", DoubleToString(distance_price, 5),
+            " > Max permitido: ", DoubleToString(max_depth, 5),
+            " (config: ", DoubleToString(m_config.max_distance_atr, 2), " ATR + ",
+            DoubleToString(m_config.pullback_depth_buffer_atr, 2), " buffer)");
       return false;
    }
-   Print("[PULLBACK DEBUG BEAR] ✓ Critério 2 OK: Profundidade OK");
+   Print("[PULLBACK DEBUG BEAR] ✓ Critério 2 OK: Profundidade dentro dos limites (",
+         DoubleToString(distance_price / atr_value, 2), " ATR)");
 
-   // CRITÉRIO 3: Prova de retração
-   // Procurar barra anterior onde preço estava mais longe ABAIXO da EMA
-   bool was_further_below = false;
-   
+   // ========================================================================
+   // CRITÉRIO 3 (CRÍTICO): Validar que veio de distância ANTERIOR MAIOR (abaixo da EMA)
+   // ========================================================================
+   bool was_further = false;
+   int found_at_bar = -1;
+   double best_previous_atr = 0;
+
    for (int i = 2; i <= MathMin(m_config.max_duration_candles + 1, 50); i++)
    {
       double prev_close = iClose(m_current_symbol, tf, i);
       double prev_ma = ma.GetValue(i);
-      
-      if (prev_close < prev_ma)  // ← DIFERENÇA: <, não >
+      if (prev_close < prev_ma) // veio de baixo da EMA
       {
-         double prev_distance = prev_ma - prev_close;  // ← DIFERENÇA: EMA - preço
+         double prev_distance = prev_ma - prev_close;
          double prev_distance_atr = prev_distance / atr_value;
-         double current_distance_atr = position_info.distance / atr_value;
-         
-         if (prev_distance_atr > current_distance_atr * 1.15)
+         double current_distance_atr = distance_price / atr_value;
+
+         if (prev_distance_atr > best_previous_atr)
+            best_previous_atr = prev_distance_atr;
+
+         if (prev_distance_atr > current_distance_atr * m_config.pullback_improvement_factor)
          {
-            was_further_below = true;
-            Print("[PULLBACK DEBUG BEAR] ✓ Critério 3 OK: Retração comprovada na barra ", i);
+            was_further = true;
+            found_at_bar = i;
             break;
          }
       }
    }
-   
-   if (!was_further_below)
+
+   if (was_further)
    {
-      Print("[PULLBACK DEBUG BEAR] ❌ CRITÉRIO 3 FALHOU");
+      Print("[DIAGNÓSTICO BEAR] ✓ Critério 3: Distância anterior significativa");
+      Print("[DIAGNÓSTICO BEAR]    Encontrado na barra ", found_at_bar);
+      Print("[DIAGNÓSTICO BEAR]    Melhor distância anterior (ATR): ", DoubleToString(best_previous_atr, 2));
+   }
+   else
+   {
+      Print("[DIAGNÓSTICO BEAR] ❌ Critério 3 falhou: Não encontrou distância anterior suficiente");
       return false;
    }
 
-   // CRITÉRIO 4: Posição válida
-   bool invalid_position_for_pullback = (
-      position_info.position == INDICATOR_CROSSES_CENTER_BODY ||
-      position_info.position == INDICATOR_CROSSES_UPPER_SHADOW ||
-      position_info.position == CANDLE_ABOVE ||
-      position_info.position == CANDLE_COMPLETELY_ABOVE ||  // Muito abaixo (reversão completa)
-      position_info.position == CANDLE_ABOVE_WITH_DISTANCE         // Abaixo (já reversão)
+   // ========================================================================
+   // CRITÉRIO 4: Validar padrão de posição do candle relativo à EMA
+   // Aceitamos aproximações/contatos por cima da EMA, rejeitamos sinais de rompimento para cima
+   // ========================================================================
+   bool invalid_position_for_pullback = (position_info.position == INDICATOR_CROSSES_LOWER_SHADOW || // EMA abaixo da vela -> preço perdeu resistência
+                                         position_info.position == CANDLE_ABOVE ||
+                                         position_info.position == CANDLE_COMPLETELY_ABOVE ||       // Muito acima (reversão completa)
+                                         position_info.position == CANDLE_ABOVE_WITH_DISTANCE ||    // Acima (já reversão)
+                                         position_info.position == INDICATOR_CANDLE_POSITION_FAILED // Posição não confiável
    );
-   
+
    if (invalid_position_for_pullback)
    {
-      Print("[PULLBACK DEBUG BEAR] ❌ CRITÉRIO 4 FALHOU");
+      Print("[PULLBACK DEBUG BEAR] ❌ CRITÉRIO 4 FALHOU: Padrão indica reversão, não pullback");
+      Print("[PULLBACK DEBUG BEAR]    Position: ", EnumToString(position_info.position));
       return false;
    }
-   Print("[PULLBACK DEBUG BEAR] ✓ Critério 4 OK");
+   Print("[PULLBACK DEBUG BEAR] ✓ Critério 4 OK: Padrão de posição válido (", EnumToString(position_info.position), ")");
 
-   // CRITÉRIO 5: Penetração para cima limitada
-   // Em Bear: penetração é preço subindo acima da EMA
-   double max_penetration_above_ema = 1.5 * atr_value;
-   double penetration = MathMax(0, last_close - current_ma);  // ← DIFERENÇA: preço - EMA
-   
+   // ========================================================================
+   // CRITÉRIO 5: Penetração acima da EMA não é excessiva
+   // ========================================================================
+   // Um pullback pode penetrar levemente acima da EMA (até max_penetration_atr ATR)
+   // Isso é normal e esperado em price action real
+   // O stop loss será colocado acima dessa penetração
+   double max_penetration_above_ema = m_config.pullback_max_penetration_atr * atr_value;
+
+   // Usamos o topo da última vela para medir a penetração real.
+   double penetration = MathMax(0, last_high - current_ma);
+
    if (penetration > max_penetration_above_ema)
    {
-      Print("[PULLBACK DEBUG BEAR] ❌ CRITÉRIO 5 FALHOU");
+      Print("[PULLBACK DEBUG BEAR] ❌ CRITÉRIO 5 FALHOU: Penetração muito profunda acima da EMA");
+      Print("[PULLBACK DEBUG BEAR]    Penetração: ", DoubleToString(penetration / atr_value, 2), " ATR",
+            " > Máx permitido: ", DoubleToString(m_config.pullback_max_penetration_atr, 2), " ATR)");
       return false;
    }
-   Print("[PULLBACK DEBUG BEAR] ✓ Critério 5 OK");
+   Print("[PULLBACK DEBUG BEAR] ✓ Critério 5 OK: Penetração dentro do permitido");
+
+   // ========================================================================
+   // CRITÉRIO 6: Duração máxima do pullback em velas
+   // ========================================================================
+   int duration_bars = (int)MathRound(MathMin(distance_price / atr_value, m_config.max_duration_candles));
+   if (duration_bars > m_config.max_duration_candles)
+   {
+      Print("[PULLBACK DEBUG BEAR] ❌ CRITÉRIO 6 FALHOU: Pullback demorou velas demais (", duration_bars, " > ", m_config.max_duration_candles, ")");
+      return false;
+   }
+   Print("[PULLBACK DEBUG BEAR] ✓ Critério 6 OK: Duração dentro do limite");
 
    Print("[PULLBACK DEBUG BEAR] ✅ PULLBACK VÁLIDO BEAR CONFIRMADO");
    Print("[PULLBACK DEBUG BEAR] ========================================");
    return true;
 }
-//+------------------------------------------------------------------+
-//| Analisar ambiente de volatilidade (mesmo para bull e bear)      |
-//+------------------------------------------------------------------+
 bool CEmasBearSell::IsGoodVolatilityEnvironment(TF_CTX *ctx)
 {
    if (ctx == NULL)
@@ -576,22 +638,18 @@ SStrategySignal CEmasBearSell::CheckForSignal()
    // === PONTOS DE ENTRADA - PULLBACK PARA CIMA (até resistência) ===
    SPositionInfo ema9_m3_position = ema9_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
    // INVERSÃO: Preço tocando ACIMA (upper shadow/body)
-   bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
-                                  ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
+   bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
                                   ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY ||
-                                  ema9_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW
-                                  // ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY
-   );
+                                  ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY ||
+                                  ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY);
    bool valid_pullback_EMA9_M3 = IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3);
 
    SPositionInfo ema21_m3_position = ema21_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
    // INVERSÃO: Preço tocando ACIMA (upper shadow/body)
-   bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
-                                   ema21_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
-                                   ema9_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW
-                                   //||
-                                   // ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY
-   );
+   bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
+                                   ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY ||
+                                   ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY ||
+                                   ema21_m3_position.position == INDICATOR_CROSSES_LOWER_BODY);
    bool valid_pullback_EMA21_M3 = IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3);
 
    // === CRITÉRIO FINAL DE ENTRADA ===
