@@ -1033,10 +1033,11 @@ void CEmasBuyBull::DoLog()
    // Obter contextos
    TF_CTX *ctx_m15 = m_context_provider.GetContext(m_symbol, PERIOD_M15);
    TF_CTX *ctx_m3 = m_context_provider.GetContext(m_symbol, PERIOD_M3);
+   TF_CTX *ctx_h1 = m_context_provider.GetContext(m_symbol, PERIOD_H1);
 
-   if (ctx_m15 == NULL || ctx_m3 == NULL)
+   if (ctx_m15 == NULL || ctx_m3 == NULL || ctx_h1 == NULL)
    {
-      Print("ERRO: Contextos ausentes (M15: ", ctx_m15 != NULL, ", M3: ", ctx_m3 != NULL, ")");
+      Print("ERRO: Contextos ausentes (M15: ", ctx_m15 != NULL, ", M3: ", ctx_m3 != NULL, ", H1: ", ctx_h1 != NULL, ")");
       return;
    }
 
@@ -1164,6 +1165,68 @@ void CEmasBuyBull::DoLog()
       SSlopeValidation slope_lower = boll_m3.GetSlopeValidation(atr_value, COPY_LOWER);
 
       Print("--- BOLLINGER SLOPES M3 ---");
+      Print("Upper - Linear Regr: ", DoubleToString(slope_upper.linear_regression.slope_value, 5), " Dir: ", EnumToString(slope_upper.linear_regression.trend_direction));
+      Print("Upper - Discrt Der: ", DoubleToString(slope_upper.discrete_derivative.slope_value, 5), " Dir: ", EnumToString(slope_upper.discrete_derivative.trend_direction));
+      Print("Upper - Simple Diff: ", DoubleToString(slope_upper.simple_difference.slope_value, 5), " Dir: ", EnumToString(slope_upper.simple_difference.trend_direction));
+      Print("Middle - Linear Regr: ", DoubleToString(slope_middle.linear_regression.slope_value, 5), " Dir: ", EnumToString(slope_middle.linear_regression.trend_direction));
+      Print("Middle - Discrt Der: ", DoubleToString(slope_middle.discrete_derivative.slope_value, 5), " Dir: ", EnumToString(slope_middle.discrete_derivative.trend_direction));
+      Print("Middle - Simple Diff: ", DoubleToString(slope_middle.simple_difference.slope_value, 5), " Dir: ", EnumToString(slope_middle.simple_difference.trend_direction));
+      Print("Lower - Linear Regr: ", DoubleToString(slope_lower.linear_regression.slope_value, 5), " Dir: ", EnumToString(slope_lower.linear_regression.trend_direction));
+      Print("Lower - Discrt Der: ", DoubleToString(slope_lower.discrete_derivative.slope_value, 5), " Dir: ", EnumToString(slope_lower.discrete_derivative.trend_direction));
+      Print("Lower - Simple Diff: ", DoubleToString(slope_lower.simple_difference.slope_value, 5), " Dir: ", EnumToString(slope_lower.simple_difference.trend_direction));
+   }
+
+   // Bollinger Bands M15
+   CBollinger *boll_m15 = ctx_m15.GetIndicator("boll20");
+   if (boll_m15 != NULL)
+   {
+      double upper_band = boll_m15.GetUpper(1);
+      double middle_band = boll_m15.GetValue(1);
+      double lower_band = boll_m15.GetLower(1);
+      double band_width = upper_band - lower_band;
+
+      Print("--- BOLLINGER BANDS M15 ---");
+      Print("Upper: ", DoubleToString(upper_band, _Digits));
+      Print("Middle: ", DoubleToString(middle_band, _Digits));
+      Print("Lower: ", DoubleToString(lower_band, _Digits));
+      Print("Width: ", DoubleToString(band_width, 2));
+
+      SSlopeValidation slope_upper = boll_m15.GetSlopeValidation(atr_value, COPY_UPPER);
+      SSlopeValidation slope_middle = boll_m15.GetSlopeValidation(atr_value, COPY_MIDDLE);
+      SSlopeValidation slope_lower = boll_m15.GetSlopeValidation(atr_value, COPY_LOWER);
+
+      Print("--- BOLLINGER SLOPES M15 ---");
+      Print("Upper - Linear Regr: ", DoubleToString(slope_upper.linear_regression.slope_value, 5), " Dir: ", EnumToString(slope_upper.linear_regression.trend_direction));
+      Print("Upper - Discrt Der: ", DoubleToString(slope_upper.discrete_derivative.slope_value, 5), " Dir: ", EnumToString(slope_upper.discrete_derivative.trend_direction));
+      Print("Upper - Simple Diff: ", DoubleToString(slope_upper.simple_difference.slope_value, 5), " Dir: ", EnumToString(slope_upper.simple_difference.trend_direction));
+      Print("Middle - Linear Regr: ", DoubleToString(slope_middle.linear_regression.slope_value, 5), " Dir: ", EnumToString(slope_middle.linear_regression.trend_direction));
+      Print("Middle - Discrt Der: ", DoubleToString(slope_middle.discrete_derivative.slope_value, 5), " Dir: ", EnumToString(slope_middle.discrete_derivative.trend_direction));
+      Print("Middle - Simple Diff: ", DoubleToString(slope_middle.simple_difference.slope_value, 5), " Dir: ", EnumToString(slope_middle.simple_difference.trend_direction));
+      Print("Lower - Linear Regr: ", DoubleToString(slope_lower.linear_regression.slope_value, 5), " Dir: ", EnumToString(slope_lower.linear_regression.trend_direction));
+      Print("Lower - Discrt Der: ", DoubleToString(slope_lower.discrete_derivative.slope_value, 5), " Dir: ", EnumToString(slope_lower.discrete_derivative.trend_direction));
+      Print("Lower - Simple Diff: ", DoubleToString(slope_lower.simple_difference.slope_value, 5), " Dir: ", EnumToString(slope_lower.simple_difference.trend_direction));
+   }
+
+   // Bollinger Bands H1
+   CBollinger *boll_h1 = ctx_h1.GetIndicator("boll20");
+   if (boll_h1 != NULL)
+   {
+      double upper_band = boll_h1.GetUpper(1);
+      double middle_band = boll_h1.GetValue(1);
+      double lower_band = boll_h1.GetLower(1);
+      double band_width = upper_band - lower_band;
+
+      Print("--- BOLLINGER BANDS H1 ---");
+      Print("Upper: ", DoubleToString(upper_band, _Digits));
+      Print("Middle: ", DoubleToString(middle_band, _Digits));
+      Print("Lower: ", DoubleToString(lower_band, _Digits));
+      Print("Width: ", DoubleToString(band_width, 2));
+
+      SSlopeValidation slope_upper = boll_h1.GetSlopeValidation(atr_value, COPY_UPPER);
+      SSlopeValidation slope_middle = boll_h1.GetSlopeValidation(atr_value, COPY_MIDDLE);
+      SSlopeValidation slope_lower = boll_h1.GetSlopeValidation(atr_value, COPY_LOWER);
+
+      Print("--- BOLLINGER SLOPES H1 ---");
       Print("Upper - Linear Regr: ", DoubleToString(slope_upper.linear_regression.slope_value, 5), " Dir: ", EnumToString(slope_upper.linear_regression.trend_direction));
       Print("Upper - Discrt Der: ", DoubleToString(slope_upper.discrete_derivative.slope_value, 5), " Dir: ", EnumToString(slope_upper.discrete_derivative.trend_direction));
       Print("Upper - Simple Diff: ", DoubleToString(slope_upper.simple_difference.slope_value, 5), " Dir: ", EnumToString(slope_upper.simple_difference.trend_direction));
