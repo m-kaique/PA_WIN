@@ -185,29 +185,79 @@ CEmasBullBuyConfig *CStrategyConfigParser::ParseEmasBuyBullConfig(CJAVal *strate
     config.enable_adx_filter = strategy_json["enable_adx_filter"].ToBool();
     config.enable_pullback_ema9 = strategy_json["enable_pullback_ema9"].ToBool();
     config.enable_pullback_ema21 = strategy_json["enable_pullback_ema21"].ToBool();
-    config.enable_bollinger_filter = strategy_json["enable_bollinger_filter"].ToBool();
+    config.enable_bollinger_filter_m3 = strategy_json["enable_bollinger_filter_m3"].ToBool();
+    config.enable_bollinger_filter_m15 = strategy_json["enable_bollinger_filter_m15"].ToBool();
+    config.enable_bollinger_filter_h1 = strategy_json["enable_bollinger_filter_h1"].ToBool();
 
-    // New configurable parameters for Bollinger Bands micro inclination validation
-    CJAVal *bollinger_filter_settings = strategy_json["bollinger_filter_settings"];
-    if (bollinger_filter_settings != NULL)
+    // New configurable parameters for Bollinger Bands micro inclination validation - M3
+    CJAVal *bollinger_filter_m3_settings = strategy_json["bollinger_filter_m3_settings"];
+    if (bollinger_filter_m3_settings != NULL)
     {
-        config.boll_micro_min_width = bollinger_filter_settings["min_width"].ToDbl();
-        config.boll_micro_max_width = bollinger_filter_settings["max_width"].ToDbl();
+        config.boll_micro_m3_min_width = bollinger_filter_m3_settings["min_width"].ToDbl();
+        config.boll_micro_m3_max_width = bollinger_filter_m3_settings["max_width"].ToDbl();
 
-        CJAVal *micro_upper_slopes = bollinger_filter_settings["micro_upper_slopes"];
+        CJAVal *micro_upper_slopes = bollinger_filter_m3_settings["micro_upper_slopes"];
         if (micro_upper_slopes != NULL)
         {
-            config.boll_micro_upper_lr_min = micro_upper_slopes["lr_min"].ToDbl();
-            config.boll_micro_upper_dd_min = micro_upper_slopes["dd_min"].ToDbl();
-            config.boll_micro_upper_sd_min = micro_upper_slopes["sd_min"].ToDbl();
+            config.boll_micro_m3_upper_lr_min = micro_upper_slopes["lr_min"].ToDbl();
+            config.boll_micro_m3_upper_dd_min = micro_upper_slopes["dd_min"].ToDbl();
+            config.boll_micro_m3_upper_sd_min = micro_upper_slopes["sd_min"].ToDbl();
         }
 
-        CJAVal *micro_lower_slopes = bollinger_filter_settings["micro_lower_slopes"];
+        CJAVal *micro_lower_slopes = bollinger_filter_m3_settings["micro_lower_slopes"];
         if (micro_lower_slopes != NULL)
         {
-            config.boll_micro_lower_lr_abs_max = micro_lower_slopes["lr_abs_max"].ToDbl();
-            config.boll_micro_lower_dd_abs_max = micro_lower_slopes["dd_abs_max"].ToDbl();
-            config.boll_micro_lower_sd_abs_max = micro_lower_slopes["sd_abs_max"].ToDbl();
+            config.boll_micro_m3_lower_lr_abs_max = micro_lower_slopes["lr_abs_max"].ToDbl();
+            config.boll_micro_m3_lower_dd_abs_max = micro_lower_slopes["dd_abs_max"].ToDbl();
+            config.boll_micro_m3_lower_sd_abs_max = micro_lower_slopes["sd_abs_max"].ToDbl();
+        }
+    }
+
+    // New configurable parameters for Bollinger Bands micro inclination validation - M15
+    CJAVal *bollinger_filter_m15_settings = strategy_json["bollinger_filter_m15_settings"];
+    if (bollinger_filter_m15_settings != NULL)
+    {
+        config.boll_micro_m15_min_width = bollinger_filter_m15_settings["min_width"].ToDbl();
+        config.boll_micro_m15_max_width = bollinger_filter_m15_settings["max_width"].ToDbl();
+
+        CJAVal *micro_upper_slopes = bollinger_filter_m15_settings["micro_upper_slopes"];
+        if (micro_upper_slopes != NULL)
+        {
+            config.boll_micro_m15_upper_lr_min = micro_upper_slopes["lr_min"].ToDbl();
+            config.boll_micro_m15_upper_dd_min = micro_upper_slopes["dd_min"].ToDbl();
+            config.boll_micro_m15_upper_sd_min = micro_upper_slopes["sd_min"].ToDbl();
+        }
+
+        CJAVal *micro_lower_slopes = bollinger_filter_m15_settings["micro_lower_slopes"];
+        if (micro_lower_slopes != NULL)
+        {
+            config.boll_micro_m15_lower_lr_abs_max = micro_lower_slopes["lr_abs_max"].ToDbl();
+            config.boll_micro_m15_lower_dd_abs_max = micro_lower_slopes["dd_abs_max"].ToDbl();
+            config.boll_micro_m15_lower_sd_abs_max = micro_lower_slopes["sd_abs_max"].ToDbl();
+        }
+    }
+
+    // New configurable parameters for Bollinger Bands micro inclination validation - H1
+    CJAVal *bollinger_filter_h1_settings = strategy_json["bollinger_filter_h1_settings"];
+    if (bollinger_filter_h1_settings != NULL)
+    {
+        config.boll_micro_h1_min_width = bollinger_filter_h1_settings["min_width"].ToDbl();
+        config.boll_micro_h1_max_width = bollinger_filter_h1_settings["max_width"].ToDbl();
+
+        CJAVal *micro_upper_slopes = bollinger_filter_h1_settings["micro_upper_slopes"];
+        if (micro_upper_slopes != NULL)
+        {
+            config.boll_micro_h1_upper_lr_min = micro_upper_slopes["lr_min"].ToDbl();
+            config.boll_micro_h1_upper_dd_min = micro_upper_slopes["dd_min"].ToDbl();
+            config.boll_micro_h1_upper_sd_min = micro_upper_slopes["sd_min"].ToDbl();
+        }
+
+        CJAVal *micro_lower_slopes = bollinger_filter_h1_settings["micro_lower_slopes"];
+        if (micro_lower_slopes != NULL)
+        {
+            config.boll_micro_h1_lower_lr_abs_max = micro_lower_slopes["lr_abs_max"].ToDbl();
+            config.boll_micro_h1_lower_dd_abs_max = micro_lower_slopes["dd_abs_max"].ToDbl();
+            config.boll_micro_h1_lower_sd_abs_max = micro_lower_slopes["sd_abs_max"].ToDbl();
         }
     }
 

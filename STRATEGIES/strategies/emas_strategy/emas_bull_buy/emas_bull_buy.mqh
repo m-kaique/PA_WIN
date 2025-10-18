@@ -629,9 +629,49 @@ bool CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
 //+------------------------------------------------------------------+
 bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
 {
-    // Valores min e max de largura from config
-    double valid_min_width = m_config.boll_micro_min_width;
-    double valid_max_width = m_config.boll_micro_max_width;
+     // Valores min e max de largura from config baseados no timeframe
+     double valid_min_width, valid_max_width;
+     double upper_lr_min, upper_dd_min, upper_sd_min;
+     double lower_lr_abs_max, lower_dd_abs_max, lower_sd_abs_max;
+
+     if (ctx.GetTimeFrame() == PERIOD_M3)
+     {
+         valid_min_width = m_config.boll_micro_m3_min_width;
+         valid_max_width = m_config.boll_micro_m3_max_width;
+         upper_lr_min = m_config.boll_micro_m3_upper_lr_min;
+         upper_dd_min = m_config.boll_micro_m3_upper_dd_min;
+         upper_sd_min = m_config.boll_micro_m3_upper_sd_min;
+         lower_lr_abs_max = m_config.boll_micro_m3_lower_lr_abs_max;
+         lower_dd_abs_max = m_config.boll_micro_m3_lower_dd_abs_max;
+         lower_sd_abs_max = m_config.boll_micro_m3_lower_sd_abs_max;
+     }
+     else if (ctx.GetTimeFrame() == PERIOD_M15)
+     {
+         valid_min_width = m_config.boll_micro_m15_min_width;
+         valid_max_width = m_config.boll_micro_m15_max_width;
+         upper_lr_min = m_config.boll_micro_m15_upper_lr_min;
+         upper_dd_min = m_config.boll_micro_m15_upper_dd_min;
+         upper_sd_min = m_config.boll_micro_m15_upper_sd_min;
+         lower_lr_abs_max = m_config.boll_micro_m15_lower_lr_abs_max;
+         lower_dd_abs_max = m_config.boll_micro_m15_lower_dd_abs_max;
+         lower_sd_abs_max = m_config.boll_micro_m15_lower_sd_abs_max;
+     }
+     else if (ctx.GetTimeFrame() == PERIOD_H1)
+     {
+         valid_min_width = m_config.boll_micro_h1_min_width;
+         valid_max_width = m_config.boll_micro_h1_max_width;
+         upper_lr_min = m_config.boll_micro_h1_upper_lr_min;
+         upper_dd_min = m_config.boll_micro_h1_upper_dd_min;
+         upper_sd_min = m_config.boll_micro_h1_upper_sd_min;
+         lower_lr_abs_max = m_config.boll_micro_h1_lower_lr_abs_max;
+         lower_dd_abs_max = m_config.boll_micro_h1_lower_dd_abs_max;
+         lower_sd_abs_max = m_config.boll_micro_h1_lower_sd_abs_max;
+     }
+     else
+     {
+         Print("AVISO: BollingerHasValidStructure chamado para timeframe não suportado: ", EnumToString(ctx.GetTimeFrame()), " - retornando false");
+         return false;
+     }
 
    // Acesso ao indicador e copia dos valores min e max
    CBollinger *boll_ind = ctx.GetIndicator("boll20");
@@ -672,9 +712,9 @@ bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
    Print("Contagem de Bear: ", slope_upper.bearish_count);
    if (c1)
    {
-      bool c2 = slope_upper.linear_regression.slope_value >= m_config.boll_micro_upper_lr_min;
-      bool c3 = slope_upper.discrete_derivative.slope_value >= m_config.boll_micro_upper_dd_min;
-      bool c4 = slope_upper.simple_difference.slope_value >= m_config.boll_micro_upper_sd_min;
+      bool c2 = slope_upper.linear_regression.slope_value >= upper_lr_min;
+      bool c3 = slope_upper.discrete_derivative.slope_value >= upper_dd_min;
+      bool c4 = slope_upper.simple_difference.slope_value >= upper_sd_min;
 
       Print("SLOPE VALUES MICRO INCLINAÇÃO: &&&&&&&&&&&&&&&");
       Print("LR: ", slope_upper.linear_regression.slope_value);
@@ -690,9 +730,9 @@ bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
    bool slope_lower_is_side_walk = slope_lower.side_count >= 2;
    if (slope_lower_is_side_walk)
    {
-      bool c5 = slope_lower.linear_regression.slope_value <= m_config.boll_micro_lower_lr_abs_max && slope_lower.linear_regression.slope_value >= -m_config.boll_micro_lower_lr_abs_max;
-      bool c6 = slope_lower.discrete_derivative.slope_value <= m_config.boll_micro_lower_dd_abs_max && slope_lower.discrete_derivative.slope_value >= -m_config.boll_micro_lower_dd_abs_max;
-      bool c7 = slope_lower.simple_difference.slope_value <= m_config.boll_micro_lower_sd_abs_max && slope_lower.simple_difference.slope_value >= -m_config.boll_micro_lower_sd_abs_max;
+      bool c5 = slope_lower.linear_regression.slope_value <= lower_lr_abs_max && slope_lower.linear_regression.slope_value >= -lower_lr_abs_max;
+      bool c6 = slope_lower.discrete_derivative.slope_value <= lower_dd_abs_max && slope_lower.discrete_derivative.slope_value >= -lower_dd_abs_max;
+      bool c7 = slope_lower.simple_difference.slope_value <= lower_sd_abs_max && slope_lower.simple_difference.slope_value >= -lower_sd_abs_max;
 
       if (c5 || c6 || c7)
       {
@@ -714,13 +754,15 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    // Obter contextos dos timeframes
    TF_CTX *ctx_m15 = m_context_provider.GetContext(m_symbol, PERIOD_M15);
    TF_CTX *ctx_m3 = m_context_provider.GetContext(m_symbol, PERIOD_M3);
+   TF_CTX *ctx_h1 = m_context_provider.GetContext(m_symbol, PERIOD_H1);
 
    bool have_ctx_m15 = (ctx_m15 != NULL);
    bool have_ctx_m3 = (ctx_m3 != NULL);
+   bool have_ctx_h1 = (ctx_h1 != NULL);
 
-   if (!have_ctx_m15 || !have_ctx_m3)
+   if (!have_ctx_m15 || !have_ctx_m3 || !have_ctx_h1)
    {
-      Print("AVISO: Contextos ausentes em CheckForSignal (M15:", have_ctx_m15, ", M3:", have_ctx_m3, ")");
+      Print("AVISO: Contextos ausentes em CheckForSignal (M15:", have_ctx_m15, ", M3:", have_ctx_m3, ", H1:", have_ctx_h1, ")");
       return signal;
    }
 
@@ -824,14 +866,16 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    bool ema_alignment_m15_ok = m_config.enable_ema_alignment_m15 ? (EMA9_above_EMA21_M15 && EMA21_above_EMA50_M15) : true;
    bool ema_alignment_m3_ok = m_config.enable_ema_alignment_m3 ? (EMA9_above_EMA21_M3 && EMA21_above_EMA50_M3) : true;
 
-   bool is_bollinger_valid = m_config.enable_bollinger_filter ? BollingerHasValidStructure(ctx_m3) : true;
+   bool is_bollinger_valid_m3 = m_config.enable_bollinger_filter_m3 ? BollingerHasValidStructure(ctx_m3) : true;
+   bool is_bollinger_valid_m15 = m_config.enable_bollinger_filter_m15 ? BollingerHasValidStructure(ctx_m15) : true;
+   bool is_bollinger_valid_h1 = m_config.enable_bollinger_filter_h1 ? BollingerHasValidStructure(ctx_h1) : true;
 
    bool filtros_ok = ema_alignment_m15_ok && ema_alignment_m3_ok &&
                      strong_trend_m15 && strong_trend_m3 &&
                      bullish_momentum &&
                      good_volatility_m15 &&
                      bullish_structure_m15 && bullish_structure_m3 &&
-                     strong_trend_adx_m15 && is_bollinger_valid;
+                     strong_trend_adx_m15 && is_bollinger_valid_m3 && is_bollinger_valid_m15 && is_bollinger_valid_h1;
 
    bool pullback_ema9_ok = m_config.enable_pullback_ema9 ? (price_pullback_EMA9_M3 && valid_pullback_EMA9_M3) : false;
    bool pullback_ema21_ok = m_config.enable_pullback_ema21 ? (price_pullback_EMA21_M3 && valid_pullback_EMA21_M3) : false;
@@ -982,7 +1026,9 @@ void CEmasBuyBull::DoLog()
    Print("Enable ADX Filter: ", m_config.enable_adx_filter ? "Sim" : "Não");
    Print("Enable Pullback EMA9: ", m_config.enable_pullback_ema9 ? "Sim" : "Não");
    Print("Enable Pullback EMA21: ", m_config.enable_pullback_ema21 ? "Sim" : "Não");
-   Print("Enable Bollinger Filter: ", m_config.enable_bollinger_filter ? "Sim" : "Não");
+   Print("Enable Bollinger Filter M3: ", m_config.enable_bollinger_filter_m3 ? "Sim" : "Não");
+   Print("Enable Bollinger Filter M15: ", m_config.enable_bollinger_filter_m15 ? "Sim" : "Não");
+   Print("Enable Bollinger Filter H1: ", m_config.enable_bollinger_filter_h1 ? "Sim" : "Não");
 
    // Obter contextos
    TF_CTX *ctx_m15 = m_context_provider.GetContext(m_symbol, PERIOD_M15);
@@ -1146,7 +1192,9 @@ void CEmasBuyBull::DoLog()
    Print("ADX Filter: ", m_config.enable_adx_filter ? "Habilitada" : "Desabilitada");
    Print("Pullback EMA9: ", m_config.enable_pullback_ema9 ? "Habilitada" : "Desabilitada");
    Print("Pullback EMA21: ", m_config.enable_pullback_ema21 ? "Habilitada" : "Desabilitada");
-   Print("Bollinger Filter: ", m_config.enable_bollinger_filter ? "Habilitada" : "Desabilitada");
+   Print("Bollinger Filter M3: ", m_config.enable_bollinger_filter_m3 ? "Habilitada" : "Desabilitada");
+   Print("Bollinger Filter M15: ", m_config.enable_bollinger_filter_m15 ? "Habilitada" : "Desabilitada");
+   Print("Bollinger Filter H1: ", m_config.enable_bollinger_filter_h1 ? "Habilitada" : "Desabilitada");
 
    Print("--- CONDIÇÕES DE ALINHAMENTO EMAs ---");
    Print("M15 - EMA9 > EMA21: ", EMA9_above_EMA21_M15 ? "Sim" : "Não");
