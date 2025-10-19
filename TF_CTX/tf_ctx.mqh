@@ -46,6 +46,7 @@ public:
   bool CopyIndicatorValues(string name, int shift, int count, double &buffer[]);
   double GetPriceActionValue(string name,int shift=0);
   bool CopyPriceActionValues(string name,int shift,int count,double &buffer[]);
+  CPriceActionBase* GetPriceAction(string name);
 };
 
 //+------------------------------------------------------------------+
@@ -234,13 +235,25 @@ double TF_CTX::GetPriceActionValue(string name,int shift)
 //| Copiar valores da price action                                    |
 //+------------------------------------------------------------------+
 bool TF_CTX::CopyPriceActionValues(string name,int shift,int count,double &buffer[])
-{
-  for(int i=0;i<ArraySize(m_pa_names);i++)
-    if(m_pa_names[i]==name && m_priceactions[i]!=NULL)
-      return m_priceactions[i].CopyValues(shift,count,buffer);
-  Print("PriceAction nao encontrado: ",name);
-  return false;
-}
+  {
+   for(int i=0;i<ArraySize(m_pa_names);i++)
+     if(m_pa_names[i]==name && m_priceactions[i]!=NULL)
+        return m_priceactions[i].CopyValues(shift,count,buffer);
+   Print("PriceAction nao encontrado: ",name);
+   return false;
+  }
+
+//+------------------------------------------------------------------+
+//| Obter objeto de price action                                     |
+//+------------------------------------------------------------------+
+CPriceActionBase* TF_CTX::GetPriceAction(string name)
+  {
+   for(int i=0;i<ArraySize(m_pa_names);i++)
+      if(m_pa_names[i]==name && m_priceactions[i]!=NULL)
+         return m_priceactions[i];
+   Print("PriceAction nao encontrado: ",name);
+   return NULL;
+  }
 
 //+------------------------------------------------------------------+
 //| Atualizar contexto                                               |
