@@ -41,7 +41,6 @@ private:
    bool HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3);
    bool IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma);
    bool IsGoodVolatilityEnvironment(TF_CTX *ctx);
-   void DiagnoseFailedPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma);
    bool IsInBullishStructure(TF_CTX *ctx);
    bool BollingerHasValidStructure(TF_CTX *ctx);
 
@@ -282,7 +281,7 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    // NÃO exigir que o preço atual esteja acima
    // Apenas validar que VEIO de uma posição acima (Critério 3)
    // Um pullback POR DEFINIÇÃO começa quando o preço cruza/toca o suporte (EMA)
-   
+
    Print("[PULLBACK DEBUG] ✓ Critério 1 SKIP: Será validado pelo Critério 3 (estrutura anterior)");
 
    // ========================================================================
@@ -291,16 +290,17 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    // O pullback não pode descer mais que a profundidade máxima permitida
    double max_depth = (m_config.max_distance_atr + m_config.pullback_depth_buffer_atr) * atr_value;
 
+   Print("[PULLBACK DEBUG] Critério 2 - Profundidade:");
+   Print("[PULLBACK DEBUG]    Distance atual: ", DoubleToString(distance_price, 5), " (", DoubleToString(distance_price / atr_value, 2), " ATR)");
+   Print("[PULLBACK DEBUG]    Max permitido: ", DoubleToString(max_depth, 5), " (", DoubleToString(max_depth / atr_value, 2), " ATR)");
+   Print("[PULLBACK DEBUG]    Config: max_distance_atr=", DoubleToString(m_config.max_distance_atr, 2), " + pullback_depth_buffer_atr=", DoubleToString(m_config.pullback_depth_buffer_atr, 2));
+
    if (distance_price > max_depth)
    {
       Print("[PULLBACK DEBUG] ❌ CRITÉRIO 2 FALHOU: Pullback muito profundo");
-      Print("[PULLBACK DEBUG]    Distance: ", DoubleToString(distance_price, 5),
-               " > Max permitido: ", DoubleToString(max_depth, 5),
-               " (config: ", DoubleToString(m_config.max_distance_atr, 2), " ATR + ", DoubleToString(m_config.pullback_depth_buffer_atr, 2), " buffer)");
       return false;
    }
-   Print("[PULLBACK DEBUG] ✓ Critério 2 OK: Profundidade dentro dos limites (",
-         DoubleToString(distance_price / atr_value, 2), " ATR)");
+   Print("[PULLBACK DEBUG] ✓ Critério 2 OK: Profundidade dentro dos limites");
 
    // ========================================================================
    // CRITÉRIO 3 (CRÍTICO): Validar que veio de distância ANTERIOR MAIOR
@@ -308,41 +308,50 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    // Este é o CORAÇÃO da validação de pullback
    // Confirma que o preço estava significativamente mais longe da EMA
    // Isso prova que é pullback (retração) e não apenas "perto da EMA"
-   
+
    bool was_further_above = false;
    int lookback_start = 2;
    int lookback_end = MathMin(m_config.max_duration_candles + 1, 10);
-   
-   Print("[PULLBACK DEBUG] Procurando por distância anterior MAIOR (barras ", lookback_start, " a ", lookback_end, ")");
-   
+
+   Print("[PULLBACK DEBUG] Critério 3 - Distância anterior maior:");
+   Print("[PULLBACK DEBUG]    Procurando barras ", lookback_start, " a ", lookback_end);
+   Print("[PULLBACK DEBUG]    Distância atual (ATR): ", DoubleToString(distance_price / atr_value, 2));
+   Print("[PULLBACK DEBUG]    Improvement factor: ", DoubleToString(m_config.pullback_improvement_factor, 2));
+   Print("[PULLBACK DEBUG]    Necessário mínimo: ", DoubleToString((distance_price / atr_value) * m_config.pullback_improvement_factor, 2), " ATR");
+
    for (int i = lookback_start; i <= lookback_end; i++)
    {
       double prev_close = iClose(m_current_symbol, tf, i);
       double prev_ma = ma.GetValue(i);
-      
+
+      Print("[PULLBACK DEBUG]    Barra ", i, ": Close=", DoubleToString(prev_close, _Digits), " MA=", DoubleToString(prev_ma, _Digits));
+
       if (prev_close > prev_ma)
       {
          double prev_distance = prev_close - prev_ma;
          double prev_distance_atr = prev_distance / atr_value;
          double current_distance_atr = distance_price / atr_value;
-         
+
+         Print("[PULLBACK DEBUG]      Distância anterior (ATR): ", DoubleToString(prev_distance_atr, 2));
+
          // IMPORTANTE: improvement_factor é suficiente para provar que é pullback
          // Não exigir 1.3x (30%) que é muito restritivo
          if (prev_distance_atr > current_distance_atr * m_config.pullback_improvement_factor)
          {
             was_further_above = true;
             Print("[PULLBACK DEBUG] ✓ Encontrado pullback válido na barra ", i);
-            Print("[PULLBACK DEBUG]    Distância anterior (ATR): ", DoubleToString(prev_distance_atr, 2),
-                  " | Distância atual (ATR): ", DoubleToString(current_distance_atr, 2));
             break;
          }
       }
+      else
+      {
+         Print("[PULLBACK DEBUG]      Preço não estava acima da MA");
+      }
    }
-   
+
    if (!was_further_above)
    {
       Print("[PULLBACK DEBUG] ❌ CRITÉRIO 3 FALHOU: Não veio de distância anterior significativa");
-      Print("[PULLBACK DEBUG]    Nenhuma barra anterior teve distância >15% maior que atual");
       return false;
    }
    Print("[PULLBACK DEBUG] ✓ Critério 3 OK: Comprovado retração de posição anterior");
@@ -352,7 +361,10 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    // ========================================================================
    // Rejeita APENAS posições que indicam estrutura completamente errada
    // Aceita qualquer coisa que indique aproximação da EMA
-   
+
+   Print("[PULLBACK DEBUG] Critério 4 - Padrão de posição:");
+   Print("[PULLBACK DEBUG]    Position atual: ", EnumToString(position_info.position));
+
    bool invalid_position_for_pullback = (
       position_info.position == INDICATOR_CROSSES_UPPER_SHADOW ||   // EMA acima da vela -> preço perdeu suporte
       position_info.position == CANDLE_BELOW ||
@@ -360,15 +372,14 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
       position_info.position == CANDLE_BELOW_WITH_DISTANCE ||       // Abaixo (já reversão)
       position_info.position == INDICATOR_CANDLE_POSITION_FAILED    // Posição não confiável
    );
-   
+
    if (invalid_position_for_pullback)
    {
       Print("[PULLBACK DEBUG] ❌ CRITÉRIO 4 FALHOU: Padrão indica reversão, não pullback");
-      Print("[PULLBACK DEBUG]    Position: ", EnumToString(position_info.position));
       return false;
    }
-   
-   Print("[PULLBACK DEBUG] ✓ Critério 4 OK: Padrão de posição válido (", EnumToString(position_info.position), ")");
+
+   Print("[PULLBACK DEBUG] ✓ Critério 4 OK: Padrão de posição válido");
 
    // ========================================================================
    // CRITÉRIO 5: Penetração abaixo da EMA não é excessiva
@@ -382,17 +393,18 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    // Usamos o fundo da última vela para medir a penetração real. Assim,
    // pavios longos (que caracterizam pullbacks saudáveis) não são ignorados.
    double penetration = MathMax(0, current_ma - last_low);
-   
+
+   Print("[PULLBACK DEBUG] Critério 5 - Penetração abaixo da EMA:");
+   Print("[PULLBACK DEBUG]    Penetração atual: ", DoubleToString(penetration, 5), " (", DoubleToString(penetration / atr_value, 2), " ATR)");
+   Print("[PULLBACK DEBUG]    Max permitido: ", DoubleToString(max_penetration_below_ema, 5), " (", DoubleToString(max_penetration_below_ema / atr_value, 2), " ATR)");
+   Print("[PULLBACK DEBUG]    Config: pullback_max_penetration_atr=", DoubleToString(m_config.pullback_max_penetration_atr, 2));
+
    if (penetration > max_penetration_below_ema)
    {
       Print("[PULLBACK DEBUG] ❌ CRITÉRIO 5 FALHOU: Penetração muito profunda abaixo da EMA");
-      Print("[PULLBACK DEBUG]    Penetração: ", DoubleToString(penetration, 5),
-               " > Max permitido: ", DoubleToString(max_penetration_below_ema, 5),
-               " (", DoubleToString(m_config.pullback_max_penetration_atr, 2), " ATR)");
       return false;
    }
-   Print("[PULLBACK DEBUG] ✓ Critério 5 OK: Penetração abaixo da EMA dentro dos limites (", 
-         DoubleToString(penetration, 5), " pontos)");
+   Print("[PULLBACK DEBUG] ✓ Critério 5 OK: Penetração abaixo da EMA dentro dos limites");
 
    // ========================================================================
    // VALIDAÇÃO FINAL
@@ -402,140 +414,6 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    return true;
 }
 
-//+------------------------------------------------------------------+
-// FUNÇÃO AUXILIAR: Diagnóstico completo
-//+------------------------------------------------------------------+
-void CEmasBuyBull::DiagnoseFailedPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma)
-{
-   if (ctx == NULL || ma == NULL || atr_value <= 0)
-      return;
-
-   ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
-   double last_close = iClose(m_current_symbol, tf, 1);
-   double last_low = iLow(m_current_symbol, tf, 1);
-   double current_ma = ma.GetValue(1);
-
-   int digits = (int)SymbolInfoInteger(m_current_symbol, SYMBOL_DIGITS);
-   double point = SymbolInfoDouble(m_current_symbol, SYMBOL_POINT);
-   double pip_value = (digits == 3 || digits == 5) ? point * 10.0 : point;
-   if (pip_value <= 0)
-   {
-      Print("[DIAGNÓSTICO] Pip value inválido. Abortando diagnóstico.");
-      return;
-   }
-   double distance_price = position_info.distance * pip_value;
-
-   Print("\n[DIAGNÓSTICO] ==========================================");
-   Print("[DIAGNÓSTICO] Diagnóstico de falha de pullback para ", EnumToString(tf));
-   Print("[DIAGNÓSTICO] Preço: ", DoubleToString(last_close, _Digits), 
-         " | EMA: ", DoubleToString(current_ma, _Digits));
-   Print("[DIAGNÓSTICO] Distance (pips): ", DoubleToString(position_info.distance, 5));
-   Print("[DIAGNÓSTICO] Distance (preço): ", DoubleToString(distance_price, 5));
-   Print("[DIAGNÓSTICO] Position: ", EnumToString(position_info.position));
-   Print("[DIAGNÓSTICO] ATR: ", DoubleToString(atr_value, 5));
-   
-   int criteria_passed = 0;
-   
-   // Critério 1 - Skip (validado por Critério 3)
-   Print("[DIAGNÓSTICO] ✓ Critério 1: Pulado (será validado por Critério 3)");
-   criteria_passed++;
-   
-   // Teste Critério 2
-   double max_depth = (m_config.max_distance_atr + m_config.pullback_depth_buffer_atr) * atr_value;
-   if (distance_price <= max_depth)
-   {
-      Print("[DIAGNÓSTICO] ✓ Critério 2: Profundidade OK");
-      criteria_passed++;
-   }
-   else
-   {
-      Print("[DIAGNÓSTICO] ❌ Critério 2 FALHOU: Profundidade excessiva");
-      Print("[DIAGNÓSTICO]    Distance: ", DoubleToString(distance_price, 5),
-            " | Max: ", DoubleToString(max_depth, 5));
-   }
-   
-   // Teste Critério 3
-   bool was_further = false;
-   int found_at_bar = -1;
-   double best_previous_atr = 0;
-   
-   for (int i = 2; i <= MathMin(m_config.max_duration_candles + 1, 50); i++)
-   {
-      double prev_close = iClose(m_current_symbol, tf, i);
-      double prev_ma = ma.GetValue(i);
-      if (prev_close > prev_ma)
-      {
-         double prev_distance = prev_close - prev_ma;
-         double prev_distance_atr = prev_distance / atr_value;
-         double current_distance_atr = distance_price / atr_value;
-         
-         if (prev_distance_atr > best_previous_atr)
-            best_previous_atr = prev_distance_atr;
-         
-         if (prev_distance_atr > current_distance_atr * m_config.pullback_improvement_factor)
-         {
-            was_further = true;
-            found_at_bar = i;
-            break;
-         }
-      }
-   }
-   
-   if (was_further)
-   {
-      Print("[DIAGNÓSTICO] ✓ Critério 3: Distância anterior significativa");
-      Print("[DIAGNÓSTICO]    Encontrado na barra ", found_at_bar);
-      criteria_passed++;
-   }
-   else
-   {
-      Print("[DIAGNÓSTICO] ❌ Critério 3 FALHOU: Sem distância anterior 15% maior");
-      Print("[DIAGNÓSTICO]    Distância atual: ", DoubleToString(distance_price / atr_value, 2), " ATR");
-      Print("[DIAGNÓSTICO]    Melhor distância anterior: ", DoubleToString(best_previous_atr, 2), " ATR");
-      Print("[DIAGNÓSTICO]    Necessário: ", DoubleToString((distance_price / atr_value) * m_config.pullback_improvement_factor, 2), " ATR");
-   }
-   
-   // Teste Critério 4
-   bool invalid_position = (
-      position_info.position == INDICATOR_CROSSES_UPPER_SHADOW ||
-      position_info.position == CANDLE_BELOW ||
-      position_info.position == CANDLE_COMPLETELY_BELOW ||
-      position_info.position == CANDLE_BELOW_WITH_DISTANCE ||
-      position_info.position == INDICATOR_CANDLE_POSITION_FAILED
-   );
-   
-   if (!invalid_position)
-   {
-      Print("[DIAGNÓSTICO] ✓ Critério 4: Padrão de posição válido");
-      criteria_passed++;
-   }
-   else
-   {
-      Print("[DIAGNÓSTICO] ❌ Critério 4 FALHOU: Padrão inválido");
-      Print("[DIAGNÓSTICO]    Position: ", EnumToString(position_info.position));
-   }
-   
-   // Teste Critério 5
-   double max_penetration_below_ema = m_config.pullback_max_penetration_atr * atr_value;
-   double penetration = MathMax(0, current_ma - last_low);
-   
-   if (penetration <= max_penetration_below_ema)
-   {
-      Print("[DIAGNÓSTICO] ✓ Critério 5: Penetração abaixo da EMA OK");
-      criteria_passed++;
-   }
-   else
-   {
-      Print("[DIAGNÓSTICO] ❌ Critério 5 FALHOU: Penetração excessiva");
-      Print("[DIAGNÓSTICO]    Penetração: ", DoubleToString(penetration, 5),
-               " | Max permitido: ", DoubleToString(max_penetration_below_ema, 5),
-               " (", DoubleToString(m_config.pullback_max_penetration_atr, 2), " ATR)");
-   }
-   
-   Print("[DIAGNÓSTICO] ==========================================");
-   Print("[DIAGNÓSTICO] RESULTADO: ", criteria_passed, "/5 critérios passaram");
-   Print("[DIAGNÓSTICO] ==========================================\n");
-}
 //+------------------------------------------------------------------+
 //| Analisar ambiente de volatilidade                               |
 //+------------------------------------------------------------------+
@@ -850,7 +728,6 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
       ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY
    );
    bool valid_pullback_EMA9_M3 = IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3);
-   DiagnoseFailedPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3);
 
    SPositionInfo ema21_m3_position = ema21_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
    bool price_pullback_EMA21_M3 = (
@@ -860,7 +737,6 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
       ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY
    );
    bool valid_pullback_EMA21_M3 = IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3);
-   DiagnoseFailedPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3);
 
    // === CRITÉRIO FINAL DE ENTRADA ===
    bool ema_alignment_m15_ok = m_config.enable_ema_alignment_m15 ? (EMA9_above_EMA21_M15 && EMA21_above_EMA50_M15) : true;
