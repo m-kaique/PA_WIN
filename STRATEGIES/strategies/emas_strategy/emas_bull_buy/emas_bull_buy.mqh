@@ -905,6 +905,9 @@ void CEmasBuyBull::DoLog()
    Print("Enable Bollinger Filter M3: ", m_config.enable_bollinger_filter_m3 ? "Sim" : "Não");
    Print("Enable Bollinger Filter M15: ", m_config.enable_bollinger_filter_m15 ? "Sim" : "Não");
    Print("Enable Bollinger Filter H1: ", m_config.enable_bollinger_filter_h1 ? "Sim" : "Não");
+   Print("Pullback Depth Buffer ATR: ", DoubleToString(m_config.pullback_depth_buffer_atr, 2));
+   Print("Pullback Max Penetration ATR: ", DoubleToString(m_config.pullback_max_penetration_atr, 2));
+   Print("Pullback Improvement Factor: ", DoubleToString(m_config.pullback_improvement_factor, 2));
 
    // Obter contextos
    TF_CTX *ctx_m15 = m_context_provider.GetContext(m_symbol, PERIOD_M15);
@@ -1183,6 +1186,13 @@ void CEmasBuyBull::DoLog()
    Print("--- PONTOS DE ENTRADA (M3) ---");
    Print("Pullback EMA9: Posição=", EnumToString(ema9_m3_position.position), " | Válido=", valid_pullback_EMA9_M3 ? "Sim" : "Não");
    Print("Pullback EMA21: Posição=", EnumToString(ema21_m3_position.position), " | Válido=", valid_pullback_EMA21_M3 ? "Sim" : "Não");
+
+   // Impacto das configurações de pullback
+   Print("--- IMPACTO DAS CONFIGURAÇÕES DE PULLBACK ---");
+   Print("Depth Buffer ATR (", DoubleToString(m_config.pullback_depth_buffer_atr, 2), "): Aumenta o limite máximo de profundidade do pullback em ", DoubleToString(m_config.pullback_depth_buffer_atr, 2), " ATR, permitindo retrações mais profundas antes de rejeitar.");
+   Print("Max Penetration ATR (", DoubleToString(m_config.pullback_max_penetration_atr, 2), "): Permite penetração abaixo da EMA até ", DoubleToString(m_config.pullback_max_penetration_atr, 2), " ATR, tolerando pavios longos em pullbacks saudáveis.");
+   Print("Improvement Factor (", DoubleToString(m_config.pullback_improvement_factor, 2), "): Exige que a distância anterior seja ", DoubleToString(m_config.pullback_improvement_factor, 2), "x maior que a atual para confirmar retração genuína.");
+   Print("Limite Máximo de Profundidade Total: ", DoubleToString(m_config.max_distance_atr + m_config.pullback_depth_buffer_atr, 2), " ATR (max_distance_atr + depth_buffer_atr)");
 
    // Critérios finais
    bool filtros_ok = EMA9_above_EMA21_M15 && EMA21_above_EMA50_M15 &&
