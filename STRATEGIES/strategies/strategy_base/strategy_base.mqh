@@ -96,11 +96,18 @@ protected:
            return true; // Se não há configuração, permite todos os timeframes
 
        // Verificar se é uma configuração que suporta timeframes autorizados
-       // Por enquanto, apenas CEmasBullBuyConfig tem essa funcionalidade
        string config_type = config.type;
        if (config_type == "emas_buy_bull")
        {
            CEmasBullBuyConfig *emas_config = dynamic_cast<CEmasBullBuyConfig*>(config);
+           if (emas_config != NULL)
+           {
+               return emas_config.IsTimeframeAuthorized(timeframe);
+           }
+       }
+       else if (config_type == "emas_sell_bear")
+       {
+           CEmasBearSellConfig *emas_config = dynamic_cast<CEmasBearSellConfig*>(config);
            if (emas_config != NULL)
            {
                return emas_config.IsTimeframeAuthorized(timeframe);
@@ -113,6 +120,10 @@ protected:
 
    // Método auxiliar para obter configuração da estratégia (deve ser implementado pelas classes derivadas)
    virtual CStrategyConfig *GetStrategyConfig() { return NULL; }
+
+protected:
+   // Método virtual para implementação específica de log em cada estratégia
+   virtual void DoLog() { }
 
 public:
    // Construtor e destrutor
@@ -144,6 +155,42 @@ public:
    // Métodos de utilidade
    bool HasValidSignal() const { return m_last_signal.is_valid; }
    void ClearSignal() { m_last_signal.Reset(); }
+
+   // Método para exibir log de debug (chama método virtual DoLog)
+   void ShowLog()
+   {
+       DoLog();
+   }
+
+   // Método público para verificar se timeframe está autorizado
+   bool IsTimeframeAuthorizedPublic(ENUM_TIMEFRAMES timeframe)
+   {
+       CStrategyConfig *config = GetStrategyConfig();
+       if (config == NULL)
+           return true; // Se não há configuração, permite todos os timeframes
+
+       // Verificar se é uma configuração que suporta timeframes autorizados
+       string config_type = config.type;
+       if (config_type == "emas_buy_bull")
+       {
+           CEmasBullBuyConfig *emas_config = dynamic_cast<CEmasBullBuyConfig*>(config);
+           if (emas_config != NULL)
+           {
+               return emas_config.IsTimeframeAuthorized(timeframe);
+           }
+       }
+       else if (config_type == "emas_sell_bear")
+       {
+           CEmasBearSellConfig *emas_config = dynamic_cast<CEmasBearSellConfig*>(config);
+           if (emas_config != NULL)
+           {
+               return emas_config.IsTimeframeAuthorized(timeframe);
+           }
+       }
+
+       // Para outras estratégias sem configuração específica de timeframes, permitir todos
+       return true;
+   }
 };
 
 //+------------------------------------------------------------------+

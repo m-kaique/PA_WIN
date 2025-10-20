@@ -251,7 +251,6 @@ void UpdateSymbolContexts(string symbol)
       if (ctx.HasNewBar())
       {
          ctx.Update();
-         boll20_values(ctx, tf);
 
          // Loop Pelos Contextos de Estratégias e chama CheckForSignal
          STRATEGY_CTX *strategy_contexts[];
@@ -263,23 +262,22 @@ void UpdateSymbolContexts(string symbol)
             if (strategy_contexts[j] != NULL)
             {
                strategy_contexts[j].Update(symbol, tf); // This calls CheckForSignal internally and passes the symbol and timeframe
-               //
-               CEmasBuyBull *strategy = strategy_contexts[j].GetStrategy("m15_m3_emas_buy_bull");
-               // Print("INICIO DO LOG ######################################################################");
-               // Print("INICIO DO LOG ######################################################################");
-               // Print("INICIO DO LOG ######################################################################");
-               strategy.PrintFullDebugLog();
-               // Print("FIM DO LOG #########################################################################");
-               // Print("FIM DO LOG #########################################################################");
-               // Print("FIM DO LOG #########################################################################");
 
-               if (strategy != NULL)
+               // Iterar por todas as estratégias do contexto atual e chamar ShowLog() apenas se autorizada para o timeframe
+               CStrategyBase *strategies[];
+               strategy_contexts[j].GetAllStrategies(strategies);
+
+               for (int k = 0; k < ArraySize(strategies); k++)
                {
-                  ENUM_STRATEGY_STATE state = strategy.GetState();
-                  if (state != STRATEGY_IDLE)
+                  if (strategies[k] != NULL && strategies[k].IsTimeframeAuthorizedPublic(tf))
                   {
-                     
-                     strategy.SetState(STRATEGY_IDLE);
+                     strategies[k].ShowLog();
+
+                     ENUM_STRATEGY_STATE state = strategies[k].GetState();
+                     if (state != STRATEGY_IDLE)
+                     {
+                        strategies[k].SetState(STRATEGY_IDLE);
+                     }
                   }
                }
             }
@@ -287,49 +285,6 @@ void UpdateSymbolContexts(string symbol)
       }
    } // Fim loop the atualização de contextos
 }
-
-void boll20_values(TF_CTX &ctx, ENUM_TIMEFRAMES tf)
-{
-   if (tf != PERIOD_M3)
-      return;
-   CBollinger *boll_ind = ctx.GetIndicator("boll20");
-   double upper_band_value = boll_ind.GetUpper(1);
-   double middle_band_value = boll_ind.GetValue(1);
-   double lower_band_value = boll_ind.GetLower(1);
-
-   CATR *atr = ctx.GetIndicator("ATR15");
-   double atr_value = atr.GetValue(1);
-
-   SSlopeValidation slope_upper = boll_ind.GetSlopeValidation(atr_value, COPY_UPPER);
-   SSlopeValidation slope_middle = boll_ind.GetSlopeValidation(atr_value, COPY_MIDDLE);
-   SSlopeValidation slope_lower = boll_ind.GetSlopeValidation(atr_value, COPY_LOWER);
-
-   double band_width = upper_band_value - lower_band_value;
-
-   Print("=== BANDS VALUES ===");
-   Print("UPPER: ", upper_band_value);
-   Print("MIDDLE: ", upper_band_value);
-   Print("LOWER: ", lower_band_value);
-   Print("WIDTH: ", band_width);
-
-   Print(" === SLOPES VALUES ===");
-
-   Print("## UPPER");
-   Print("# Linear Regr.: ", " value: ", slope_upper.linear_regression.slope_value, " Direction: ", slope_upper.linear_regression.trend_direction);
-   Print("# Discrt. Der.: ", slope_upper.discrete_derivative.slope_value, " Direction: ", slope_upper.discrete_derivative.trend_direction);
-   Print("# Simple Diff.: ", slope_upper.simple_difference.slope_value, " Direction: ", slope_upper.simple_difference.trend_direction);
-
-   Print("## MIDDLE");
-   Print("# Linear Regr.: ", slope_middle.linear_regression.slope_value, " Direction: ", slope_upper.linear_regression.trend_direction);
-   Print("# Discrt. Der.: ", slope_middle.discrete_derivative.slope_value, " Direction: ", slope_upper.discrete_derivative.trend_direction);
-   Print("# Simple Diff.: ", slope_middle.simple_difference.slope_value, " Direction: ", slope_upper.simple_difference.trend_direction);
-
-   Print("## LOWER");
-   Print("# Linear Regr.: ", slope_lower.linear_regression.slope_value, " Direction: ", slope_upper.linear_regression.trend_direction);
-   Print("# Discrt. Der.: ", slope_lower.discrete_derivative.slope_value, " Direction: ", slope_upper.discrete_derivative.trend_direction);
-   Print("# Simple Diff.: ", slope_lower.simple_difference.slope_value, " Direction: ", slope_upper.simple_difference.trend_direction);
-
-};
 
 //+------------------------------------------------------------------+
 //| Executar lógica apenas em novo candle                           |

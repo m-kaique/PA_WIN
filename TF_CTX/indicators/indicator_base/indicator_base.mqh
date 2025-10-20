@@ -87,49 +87,53 @@ SSlopeValidation CIndicatorBase::GetSlopeValidation(double atr, COPY_METHOD copy
 
   if (validation.linear_regression.slope_value >= slope_values[slope_conf_index].linear_reg)
   {
-    validation.linear_regression.trend_direction = "_UP";
+    validation.linear_regression.trend_direction = SLOPE_UP;
   }
   else if (validation.linear_regression.slope_value <= -slope_values[slope_conf_index].linear_reg)
   {
-    validation.linear_regression.trend_direction = "_DOWN";
+    validation.linear_regression.trend_direction = SLOPE_DOWN;
   }
   else
   {
-    validation.linear_regression.trend_direction = "_SIDEWALK";
+    validation.linear_regression.trend_direction = SLOPE_SIDEWALK;
   }
 
   // RL norm DIFF
   if (validation.simple_difference.slope_value >= slope_values[slope_conf_index].simple_diff)
   {
-    validation.simple_difference.trend_direction = "_UP";
+    validation.simple_difference.trend_direction = SLOPE_UP;
   }
   else if (validation.simple_difference.slope_value <= -slope_values[slope_conf_index].simple_diff)
   {
-    validation.simple_difference.trend_direction = "_DOWN";
+    validation.simple_difference.trend_direction = SLOPE_DOWN;
   }
   else
   {
-    validation.simple_difference.trend_direction = "_SIDEWALK";
+    validation.simple_difference.trend_direction = SLOPE_SIDEWALK;
   }
 
   // RL norm ATR
   if (validation.discrete_derivative.slope_value >= slope_values[slope_conf_index].discrete_der)
   {
-    validation.discrete_derivative.trend_direction = "_UP";
+    validation.discrete_derivative.trend_direction = SLOPE_UP;
   }
   else if (validation.discrete_derivative.slope_value <= -slope_values[slope_conf_index].discrete_der)
   {
-    validation.discrete_derivative.trend_direction = "_DOWN";
+    validation.discrete_derivative.trend_direction = SLOPE_DOWN;
   }
   else
   {
-    validation.discrete_derivative.trend_direction = "_SIDEWALK";
+    validation.discrete_derivative.trend_direction = SLOPE_SIDEWALK;
   }
 
   validation.linear_config_value = slope_values[slope_conf_index].linear_reg;
   validation.difference_config_value = slope_values[slope_conf_index].simple_diff;
   validation.derivative_config_value = slope_values[slope_conf_index].discrete_der;
   validation.lookback_config_value = slope_values[slope_conf_index].lookback;
+
+  validation.bullish_count = m_slope.CountBullishSlopes(validation);
+  validation.bearish_count = m_slope.CountBearishSlopes(validation);
+  validation.side_count = m_slope.CountSideWalkSlopes(validation);
 
   return validation;
 }
