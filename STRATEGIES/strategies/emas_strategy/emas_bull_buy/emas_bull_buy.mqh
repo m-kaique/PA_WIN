@@ -365,12 +365,11 @@ bool CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_valu
    Print("[PULLBACK DEBUG] Critério 4 - Padrão de posição:");
    Print("[PULLBACK DEBUG]    Position atual: ", EnumToString(position_info.position));
 
-   bool invalid_position_for_pullback = (
-      position_info.position == INDICATOR_CROSSES_UPPER_SHADOW ||   // EMA acima da vela -> preço perdeu suporte
-      position_info.position == CANDLE_BELOW ||
-      position_info.position == CANDLE_COMPLETELY_BELOW ||          // Muito abaixo (reversão completa)
-      position_info.position == CANDLE_BELOW_WITH_DISTANCE ||       // Abaixo (já reversão)
-      position_info.position == INDICATOR_CANDLE_POSITION_FAILED    // Posição não confiável
+   bool invalid_position_for_pullback = (position_info.position == INDICATOR_CROSSES_UPPER_SHADOW || // EMA acima da vela -> preço perdeu suporte
+                                         position_info.position == CANDLE_BELOW ||
+                                         position_info.position == CANDLE_COMPLETELY_BELOW ||       // Muito abaixo (reversão completa)
+                                         position_info.position == CANDLE_BELOW_WITH_DISTANCE ||    // Abaixo (já reversão)
+                                         position_info.position == INDICATOR_CANDLE_POSITION_FAILED // Posição não confiável
    );
 
    if (invalid_position_for_pullback)
@@ -507,49 +506,49 @@ bool CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
 //+------------------------------------------------------------------+
 bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
 {
-     // Valores min e max de largura from config baseados no timeframe
-     double valid_min_width, valid_max_width;
-     double upper_lr_min, upper_dd_min, upper_sd_min;
-     double lower_lr_abs_max, lower_dd_abs_max, lower_sd_abs_max;
+   // Valores min e max de largura from config baseados no timeframe
+   double valid_min_width, valid_max_width;
+   double upper_lr_min, upper_dd_min, upper_sd_min;
+   double lower_lr_abs_max, lower_dd_abs_max, lower_sd_abs_max;
 
-     if (ctx.GetTimeFrame() == PERIOD_M3)
-     {
-         valid_min_width = m_config.boll_micro_m3_min_width;
-         valid_max_width = m_config.boll_micro_m3_max_width;
-         upper_lr_min = m_config.boll_micro_m3_upper_lr_min;
-         upper_dd_min = m_config.boll_micro_m3_upper_dd_min;
-         upper_sd_min = m_config.boll_micro_m3_upper_sd_min;
-         lower_lr_abs_max = m_config.boll_micro_m3_lower_lr_abs_max;
-         lower_dd_abs_max = m_config.boll_micro_m3_lower_dd_abs_max;
-         lower_sd_abs_max = m_config.boll_micro_m3_lower_sd_abs_max;
-     }
-     else if (ctx.GetTimeFrame() == PERIOD_M15)
-     {
-         valid_min_width = m_config.boll_micro_m15_min_width;
-         valid_max_width = m_config.boll_micro_m15_max_width;
-         upper_lr_min = m_config.boll_micro_m15_upper_lr_min;
-         upper_dd_min = m_config.boll_micro_m15_upper_dd_min;
-         upper_sd_min = m_config.boll_micro_m15_upper_sd_min;
-         lower_lr_abs_max = m_config.boll_micro_m15_lower_lr_abs_max;
-         lower_dd_abs_max = m_config.boll_micro_m15_lower_dd_abs_max;
-         lower_sd_abs_max = m_config.boll_micro_m15_lower_sd_abs_max;
-     }
-     else if (ctx.GetTimeFrame() == PERIOD_H1)
-     {
-         valid_min_width = m_config.boll_micro_h1_min_width;
-         valid_max_width = m_config.boll_micro_h1_max_width;
-         upper_lr_min = m_config.boll_micro_h1_upper_lr_min;
-         upper_dd_min = m_config.boll_micro_h1_upper_dd_min;
-         upper_sd_min = m_config.boll_micro_h1_upper_sd_min;
-         lower_lr_abs_max = m_config.boll_micro_h1_lower_lr_abs_max;
-         lower_dd_abs_max = m_config.boll_micro_h1_lower_dd_abs_max;
-         lower_sd_abs_max = m_config.boll_micro_h1_lower_sd_abs_max;
-     }
-     else
-     {
-         Print("AVISO: BollingerHasValidStructure chamado para timeframe não suportado: ", EnumToString(ctx.GetTimeFrame()), " - retornando false");
-         return false;
-     }
+   if (ctx.GetTimeFrame() == PERIOD_M3)
+   {
+      valid_min_width = m_config.boll_micro_m3_min_width;
+      valid_max_width = m_config.boll_micro_m3_max_width;
+      upper_lr_min = m_config.boll_micro_m3_upper_lr_min;
+      upper_dd_min = m_config.boll_micro_m3_upper_dd_min;
+      upper_sd_min = m_config.boll_micro_m3_upper_sd_min;
+      lower_lr_abs_max = m_config.boll_micro_m3_lower_lr_abs_max;
+      lower_dd_abs_max = m_config.boll_micro_m3_lower_dd_abs_max;
+      lower_sd_abs_max = m_config.boll_micro_m3_lower_sd_abs_max;
+   }
+   else if (ctx.GetTimeFrame() == PERIOD_M15)
+   {
+      valid_min_width = m_config.boll_micro_m15_min_width;
+      valid_max_width = m_config.boll_micro_m15_max_width;
+      upper_lr_min = m_config.boll_micro_m15_upper_lr_min;
+      upper_dd_min = m_config.boll_micro_m15_upper_dd_min;
+      upper_sd_min = m_config.boll_micro_m15_upper_sd_min;
+      lower_lr_abs_max = m_config.boll_micro_m15_lower_lr_abs_max;
+      lower_dd_abs_max = m_config.boll_micro_m15_lower_dd_abs_max;
+      lower_sd_abs_max = m_config.boll_micro_m15_lower_sd_abs_max;
+   }
+   else if (ctx.GetTimeFrame() == PERIOD_H1)
+   {
+      valid_min_width = m_config.boll_micro_h1_min_width;
+      valid_max_width = m_config.boll_micro_h1_max_width;
+      upper_lr_min = m_config.boll_micro_h1_upper_lr_min;
+      upper_dd_min = m_config.boll_micro_h1_upper_dd_min;
+      upper_sd_min = m_config.boll_micro_h1_upper_sd_min;
+      lower_lr_abs_max = m_config.boll_micro_h1_lower_lr_abs_max;
+      lower_dd_abs_max = m_config.boll_micro_h1_lower_dd_abs_max;
+      lower_sd_abs_max = m_config.boll_micro_h1_lower_sd_abs_max;
+   }
+   else
+   {
+      Print("AVISO: BollingerHasValidStructure chamado para timeframe não suportado: ", EnumToString(ctx.GetTimeFrame()), " - retornando false");
+      return false;
+   }
 
    // Acesso ao indicador e copia dos valores min e max
    CBollinger *boll_ind = ctx.GetIndicator("boll20");
@@ -721,21 +720,17 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    SPositionInfo ema9_m3_position = ema9_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
    // Aceitamos apenas padrões onde a EMA atua como suporte (dentro/abaixo do candle).
    // Mantemos a mesma regra adotada em logs/validações para facilitar a leitura do diagnóstico.
-   bool price_pullback_EMA9_M3 = (
-      ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
-      ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
-      ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY ||
-      ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY
-   );
+   bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
+                                  ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
+                                  ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY ||
+                                  ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY);
    bool valid_pullback_EMA9_M3 = IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3);
 
    SPositionInfo ema21_m3_position = ema21_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
-   bool price_pullback_EMA21_M3 = (
-      ema21_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
-      ema21_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
-      ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY ||
-      ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY
-   );
+   bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
+                                   ema21_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
+                                   ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY ||
+                                   ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY);
    bool valid_pullback_EMA21_M3 = IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3);
 
    // === CRITÉRIO FINAL DE ENTRADA ===
@@ -1024,6 +1019,19 @@ void CEmasBuyBull::DoLog()
    double atr_value = (atr_m3 != NULL) ? atr_m3.GetValue(1) : 0.0;
    Print("ATR Value (M3): ", DoubleToString(atr_value, 5));
 
+   // Obter contextos
+ 
+   CBollinger *bol3 = ctx_m3.GetIndicator("boll20");
+   SBollingerMovement bl3_movement;
+   if (bol3.ComputeMovement(0, 20, 20, 0.0, 1.0, bl3_movement))
+   {
+      Print("Direção: ", bl3_movement.dir);
+      Print("Volume: ", bl3_movement.vol);
+      Print("Largura: ", bl3_movement.width);
+      Print("Largura Média: ", bl3_movement.width_mean);
+      Print("Largura Stdev: ", bl3_movement.width_stdev);
+      Print("Z Score: ", bl3_movement.width_zscore);
+   }
    // Bollinger Bands M3
    CBollinger *boll_m3 = ctx_m3.GetIndicator("boll20");
    if (boll_m3 != NULL)
@@ -1167,20 +1175,16 @@ void CEmasBuyBull::DoLog()
    SPositionInfo ema21_m3_position = ema21_m3 ? ema21_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value) : SPositionInfo();
 
    // Reutilizamos a mesma regra de suporte para garantir que os logs espelhem os filtros do sinal.
-   bool price_pullback_EMA9_M3 = (
-      ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
-      ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
-      ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY ||
-      ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY
-   );
+   bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
+                                  ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
+                                  ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY ||
+                                  ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY);
    bool valid_pullback_EMA9_M3 = ema9_m3 ? IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3) : false;
 
-   bool price_pullback_EMA21_M3 = (
-      ema21_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
-      ema21_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
-      ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY ||
-      ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY
-   );
+   bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
+                                   ema21_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
+                                   ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY ||
+                                   ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY);
    bool valid_pullback_EMA21_M3 = ema21_m3 ? IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3) : false;
 
    Print("--- PONTOS DE ENTRADA (M3) ---");

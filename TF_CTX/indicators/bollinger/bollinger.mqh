@@ -24,6 +24,59 @@ private:
   virtual double OnGetIndicatorValue(int shift, COPY_METHOD copy_method) override;
   virtual int OnGetSlopeConfigIndex(COPY_METHOD copy_method) override;
 
+  // Helpers para estatística e regressão sobre arrays em série (índice 0 = barra mais recente)
+  static double LR_SlopeSeries(const double &series[], int count)
+  {
+    if (count < 2)
+      return 0.0;
+
+    // x = 0..count-1 (cronológico: 0 = mais antigo)
+    // series está como "series", então invertimos o índice: series[count-1-i] = mais antigo -> mais recente
+    double sumx = (count - 1) * count * 0.5;
+    double sumx2 = (count - 1) * count * (2.0 * count - 1.0) / 6.0;
+    double sumy = 0.0, sumxy = 0.0;
+
+    for (int i = 0; i < count; ++i)
+    {
+      double y = series[count - 1 - i];
+      sumy += y;
+      sumxy += i * y;
+    }
+
+    double denom = count * sumx2 - sumx * sumx;
+    if (denom == 0.0)
+      return 0.0;
+    return (count * sumxy - sumx * sumy) / denom; // unidades: preço por barra
+  }
+
+  static void MeanStdSeries(const double &series[], int count, double &mean, double &stdev)
+  {
+    if (count <= 0)
+    {
+      mean = 0.0;
+      stdev = 0.0;
+      return;
+    }
+    double sum = 0.0;
+    for (int i = 0; i < count; ++i)
+      sum += series[i];
+    mean = sum / (double)count;
+
+    if (count < 2)
+    {
+      stdev = 0.0;
+      return;
+    }
+    double var = 0.0;
+    for (int i = 0; i < count; ++i)
+    {
+      double d = series[i] - mean;
+      var += d * d;
+    }
+    var /= (double)(count - 1);
+    stdev = MathSqrt(var);
+  }
+
 public:
   CBollinger();
   ~CBollinger();
@@ -49,6 +102,89 @@ public:
 
   virtual bool IsReady();
   virtual bool Update() override;
+
+  // Largura instantânea e cópia da largura
+  double GetWidth(int shift = 0)
+  {
+    return GetUpper(shift) - GetLower(shift);
+  }
+
+  bool CopyWidth(int shift, int count, double &buffer[])
+  {
+    double up[], lo[];
+    if (!CopyUpper(shift, count, up))
+      return false;
+    if (!CopyLower(shift, count, lo))
+      return false;
+
+    ArrayResize(buffer, count);
+    ArraySetAsSeries(buffer, true);
+    for (int i = 0; i < count; ++i)
+      buffer[i] = up[i] - lo[i];
+    return true;
+  }
+
+  // Núcleo: computa movimento (direção + vol) em uma janela
+  // slope_lookback: janelas 14–20 são comuns
+  // width_lookback: pode ser igual a slope_lookback
+  // slope_eps: limiar para filtrar ruído (ex.: 0 para começar; ou 0.1*Point() etc.)
+  // squeeze_z: z-score negativo para squeeze (ex.: 1.0)
+  bool ComputeMovement(int shift,
+                       int slope_lookback,
+                       int width_lookback,
+                       double slope_eps,
+                       double squeeze_z,
+                       SBollingerMovement &out)
+  {
+    if (handle == INVALID_HANDLE)
+      return false;
+    if (slope_lookback < 2 || width_lookback < 2)
+      return false;
+
+    // Copiamos apenas o necessário
+    double mid[], up[], lo[], w[];
+    if (!CopyValues(shift, slope_lookback, mid))
+      return false;
+    if (!CopyUpper(shift, slope_lookback, up))
+      return false;
+    if (!CopyLower(shift, slope_lookback, lo))
+      return false;
+
+    // Largura para janelas de slope e estatística
+    if (!CopyWidth(shift, width_lookback, w))
+      return false;
+
+    // Slopes (regressão linear sobre arrays em série)
+    out.slope_middle = LR_SlopeSeries(mid, slope_lookback);
+    out.slope_upper = LR_SlopeSeries(up, slope_lookback);
+    out.slope_lower = LR_SlopeSeries(lo, slope_lookback);
+
+    // Métricas de largura
+    out.width = w[0];
+    out.slope_width = LR_SlopeSeries(w, width_lookback);
+    MeanStdSeries(w, width_lookback, out.width_mean, out.width_stdev);
+    out.width_zscore = (out.width_stdev > 0.0) ? ((out.width - out.width_mean) / out.width_stdev) : 0.0;
+
+    // Direção
+    if (out.slope_middle > slope_eps)
+      out.dir = BOLL_DIR_UP;
+    else if (out.slope_middle < -slope_eps)
+      out.dir = BOLL_DIR_DOWN;
+    else
+      out.dir = BOLL_DIR_FLAT;
+
+    // Volatilidade (expansão/contração) + squeeze
+    if (out.width_zscore <= -MathAbs(squeeze_z))
+      out.vol = BOLL_VOL_SQUEEZE;
+    else if (out.slope_width > slope_eps)
+      out.vol = BOLL_VOL_EXPANDING;
+    else if (out.slope_width < -slope_eps)
+      out.vol = BOLL_VOL_CONTRACTING;
+    else
+      out.vol = BOLL_VOL_STABLE;
+
+    return true;
+  }
 };
 
 //+------------------------------------------------------------------+
@@ -118,7 +254,7 @@ bool CBollinger::CreateHandle()
   handle = iBands(m_symbol, m_timeframe, m_period, m_shift, m_deviation, m_price);
   if (handle == INVALID_HANDLE)
   {
-    //Print("ERRO: Falha ao criar handle Bollinger para ", m_symbol);
+    // Print("ERRO: Falha ao criar handle Bollinger para ", m_symbol);
     return false;
   }
   return true;
@@ -241,23 +377,23 @@ bool CBollinger::OnCopyValuesForSlope(int shift, int count, double &buffer[], CO
   if (handle == INVALID_HANDLE)
     return false;
 
-    //Print("METODO DE COPIA: " + EnumToString(copy_method));
+  // Print("METODO DE COPIA: " + EnumToString(copy_method));
   switch (copy_method)
-  { 
-    case COPY_LOWER:
-  //Print("COPIANDO - LOWER");
+  {
+  case COPY_LOWER:
+    // Print("COPIANDO - LOWER");
     return CopyLower(shift, count, buffer);
 
   case COPY_UPPER:
-    //Print("COPIANDO - UPPER");
+    // Print("COPIANDO - UPPER");
     return CopyUpper(shift, count, buffer);
 
   case COPY_MIDDLE:
-    //Print("COPIANDO - MIDDLE");
+    // Print("COPIANDO - MIDDLE");
     return CopyValues(shift, count, buffer);
 
   default:
-    //Print("ERRO: Método de cópia inválido");
+    // Print("ERRO: Método de cópia inválido");
     return false;
   }
 };
@@ -266,8 +402,8 @@ bool CBollinger::OnCopyValuesForSlope(int shift, int count, double &buffer[], CO
 //| Implementação do método template para obter o valor do indicador |
 //+------------------------------------------------------------------+
 double CBollinger::OnGetIndicatorValue(int shift, COPY_METHOD copy_method)
-{  //Print("OnGetIndicatorValue bollinger class: " + EnumToString(copy_method));
-  //Print("OnGetIndicatorValue bollinger class: " + (string)(copy_method));
+{ // Print("OnGetIndicatorValue bollinger class: " + EnumToString(copy_method));
+  // Print("OnGetIndicatorValue bollinger class: " + (string)(copy_method));
   if (copy_method == COPY_LOWER)
   {
     return GetLower(shift);
@@ -287,17 +423,17 @@ int CBollinger::OnGetSlopeConfigIndex(COPY_METHOD copy_method)
 
   if (copy_method == COPY_MIDDLE)
   {
-    //Print("RETORNANDO MIDDLE");
+    // Print("RETORNANDO MIDDLE");
     return 1;
   }
   else if (copy_method == COPY_UPPER)
   {
-        //Print("RETORNANDO UPPER");
+    // Print("RETORNANDO UPPER");
     return 0;
   }
   else if (copy_method == COPY_LOWER)
   {
-        //Print("RETORNANDO LOWER");
+    // Print("RETORNANDO LOWER");
     return 2;
   }
 
