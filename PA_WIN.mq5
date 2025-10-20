@@ -32,6 +32,9 @@ int OnInit()
    // Inicializar socket
    FrancisSocketInit();
 
+   // Enviar mensagem de socket iniciado
+   FrancisSocketSendStatus("iniciado", "Socket iniciado");
+
    // Criar gerenciador de configuração
    g_config_manager = new CConfigManager();
    if (g_config_manager == NULL)
