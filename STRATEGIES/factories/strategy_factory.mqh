@@ -2,8 +2,8 @@
 #define __PA_STRATEGY_FACTORY_MQH__
 
 #include "../../interfaces/icontext_provider.mqh"
-#include "../strategies/emas_bull_buy/emas_bull_buy.mqh"
-#include "../strategies/emas_bear_sell/emas_bear_sell.mqh"
+#include "../strategies/emas_strategy/emas_bull_buy/emas_bull_buy.mqh"
+#include "../strategies/emas_strategy/emas_bear_sell/emas_bear_sell.mqh"
 #include "../strategies/strategies_types.mqh"
 #include "../strategies/strategy_base/strategy_base.mqh"
 

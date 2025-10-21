@@ -62,7 +62,7 @@ SPositionInfo CIndCandleDistance::GetPreviousCandlePosition(int shift, string sy
   if (is_above_with_distance)
   {
     result.position = CANDLE_ABOVE_WITH_DISTANCE;
-    result.distance = (low_price - indicator_value) / pip_value;
+    result.distance = MathAbs((low_price - indicator_value) / pip_value);
     result.gap = tolerance;
     result.atr = atr;
     return result;
@@ -71,7 +71,7 @@ SPositionInfo CIndCandleDistance::GetPreviousCandlePosition(int shift, string sy
   if (is_above)
   {
     result.position = INDICATOR_CROSSES_LOWER_SHADOW;
-    result.distance = (low_price - indicator_value) / pip_value;
+    result.distance = MathAbs((low_price - indicator_value) / pip_value);
     result.gap = tolerance;
     result.atr = atr;
     return result;
@@ -88,7 +88,7 @@ SPositionInfo CIndCandleDistance::GetPreviousCandlePosition(int shift, string sy
   if (is_below_with_distance)
   {
     result.position = CANDLE_BELOW_WITH_DISTANCE;
-    result.distance = (indicator_value - high_price) / pip_value;
+    result.distance = MathAbs((indicator_value - high_price) / pip_value);
     result.gap = tolerance;
     result.atr = atr;
     return result;
@@ -97,7 +97,7 @@ SPositionInfo CIndCandleDistance::GetPreviousCandlePosition(int shift, string sy
   if (is_below)
   {
     result.position = INDICATOR_CROSSES_UPPER_SHADOW;
-    result.distance = (indicator_value - high_price) / pip_value;
+    result.distance = MathAbs((indicator_value - high_price) / pip_value);
     result.gap = tolerance;
     result.atr = atr;
     return result;

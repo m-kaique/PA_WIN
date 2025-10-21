@@ -10,9 +10,9 @@
 #property link "https://www.mql5.com"
 #property version "1.00"
 
-#include "../strategy_base/strategy_base.mqh"
-#include "emas_bear_sell_defs.mqh"
-
+#include "../../strategy_base/strategy_base.mqh"
+// #include "emas_bear_sell_defs.mqh"
+#include "../emas_strategy_defs.mqh"
 //+------------------------------------------------------------------+
 //| Estratégia EMA Sell Bear - Venda em tendência de baixa com EMAs |
 //+------------------------------------------------------------------+
@@ -25,9 +25,10 @@ private:
    ENUM_TIMEFRAMES m_timeframe;
 
    // Estruturas de Dados
-   SDistance_MA_sell distance_ma_m3;
-   SDistance_MA_sell distance_ma_m15;
-   SVolatilityEnv_M15_sell_bear volatilityEnv_M15;
+   SDistance_MA distance_ma_m3;
+   SDistance_MA distance_ma_m15;
+   SVolatilityEnv volatilityEnv_M15;
+   SStrongTrendADX SStrong_trend_ADX_m15;
 
    double CalculateLotSize();
    double CalculateStopLoss(double entry_price);
@@ -220,47 +221,161 @@ bool CEmasBearSell::HasBearishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m3)
    return price_below_ema21 && no_panic_buying && last_candle_bearish;
 }
 
-//+------------------------------------------------------------------+
-//| Validar se é um pullback adequado (para CIMA, até resistência)  |
-//+------------------------------------------------------------------+
 bool CEmasBearSell::IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma)
 {
    if (ctx == NULL || ma == NULL || atr_value <= 0)
-      return false;
-
-   // Critério 1: Verificar se o pullback não é muito profundo (não subiu demais)
-   if (position_info.distance > m_config.max_distance_atr * atr_value)
    {
+      Print("[PULLBACK DEBUG BEAR] Contexto ou indicadores nulos. Retornando false.");
       return false;
    }
 
-   // Critério 2: Verificar se estava mais distante (ABAIXO) da EMA e agora aproximou (SUBIU)
-   ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
-   bool was_further_below = false;
+   int digits = (int)SymbolInfoInteger(m_current_symbol, SYMBOL_DIGITS);
+   double point = SymbolInfoDouble(m_current_symbol, SYMBOL_POINT);
+   double pip_value = (digits == 3 || digits == 5) ? point * 10.0 : point;
 
-   for (int i = 2; i <= m_config.max_duration_candles + 1; i++)
+   if (pip_value <= 0)
+   {
+      Print("[PULLBACK DEBUG BEAR] Pip value inválido. Retornando false.");
+      return false;
+   }
+
+   // position_info.distance vem em pips. Convertendo para preço para comparar com ATR (preço).
+   double distance_price = position_info.distance * pip_value;
+
+   ENUM_TIMEFRAMES tf = ctx.GetTimeFrame();
+   double last_close = iClose(m_current_symbol, tf, 1);
+   double last_high = iHigh(m_current_symbol, tf, 1);
+   double current_ma = ma.GetValue(1);
+   string tf_name = EnumToString(tf);
+
+   Print("[PULLBACK DEBUG BEAR] ========================================");
+   Print("[PULLBACK DEBUG BEAR] Iniciando validação de pullback (", tf_name, ")");
+   Print("[PULLBACK DEBUG BEAR] Preço Atual: ", DoubleToString(last_close, _Digits));
+   Print("[PULLBACK DEBUG BEAR] EMA Atual: ", DoubleToString(current_ma, _Digits));
+   Print("[PULLBACK DEBUG BEAR] Distance (preço): ", DoubleToString(distance_price, 5));
+   Print("[PULLBACK DEBUG BEAR] Position Type: ", EnumToString(position_info.position));
+
+   // ========================================================================
+   // CRITÉRIO 1 (CORRIGIDO): Estava em estrutura de baixa anteriormente
+   // ========================================================================
+   // NÃO exigir que o preço atual esteja abaixo
+   // Apenas validar que VEIO de uma posição abaixo (Critério 3)
+   // Um pullback POR DEFINIÇÃO começa quando o preço cruza/toca a resistência (EMA)
+   Print("[PULLBACK DEBUG BEAR] ✓ Critério 1 SKIP: Será validado pelo Critério 3 (estrutura anterior)");
+
+   // ========================================================================
+   // CRITÉRIO 2: Distância não pode ser excessiva (limite de profundidade)
+   // ========================================================================
+   // O pullback não pode subir mais que a profundidade máxima permitida
+   double max_depth = (m_config.max_distance_atr + m_config.pullback_depth_buffer_atr) * atr_value;
+
+   if (distance_price > max_depth)
+   {
+      Print("[PULLBACK DEBUG BEAR] ❌ CRITÉRIO 2 FALHOU: Pullback muito profundo");
+      Print("[PULLBACK DEBUG BEAR]    Distance: ", DoubleToString(distance_price, 5),
+            " > Max permitido: ", DoubleToString(max_depth, 5),
+            " (config: ", DoubleToString(m_config.max_distance_atr, 2), " ATR + ",
+            DoubleToString(m_config.pullback_depth_buffer_atr, 2), " buffer)");
+      return false;
+   }
+   Print("[PULLBACK DEBUG BEAR] ✓ Critério 2 OK: Profundidade dentro dos limites (",
+         DoubleToString(distance_price / atr_value, 2), " ATR)");
+
+   // ========================================================================
+   // CRITÉRIO 3 (CRÍTICO): Validar que veio de distância ANTERIOR MAIOR (abaixo da EMA)
+   // ========================================================================
+   bool was_further = false;
+   int found_at_bar = -1;
+   double best_previous_atr = 0;
+
+   for (int i = 2; i <= MathMin(m_config.max_duration_candles + 1, 50); i++)
    {
       double prev_close = iClose(m_current_symbol, tf, i);
-      double prev_ma_value = ma.GetValue(i);
-
-      // Verificar se estava mais distante ABAIXO da MA
-      if (prev_close < prev_ma_value)
+      double prev_ma = ma.GetValue(i);
+      if (prev_close < prev_ma) // veio de baixo da EMA
       {
-         double prev_distance = MathAbs(prev_close - prev_ma_value);
-         if (prev_distance > position_info.distance * 1.2)
+         double prev_distance = prev_ma - prev_close;
+         double prev_distance_atr = prev_distance / atr_value;
+         double current_distance_atr = distance_price / atr_value;
+
+         if (prev_distance_atr > best_previous_atr)
+            best_previous_atr = prev_distance_atr;
+
+         if (prev_distance_atr > current_distance_atr * m_config.pullback_improvement_factor)
          {
-            was_further_below = true;
+            was_further = true;
+            found_at_bar = i;
             break;
          }
       }
    }
 
-   return was_further_below;
-}
+   if (was_further)
+   {
+      Print("[DIAGNÓSTICO BEAR] ✓ Critério 3: Distância anterior significativa");
+      Print("[DIAGNÓSTICO BEAR]    Encontrado na barra ", found_at_bar);
+      Print("[DIAGNÓSTICO BEAR]    Melhor distância anterior (ATR): ", DoubleToString(best_previous_atr, 2));
+   }
+   else
+   {
+      Print("[DIAGNÓSTICO BEAR] ❌ Critério 3 falhou: Não encontrou distância anterior suficiente");
+      return false;
+   }
 
-//+------------------------------------------------------------------+
-//| Analisar ambiente de volatilidade (mesmo para bull e bear)      |
-//+------------------------------------------------------------------+
+   // ========================================================================
+   // CRITÉRIO 4: Validar padrão de posição do candle relativo à EMA
+   // Aceitamos aproximações/contatos por cima da EMA, rejeitamos sinais de rompimento para cima
+   // ========================================================================
+   bool invalid_position_for_pullback = (position_info.position == INDICATOR_CROSSES_LOWER_SHADOW || // EMA abaixo da vela -> preço perdeu resistência
+                                         position_info.position == CANDLE_ABOVE ||
+                                         position_info.position == CANDLE_COMPLETELY_ABOVE ||       // Muito acima (reversão completa)
+                                         position_info.position == CANDLE_ABOVE_WITH_DISTANCE ||    // Acima (já reversão)
+                                         position_info.position == INDICATOR_CANDLE_POSITION_FAILED // Posição não confiável
+   );
+
+   if (invalid_position_for_pullback)
+   {
+      Print("[PULLBACK DEBUG BEAR] ❌ CRITÉRIO 4 FALHOU: Padrão indica reversão, não pullback");
+      Print("[PULLBACK DEBUG BEAR]    Position: ", EnumToString(position_info.position));
+      return false;
+   }
+   Print("[PULLBACK DEBUG BEAR] ✓ Critério 4 OK: Padrão de posição válido (", EnumToString(position_info.position), ")");
+
+   // ========================================================================
+   // CRITÉRIO 5: Penetração acima da EMA não é excessiva
+   // ========================================================================
+   // Um pullback pode penetrar levemente acima da EMA (até max_penetration_atr ATR)
+   // Isso é normal e esperado em price action real
+   // O stop loss será colocado acima dessa penetração
+   double max_penetration_above_ema = m_config.pullback_max_penetration_atr * atr_value;
+
+   // Usamos o topo da última vela para medir a penetração real.
+   double penetration = MathMax(0, last_high - current_ma);
+
+   if (penetration > max_penetration_above_ema)
+   {
+      Print("[PULLBACK DEBUG BEAR] ❌ CRITÉRIO 5 FALHOU: Penetração muito profunda acima da EMA");
+      Print("[PULLBACK DEBUG BEAR]    Penetração: ", DoubleToString(penetration / atr_value, 2), " ATR",
+            " > Máx permitido: ", DoubleToString(m_config.pullback_max_penetration_atr, 2), " ATR)");
+      return false;
+   }
+   Print("[PULLBACK DEBUG BEAR] ✓ Critério 5 OK: Penetração dentro do permitido");
+
+   // ========================================================================
+   // CRITÉRIO 6: Duração máxima do pullback em velas
+   // ========================================================================
+   int duration_bars = (int)MathRound(MathMin(distance_price / atr_value, m_config.max_duration_candles));
+   if (duration_bars > m_config.max_duration_candles)
+   {
+      Print("[PULLBACK DEBUG BEAR] ❌ CRITÉRIO 6 FALHOU: Pullback demorou velas demais (", duration_bars, " > ", m_config.max_duration_candles, ")");
+      return false;
+   }
+   Print("[PULLBACK DEBUG BEAR] ✓ Critério 6 OK: Duração dentro do limite");
+
+   Print("[PULLBACK DEBUG BEAR] ✅ PULLBACK VÁLIDO BEAR CONFIRMADO");
+   Print("[PULLBACK DEBUG BEAR] ========================================");
+   return true;
+}
 bool CEmasBearSell::IsGoodVolatilityEnvironment(TF_CTX *ctx)
 {
    if (ctx == NULL)
@@ -294,7 +409,6 @@ bool CEmasBearSell::IsGoodVolatilityEnvironment(TF_CTX *ctx)
 
    double avg_atr = sum_atr / valid_periods;
    double volatility_ratio = current_atr / avg_atr;
-
 
    volatilityEnv_M15.avg_atr = avg_atr;
    volatilityEnv_M15.volatility_ratio = volatility_ratio;
@@ -394,9 +508,9 @@ bool CEmasBearSell::BollingerHasValidStructure(TF_CTX *ctx)
    if (slope_lower_is_side_walk)
    {
       // Para banda INFERIOR em tendência de baixa, slope deve ser NEGATIVO
-      bool c2 = slope_lower.linear_regression.slope_value <= -0.02;
-      bool c3 = slope_lower.discrete_derivative.slope_value <= -0.02;
-      bool c4 = slope_lower.simple_difference.slope_value <= -0.10;
+      bool c2 = slope_lower.linear_regression.slope_value <= -0.05;
+      bool c3 = slope_lower.discrete_derivative.slope_value <= -0.04;
+      bool c4 = slope_lower.simple_difference.slope_value <= -0.2;
 
       Print("SLOPE VALUES MICRO INCLINAÇÃO (LOWER BAND): &&&&&&&&&&&&&&&");
       Print("LR: ", slope_lower.linear_regression.slope_value);
@@ -412,9 +526,9 @@ bool CEmasBearSell::BollingerHasValidStructure(TF_CTX *ctx)
    bool slope_upper_is_side_walk = slope_upper.side_count >= 2;
    if (slope_upper_is_side_walk)
    {
-      bool c5 = slope_upper.linear_regression.slope_value <= 0.02 && slope_upper.linear_regression.slope_value >= -0.02;
-      bool c6 = slope_upper.discrete_derivative.slope_value <= 0.02 && slope_upper.discrete_derivative.slope_value >= -0.02;
-      bool c7 = slope_upper.simple_difference.slope_value <= 0.10 && slope_upper.simple_difference.slope_value >= -0.10;
+      bool c5 = slope_upper.linear_regression.slope_value <= 0.05 && slope_upper.linear_regression.slope_value >= -0.05;
+      bool c6 = slope_upper.discrete_derivative.slope_value <= 0.04 && slope_upper.discrete_derivative.slope_value >= -0.04;
+      bool c7 = slope_upper.simple_difference.slope_value <= 0.20 && slope_upper.simple_difference.slope_value >= -0.20;
 
       if (c5 || c6 || c7)
       {
@@ -503,7 +617,8 @@ SStrategySignal CEmasBearSell::CheckForSignal()
    bool bearish_structure_m15 = m_config.enable_bearish_structure_m15 ? IsInBearishStructure(ctx_m15) : true;
    bool bearish_structure_m3 = m_config.enable_bearish_structure_m3 ? IsInBearishStructure(ctx_m3) : true;
 
-   // Verificar ADX (mesmo critério para bull e bear - força da tendência)
+   // cavalo
+   //  Verificar ADX (mesmo critério para bull e bear - força da tendência)
    bool strong_trend_adx_m15 = false;
    double adx_value_m15 = 0.0;
    CADX *adx_m15 = ctx_m15.GetIndicator("ADX15");
@@ -515,19 +630,26 @@ SStrategySignal CEmasBearSell::CheckForSignal()
    if (!m_config.enable_adx_filter)
       strong_trend_adx_m15 = true;
 
+   SStrong_trend_ADX_m15.adx_value_tf = adx_value_m15;
+   SStrong_trend_ADX_m15.config_max_value = m_config.adx_max_value;
+   SStrong_trend_ADX_m15.config_min_value = m_config.adx_min_value;
+   SStrong_trend_ADX_m15.isStrongTrendADX = strong_trend_adx_m15;
+
    // === PONTOS DE ENTRADA - PULLBACK PARA CIMA (até resistência) ===
    SPositionInfo ema9_m3_position = ema9_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
    // INVERSÃO: Preço tocando ACIMA (upper shadow/body)
    bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
                                   ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY ||
-                                  ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
+                                  ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY ||
+                                  ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY);
    bool valid_pullback_EMA9_M3 = IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3);
 
    SPositionInfo ema21_m3_position = ema21_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
    // INVERSÃO: Preço tocando ACIMA (upper shadow/body)
    bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
                                    ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY ||
-                                   ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
+                                   ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY ||
+                                   ema21_m3_position.position == INDICATOR_CROSSES_LOWER_BODY);
    bool valid_pullback_EMA21_M3 = IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3);
 
    // === CRITÉRIO FINAL DE ENTRADA ===
@@ -715,25 +837,25 @@ void CEmasBearSell::DoLog()
    {
       Print("EMA9: ", DoubleToString(ema9_m15.GetValue(1), _Digits));
       SSlopeValidation ema9_slopes_m15 = ema9_m15.GetSlopeValidation(atr_m15.GetValue());
-      Print("-- EMA9 LR: ", ema9_slopes_m15.linear_regression.slope_value, " " , EnumToString(ema9_slopes_m15.linear_regression.trend_direction));
-      Print("-- EMA9 DD: ", ema9_slopes_m15.discrete_derivative.slope_value, " " ,EnumToString(ema9_slopes_m15.discrete_derivative.trend_direction));
-      Print("-- EMA9 SD: ", ema9_slopes_m15.simple_difference.slope_value, " " ,EnumToString(ema9_slopes_m15.simple_difference.trend_direction));
+      Print("-- EMA9 LR: ", ema9_slopes_m15.linear_regression.slope_value, " ", EnumToString(ema9_slopes_m15.linear_regression.trend_direction));
+      Print("-- EMA9 DD: ", ema9_slopes_m15.discrete_derivative.slope_value, " ", EnumToString(ema9_slopes_m15.discrete_derivative.trend_direction));
+      Print("-- EMA9 SD: ", ema9_slopes_m15.simple_difference.slope_value, " ", EnumToString(ema9_slopes_m15.simple_difference.trend_direction));
    }
    if (ema21_m15)
    {
       Print("EMA21: ", DoubleToString(ema21_m15.GetValue(1), _Digits));
       SSlopeValidation ema21_slopes_m15 = ema21_m15.GetSlopeValidation(atr_m15.GetValue());
-      Print("-- EMA21 LR: ", ema21_slopes_m15.linear_regression.slope_value, " " ,EnumToString(ema21_slopes_m15.linear_regression.trend_direction));
-      Print("-- EMA21 DD: ", ema21_slopes_m15.discrete_derivative.slope_value, " " ,EnumToString(ema21_slopes_m15.discrete_derivative.trend_direction));
-      Print("-- EMA21 SD: ", ema21_slopes_m15.simple_difference.slope_value, " " ,EnumToString(ema21_slopes_m15.simple_difference.trend_direction));
+      Print("-- EMA21 LR: ", ema21_slopes_m15.linear_regression.slope_value, " ", EnumToString(ema21_slopes_m15.linear_regression.trend_direction));
+      Print("-- EMA21 DD: ", ema21_slopes_m15.discrete_derivative.slope_value, " ", EnumToString(ema21_slopes_m15.discrete_derivative.trend_direction));
+      Print("-- EMA21 SD: ", ema21_slopes_m15.simple_difference.slope_value, " ", EnumToString(ema21_slopes_m15.simple_difference.trend_direction));
    }
    if (ema50_m15)
    {
       Print("EMA50: ", DoubleToString(ema50_m15.GetValue(1), _Digits));
       SSlopeValidation ema50_slopes_m15 = ema50_m15.GetSlopeValidation(atr_m15.GetValue());
-      Print("-- EMA50 LR: ", ema50_slopes_m15.linear_regression.slope_value, " " ,EnumToString(ema50_slopes_m15.linear_regression.trend_direction));
-      Print("-- EMA50 DD: ", ema50_slopes_m15.discrete_derivative.slope_value, " " ,EnumToString(ema50_slopes_m15.discrete_derivative.trend_direction));
-      Print("-- EMA50 SD: ", ema50_slopes_m15.simple_difference.slope_value, " " ,EnumToString(ema50_slopes_m15.simple_difference.trend_direction));
+      Print("-- EMA50 LR: ", ema50_slopes_m15.linear_regression.slope_value, " ", EnumToString(ema50_slopes_m15.linear_regression.trend_direction));
+      Print("-- EMA50 DD: ", ema50_slopes_m15.discrete_derivative.slope_value, " ", EnumToString(ema50_slopes_m15.discrete_derivative.trend_direction));
+      Print("-- EMA50 SD: ", ema50_slopes_m15.simple_difference.slope_value, " ", EnumToString(ema50_slopes_m15.simple_difference.trend_direction));
    }
    if (atr_m15)
    {
@@ -745,11 +867,13 @@ void CEmasBearSell::DoLog()
       Print("Current Volatility Ratio:", volatilityEnv_M15.volatility_ratio);
       Print(".config Min Volatility Ratio: ", m_config.min_volatility_ratio);
       Print(".config Max Volatility Ratio: ", m_config.max_volatility_ratio);
-
    }
    if (adx_m15)
    {
-      Print("ADX: ", DoubleToString(adx_m15.GetValue(1), 2));
+      Print("ADX: ", SStrong_trend_ADX_m15.adx_value_tf);
+      Print("Conf.min.value: ", SStrong_trend_ADX_m15.config_min_value);
+      Print("Conf.max.value: ", SStrong_trend_ADX_m15.config_max_value);
+      Print("Is Strong Trend: ", SStrong_trend_ADX_m15.isStrongTrendADX ? "Sim" : "Não");
    }
 
    Print("EMA9 - EMA 21 Distance: ", distance_ma_m15.ema_9_21);
@@ -769,26 +893,26 @@ void CEmasBearSell::DoLog()
    {
       Print("EMA9: ", DoubleToString(ema9_m3.GetValue(1), _Digits));
       SSlopeValidation ema9_slopes_m3 = ema9_m3.GetSlopeValidation(atr_m3.GetValue());
-      Print("-- EMA9 LR: ", ema9_slopes_m3.linear_regression.slope_value, " " ,EnumToString(ema9_slopes_m3.linear_regression.trend_direction));
-      Print("-- EMA9 DD: ", ema9_slopes_m3.discrete_derivative.slope_value, " " ,EnumToString(ema9_slopes_m3.discrete_derivative.trend_direction));
-      Print("-- EMA9 SD: ", ema9_slopes_m3.simple_difference.slope_value, " " ,EnumToString(ema9_slopes_m3.simple_difference.trend_direction));
+      Print("-- EMA9 LR: ", ema9_slopes_m3.linear_regression.slope_value, " ", EnumToString(ema9_slopes_m3.linear_regression.trend_direction));
+      Print("-- EMA9 DD: ", ema9_slopes_m3.discrete_derivative.slope_value, " ", EnumToString(ema9_slopes_m3.discrete_derivative.trend_direction));
+      Print("-- EMA9 SD: ", ema9_slopes_m3.simple_difference.slope_value, " ", EnumToString(ema9_slopes_m3.simple_difference.trend_direction));
    }
    // cavalo
    if (ema21_m3)
    {
       Print("EMA21: ", DoubleToString(ema21_m3.GetValue(1), _Digits));
       SSlopeValidation ema21_slopes_m3 = ema21_m3.GetSlopeValidation(atr_m3.GetValue());
-      Print("-- EMA21 LR: ", ema21_slopes_m3.linear_regression.slope_value, " " ,EnumToString(ema21_slopes_m3.linear_regression.trend_direction));
-      Print("-- EMA21 DD: ", ema21_slopes_m3.discrete_derivative.slope_value, " " ,EnumToString(ema21_slopes_m3.discrete_derivative.trend_direction));
-      Print("-- EMA21 SD: ", ema21_slopes_m3.simple_difference.slope_value, " " ,EnumToString(ema21_slopes_m3.simple_difference.trend_direction));
+      Print("-- EMA21 LR: ", ema21_slopes_m3.linear_regression.slope_value, " ", EnumToString(ema21_slopes_m3.linear_regression.trend_direction));
+      Print("-- EMA21 DD: ", ema21_slopes_m3.discrete_derivative.slope_value, " ", EnumToString(ema21_slopes_m3.discrete_derivative.trend_direction));
+      Print("-- EMA21 SD: ", ema21_slopes_m3.simple_difference.slope_value, " ", EnumToString(ema21_slopes_m3.simple_difference.trend_direction));
    }
    if (ema50_m3)
    {
       Print("EMA50: ", DoubleToString(ema50_m3.GetValue(1), _Digits));
       SSlopeValidation ema50_slopes_m3 = ema50_m3.GetSlopeValidation(atr_m3.GetValue());
-      Print("-- EMA50 LR: ", ema50_slopes_m3.linear_regression.slope_value, " " ,EnumToString(ema50_slopes_m3.linear_regression.trend_direction));
-      Print("-- EMA50 DD: ", ema50_slopes_m3.discrete_derivative.slope_value, " " ,EnumToString(ema50_slopes_m3.discrete_derivative.trend_direction));
-      Print("-- EMA50 SD: ", ema50_slopes_m3.simple_difference.slope_value, " " ,EnumToString(ema50_slopes_m3.simple_difference.trend_direction));
+      Print("-- EMA50 LR: ", ema50_slopes_m3.linear_regression.slope_value, " ", EnumToString(ema50_slopes_m3.linear_regression.trend_direction));
+      Print("-- EMA50 DD: ", ema50_slopes_m3.discrete_derivative.slope_value, " ", EnumToString(ema50_slopes_m3.discrete_derivative.trend_direction));
+      Print("-- EMA50 SD: ", ema50_slopes_m3.simple_difference.slope_value, " ", EnumToString(ema50_slopes_m3.simple_difference.trend_direction));
    }
    if (atr_m3)
    {
@@ -882,14 +1006,20 @@ void CEmasBearSell::DoLog()
    SPositionInfo ema9_m3_position = ema9_m3 ? ema9_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value) : SPositionInfo();
    SPositionInfo ema21_m3_position = ema21_m3 ? ema21_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value) : SPositionInfo();
 
-   bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
+   bool price_pullback_EMA9_M3 = (ema9_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
+                                  ema9_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
                                   ema9_m3_position.position == INDICATOR_CROSSES_UPPER_BODY ||
-                                  ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
+                                  ema9_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW
+                                  // ema9_m3_position.position == INDICATOR_CROSSES_CENTER_BODY
+   );
    bool valid_pullback_EMA9_M3 = ema9_m3 ? IsValidPullback(ema9_m3_position, atr_value, ctx_m3, ema9_m3) : false;
 
-   bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW ||
-                                   ema21_m3_position.position == INDICATOR_CROSSES_UPPER_BODY ||
-                                   ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY);
+   bool price_pullback_EMA21_M3 = (ema21_m3_position.position == INDICATOR_CROSSES_LOWER_SHADOW ||
+                                   ema21_m3_position.position == INDICATOR_CROSSES_LOWER_BODY ||
+                                   ema9_m3_position.position == INDICATOR_CROSSES_UPPER_SHADOW
+                                   //||
+                                   // ema21_m3_position.position == INDICATOR_CROSSES_CENTER_BODY
+   );
    bool valid_pullback_EMA21_M3 = ema21_m3 ? IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3) : false;
 
    Print("--- PONTOS DE ENTRADA (M3) - PULLBACK PARA CIMA ---");

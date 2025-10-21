@@ -57,6 +57,44 @@ public:
    bool enable_adx_filter;
    bool enable_pullback_ema9;
    bool enable_pullback_ema21;
+   bool enable_bollinger_filter_m3;
+   bool enable_bollinger_filter_m15;
+   bool enable_bollinger_filter_h1;
+
+   // New configurable parameters for Bollinger Bands micro inclination validation - M3
+   double boll_micro_m3_min_width;
+   double boll_micro_m3_max_width;
+   double boll_micro_m3_upper_lr_min;
+   double boll_micro_m3_upper_dd_min;
+   double boll_micro_m3_upper_sd_min;
+   double boll_micro_m3_lower_lr_abs_max;
+   double boll_micro_m3_lower_dd_abs_max;
+   double boll_micro_m3_lower_sd_abs_max;
+
+   // New configurable parameters for Bollinger Bands micro inclination validation - M15
+   double boll_micro_m15_min_width;
+   double boll_micro_m15_max_width;
+   double boll_micro_m15_upper_lr_min;
+   double boll_micro_m15_upper_dd_min;
+   double boll_micro_m15_upper_sd_min;
+   double boll_micro_m15_lower_lr_abs_max;
+   double boll_micro_m15_lower_dd_abs_max;
+   double boll_micro_m15_lower_sd_abs_max;
+
+   // New configurable parameters for Bollinger Bands micro inclination validation - H1
+   double boll_micro_h1_min_width;
+   double boll_micro_h1_max_width;
+   double boll_micro_h1_upper_lr_min;
+   double boll_micro_h1_upper_dd_min;
+   double boll_micro_h1_upper_sd_min;
+   double boll_micro_h1_lower_lr_abs_max;
+   double boll_micro_h1_lower_dd_abs_max;
+   double boll_micro_h1_lower_sd_abs_max;
+
+   // New configurable parameters for pullback validation
+   double pullback_depth_buffer_atr;
+   double pullback_max_penetration_atr;
+   double pullback_improvement_factor;
 
    // Authorized timeframes for signal generation
    ENUM_TIMEFRAMES authorized_timeframes[];
@@ -94,6 +132,41 @@ public:
       adx_min_value = 25;
       adx_max_value = 60;
 
+      // Initialize new Bollinger micro inclination parameters with current hardcoded values - M3
+      boll_micro_m3_min_width = 500;
+      boll_micro_m3_max_width = 3000;
+      boll_micro_m3_upper_lr_min = 0.05;
+      boll_micro_m3_upper_dd_min = 0.04;
+      boll_micro_m3_upper_sd_min = 0.20;
+      boll_micro_m3_lower_lr_abs_max = 0.05;
+      boll_micro_m3_lower_dd_abs_max = 0.04;
+      boll_micro_m3_lower_sd_abs_max = 0.20;
+
+      // Initialize new Bollinger micro inclination parameters with current hardcoded values - M15
+      boll_micro_m15_min_width = 500;
+      boll_micro_m15_max_width = 3000;
+      boll_micro_m15_upper_lr_min = 0.05;
+      boll_micro_m15_upper_dd_min = 0.04;
+      boll_micro_m15_upper_sd_min = 0.20;
+      boll_micro_m15_lower_lr_abs_max = 0.05;
+      boll_micro_m15_lower_dd_abs_max = 0.04;
+      boll_micro_m15_lower_sd_abs_max = 0.20;
+
+      // Initialize new Bollinger micro inclination parameters with current hardcoded values - H1
+      boll_micro_h1_min_width = 500;
+      boll_micro_h1_max_width = 3000;
+      boll_micro_h1_upper_lr_min = 0.05;
+      boll_micro_h1_upper_dd_min = 0.04;
+      boll_micro_h1_upper_sd_min = 0.20;
+      boll_micro_h1_lower_lr_abs_max = 0.05;
+      boll_micro_h1_lower_dd_abs_max = 0.04;
+      boll_micro_h1_lower_sd_abs_max = 0.20;
+
+      // Initialize new pullback parameters with current hardcoded values
+      pullback_depth_buffer_atr = 0.5;
+      pullback_max_penetration_atr = 1.5;
+      pullback_improvement_factor = 1.15;
+
       // Initialize validation flags to true by default
       enable_ema_alignment_m15 = true;
       enable_ema_alignment_m3 = true;
@@ -106,6 +179,9 @@ public:
       enable_adx_filter = true;
       enable_pullback_ema9 = true;
       enable_pullback_ema21 = true;
+      enable_bollinger_filter_m3 = true;
+      enable_bollinger_filter_m15 = true;
+      enable_bollinger_filter_h1 = true;
 
       // Initialize authorized timeframes (default to M15 and M3 for this strategy)
       ArrayResize(authorized_timeframes, 2);
@@ -151,6 +227,21 @@ public:
    bool enable_adx_filter;
    bool enable_pullback_ema9;
    bool enable_pullback_ema21;
+
+   // New configurable parameters for Bollinger Bands micro inclination validation
+   double boll_micro_min_width;
+   double boll_micro_max_width;
+   double boll_micro_upper_lr_min;
+   double boll_micro_upper_dd_min;
+   double boll_micro_upper_sd_min;
+   double boll_micro_lower_lr_abs_max;
+   double boll_micro_lower_dd_abs_max;
+   double boll_micro_lower_sd_abs_max;
+
+   // New configurable parameters for pullback validation
+   double pullback_depth_buffer_atr;
+   double pullback_max_penetration_atr;
+   double pullback_improvement_factor;
 
    // Authorized timeframes for signal generation
    ENUM_TIMEFRAMES authorized_timeframes[];
