@@ -590,7 +590,8 @@
                   "enable_adx_filter": true,
                   "enable_pullback_ema9": true,
                   "enable_pullback_ema21": true,
-                  "authorized_timeframes": ["M3"]
+                  "authorized_timeframes": ["M3"],
+                  "operating_hours": ["09:30-11:45", "13:30-16:00"]
                },
                {
                   "enabled": true,
@@ -623,7 +624,9 @@
                   "enable_adx_filter": true,
                   "enable_pullback_ema9": true,
                   "enable_pullback_ema21": true,
-                  "authorized_timeframes": ["M3"]
+                  "authorized_timeframes": ["M3"],
+                  "operating_hours_start": "09:00",
+                  "operating_hours_end": "17:00"
                }
             ]
          },

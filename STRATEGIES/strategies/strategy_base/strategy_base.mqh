@@ -121,6 +121,19 @@ protected:
    // Método auxiliar para obter configuração da estratégia (deve ser implementado pelas classes derivadas)
    virtual CStrategyConfig *GetStrategyConfig() { return NULL; }
 
+   // Método para verificar se estamos dentro do horário de operação
+   virtual bool IsWithinOperatingHours()
+   {
+       return DoOperatingHoursCheck();
+   }
+
+   // Método virtual para implementação específica de verificação de horário de operação
+   virtual bool DoOperatingHoursCheck()
+   {
+       // Implementação padrão: sempre permitir operação
+       return true;
+   }
+
 protected:
    // Método virtual para implementação específica de log em cada estratégia
    virtual void DoLog() { }
@@ -191,6 +204,7 @@ public:
        // Para outras estratégias sem configuração específica de timeframes, permitir todos
        return true;
    }
+
 };
 
 //+------------------------------------------------------------------+
@@ -276,9 +290,16 @@ bool CStrategyBase::Update(string symbol, ENUM_TIMEFRAMES timeframe)
        return false;
     }
 
-    // Verificar por novos sinais apenas se estivermos em estado idle e timeframe estiver autorizado
+    // Verificar por novos sinais apenas se estivermos em estado idle, timeframe estiver autorizado e dentro do horário de operação
     if (m_state == STRATEGY_IDLE && IsTimeframeAuthorized(m_current_timeframe))
     {
+       // Verificar se estamos dentro do horário de operação
+       if (!IsWithinOperatingHours())
+       {
+          Print("AVISO: Estratégia ", m_name, " fora do horário de operação");
+          return true;
+       }
+
        SStrategySignal signal = CheckForSignal();
 
        if (signal.is_valid && ValidateSignal(signal))

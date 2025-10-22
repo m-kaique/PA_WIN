@@ -99,6 +99,9 @@ public:
    // Authorized timeframes for signal generation
    ENUM_TIMEFRAMES authorized_timeframes[];
 
+   // Time intervals for strategy operation (array of HH:MM-HH:MM format)
+   string operating_hours_intervals[];
+
    // Method to check if timeframe is authorized
    bool IsTimeframeAuthorized(ENUM_TIMEFRAMES timeframe)
    {
@@ -108,6 +111,60 @@ public:
             return true;
       }
       return false;
+   }
+
+   // Method to check if current time is within operating hours
+   bool IsWithinOperatingHours()
+   {
+      if (ArraySize(operating_hours_intervals) == 0)
+         return true; // No restrictions if not configured
+
+      MqlDateTime current_time;
+      TimeCurrent(current_time);
+
+      // Convert current time to minutes since midnight
+      int current_minutes = current_time.hour * 60 + current_time.min;
+
+      // Check each interval
+      for (int i = 0; i < ArraySize(operating_hours_intervals); i++)
+      {
+         if (IsTimeInInterval(current_minutes, operating_hours_intervals[i]))
+            return true;
+      }
+
+      return false;
+   }
+
+   // Helper method to check if time is within a specific interval
+   bool IsTimeInInterval(int current_minutes, string interval_str)
+   {
+      string parts[];
+      StringSplit(interval_str, '-', parts);
+      if (ArraySize(parts) != 2) return false;
+
+      // Parse start time
+      string start_parts[];
+      StringSplit(parts[0], ':', start_parts);
+      if (ArraySize(start_parts) != 2) return false;
+      int start_minutes = (int)StringToInteger(start_parts[0]) * 60 + (int)StringToInteger(start_parts[1]);
+
+      // Parse end time
+      string end_parts[];
+      StringSplit(parts[1], ':', end_parts);
+      if (ArraySize(end_parts) != 2) return false;
+      int end_minutes = (int)StringToInteger(end_parts[0]) * 60 + (int)StringToInteger(end_parts[1]);
+
+      // Handle overnight intervals (e.g., 22:00-06:00)
+      if (end_minutes < start_minutes)
+      {
+         // Interval spans midnight
+         return (current_minutes >= start_minutes || current_minutes <= end_minutes);
+      }
+      else
+      {
+         // Normal interval within same day
+         return (current_minutes >= start_minutes && current_minutes <= end_minutes);
+      }
    }
 
    CEmasBullBuyConfig()
@@ -185,7 +242,11 @@ public:
 
       // Initialize authorized timeframes (default to M15 and M3 for this strategy)
       ArrayResize(authorized_timeframes, 2);
-      authorized_timeframes[0] = PERIOD_M30;
+      authorized_timeframes[0] = PERIOD_M15;
+      authorized_timeframes[1] = PERIOD_M3;
+
+      // Initialize operating hours (default: no restrictions)
+      ArrayResize(operating_hours_intervals, 0);
    }
 };
 

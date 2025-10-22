@@ -44,6 +44,9 @@ private:
    bool IsInBullishStructure(TF_CTX *ctx);
    bool BollingerHasValidStructure(TF_CTX *ctx);
 
+   // Override do método de verificação de horário de operação
+   virtual bool DoOperatingHoursCheck() override;
+
 protected:
    virtual bool DoInit() override;
    virtual bool DoUpdate() override;
@@ -738,6 +741,7 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    );
    bool valid_pullback_EMA21_M3 = IsValidPullback(ema21_m3_position, atr_value, ctx_m3, ema21_m3);
 
+
    // === CRITÉRIO FINAL DE ENTRADA ===
    bool ema_alignment_m15_ok = m_config.enable_ema_alignment_m15 ? (EMA9_above_EMA21_M15 && EMA21_above_EMA50_M15) : true;
    bool ema_alignment_m3_ok = m_config.enable_ema_alignment_m3 ? (EMA9_above_EMA21_M3 && EMA21_above_EMA50_M3) : true;
@@ -1215,11 +1219,19 @@ void CEmasBuyBull::DoLog()
 }
 
 //+------------------------------------------------------------------+
+//| Implementação específica da verificação de horário de operação  |
+//+------------------------------------------------------------------+
+bool CEmasBuyBull::DoOperatingHoursCheck()
+{
+    return m_config.IsWithinOperatingHours();
+}
+
+//+------------------------------------------------------------------+
 //| Retornar configuração da estratégia                              |
 //+------------------------------------------------------------------+
 CStrategyConfig *CEmasBuyBull::GetStrategyConfig()
 {
-   return &m_config;
+    return &m_config;
 }
 
 #endif

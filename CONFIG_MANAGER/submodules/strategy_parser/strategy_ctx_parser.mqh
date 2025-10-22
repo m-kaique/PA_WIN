@@ -291,6 +291,26 @@ CEmasBullBuyConfig *CStrategyConfigParser::ParseEmasBuyBullConfig(CJAVal *strate
         Print("Using default authorized timeframes: M15, M3");
     }
 
+    // Parse operating hours intervals
+    CJAVal *operating_hours = strategy_json["operating_hours"];
+    if (operating_hours != NULL && operating_hours.Size() > 0)
+    {
+        ArrayResize(config.operating_hours_intervals, operating_hours.Size());
+        for (int i = 0; i < operating_hours.Size(); i++)
+        {
+            config.operating_hours_intervals[i] = operating_hours.children[i].ToStr();
+        }
+        Print("Operating hours configured with ", operating_hours.Size(), " intervals");
+        for (int i = 0; i < ArraySize(config.operating_hours_intervals); i++)
+        {
+            Print("  Interval ", i + 1, ": ", config.operating_hours_intervals[i]);
+        }
+    }
+    else
+    {
+        Print("No operating hours restrictions configured");
+    }
+
     Print("EMA Buy Bull config parseada: ", config.name);
     return config;
 }
