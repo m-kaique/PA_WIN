@@ -25,8 +25,8 @@ private:
    ENUM_TIMEFRAMES m_timeframe;
 
    // Estruturas de Dados
-   SDistance_MA distance_ma_m3;
-   SDistance_MA distance_ma_m15;
+   SStrongTrendEMAS distance_ma_m3;
+   SStrongTrendEMAS distance_ma_m15;
    SVolatilityEnv volatilityEnv_M15;
    SStrongTrendADX SStrong_trend_ADX_m15;
 
@@ -132,25 +132,25 @@ bool CEmasBearSell::IsStrongTrend(TF_CTX *ctx)
 
    if (ctx.GetTimeFrame() == PERIOD_M15)
    {
-      distance_ma_m15.ema_21_50 = MathAbs(ema50_val - ema21_val);
-      distance_ma_m15.ema_9_21 = MathAbs(ema21_val - ema9_val);
-      distance_ma_m15.ema_9_50 = MathAbs(ema50_val - ema9_val);
+      distance_ma_m15.distance_ema_21_50 = MathAbs(ema50_val - ema21_val);
+      distance_ma_m15.distance_ema_9_21 = MathAbs(ema21_val - ema9_val);
+      distance_ma_m15.distance_ema_9_50 = MathAbs(ema50_val - ema9_val);
 
-      distance_ma_m15.ema_21_50_by_atr = MathAbs(ema50_val - ema21_val) / atr_val;
-      distance_ma_m15.ema_9_21_by_atr = MathAbs(ema21_val - ema9_val) / atr_val;
-      distance_ma_m15.ema_9_50_by_atr = MathAbs(ema50_val - ema9_val) / atr_val;
+      distance_ma_m15.distance_ema_21_50_by_atr = MathAbs(ema50_val - ema21_val) / atr_val;
+      distance_ma_m15.distance_ema_9_21_by_atr = MathAbs(ema21_val - ema9_val) / atr_val;
+      distance_ma_m15.distance_ema_9_50_by_atr = MathAbs(ema50_val - ema9_val) / atr_val;
 
       strong_trend = (dist_9_21 >= m_config.min_distance_9_21_atr_m15 && dist_21_50 >= m_config.min_distance_21_50_atr_m15);
    }
    else if (ctx.GetTimeFrame() == PERIOD_M3)
    {
-      distance_ma_m3.ema_21_50 = MathAbs(ema50_val - ema21_val);
-      distance_ma_m3.ema_9_21 = MathAbs(ema21_val - ema9_val);
-      distance_ma_m3.ema_9_50 = MathAbs(ema50_val - ema9_val);
+      distance_ma_m3.distance_ema_21_50 = MathAbs(ema50_val - ema21_val);
+      distance_ma_m3.distance_ema_9_21 = MathAbs(ema21_val - ema9_val);
+      distance_ma_m3.distance_ema_9_50 = MathAbs(ema50_val - ema9_val);
 
-      distance_ma_m3.ema_21_50_by_atr = MathAbs(ema50_val - ema21_val) / atr_val;
-      distance_ma_m3.ema_9_21_by_atr = MathAbs(ema21_val - ema9_val) / atr_val;
-      distance_ma_m3.ema_9_50_by_atr = MathAbs(ema50_val - ema9_val) / atr_val;
+      distance_ma_m3.distance_ema_21_50_by_atr = MathAbs(ema50_val - ema21_val) / atr_val;
+      distance_ma_m3.distance_ema_9_21_by_atr = MathAbs(ema21_val - ema9_val) / atr_val;
+      distance_ma_m3.distance_ema_9_50_by_atr = MathAbs(ema50_val - ema9_val) / atr_val;
 
       strong_trend = (dist_9_21 >= m_config.min_distance_9_21_atr_m3 && dist_21_50 >= m_config.min_distance_21_50_atr_m3);
    }
@@ -876,11 +876,11 @@ void CEmasBearSell::DoLog()
       Print("Is Strong Trend: ", SStrong_trend_ADX_m15.isStrongTrendADX ? "Sim" : "Não");
    }
 
-   Print("EMA9 - EMA 21 Distance: ", distance_ma_m15.ema_9_21);
-   Print("EMA9 - EMA 21 Distance by ATR: ", distance_ma_m15.ema_9_21_by_atr);
+   Print("EMA9 - EMA 21 Distance: ", distance_ma_m15.distance_ema_9_21);
+   Print("EMA9 - EMA 21 Distance by ATR: ", distance_ma_m15.distance_ema_9_21_by_atr);
 
-   Print("EMA21 - EMA 50 Distance: ", distance_ma_m15.ema_21_50);
-   Print("EMA21 - EMA 50 Distance by ATR: ", distance_ma_m15.ema_21_50_by_atr);
+   Print("EMA21 - EMA 50 Distance: ", distance_ma_m15.distance_ema_21_50);
+   Print("EMA21 - EMA 50 Distance by ATR: ", distance_ma_m15.distance_ema_21_50_by_atr);
 
    // Indicadores M3
    CMovingAverages *ema9_m3 = ctx_m3.GetIndicator("ema9");
@@ -919,11 +919,11 @@ void CEmasBearSell::DoLog()
       Print("ATR: ", DoubleToString(atr_m3.GetValue(1), 5));
    }
 
-   Print("EMA9 - EMA 21 Distance: ", distance_ma_m3.ema_9_21);
-   Print("EMA9 - EMA 21 Distance by ATR: ", distance_ma_m3.ema_9_21_by_atr);
+   Print("EMA9 - EMA 21 Distance: ", distance_ma_m3.distance_ema_9_21);
+   Print("EMA9 - EMA 21 Distance by ATR: ", distance_ma_m3.distance_ema_9_21_by_atr);
 
-   Print("EMA21 - EMA 50 Distance: ", distance_ma_m3.ema_21_50);
-   Print("EMA21 - EMA 50 Distance by ATR: ", distance_ma_m3.ema_21_50_by_atr);
+   Print("EMA21 - EMA 50 Distance: ", distance_ma_m3.distance_ema_21_50);
+   Print("EMA21 - EMA 50 Distance by ATR: ", distance_ma_m3.distance_ema_21_50_by_atr);
 
    // Valores calculados
    double atr_value = (atr_m3 != NULL) ? atr_m3.GetValue(1) : 0.0;
