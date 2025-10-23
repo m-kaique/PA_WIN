@@ -30,7 +30,7 @@ private:
    SDistance_MA distance_ma_m15;
    SVolatilityEnv volatilityEnv_M15;
    SStrongTrendADX SStrong_trend_ADX_m15;
-   SBollingerValidStructure bollStructure_M3;
+   SBollingerValidStructure _m3_boll; // REVISAR O USO !!!
 
    double CalculateLotSize();
    double CalculateStopLoss(double entry_price);
@@ -621,7 +621,7 @@ bool CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
       }
    }
 
-   bollStructure_M3.is_valid = true;
+
    return true;
 }
 //+------------------------------------------------------------------+
@@ -747,6 +747,7 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    bool ema_alignment_m3_ok = m_config.enable_ema_alignment_m3 ? (EMA9_above_EMA21_M3 && EMA21_above_EMA50_M3) : true;
 
    bool is_bollinger_valid_m3 = m_config.enable_bollinger_filter_m3 ? BollingerHasValidStructure(ctx_m3) : true;
+   _m3_boll.is_valid = is_bollinger_valid_m3; // Revisar o uso para structs
    bool is_bollinger_valid_m15 = m_config.enable_bollinger_filter_m15 ? BollingerHasValidStructure(ctx_m15) : true;
    bool is_bollinger_valid_h1 = m_config.enable_bollinger_filter_h1 ? BollingerHasValidStructure(ctx_h1) : true;
 
@@ -1157,7 +1158,7 @@ void CEmasBuyBull::DoLog()
    bool strong_trend_adx_m15 = (adx_m15 != NULL) ? (adx_m15.GetValue(1) >= m_config.adx_min_value && adx_m15.GetValue(1) <= m_config.adx_max_value) : false;
 
    Print("--- FILTROS DEPENDENTES ---");
-   Print("Bollinger Válida (M3): ", bollStructure_M3.is_valid ? "Sim" : "Não");
+   Print("Bollinger Válida (M3): ", _m3_boll.is_valid ? "Sim" : "Não");
    Print("Tendência Forte (M15): ", SStrong_trend_ADX_m15.isStrongTrendADX ? "Sim" : "Não");
    Print("Tendência Forte (M3): ", strong_trend_m3 ? "Sim" : "Não");
    Print("Momentum Bullish: ", bullish_momentum ? "Sim" : "Não");

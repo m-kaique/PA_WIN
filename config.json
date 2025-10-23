@@ -350,24 +350,29 @@
                      "applied_price": "CLOSE",
                      "enabled": true,
                      "attach_chart": true,
+                     "enable_bandwidth_stats": true,
+                     "bandwidth_lookback": 200,
+                     "enable_bandwidth_slope": true,
+                     "bandwidth_slope_lookback": 20,
+                     "bandwidth_normalize_by_atr": true,
                      "slope_values": [
                         {
                            "lookback": 5,
-                           "linear_reg": 0.06,
-                           "simple_diff": 0.60,
-                           "discrete_der": 0.06
+                           "linear_reg": 0.08,
+                           "simple_diff": 0.80,
+                           "discrete_der": 0.08
                         },
                         {
                            "lookback": 8,
-                           "linear_reg": 0.06,
-                           "simple_diff": 0.60,
-                           "discrete_der": 0.06
+                           "linear_reg": 0.08,
+                           "simple_diff": 0.80,
+                           "discrete_der": 0.08
                         },
                         {
                            "lookback": 5,
-                           "linear_reg": 0.06,
-                           "simple_diff": 0.60,
-                           "discrete_der": 0.06
+                           "linear_reg": 0.08,
+                           "simple_diff": 0.80,
+                           "discrete_der": 0.08
                         }
                      ]
                   },
@@ -527,7 +532,11 @@
                      "applied_price": "CLOSE",
                      "enabled": true,
                      "attach_chart": true,
-                     "width_lookback_period": 5,
+                     "enable_bandwidth_stats": true,
+                     "bandwidth_lookback": 200,
+                     "enable_bandwidth_slope": true,
+                     "bandwidth_slope_lookback": 20,
+                     "bandwidth_normalize_by_atr": true,
                      "slope_values": [
                         {
                            "lookback": 5,
@@ -559,7 +568,7 @@
          "Conservative_Setup": {
             "enabled": true,
             "strategies": [
-{
+               {
                   "enabled": true,
                   "name": "m15_m3_emas_buy_bull",
                   "type": "emas_buy_bull",
@@ -589,44 +598,68 @@
                   "enable_bullish_structure_m3": true,
                   "enable_adx_filter": true,
                   "enable_pullback_ema9": true,
-                  "enable_pullback_ema21": true,
-                  "authorized_timeframes": ["M3"],
-                  "operating_hours": ["09:30-11:45", "13:30-16:00"]
-               },
-               {
-                  "enabled": true,
-                  "name": "m15_m3_emas_sell_bear",
-                  "type": "emas_sell_bear",
-                  "risk_percent": 1.0,
-                  "stop_loss_pips": 50.0,
-                  "take_profit_ratio": 2.0,
-                  "min_distance_9_21_atr_m3": 0.05,
-                  "min_distance_21_50_atr_m3": 0.10,
-                  "min_distance_9_21_atr_m15": 0.09,
-                  "min_distance_21_50_atr_m15": 0.15,
-                  "lookback_candles": 3,
-                  "max_distance_atr": 0.8,
-                  "max_duration_candles": 3,
-                  "lookback_periods": 10,
-                  "min_volatility_ratio": 0.7,
-                  "max_volatility_ratio": 1.5,
-                  "bearish_structure_atr_threshold": 0.5,
-                  "adx_min_value": 17,
-                  "adx_max_value": 70,
-                  "enable_ema_alignment_m15": true,
-                  "enable_ema_alignment_m3": true,
-                  "enable_strong_trend_m15": true,
-                  "enable_strong_trend_m3": true,
-                  "enable_bearish_momentum": false,
-                  "enable_good_volatility": true,
-                  "enable_bearish_structure_m15": true,
-                  "enable_bearish_structure_m3": true,
-                  "enable_adx_filter": true,
-                  "enable_pullback_ema9": true,
-                  "enable_pullback_ema21": true,
-                  "authorized_timeframes": ["M3"],
-                  "operating_hours_start": "09:00",
-                  "operating_hours_end": "17:00"
+                  "enable_pullback_ema21": false,
+                  "enable_bollinger_filter_m3": true,
+                  "enable_bollinger_filter_m15": true,
+                  "enable_bollinger_filter_h1": false,
+                  "enable_bandwidth_stats_filter": false,
+                  "block_on_bandwidth_contraction": false,
+                  "boll_bandwidth_percentile_narrow": 25.0,
+                  "boll_bandwidth_zscore_narrow": -0.5,
+                  "boll_bandwidth_min_slope_linear": 0.0,
+                  "boll_bandwidth_min_slope_diff": 0.0,
+                  "boll_bandwidth_min_slope_derivative": 0.0,
+                  "bollinger_filter_m3_settings": {
+                     "min_width": 500,
+                     "max_width": 3000,
+                     "micro_upper_slopes": {
+                        "lr_min": 0.05,
+                        "dd_min": 0.04,
+                        "sd_min": 0.20
+                     },
+                     "micro_lower_slopes": {
+                        "lr_abs_max": 0.05,
+                        "dd_abs_max": 0.04,
+                        "sd_abs_max": 0.20
+                     }
+                  },
+                  "bollinger_filter_m15_settings": {
+                     "min_width": 500,
+                     "max_width": 3000,
+                     "micro_upper_slopes": {
+                        "lr_min": 0.05,
+                        "dd_min": 0.04,
+                        "sd_min": 0.20
+                     },
+                     "micro_lower_slopes": {
+                        "lr_abs_max": 0.05,
+                        "dd_abs_max": 0.04,
+                        "sd_abs_max": 0.20
+                     }
+                  },
+                  "bollinger_filter_h1_settings": {
+                     "min_width": 500,
+                     "max_width": 3000,
+                     "micro_upper_slopes": {
+                        "lr_min": 0.05,
+                        "dd_min": 0.04,
+                        "sd_min": 0.20
+                     },
+                     "micro_lower_slopes": {
+                        "lr_abs_max": 0.05,
+                        "dd_abs_max": 0.04,
+                        "sd_abs_max": 0.20
+                     }
+                  },
+                  "pullback": {
+                     "depth_buffer_atr": 0.5,
+                     "max_penetration_atr": 1.5,
+                     "improvement_factor": 1.15
+                  },
+                  "authorized_timeframes": [
+                     "M3"
+                  ],
+                  "operating_hours": ["09:30-11:30"]
                }
             ]
          },
