@@ -138,6 +138,7 @@ struct SBollingerStructure
       is_valid_structure = false;
    }
 };
+
 struct SIsValidPullback
 {
    int digits;
@@ -160,6 +161,7 @@ struct SIsValidPullback
    double penetration;
    int found_at_bar;
    double prev_distance_atr;
+   double improvement_factor;
    double improvement_ratio;
 };
 

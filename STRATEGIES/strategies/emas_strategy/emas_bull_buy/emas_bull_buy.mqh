@@ -137,7 +137,7 @@ SStrongTrendEMAS CEmasBuyBull::IsStrongTrend(TF_CTX *ctx)
    // Validação do contexto
    if (ctx == NULL)
    {
-      Print("[STRONG TREND] ❌ Contexto NULL");
+      // Print("[STRONG TREND] ❌ Contexto NULL");
       return data;
    }
 
@@ -149,7 +149,7 @@ SStrongTrendEMAS CEmasBuyBull::IsStrongTrend(TF_CTX *ctx)
 
    if (ema9 == NULL || ema21 == NULL || ema50 == NULL || atr == NULL)
    {
-      Print("[STRONG TREND] ❌ Indicadores ausentes");
+      // Print("[STRONG TREND] ❌ Indicadores ausentes");
       return data;
    }
 
@@ -162,7 +162,7 @@ SStrongTrendEMAS CEmasBuyBull::IsStrongTrend(TF_CTX *ctx)
 
    if (data.atr_value <= 0)
    {
-      Print("[STRONG TREND] ❌ ATR inválido: ", data.atr_value);
+      // Print("[STRONG TREND] ❌ ATR inválido: ", data.atr_value);
       return data;
    }
 
@@ -189,7 +189,7 @@ SStrongTrendEMAS CEmasBuyBull::IsStrongTrend(TF_CTX *ctx)
    }
    else
    {
-      Print("[STRONG TREND] ⚠️ Timeframe não configurado: ", EnumToString(data.timeframe));
+      // Print("[STRONG TREND] ⚠️ Timeframe não configurado: ", EnumToString(data.timeframe));
       return data;
    }
 
@@ -197,28 +197,6 @@ SStrongTrendEMAS CEmasBuyBull::IsStrongTrend(TF_CTX *ctx)
    data.distance_9_21_ok = (data.distance_ema_9_21_by_atr >= data.min_distance_9_21_threshold);
    data.distance_21_50_ok = (data.distance_ema_21_50_by_atr >= data.min_distance_21_50_threshold);
    data.is_strong_trend = data.distance_9_21_ok && data.distance_21_50_ok;
-
-   // ========================================================================
-   // LOG DE DIAGNÓSTICO
-   // ========================================================================
-   if (true)
-   {
-      Print("[STRONG TREND] ========================================");
-      Print("[STRONG TREND] Timeframe: ", EnumToString(data.timeframe));
-      Print("[STRONG TREND] EMA9: ", DoubleToString(data.ema9_value, _Digits),
-            " | EMA21: ", DoubleToString(data.ema21_value, _Digits),
-            " | EMA50: ", DoubleToString(data.ema50_value, _Digits));
-      Print("[STRONG TREND] ATR: ", DoubleToString(data.atr_value, 5));
-      Print("[STRONG TREND] Distância 9-21: ", DoubleToString(data.distance_ema_9_21_by_atr, 2),
-            " ATR (min: ", DoubleToString(data.min_distance_9_21_threshold, 2), ") ",
-            data.distance_9_21_ok ? "✓" : "❌");
-      Print("[STRONG TREND] Distância 21-50: ", DoubleToString(data.distance_ema_21_50_by_atr, 2),
-            " ATR (min: ", DoubleToString(data.min_distance_21_50_threshold, 2), ") ",
-            data.distance_21_50_ok ? "✓" : "❌");
-      Print("[STRONG TREND] Resultado: ", data.is_strong_trend ? "✅ TENDÊNCIA FORTE" : "❌ Tendência fraca");
-      Print("[STRONG TREND] ========================================");
-   }
-
    return data;
 }
 
@@ -234,7 +212,7 @@ SBullishMomentum CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m
    // Validação dos contextos
    if (ctx_m15 == NULL || ctx_m3 == NULL)
    {
-      Print("[BULLISH MOMENTUM] ❌ Contextos NULL");
+      // Print("[BULLISH MOMENTUM] ❌ Contextos NULL");
       return data;
    }
 
@@ -248,7 +226,7 @@ SBullishMomentum CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m
    CMovingAverages *ema21_m15 = ctx_m15.GetIndicator("ema21");
    if (ema21_m15 == NULL)
    {
-      Print("[BULLISH MOMENTUM] ❌ EMA21 (M15) ausente");
+      // Print("[BULLISH MOMENTUM] ❌ EMA21 (M15) ausente");
       return data;
    }
 
@@ -309,31 +287,6 @@ SBullishMomentum CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m
    data.has_momentum = data.price_above_ema21 &&
                        data.no_panic_selling &&
                        data.last_candle_bullish;
-
-   // ========================================================================
-   // LOG DE DIAGNÓSTICO
-   // ========================================================================
-   if (true)
-   {
-      Print("[BULLISH MOMENTUM] ========================================");
-      Print("[BULLISH MOMENTUM] Timeframes: M15/M3");
-      Print("[BULLISH MOMENTUM] EMA21 (M15): ", DoubleToString(data.ema21_m15_value, _Digits));
-      Print("[BULLISH MOMENTUM] Lookback: ", data.lookback_candles, " candles");
-      Print("[BULLISH MOMENTUM] Candles acima EMA21: ", data.candles_above_ema21,
-            "/", data.lookback_candles, " (min: ", data.min_candles_required, ") ",
-            data.price_above_ema21 ? "✓" : "❌");
-      Print("[BULLISH MOMENTUM] Sem pânico: ", data.no_panic_selling ? "✓" : "❌");
-      if (!data.no_panic_selling)
-      {
-         Print("[BULLISH MOMENTUM]   -> Pânico detectado na barra ", data.panic_candle_index,
-               " (shadow ratio: ", DoubleToString(data.panic_lower_shadow_ratio, 3), ")");
-      }
-      Print("[BULLISH MOMENTUM] Última vela bullish: ", data.last_candle_bullish ? "✓" : "❌",
-            " (Open: ", DoubleToString(data.last_open, _Digits),
-            ", Close: ", DoubleToString(data.last_close, _Digits), ")");
-      Print("[BULLISH MOMENTUM] Resultado: ", data.has_momentum ? "✅ MOMENTUM CONFIRMADO" : "❌ Sem momentum");
-      Print("[BULLISH MOMENTUM] ========================================");
-   }
 
    return data;
 }
@@ -415,6 +368,7 @@ SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, dou
             data.found_at_bar = i;
             data.prev_distance_atr = prev_distance_atr;
             data.improvement_ratio = prev_distance_atr / current_distance_atr;
+            data.improvement_factor = m_config.pullback_improvement_factor;
             break;
          }
       }
@@ -467,38 +421,6 @@ SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, dou
    // VALIDAÇÃO FINAL - PULLBACK CONFIRMADO
    // ========================================================================
    data.is_valid = true;
-
-   // ========================================================================
-   // LOG DE DIAGNÓSTICO
-   // ========================================================================
-   if (true)
-   {
-      Print("[PULLBACK] ========================================");
-      Print("[PULLBACK] Timeframe: ", data.tf_name);
-      Print("[PULLBACK] Preço: ", DoubleToString(data.last_close, _Digits),
-            " | EMA: ", DoubleToString(data.current_ma_value, _Digits));
-      Print("[PULLBACK] ATR: ", DoubleToString(atr_value, 5));
-      Print("[PULLBACK] Distância atual: ", DoubleToString(data.distance_price, 5),
-            " (", DoubleToString(data.distance_price / atr_value, 2), " ATR)");
-      Print("[PULLBACK] Profundidade máx: ", DoubleToString(data.max_depth, 5),
-            " (", DoubleToString(data.max_depth / atr_value, 2), " ATR) ",
-            data.distance_price <= data.max_depth ? "✓" : "❌");
-      Print("[PULLBACK] Distância anterior: ", DoubleToString(data.prev_distance_atr, 2),
-            " ATR (barra ", data.found_at_bar, ") ",
-            data.was_further ? "✓" : "❌");
-      Print("[PULLBACK] Melhoria: ", DoubleToString(data.improvement_ratio, 2), "x ",
-            "(min: ", DoubleToString(m_config.pullback_improvement_factor, 2), ")");
-      Print("[PULLBACK] Posição: ", EnumToString(position_info.position), " ",
-            !data.invalid_position_for_pullback ? "✓" : "❌");
-      Print("[PULLBACK] Suporte válido: ", data.valid_support_positions ? "✓" : "❌");
-      Print("[PULLBACK] Penetração: ", DoubleToString(data.penetration, 5),
-            " (", DoubleToString(data.penetration / atr_value, 2), " ATR / max: ",
-            DoubleToString(data.max_penetration_below_ema / atr_value, 2), " ATR) ",
-            data.penetration <= data.max_penetration_below_ema ? "✓" : "❌");
-      Print("[PULLBACK] Resultado: ", data.is_valid ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");
-      Print("[PULLBACK] ========================================");
-   }
-
    return data;
 }
 
@@ -514,7 +436,7 @@ SVolatilityEnvironment CEmasBuyBull::IsGoodVolatilityEnvironment(TF_CTX *ctx)
    // Validação do contexto
    if (ctx == NULL)
    {
-      Print("[VOLATILITY ENV] ❌ Contexto NULL");
+      // Print("[VOLATILITY ENV] ❌ Contexto NULL");
       return data;
    }
 
@@ -527,14 +449,14 @@ SVolatilityEnvironment CEmasBuyBull::IsGoodVolatilityEnvironment(TF_CTX *ctx)
    CATR *atr = ctx.GetIndicator("ATR15");
    if (atr == NULL)
    {
-      Print("[VOLATILITY ENV] ❌ ATR ausente");
+      // Print("[VOLATILITY ENV] ❌ ATR ausente");
       return data;
    }
 
    data.current_atr = atr.GetValue(1);
    if (data.current_atr <= 0)
    {
-      Print("[VOLATILITY ENV] ❌ ATR inválido: ", data.current_atr);
+      // Print("[VOLATILITY ENV] ❌ ATR inválido: ", data.current_atr);
       return data;
    }
 
@@ -557,8 +479,8 @@ SVolatilityEnvironment CEmasBuyBull::IsGoodVolatilityEnvironment(TF_CTX *ctx)
 
    if (!data.has_valid_data)
    {
-      Print("[VOLATILITY ENV] ❌ Dados insuficientes: ", data.valid_periods,
-            "/", data.lookback_periods, " (min: ", min_required_periods, ")");
+      // Print("[VOLATILITY ENV] ❌ Dados insuficientes: ", data.valid_periods,
+      //       "/", data.lookback_periods, " (min: ", min_required_periods, ")");
       return data;
    }
 
@@ -578,27 +500,6 @@ SVolatilityEnvironment CEmasBuyBull::IsGoodVolatilityEnvironment(TF_CTX *ctx)
    // RESULTADO FINAL
    // ========================================================================
    data.is_good_environment = data.has_valid_data && data.ratio_in_range;
-
-   // ========================================================================
-   // LOG DE DIAGNÓSTICO
-   // ========================================================================
-   if (true)
-   {
-      Print("[VOLATILITY ENV] ========================================");
-      Print("[VOLATILITY ENV] Timeframe: ", EnumToString(data.timeframe));
-      Print("[VOLATILITY ENV] ATR atual: ", DoubleToString(data.current_atr, 5));
-      Print("[VOLATILITY ENV] Lookback: ", data.lookback_periods, " períodos");
-      Print("[VOLATILITY ENV] Períodos válidos: ", data.valid_periods, "/", data.lookback_periods,
-            " ", data.has_valid_data ? "✓" : "❌");
-      Print("[VOLATILITY ENV] ATR médio: ", DoubleToString(data.avg_atr, 5));
-      Print("[VOLATILITY ENV] Ratio: ", DoubleToString(data.volatility_ratio, 3),
-            " (range: ", DoubleToString(data.min_volatility_ratio, 2),
-            " - ", DoubleToString(data.max_volatility_ratio, 2), ") ",
-            data.ratio_in_range ? "✓" : "❌");
-      Print("[VOLATILITY ENV] Resultado: ", data.is_good_environment ? "✅ AMBIENTE ADEQUADO" : "❌ Ambiente inadequado");
-      Print("[VOLATILITY ENV] ========================================");
-   }
-
    return data;
 }
 
@@ -614,7 +515,7 @@ SBullishStructure CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
    // Validação do contexto
    if (ctx == NULL)
    {
-      Print("[BULLISH STRUCTURE] ❌ Contexto NULL");
+      // Print("[BULLISH STRUCTURE] ❌ Contexto NULL");
       return data;
    }
 
@@ -627,7 +528,7 @@ SBullishStructure CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
 
    if (ema50 == NULL || atr == NULL)
    {
-      Print("[BULLISH STRUCTURE] ❌ Indicadores ausentes");
+      // Print("[BULLISH STRUCTURE] ❌ Indicadores ausentes");
       return data;
    }
 
@@ -637,7 +538,7 @@ SBullishStructure CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
 
    if (data.atr_value <= 0)
    {
-      Print("[BULLISH STRUCTURE] ❌ ATR inválido: ", data.atr_value);
+      // Print("[BULLISH STRUCTURE] ❌ ATR inválido: ", data.atr_value);
       return data;
    }
 
@@ -648,7 +549,7 @@ SBullishStructure CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
 
    if (!data.price_above_ema50)
    {
-      Print("[BULLISH STRUCTURE] ❌ Preço abaixo da EMA50");
+      // Print("[BULLISH STRUCTURE] ❌ Preço abaixo da EMA50");
       return data;
    }
 
@@ -661,7 +562,7 @@ SBullishStructure CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
 
    if (!data.distance_ok)
    {
-      Print("[BULLISH STRUCTURE] ❌ Distância insuficiente da EMA50");
+      // Print("[BULLISH STRUCTURE] ❌ Distância insuficiente da EMA50");
       return data;
    }
 
@@ -683,25 +584,6 @@ SBullishStructure CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
    // ========================================================================
    // LOG DE DIAGNÓSTICO
    // ========================================================================
-   if (true)
-   {
-      Print("[BULLISH STRUCTURE] ========================================");
-      Print("[BULLISH STRUCTURE] Timeframe: ", EnumToString(data.timeframe));
-      Print("[BULLISH STRUCTURE] Preço: ", DoubleToString(data.current_close, _Digits),
-            " | EMA50: ", DoubleToString(data.ema50_value, _Digits));
-      Print("[BULLISH STRUCTURE] ATR: ", DoubleToString(data.atr_value, 5));
-      Print("[BULLISH STRUCTURE] Preço > EMA50: ", data.price_above_ema50 ? "✓" : "❌");
-      Print("[BULLISH STRUCTURE] Distância: ", DoubleToString(data.distance_to_ema50_atr, 2),
-            " ATR (min: ", DoubleToString(data.min_distance_threshold, 2), ") ",
-            data.distance_ok ? "✓" : "❌");
-      Print("[BULLISH STRUCTURE] EMA50 inclinada: ", data.ema50_trending_up ? "✓" : "❌");
-      Print("[BULLISH STRUCTURE]   -> LR: ", EnumToString(slope_50.linear_regression.trend_direction));
-      Print("[BULLISH STRUCTURE]   -> DD: ", EnumToString(slope_50.discrete_derivative.trend_direction));
-      Print("[BULLISH STRUCTURE]   -> SD: ", EnumToString(slope_50.simple_difference.trend_direction));
-      Print("[BULLISH STRUCTURE] Resultado: ", data.is_bullish_structure ? "✅ ESTRUTURA BULLISH" : "❌ Estrutura não bullish");
-      Print("[BULLISH STRUCTURE] ========================================");
-   }
-
    return data;
 }
 
@@ -713,7 +595,6 @@ SBollingerStructure CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
 {
    SBollingerStructure data;
    data.Reset();
-
    // Validação do contexto
    if (ctx == NULL)
    {
@@ -761,7 +642,7 @@ SBollingerStructure CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
    }
    else
    {
-      Print("[BOLLINGER] ❌ Timeframe não suportado: ", EnumToString(data.timeframe));
+      // Print("[BOLLINGER] ❌ Timeframe não suportado: ", EnumToString(data.timeframe));
       return data;
    }
 
@@ -771,7 +652,7 @@ SBollingerStructure CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
 
    if (boll_ind == NULL || atr == NULL)
    {
-      Print("[BOLLINGER] ❌ Indicadores ausentes");
+      // Print("[BOLLINGER] ❌ Indicadores ausentes");
       return data;
    }
 
@@ -783,12 +664,12 @@ SBollingerStructure CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
    // ========================================================================
    // CRITÉRIO 1: Largura da banda deve estar na faixa adequada
    // ========================================================================
-   data.width_in_range = (data.boll_width >= data.valid_min_width && 
+   data.width_in_range = (data.boll_width >= data.valid_min_width &&
                           data.boll_width <= data.valid_max_width);
 
    if (!data.width_in_range)
    {
-      Print("[BOLLINGER] ❌ Largura fora da faixa: ", DoubleToString(data.boll_width, 5));
+      // Print("[BOLLINGER] ❌ Largura fora da faixa: ", DoubleToString(data.boll_width, 5));
       return data;
    }
 
@@ -808,7 +689,7 @@ SBollingerStructure CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
 
    if (data.is_contracting)
    {
-      Print("[BOLLINGER] ❌ Bandas em contração");
+      // Print("[BOLLINGER] ❌ Bandas em contração");
       return data;
    }
 
@@ -816,18 +697,18 @@ SBollingerStructure CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
    // CRITÉRIO 3: Micro inclinação da banda superior
    // ========================================================================
    data.upper_is_sidewalk = (slope_upper.side_count >= 2);
-   
+
    if (data.upper_is_sidewalk)
    {
       data.upper_lr_ok = (slope_upper.linear_regression.slope_value >= data.upper_lr_min);
       data.upper_dd_ok = (slope_upper.discrete_derivative.slope_value >= data.upper_dd_min);
       data.upper_sd_ok = (slope_upper.simple_difference.slope_value >= data.upper_sd_min);
-      
+
       data.upper_micro_ok = data.upper_lr_ok && data.upper_dd_ok && data.upper_sd_ok;
-      
+
       if (!data.upper_micro_ok)
       {
-         Print("[BOLLINGER] ❌ Micro inclinação superior insuficiente");
+         // Print("[BOLLINGER] ❌ Micro inclinação superior insuficiente");
          return data;
       }
    }
@@ -840,21 +721,21 @@ SBollingerStructure CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
    // CRITÉRIO 4: Validação da banda inferior (sidewalk)
    // ========================================================================
    data.lower_is_sidewalk = (slope_lower.side_count >= 2);
-   
+
    if (data.lower_is_sidewalk)
    {
-      data.lower_lr_invalid = (slope_lower.linear_regression.slope_value > data.lower_lr_abs_max || 
+      data.lower_lr_invalid = (slope_lower.linear_regression.slope_value > data.lower_lr_abs_max ||
                                slope_lower.linear_regression.slope_value < -data.lower_lr_abs_max);
-      data.lower_dd_invalid = (slope_lower.discrete_derivative.slope_value > data.lower_dd_abs_max || 
+      data.lower_dd_invalid = (slope_lower.discrete_derivative.slope_value > data.lower_dd_abs_max ||
                                slope_lower.discrete_derivative.slope_value < -data.lower_dd_abs_max);
-      data.lower_sd_invalid = (slope_lower.simple_difference.slope_value > data.lower_sd_abs_max || 
+      data.lower_sd_invalid = (slope_lower.simple_difference.slope_value > data.lower_sd_abs_max ||
                                slope_lower.simple_difference.slope_value < -data.lower_sd_abs_max);
-      
+
       data.lower_sidewalk_invalid = data.lower_lr_invalid || data.lower_dd_invalid || data.lower_sd_invalid;
-      
+
       if (data.lower_sidewalk_invalid)
       {
-         Print("[BOLLINGER] ❌ Banda inferior sidewalk inválida");
+         // Print("[BOLLINGER] ❌ Banda inferior sidewalk inválida");
          return data;
       }
    }
@@ -862,78 +743,10 @@ SBollingerStructure CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
    // ========================================================================
    // RESULTADO FINAL
    // ========================================================================
-   data.is_valid_structure = data.width_in_range && 
-                             !data.is_contracting && 
-                             data.upper_micro_ok && 
+   data.is_valid_structure = data.width_in_range &&
+                             !data.is_contracting &&
+                             data.upper_micro_ok &&
                              !data.lower_sidewalk_invalid;
-
-   // ========================================================================
-   // LOG DE DIAGNÓSTICO
-   // ========================================================================
-   if (true)
-   {
-      Print("[BOLLINGER] ========================================");
-      Print("[BOLLINGER] Timeframe: ", EnumToString(data.timeframe));
-      Print("[BOLLINGER] Banda Superior: ", DoubleToString(data.upper_band_value, _Digits));
-      Print("[BOLLINGER] Banda Inferior: ", DoubleToString(data.lower_band_value, _Digits));
-      Print("[BOLLINGER] Largura: ", DoubleToString(data.boll_width, 5),
-            " (range: ", DoubleToString(data.valid_min_width, 5),
-            " - ", DoubleToString(data.valid_max_width, 5), ") ",
-            data.width_in_range ? "✓" : "❌");
-      Print("[BOLLINGER] ATR: ", DoubleToString(data.atr_value, 5));
-      
-      Print("[BOLLINGER] --- Contração ---");
-      Print("[BOLLINGER] Superior bearish: ", slope_upper.bearish_count, 
-            " (contracting: ", data.contracting_upper ? "sim" : "não", ")");
-      Print("[BOLLINGER] Inferior bullish: ", slope_lower.bullish_count,
-            " (contracting: ", data.contracting_lower ? "sim" : "não", ")");
-      Print("[BOLLINGER] Em contração: ", data.is_contracting ? "❌" : "✓");
-      
-      Print("[BOLLINGER] --- Banda Superior ---");
-      Print("[BOLLINGER] Sidewalk: ", data.upper_is_sidewalk ? "sim" : "não");
-      Print("[BOLLINGER] Contagem lateral: ", slope_upper.side_count);
-      Print("[BOLLINGER] Contagem bullish: ", slope_upper.bullish_count);
-      Print("[BOLLINGER] Contagem bearish: ", slope_upper.bearish_count);
-      
-      if (data.upper_is_sidewalk)
-      {
-         Print("[BOLLINGER] LR: ", DoubleToString(slope_upper.linear_regression.slope_value, 5),
-               " (min: ", DoubleToString(data.upper_lr_min, 5), ") ",
-               data.upper_lr_ok ? "✓" : "❌");
-         Print("[BOLLINGER] DD: ", DoubleToString(slope_upper.discrete_derivative.slope_value, 5),
-               " (min: ", DoubleToString(data.upper_dd_min, 5), ") ",
-               data.upper_dd_ok ? "✓" : "❌");
-         Print("[BOLLINGER] SD: ", DoubleToString(slope_upper.simple_difference.slope_value, 5),
-               " (min: ", DoubleToString(data.upper_sd_min, 5), ") ",
-               data.upper_sd_ok ? "✓" : "❌");
-         Print("[BOLLINGER] Micro inclinação OK: ", data.upper_micro_ok ? "✓" : "❌");
-      }
-      
-      Print("[BOLLINGER] --- Banda Inferior ---");
-      Print("[BOLLINGER] Sidewalk: ", data.lower_is_sidewalk ? "sim" : "não");
-      Print("[BOLLINGER] Contagem lateral: ", slope_lower.side_count);
-      Print("[BOLLINGER] Contagem bullish: ", slope_lower.bullish_count);
-      Print("[BOLLINGER] Contagem bearish: ", slope_lower.bearish_count);
-      
-      if (data.lower_is_sidewalk)
-      {
-         Print("[BOLLINGER] LR: ", DoubleToString(slope_lower.linear_regression.slope_value, 5),
-               " (max abs: ", DoubleToString(data.lower_lr_abs_max, 5), ") ",
-               data.lower_lr_invalid ? "❌" : "✓");
-         Print("[BOLLINGER] DD: ", DoubleToString(slope_lower.discrete_derivative.slope_value, 5),
-               " (max abs: ", DoubleToString(data.lower_dd_abs_max, 5), ") ",
-               data.lower_dd_invalid ? "❌" : "✓");
-         Print("[BOLLINGER] SD: ", DoubleToString(slope_lower.simple_difference.slope_value, 5),
-               " (max abs: ", DoubleToString(data.lower_sd_abs_max, 5), ") ",
-               data.lower_sd_invalid ? "❌" : "✓");
-         Print("[BOLLINGER] Sidewalk válido: ", data.lower_sidewalk_invalid ? "❌" : "✓");
-      }
-      
-      Print("[BOLLINGER] Resultado: ", data.is_valid_structure ? 
-            "✅ ESTRUTURA VÁLIDA" : "❌ Estrutura inválida");
-      Print("[BOLLINGER] ========================================");
-   }
-
    return data;
 }
 
@@ -1064,11 +877,10 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    _bollinger_filter_M3 = BollingerHasValidStructure(ctx_m3);
    _bollinger_filter_M15 = BollingerHasValidStructure(ctx_m15);
    _bollinger_filter_H1 = BollingerHasValidStructure(ctx_h1);
-   
+
    bool is_bollinger_valid_m3 = m_config.enable_bollinger_filter_m3 ? _bollinger_filter_M3.is_valid_structure : true;
    bool is_bollinger_valid_m15 = m_config.enable_bollinger_filter_m15 ? _bollinger_filter_M15.is_valid_structure : true;
    bool is_bollinger_valid_h1 = m_config.enable_bollinger_filter_h1 ? _bollinger_filter_H1.is_valid_structure : true;
-
 
    bool filtros_ok = ema_alignment_m15_ok && ema_alignment_m3_ok &&
                      strong_trend_m15 && strong_trend_m3 &&
@@ -1195,7 +1007,347 @@ bool CEmasBuyBull::ValidateSignal(const SStrategySignal &signal)
 //+------------------------------------------------------------------+
 void CEmasBuyBull::DoLog()
 {
+   if (true)
+   {
+      Print("================================================================================");
+      Print("==================== EMA BULL BUY STRATEGY - DEBUG LOG =======================");
+      Print("================================================================================");
+      Print("Símbolo: ", m_symbol, " | Timestamp: ", TimeToString(TimeCurrent(), TIME_DATE | TIME_MINUTES));
+      Print("");
 
+      // ========================================================================
+      // STRONG TREND M15
+      // ========================================================================
+      if (true)
+      {
+         Print("┌─────────────────────────────────────────────────────────────────────────────┐");
+         Print("│ STRONG TREND M15                                                            │");
+         Print("└─────────────────────────────────────────────────────────────────────────────┘");
+         Print("Timeframe: ", EnumToString(_ema_data_M15.timeframe));
+         Print("EMA9: ", DoubleToString(_ema_data_M15.ema9_value, _Digits),
+               " | EMA21: ", DoubleToString(_ema_data_M15.ema21_value, _Digits),
+               " | EMA50: ", DoubleToString(_ema_data_M15.ema50_value, _Digits));
+         Print("ATR: ", DoubleToString(_ema_data_M15.atr_value, 5));
+         Print("Distância 9-21: ", DoubleToString(_ema_data_M15.distance_ema_9_21_by_atr, 2),
+               " ATR (min: ", DoubleToString(_ema_data_M15.min_distance_9_21_threshold, 2), ") ",
+               _ema_data_M15.distance_9_21_ok ? "✓" : "❌");
+         Print("Distância 21-50: ", DoubleToString(_ema_data_M15.distance_ema_21_50_by_atr, 2),
+               " ATR (min: ", DoubleToString(_ema_data_M15.min_distance_21_50_threshold, 2), ") ",
+               _ema_data_M15.distance_21_50_ok ? "✓" : "❌");
+         Print("Resultado: ", _ema_data_M15.is_strong_trend ? "✅ TENDÊNCIA FORTE" : "❌ Tendência fraca");
+         Print("Habilitado: ", m_config.enable_strong_trend_m15 ? "SIM" : "NÃO");
+         Print("");
+      }
+
+      // ========================================================================
+      // STRONG TREND M3
+      // ========================================================================
+      if (true)
+      {
+         Print("┌─────────────────────────────────────────────────────────────────────────────┐");
+         Print("│ STRONG TREND M3                                                             │");
+         Print("└─────────────────────────────────────────────────────────────────────────────┘");
+         Print("Timeframe: ", EnumToString(_ema_data_M3.timeframe));
+         Print("EMA9: ", DoubleToString(_ema_data_M3.ema9_value, _Digits),
+               " | EMA21: ", DoubleToString(_ema_data_M3.ema21_value, _Digits),
+               " | EMA50: ", DoubleToString(_ema_data_M3.ema50_value, _Digits));
+         Print("ATR: ", DoubleToString(_ema_data_M3.atr_value, 5));
+         Print("Distância 9-21: ", DoubleToString(_ema_data_M3.distance_ema_9_21_by_atr, 2),
+               " ATR (min: ", DoubleToString(_ema_data_M3.min_distance_9_21_threshold, 2), ") ",
+               _ema_data_M3.distance_9_21_ok ? "✓" : "❌");
+         Print("Distância 21-50: ", DoubleToString(_ema_data_M3.distance_ema_21_50_by_atr, 2),
+               " ATR (min: ", DoubleToString(_ema_data_M3.min_distance_21_50_threshold, 2), ") ",
+               _ema_data_M3.distance_21_50_ok ? "✓" : "❌");
+         Print("Resultado: ", _ema_data_M3.is_strong_trend ? "✅ TENDÊNCIA FORTE" : "❌ Tendência fraca");
+         Print("Habilitado: ", m_config.enable_strong_trend_m3 ? "SIM" : "NÃO");
+         Print("");
+      }
+
+      // ========================================================================
+      // BULLISH MOMENTUM
+      // ========================================================================
+      if (true)
+      {
+         Print("┌─────────────────────────────────────────────────────────────────────────────┐");
+         Print("│ BULLISH MOMENTUM                                                            │");
+         Print("└─────────────────────────────────────────────────────────────────────────────┘");
+         Print("Timeframes: ", EnumToString(_bullish_momentum_data.timeframe_m15), "/",
+               EnumToString(_bullish_momentum_data.timeframe_m3));
+         Print("EMA21 (M15): ", DoubleToString(_bullish_momentum_data.ema21_m15_value, _Digits));
+         Print("Lookback: ", _bullish_momentum_data.lookback_candles, " candles");
+         Print("Candles acima EMA21: ", _bullish_momentum_data.candles_above_ema21,
+               "/", _bullish_momentum_data.lookback_candles,
+               " (min: ", _bullish_momentum_data.min_candles_required, ") ",
+               _bullish_momentum_data.price_above_ema21 ? "✓" : "❌");
+         Print("Sem pânico: ", _bullish_momentum_data.no_panic_selling ? "✓" : "❌");
+         if (!_bullish_momentum_data.no_panic_selling)
+         {
+            Print("  -> Pânico detectado na barra ", _bullish_momentum_data.panic_candle_index,
+                  " (shadow ratio: ", DoubleToString(_bullish_momentum_data.panic_lower_shadow_ratio, 3), ")");
+         }
+         Print("Última vela bullish: ", _bullish_momentum_data.last_candle_bullish ? "✓" : "❌",
+               " (Open: ", DoubleToString(_bullish_momentum_data.last_open, _Digits),
+               ", Close: ", DoubleToString(_bullish_momentum_data.last_close, _Digits), ")");
+         Print("Resultado: ", _bullish_momentum_data.has_momentum ? "✅ MOMENTUM CONFIRMADO" : "❌ Sem momentum");
+         Print("Habilitado: ", m_config.enable_bullish_momentum ? "SIM" : "NÃO");
+         Print("");
+      }
+
+      // ========================================================================
+      // VOLATILITY ENVIRONMENT
+      // ========================================================================
+      if (true)
+      {
+         Print("┌─────────────────────────────────────────────────────────────────────────────┐");
+         Print("│ VOLATILITY ENVIRONMENT M15                                                  │");
+         Print("└─────────────────────────────────────────────────────────────────────────────┘");
+         Print("Timeframe: ", EnumToString(_volatility_env_M15.timeframe));
+         Print("ATR atual: ", DoubleToString(_volatility_env_M15.current_atr, 5));
+         Print("Lookback: ", _volatility_env_M15.lookback_periods, " períodos");
+         Print("Períodos válidos: ", _volatility_env_M15.valid_periods, "/",
+               _volatility_env_M15.lookback_periods, " ",
+               _volatility_env_M15.has_valid_data ? "✓" : "❌");
+         Print("ATR médio: ", DoubleToString(_volatility_env_M15.avg_atr, 5));
+         Print("Ratio: ", DoubleToString(_volatility_env_M15.volatility_ratio, 3),
+               " (range: ", DoubleToString(_volatility_env_M15.min_volatility_ratio, 2),
+               " - ", DoubleToString(_volatility_env_M15.max_volatility_ratio, 2), ") ",
+               _volatility_env_M15.ratio_in_range ? "✓" : "❌");
+         Print("Resultado: ", _volatility_env_M15.is_good_environment ? "✅ AMBIENTE ADEQUADO" : "❌ Ambiente inadequado");
+         Print("Habilitado: ", m_config.enable_good_volatility ? "SIM" : "NÃO");
+         Print("");
+      }
+
+      // ========================================================================
+      // ADX FILTER
+      // ========================================================================
+      if (true)
+      {
+         Print("┌─────────────────────────────────────────────────────────────────────────────┐");
+         Print("│ ADX FILTER M15                                                              │");
+         Print("└─────────────────────────────────────────────────────────────────────────────┘");
+         Print("ADX Value: ", DoubleToString(SStrong_trend_ADX_m15.adx_value_tf, 2));
+         Print("Range: ", DoubleToString(SStrong_trend_ADX_m15.config_min_value, 2),
+               " - ", DoubleToString(SStrong_trend_ADX_m15.config_max_value, 2));
+         Print("Resultado: ", SStrong_trend_ADX_m15.isStrongTrendADX ? "✅ ADX OK" : "❌ ADX fora do range");
+         Print("Habilitado: ", m_config.enable_adx_filter ? "SIM" : "NÃO");
+         Print("");
+      }
+
+      // ========================================================================
+      // BULLISH STRUCTURE M15
+      // ========================================================================
+      if (true)
+      {
+         Print("┌─────────────────────────────────────────────────────────────────────────────┐");
+         Print("│ BULLISH STRUCTURE M15                                                       │");
+         Print("└─────────────────────────────────────────────────────────────────────────────┘");
+         Print("Timeframe: ", EnumToString(_bullish_structure_M15.timeframe));
+         Print("Preço: ", DoubleToString(_bullish_structure_M15.current_close, _Digits),
+               " | EMA50: ", DoubleToString(_bullish_structure_M15.ema50_value, _Digits));
+         Print("ATR: ", DoubleToString(_bullish_structure_M15.atr_value, 5));
+         Print("Preço > EMA50: ", _bullish_structure_M15.price_above_ema50 ? "✓" : "❌");
+         Print("Distância: ", DoubleToString(_bullish_structure_M15.distance_to_ema50_atr, 2),
+               " ATR (min: ", DoubleToString(_bullish_structure_M15.min_distance_threshold, 2), ") ",
+               _bullish_structure_M15.distance_ok ? "✓" : "❌");
+         Print("EMA50 inclinada: ", _bullish_structure_M15.ema50_trending_up ? "✓" : "❌");
+         Print("Resultado: ", _bullish_structure_M15.is_bullish_structure ? "✅ ESTRUTURA BULLISH" : "❌ Estrutura não bullish");
+         Print("Habilitado: ", m_config.enable_bullish_structure_m15 ? "SIM" : "NÃO");
+         Print("");
+      }
+
+      // ========================================================================
+      // BULLISH STRUCTURE M3
+      // ========================================================================
+      if (true)
+      {
+         Print("┌─────────────────────────────────────────────────────────────────────────────┐");
+         Print("│ BULLISH STRUCTURE M3                                                        │");
+         Print("└─────────────────────────────────────────────────────────────────────────────┘");
+         Print("Timeframe: ", EnumToString(_bullish_structure_M3.timeframe));
+         Print("Preço: ", DoubleToString(_bullish_structure_M3.current_close, _Digits),
+               " | EMA50: ", DoubleToString(_bullish_structure_M3.ema50_value, _Digits));
+         Print("ATR: ", DoubleToString(_bullish_structure_M3.atr_value, 5));
+         Print("Preço > EMA50: ", _bullish_structure_M3.price_above_ema50 ? "✓" : "❌");
+         Print("Distância: ", DoubleToString(_bullish_structure_M3.distance_to_ema50_atr, 2),
+               " ATR (min: ", DoubleToString(_bullish_structure_M3.min_distance_threshold, 2), ") ",
+               _bullish_structure_M3.distance_ok ? "✓" : "❌");
+         Print("EMA50 inclinada: ", _bullish_structure_M3.ema50_trending_up ? "✓" : "❌");
+         Print("Resultado: ", _bullish_structure_M3.is_bullish_structure ? "✅ ESTRUTURA BULLISH" : "❌ Estrutura não bullish");
+         Print("Habilitado: ", m_config.enable_bullish_structure_m3 ? "SIM" : "NÃO");
+         Print("");
+      }
+
+      // ========================================================================
+      // BOLLINGER M3
+      // ========================================================================
+      if (true)
+      {
+         Print("┌─────────────────────────────────────────────────────────────────────────────┐");
+         Print("│ BOLLINGER FILTER M3                                                         │");
+         Print("└─────────────────────────────────────────────────────────────────────────────┘");
+         Print("Timeframe: ", EnumToString(_bollinger_filter_M3.timeframe));
+         Print("Banda Superior: ", DoubleToString(_bollinger_filter_M3.upper_band_value, _Digits));
+         Print("Banda Inferior: ", DoubleToString(_bollinger_filter_M3.lower_band_value, _Digits));
+         Print("Largura: ", DoubleToString(_bollinger_filter_M3.boll_width, 5),
+               " (range: ", DoubleToString(_bollinger_filter_M3.valid_min_width, 5),
+               " - ", DoubleToString(_bollinger_filter_M3.valid_max_width, 5), ") ",
+               _bollinger_filter_M3.width_in_range ? "✓" : "❌");
+         Print("ATR: ", DoubleToString(_bollinger_filter_M3.atr_value, 5));
+         Print("Em contração: ", _bollinger_filter_M3.is_contracting ? "❌" : "✓");
+         Print("Banda Superior:");
+         Print("  Sidewalk: ", _bollinger_filter_M3.upper_is_sidewalk ? "sim" : "não");
+         if (_bollinger_filter_M3.upper_is_sidewalk)
+         {
+            Print("  Micro inclinação OK: ", _bollinger_filter_M3.upper_micro_ok ? "✓" : "❌");
+         }
+         Print("Banda Inferior:");
+         Print("  Sidewalk: ", _bollinger_filter_M3.lower_is_sidewalk ? "sim" : "não");
+         if (_bollinger_filter_M3.lower_is_sidewalk)
+         {
+            Print("  Sidewalk válido: ", _bollinger_filter_M3.lower_sidewalk_invalid ? "❌" : "✓");
+         }
+         Print("Resultado: ", _bollinger_filter_M3.is_valid_structure ? "✅ ESTRUTURA VÁLIDA" : "❌ Estrutura inválida");
+         Print("Habilitado: ", m_config.enable_bollinger_filter_m3 ? "SIM" : "NÃO");
+         Print("");
+      }
+
+      // ========================================================================
+      // BOLLINGER M15
+      // ========================================================================
+      if (true)
+      {
+         Print("┌─────────────────────────────────────────────────────────────────────────────┐");
+         Print("│ BOLLINGER FILTER M15                                                        │");
+         Print("└─────────────────────────────────────────────────────────────────────────────┘");
+         Print("Timeframe: ", EnumToString(_bollinger_filter_M15.timeframe));
+         Print("Banda Superior: ", DoubleToString(_bollinger_filter_M15.upper_band_value, _Digits));
+         Print("Banda Inferior: ", DoubleToString(_bollinger_filter_M15.lower_band_value, _Digits));
+         Print("Largura: ", DoubleToString(_bollinger_filter_M15.boll_width, 5),
+               " (range: ", DoubleToString(_bollinger_filter_M15.valid_min_width, 5),
+               " - ", DoubleToString(_bollinger_filter_M15.valid_max_width, 5), ") ",
+               _bollinger_filter_M15.width_in_range ? "✓" : "❌");
+         Print("ATR: ", DoubleToString(_bollinger_filter_M15.atr_value, 5));
+         Print("Em contração: ", _bollinger_filter_M15.is_contracting ? "❌" : "✓");
+         Print("Banda Superior:");
+         Print("  Sidewalk: ", _bollinger_filter_M15.upper_is_sidewalk ? "sim" : "não");
+         if (_bollinger_filter_M15.upper_is_sidewalk)
+         {
+            Print("  Micro inclinação OK: ", _bollinger_filter_M15.upper_micro_ok ? "✓" : "❌");
+         }
+         Print("Banda Inferior:");
+         Print("  Sidewalk: ", _bollinger_filter_M15.lower_is_sidewalk ? "sim" : "não");
+         if (_bollinger_filter_M15.lower_is_sidewalk)
+         {
+            Print("  Sidewalk válido: ", _bollinger_filter_M15.lower_sidewalk_invalid ? "❌" : "✓");
+         }
+         Print("Resultado: ", _bollinger_filter_M15.is_valid_structure ? "✅ ESTRUTURA VÁLIDA" : "❌ Estrutura inválida");
+         Print("Habilitado: ", m_config.enable_bollinger_filter_m15 ? "SIM" : "NÃO");
+         Print("");
+      }
+
+      // ========================================================================
+      // BOLLINGER H1
+      // ========================================================================
+      if (true)
+      {
+         Print("┌─────────────────────────────────────────────────────────────────────────────┐");
+         Print("│ BOLLINGER FILTER H1                                                         │");
+         Print("└─────────────────────────────────────────────────────────────────────────────┘");
+         Print("Timeframe: ", EnumToString(_bollinger_filter_H1.timeframe));
+         Print("Banda Superior: ", DoubleToString(_bollinger_filter_H1.upper_band_value, _Digits));
+         Print("Banda Inferior: ", DoubleToString(_bollinger_filter_H1.lower_band_value, _Digits));
+         Print("Largura: ", DoubleToString(_bollinger_filter_H1.boll_width, 5),
+               " (range: ", DoubleToString(_bollinger_filter_H1.valid_min_width, 5),
+               " - ", DoubleToString(_bollinger_filter_H1.valid_max_width, 5), ") ",
+               _bollinger_filter_H1.width_in_range ? "✓" : "❌");
+         Print("ATR: ", DoubleToString(_bollinger_filter_H1.atr_value, 5));
+         Print("Em contração: ", _bollinger_filter_H1.is_contracting ? "❌" : "✓");
+         Print("Banda Superior:");
+         Print("  Sidewalk: ", _bollinger_filter_H1.upper_is_sidewalk ? "sim" : "não");
+         if (_bollinger_filter_H1.upper_is_sidewalk)
+         {
+            Print("  Micro inclinação OK: ", _bollinger_filter_H1.upper_micro_ok ? "✓" : "❌");
+         }
+         Print("Banda Inferior:");
+         Print("  Sidewalk: ", _bollinger_filter_H1.lower_is_sidewalk ? "sim" : "não");
+         if (_bollinger_filter_H1.lower_is_sidewalk)
+         {
+            Print("  Sidewalk válido: ", _bollinger_filter_H1.lower_sidewalk_invalid ? "❌" : "✓");
+         }
+         Print("Resultado: ", _bollinger_filter_H1.is_valid_structure ? "✅ ESTRUTURA VÁLIDA" : "❌ Estrutura inválida");
+         Print("Habilitado: ", m_config.enable_bollinger_filter_h1 ? "SIM" : "NÃO");
+         Print("");
+      }
+
+      // ========================================================================
+      // PULLBACK EMA9 M3
+      // ========================================================================
+      if (true)
+      {
+         Print("┌─────────────────────────────────────────────────────────────────────────────┐");
+         Print("│ PULLBACK EMA9 M3                                                            │");
+         Print("└─────────────────────────────────────────────────────────────────────────────┘");
+         Print("Timeframe: ", _pullback_ema9_m3.tf_name);
+         Print("Preço: ", DoubleToString(_pullback_ema9_m3.last_close, _Digits),
+               " | EMA: ", DoubleToString(_pullback_ema9_m3.current_ma_value, _Digits));
+         Print("Distância atual: ", DoubleToString(_pullback_ema9_m3.distance_price, 5));
+         Print("Profundidade máx: ", DoubleToString(_pullback_ema9_m3.max_depth, 5), " ",
+               _pullback_ema9_m3.distance_price <= _pullback_ema9_m3.max_depth ? "✓" : "❌");
+         Print("Veio de distância maior: ", _pullback_ema9_m3.was_further ? "✓" : "❌");
+         if (_pullback_ema9_m3.was_further)
+         {
+            Print("  Distância anterior: ", DoubleToString(_pullback_ema9_m3.prev_distance_atr, 2),
+                  "  ATR (barra ", _pullback_ema9_m3.found_at_bar, ")");
+            Print("  Lookback End: ", IntegerToString(_pullback_ema9_m3.lookback_end));
+            Print("  Lookback Start: ", IntegerToString(_pullback_ema9_m3.lookback_start));
+            Print("  Melhoria: ", DoubleToString(_pullback_ema9_m3.improvement_ratio, 2), "x");
+         }
+         Print("Posição válida: ", !_pullback_ema9_m3.invalid_position_for_pullback ? "✓" : "❌");
+         Print("Suporte válido: ", _pullback_ema9_m3.valid_support_positions ? "✓" : "❌");
+         Print("Penetração: ", DoubleToString(_pullback_ema9_m3.penetration, 5), " ",
+               _pullback_ema9_m3.penetration <= _pullback_ema9_m3.max_penetration_below_ema ? "✓" : "❌");
+         Print("Resultado: ", _pullback_ema9_m3.is_valid ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");
+         Print("Habilitado: ", m_config.enable_pullback_ema9 ? "SIM" : "NÃO");
+         Print("");
+      }
+
+      // ========================================================================
+      // PULLBACK EMA21 M3
+      // ========================================================================
+      if (true)
+      {
+
+         Print("┌─────────────────────────────────────────────────────────────────────────────┐");
+         Print("│ PULLBACK EMA21 M3                                                           │");
+         Print("└─────────────────────────────────────────────────────────────────────────────┘");
+         Print("Timeframe: ", _pullback_ema21_m3.tf_name);
+         Print("Preço: ", DoubleToString(_pullback_ema21_m3.last_close, _Digits),
+               " | EMA: ", DoubleToString(_pullback_ema21_m3.current_ma_value, _Digits));
+         Print("Distância atual: ", DoubleToString(_pullback_ema21_m3.distance_price, 5));
+         Print("Profundidade máx: ", DoubleToString(_pullback_ema21_m3.max_depth, 5), " ",
+               _pullback_ema21_m3.distance_price <= _pullback_ema21_m3.max_depth ? "✓" : "❌");
+         Print("Veio de distância maior: ", _pullback_ema21_m3.was_further ? "✓" : "❌");
+         if (_pullback_ema21_m3.was_further)
+         {
+            Print("  Distância anterior: ", DoubleToString(_pullback_ema21_m3.prev_distance_atr, 2),
+                  " ATR (barra ", _pullback_ema21_m3.found_at_bar, ")");
+            Print("  Lookback End: ", IntegerToString(_pullback_ema21_m3.lookback_end));
+            Print("  Lookback Start: ", IntegerToString(_pullback_ema21_m3.lookback_start));
+            Print("  Melhoria: ", DoubleToString(_pullback_ema21_m3.improvement_ratio, 2), "x");
+         }
+         Print("Posição válida: ", !_pullback_ema21_m3.invalid_position_for_pullback ? "✓" : "❌");
+         Print("Suporte válido: ", _pullback_ema21_m3.valid_support_positions ? "✓" : "❌");
+         Print("Penetração: ", DoubleToString(_pullback_ema21_m3.penetration, 5), " ",
+               _pullback_ema21_m3.penetration <= _pullback_ema21_m3.max_penetration_below_ema ? "✓" : "❌");
+         Print("Resultado: ", _pullback_ema21_m3.is_valid ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");
+         Print("Habilitado: ", m_config.enable_pullback_ema21 ? "SIM" : "NÃO");
+         Print("");
+
+         Print("================================================================================");
+         Print("========================== END OF DEBUG LOG ===================================");
+         Print("================================================================================");
+      }
+   }
 }
 
 //+------------------------------------------------------------------+
