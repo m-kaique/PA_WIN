@@ -52,6 +52,12 @@ struct SVolatilityEnv
 {
    double avg_atr;
    double volatility_ratio;
+   
+   void Reset()
+   {
+      avg_atr = 0.0;
+      volatility_ratio = 0.0;
+   }
 };
 
 struct SStrongTrendADX
@@ -60,6 +66,14 @@ struct SStrongTrendADX
    double config_min_value;
    double config_max_value;
    bool isStrongTrendADX;
+   
+   void Reset()
+   {
+      adx_value_tf = 0.0;
+      config_min_value = 0.0;
+      config_max_value = 0.0;
+      isStrongTrendADX = false;
+   }
 };
 
 //+------------------------------------------------------------------+
@@ -163,8 +177,33 @@ struct SIsValidPullback
    double prev_distance_atr;
    double improvement_factor;
    double improvement_ratio;
+   
+   void Reset()
+   {
+      digits = 0;
+      point = 0.0;
+      pip_value = 0.0;
+      distance_price = 0.0;
+      last_close = 0.0;
+      last_low = 0.0;
+      current_ma_value = 0.0;
+      tf_name = "";
+      tf_enum = PERIOD_CURRENT;
+      max_depth = 0.0;
+      was_further = false;
+      lookback_start = 0;
+      lookback_end = 0;
+      is_valid = false;
+      invalid_position_for_pullback = false;
+      valid_support_positions = false;
+      max_penetration_below_ema = 0.0;
+      penetration = 0.0;
+      found_at_bar = 0;
+      prev_distance_atr = 0.0;
+      improvement_factor = 0.0;
+      improvement_ratio = 0.0;
+   }
 };
-
 //+------------------------------------------------------------------+
 //| Estrutura para análise de momentum bullish                       |
 //+------------------------------------------------------------------+

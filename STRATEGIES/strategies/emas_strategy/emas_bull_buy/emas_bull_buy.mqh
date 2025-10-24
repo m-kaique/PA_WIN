@@ -305,6 +305,7 @@ SBullishMomentum CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m
 SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma)
 {
    SIsValidPullback data;
+   data.Reset();
    data.is_valid = false;
 
    // ========================================================================
