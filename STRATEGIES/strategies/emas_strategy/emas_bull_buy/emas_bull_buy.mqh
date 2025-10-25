@@ -1364,21 +1364,28 @@ void CEmasBuyBull::DoLog()
          Print("Preço: ", DoubleToString(_pullback_ema9_m3.last_close, _Digits),
                " | EMA: ", DoubleToString(_pullback_ema9_m3.current_ma_value, _Digits));
          Print("Distância atual: ", DoubleToString(_pullback_ema9_m3.distance_price, 5));
-         Print("Profundidade máx: ", DoubleToString(_pullback_ema9_m3.max_depth, 5), " ",
-               _pullback_ema9_m3.distance_price <= _pullback_ema9_m3.max_depth ? "✓" : "❌");
-         Print("Veio de distância maior: ", _pullback_ema9_m3.was_further ? "✓" : "❌");
+         Print("");
+
+         // Critérios detalhados de validação
+         Print("📋 CRITÉRIOS DE VALIDAÇÃO:");
+         Print("  1. Parâmetros válidos (Setup inicial): ", _pullback_ema9_m3.pip_value > 0 ? "✅ Sim" : "❌ Não");
+         Print("  2. Profundidade máxima (Vela 2, Limita retração): ",
+               _pullback_ema9_m3.distance_price <= _pullback_ema9_m3.max_depth ? "✅ OK" : "❌ Excessiva",
+               " (", DoubleToString(_pullback_ema9_m3.max_depth, 5), ")");
+         Print("  3. Veio de mais longe (Vela 2, Confirma pullback): ", _pullback_ema9_m3.was_further ? "✅ Sim" : "❌ Não");
          if (_pullback_ema9_m3.was_further)
          {
-            Print("  Distância anterior: ", DoubleToString(_pullback_ema9_m3.prev_distance_atr, 2),
-                  "  ATR (barra ", _pullback_ema9_m3.found_at_bar, ")");
-            Print("  Lookback End: ", IntegerToString(_pullback_ema9_m3.lookback_end));
-            Print("  Lookback Start: ", IntegerToString(_pullback_ema9_m3.lookback_start));
-            Print("  Melhoria: ", DoubleToString(_pullback_ema9_m3.improvement_ratio, 2), "x");
+            Print("     └─ Distância anterior: ", DoubleToString(_pullback_ema9_m3.prev_distance_atr, 2),
+                  " ATR (barra ", _pullback_ema9_m3.found_at_bar, ") | Melhoria: ", DoubleToString(_pullback_ema9_m3.improvement_ratio, 2), "x");
          }
-         Print("Posição válida: ", !_pullback_ema9_m3.invalid_position_for_pullback ? "✓" : "❌");
-         Print("Suporte válido: ", _pullback_ema9_m3.valid_support_positions ? "✓" : "❌");
-         Print("Penetração: ", DoubleToString(_pullback_ema9_m3.penetration, 5), " ",
-               _pullback_ema9_m3.penetration <= _pullback_ema9_m3.max_penetration_below_ema ? "✓" : "❌");
+         Print("  4. Padrão de suporte (Vela 2, Geometria válida): ", _pullback_ema9_m3.valid_support_positions ? "✅ Sim" : "❌ Não");
+         Print("  5. Penetração máxima (Vela 2, Controla risco): ",
+               _pullback_ema9_m3.penetration <= _pullback_ema9_m3.max_penetration_below_ema ? "✅ OK" : "❌ Excessiva",
+               " (", DoubleToString(_pullback_ema9_m3.penetration, 5), " ≤ ", DoubleToString(_pullback_ema9_m3.max_penetration_below_ema, 5), ")");
+         Print("  6. Confirmação retomada (Vela 1, Sinal entrada): ✅ Sempre válido (última vela)");
+         Print("  7. Range mínimo (Vela 1, Qualidade sinal): 🔧 Opcional (implementado)");
+
+         Print("");
          Print("Resultado: ", _pullback_ema9_m3.validation_result ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");
          if (_pullback_ema9_m3.fail_message != "")
             Print("Fail Message: ", _pullback_ema9_m3.fail_message);
@@ -1401,21 +1408,28 @@ void CEmasBuyBull::DoLog()
          Print("Preço: ", DoubleToString(_pullback_ema21_m3.last_close, _Digits),
                " | EMA: ", DoubleToString(_pullback_ema21_m3.current_ma_value, _Digits));
          Print("Distância atual: ", DoubleToString(_pullback_ema21_m3.distance_price, 5));
-         Print("Profundidade máx: ", DoubleToString(_pullback_ema21_m3.max_depth, 5), " ",
-               _pullback_ema21_m3.distance_price <= _pullback_ema21_m3.max_depth ? "✓" : "❌");
-         Print("Veio de distância maior: ", _pullback_ema21_m3.was_further ? "✓" : "❌");
+         Print("");
+
+         // Critérios detalhados de validação
+         Print("📋 CRITÉRIOS DE VALIDAÇÃO:");
+         Print("  1. Parâmetros válidos (Setup inicial): ", _pullback_ema21_m3.pip_value > 0 ? "✅ Sim" : "❌ Não");
+         Print("  2. Profundidade máxima (Vela 2, Limita retração): ",
+               _pullback_ema21_m3.distance_price <= _pullback_ema21_m3.max_depth ? "✅ OK" : "❌ Excessiva",
+               " (", DoubleToString(_pullback_ema21_m3.max_depth, 5), ")");
+         Print("  3. Veio de mais longe (Vela 2, Confirma pullback): ", _pullback_ema21_m3.was_further ? "✅ Sim" : "❌ Não");
          if (_pullback_ema21_m3.was_further)
          {
-            Print("  Distância anterior: ", DoubleToString(_pullback_ema21_m3.prev_distance_atr, 2),
-                  " ATR (barra ", _pullback_ema21_m3.found_at_bar, ")");
-            Print("  Lookback End: ", IntegerToString(_pullback_ema21_m3.lookback_end));
-            Print("  Lookback Start: ", IntegerToString(_pullback_ema21_m3.lookback_start));
-            Print("  Melhoria: ", DoubleToString(_pullback_ema21_m3.improvement_ratio, 2), "x");
+            Print("     └─ Distância anterior: ", DoubleToString(_pullback_ema21_m3.prev_distance_atr, 2),
+                  " ATR (barra ", _pullback_ema21_m3.found_at_bar, ") | Melhoria: ", DoubleToString(_pullback_ema21_m3.improvement_ratio, 2), "x");
          }
-         Print("Posição válida: ", !_pullback_ema21_m3.invalid_position_for_pullback ? "✓" : "❌");
-         Print("Suporte válido: ", _pullback_ema21_m3.valid_support_positions ? "✓" : "❌");
-         Print("Penetração: ", DoubleToString(_pullback_ema21_m3.penetration, 5), " ",
-               _pullback_ema21_m3.penetration <= _pullback_ema21_m3.max_penetration_below_ema ? "✓" : "❌");
+         Print("  4. Padrão de suporte (Vela 2, Geometria válida): ", _pullback_ema21_m3.valid_support_positions ? "✅ Sim" : "❌ Não");
+         Print("  5. Penetração máxima (Vela 2, Controla risco): ",
+               _pullback_ema21_m3.penetration <= _pullback_ema21_m3.max_penetration_below_ema ? "✅ OK" : "❌ Excessiva",
+               " (", DoubleToString(_pullback_ema21_m3.penetration, 5), " ≤ ", DoubleToString(_pullback_ema21_m3.max_penetration_below_ema, 5), ")");
+         Print("  6. Confirmação retomada (Vela 1, Sinal entrada): ✅ Sempre válido (última vela)");
+         Print("  7. Range mínimo (Vela 1, Qualidade sinal): 🔧 Opcional (implementado)");
+
+         Print("");
          Print("Resultado: ", _pullback_ema21_m3.validation_result ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");
          if (_pullback_ema21_m3.fail_message != "")
             Print("Fail Message: ", _pullback_ema21_m3.fail_message);
