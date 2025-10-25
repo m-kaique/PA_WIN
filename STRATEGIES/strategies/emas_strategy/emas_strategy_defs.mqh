@@ -1,6 +1,7 @@
 // Common Data
 struct SStratedyBassicData{
    string fail_message;
+   string success_message;
 
    // Propriedades comuns
    ENUM_TIMEFRAMES timeframe;     // Timeframe analisado
@@ -12,6 +13,7 @@ struct SStratedyBassicData{
    void ResetBase()
    {
       fail_message = "";
+      success_message = "";
       timeframe = PERIOD_CURRENT;
       tf_name = "";
       atr_value = 0.0;
