@@ -412,6 +412,7 @@ bool CEmasBearSell::IsGoodVolatilityEnvironment(TF_CTX *ctx)
 
    volatilityEnv_M15.avg_atr = avg_atr;
    volatilityEnv_M15.volatility_ratio = volatility_ratio;
+   // volatilityEnv_M15.atr_value = current_atr; // Deprecated structure
 
    return (volatility_ratio >= m_config.min_volatility_ratio && volatility_ratio <= m_config.max_volatility_ratio);
 }
@@ -633,7 +634,7 @@ SStrategySignal CEmasBearSell::CheckForSignal()
    SStrong_trend_ADX_m15.adx_value_tf = adx_value_m15;
    SStrong_trend_ADX_m15.config_max_value = m_config.adx_max_value;
    SStrong_trend_ADX_m15.config_min_value = m_config.adx_min_value;
-   SStrong_trend_ADX_m15.isStrongTrendADX = strong_trend_adx_m15;
+   SStrong_trend_ADX_m15.validation_result = strong_trend_adx_m15;
 
    // === PONTOS DE ENTRADA - PULLBACK PARA CIMA (até resistência) ===
    SPositionInfo ema9_m3_position = ema9_m3.GetPositionInfo(1, COPY_MIDDLE, atr_value);
@@ -873,7 +874,7 @@ void CEmasBearSell::DoLog()
       Print("ADX: ", SStrong_trend_ADX_m15.adx_value_tf);
       Print("Conf.min.value: ", SStrong_trend_ADX_m15.config_min_value);
       Print("Conf.max.value: ", SStrong_trend_ADX_m15.config_max_value);
-      Print("Is Strong Trend: ", SStrong_trend_ADX_m15.isStrongTrendADX ? "Sim" : "Não");
+      Print("Is Strong Trend: ", SStrong_trend_ADX_m15.validation_result ? "Sim" : "Não");
    }
 
    Print("EMA9 - EMA 21 Distance: ", distance_ma_m15.distance_ema_9_21);

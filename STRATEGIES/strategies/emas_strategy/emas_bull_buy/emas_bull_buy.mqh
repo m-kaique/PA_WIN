@@ -196,7 +196,7 @@ SStrongTrendEMAS CEmasBuyBull::IsStrongTrend(TF_CTX *ctx)
    // Validar critérios de tendência forte
    data.distance_9_21_ok = (data.distance_ema_9_21_by_atr >= data.min_distance_9_21_threshold);
    data.distance_21_50_ok = (data.distance_ema_21_50_by_atr >= data.min_distance_21_50_threshold);
-   data.is_strong_trend = data.distance_9_21_ok && data.distance_21_50_ok;
+   data.validation_result = data.distance_9_21_ok && data.distance_21_50_ok;
    return data;
 }
 
@@ -208,7 +208,7 @@ SBullishMomentum CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m
 {
    SBullishMomentum data;
    data.Reset();
-   data.has_momentum = false;
+   data.validation_result = false;
 
    // Validação dos contextos
    if (ctx_m15 == NULL || ctx_m3 == NULL)
@@ -285,7 +285,7 @@ SBullishMomentum CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m
    // ========================================================================
    // RESULTADO FINAL
    // ========================================================================
-   data.has_momentum = data.price_above_ema21 &&
+   data.validation_result = data.price_above_ema21 &&
                        data.no_panic_selling &&
                        data.last_candle_bullish;
 
@@ -307,7 +307,7 @@ SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, dou
 {
    SIsValidPullback data;
    data.Reset();
-   data.is_valid = false;
+   data.validation_result = false;
 
    // ========================================================================
    // VALIDAÇÃO INICIAL
@@ -330,11 +330,11 @@ SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, dou
    }
 
    data.distance_price = position_info.distance * data.pip_value;
-   data.tf_enum = ctx.GetTimeFrame();
-   data.last_close = iClose(m_current_symbol, data.tf_enum, 1);
-   data.last_low = iLow(m_current_symbol, data.tf_enum, 1);
+   data.timeframe = ctx.GetTimeFrame();
+   data.last_close = iClose(m_current_symbol, data.timeframe, 1);
+   data.last_low = iLow(m_current_symbol, data.timeframe, 1);
    data.current_ma_value = ma.GetValue(1);
-   data.tf_name = EnumToString(data.tf_enum);
+   data.tf_name = EnumToString(data.timeframe);
 
    // ========================================================================
    // CRITÉRIO 2: Distância não pode ser excessiva (limite de profundidade)
@@ -355,7 +355,7 @@ SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, dou
 
    for (int i = data.lookback_start; i <= data.lookback_end; i++)
    {
-      double prev_close = iClose(m_current_symbol, data.tf_enum, i);
+      double prev_close = iClose(m_current_symbol, data.timeframe, i);
       double prev_ma = ma.GetValue(i);
 
       if (prev_close > prev_ma)
@@ -422,7 +422,7 @@ SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, dou
    // ========================================================================
    // VALIDAÇÃO FINAL - PULLBACK CONFIRMADO
    // ========================================================================
-   data.is_valid = true;
+   data.validation_result = true;
    return data;
 }
 
@@ -455,8 +455,8 @@ SVolatilityEnvironment CEmasBuyBull::IsGoodVolatilityEnvironment(TF_CTX *ctx)
       return data;
    }
 
-   data.current_atr = atr.GetValue(1);
-   if (data.current_atr <= 0)
+   data.atr_value = atr.GetValue(1);
+   if (data.atr_value <= 0)
    {
       // Print("[VOLATILITY ENV] ❌ ATR inválido: ", data.current_atr);
       return data;
@@ -490,7 +490,7 @@ SVolatilityEnvironment CEmasBuyBull::IsGoodVolatilityEnvironment(TF_CTX *ctx)
    // CÁLCULO DO RATIO DE VOLATILIDADE
    // ========================================================================
    data.avg_atr = data.sum_atr / data.valid_periods;
-   data.volatility_ratio = data.current_atr / data.avg_atr;
+   data.volatility_ratio = data.atr_value / data.avg_atr;
 
    // ========================================================================
    // VALIDAÇÃO DO RANGE
@@ -501,7 +501,7 @@ SVolatilityEnvironment CEmasBuyBull::IsGoodVolatilityEnvironment(TF_CTX *ctx)
    // ========================================================================
    // RESULTADO FINAL
    // ========================================================================
-   data.is_good_environment = data.has_valid_data && data.ratio_in_range;
+   data.validation_result = data.has_valid_data && data.ratio_in_range;
    return data;
 }
 
@@ -579,7 +579,7 @@ SBullishStructure CEmasBuyBull::IsInBullishStructure(TF_CTX *ctx)
    // ========================================================================
    // RESULTADO FINAL
    // ========================================================================
-   data.is_bullish_structure = data.price_above_ema50 &&
+   data.validation_result = data.price_above_ema50 &&
                                data.distance_ok &&
                                data.ema50_trending_up;
 
@@ -745,7 +745,7 @@ SBollingerStructure CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
    // ========================================================================
    // RESULTADO FINAL
    // ========================================================================
-   data.is_valid_structure = data.width_in_range &&
+   data.validation_result = data.width_in_range &&
                              !data.is_contracting &&
                              data.upper_micro_ok &&
                              !data.lower_sidewalk_invalid;
@@ -828,21 +828,21 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    _ema_data_M15 = IsStrongTrend(ctx_m15);
 
    // Validar tendência forte baseado na configuração
-   bool strong_trend_m3 = m_config.enable_strong_trend_m3 ? _ema_data_M3.is_strong_trend : true;
-   bool strong_trend_m15 = m_config.enable_strong_trend_m15 ? _ema_data_M15.is_strong_trend : true;
+   bool strong_trend_m3 = m_config.enable_strong_trend_m3 ? _ema_data_M3.validation_result : true;
+   bool strong_trend_m15 = m_config.enable_strong_trend_m15 ? _ema_data_M15.validation_result : true;
 
    // === ANÁLISE DE MOMENTUM ===
    _bullish_momentum_data = HasBullishMomentum(ctx_m15, ctx_m3);
-   bool bullish_momentum = m_config.enable_bullish_momentum ? _bullish_momentum_data.has_momentum : true;
+   bool bullish_momentum = m_config.enable_bullish_momentum ? _bullish_momentum_data.validation_result : true;
 
    // === ANÁLISE DE VOLATILIDADE ===
    _volatility_env_M15 = IsGoodVolatilityEnvironment(ctx_m15);
-   bool good_volatility_m15 = m_config.enable_good_volatility ? _volatility_env_M15.is_good_environment : true;
+   bool good_volatility_m15 = m_config.enable_good_volatility ? _volatility_env_M15.validation_result : true;
 
    _bullish_structure_M15 = IsInBullishStructure(ctx_m15);
    _bullish_structure_M3 = IsInBullishStructure(ctx_m3);
-   bool bullish_structure_m15 = m_config.enable_bullish_structure_m15 ? _bullish_structure_M15.is_bullish_structure : true;
-   bool bullish_structure_m3 = m_config.enable_bullish_structure_m3 ? _bullish_structure_M3.is_bullish_structure : true;
+   bool bullish_structure_m15 = m_config.enable_bullish_structure_m15 ? _bullish_structure_M15.validation_result : true;
+   bool bullish_structure_m3 = m_config.enable_bullish_structure_m3 ? _bullish_structure_M3.validation_result : true;
 
    // Verificar ADX
    bool strong_trend_adx_m15 = false;
@@ -859,7 +859,7 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    SStrong_trend_ADX_m15.adx_value_tf = adx_value_m15;
    SStrong_trend_ADX_m15.config_max_value = m_config.adx_max_value;
    SStrong_trend_ADX_m15.config_min_value = m_config.adx_min_value;
-   SStrong_trend_ADX_m15.isStrongTrendADX = strong_trend_adx_m15;
+   SStrong_trend_ADX_m15.validation_result = strong_trend_adx_m15;
 
    // === PONTOS DE ENTRADA - VALIDAÇÃO DE PULLBACK ===
    // O método IsValidPullback agora inclui validação de posição específica
@@ -880,9 +880,9 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
    _bollinger_filter_M15 = BollingerHasValidStructure(ctx_m15);
    _bollinger_filter_H1 = BollingerHasValidStructure(ctx_h1);
 
-   bool is_bollinger_valid_m3 = m_config.enable_bollinger_filter_m3 ? _bollinger_filter_M3.is_valid_structure : true;
-   bool is_bollinger_valid_m15 = m_config.enable_bollinger_filter_m15 ? _bollinger_filter_M15.is_valid_structure : true;
-   bool is_bollinger_valid_h1 = m_config.enable_bollinger_filter_h1 ? _bollinger_filter_H1.is_valid_structure : true;
+   bool is_bollinger_valid_m3 = m_config.enable_bollinger_filter_m3 ? _bollinger_filter_M3.validation_result : true;
+   bool is_bollinger_valid_m15 = m_config.enable_bollinger_filter_m15 ? _bollinger_filter_M15.validation_result : true;
+   bool is_bollinger_valid_h1 = m_config.enable_bollinger_filter_h1 ? _bollinger_filter_H1.validation_result : true;
 
    bool filtros_ok = ema_alignment_m15_ok && ema_alignment_m3_ok &&
                      strong_trend_m15 && strong_trend_m3 &&
@@ -892,8 +892,8 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
                      strong_trend_adx_m15 && is_bollinger_valid_m3 && is_bollinger_valid_m15 && is_bollinger_valid_h1;
 
    // Simplificação: is_valid já inclui todas as validações necessárias
-   bool pullback_ema9_ok = m_config.enable_pullback_ema9 ? _pullback_ema9_m3.is_valid : false;
-   bool pullback_ema21_ok = m_config.enable_pullback_ema21 ? _pullback_ema21_m3.is_valid : false;
+   bool pullback_ema9_ok = m_config.enable_pullback_ema9 ? _pullback_ema9_m3.validation_result : false;
+   bool pullback_ema21_ok = m_config.enable_pullback_ema21 ? _pullback_ema21_m3.validation_result : false;
    bool entrada_setup_ok = pullback_ema9_ok || pullback_ema21_ok;
    bool entrada_valida = filtros_ok && entrada_setup_ok;
 
@@ -904,9 +904,9 @@ SStrategySignal CEmasBuyBull::CheckForSignal()
       Print("   Filtros: Alinhamento EMAs ✓, Tendência forte ✓, Momentum bullish ✓");
 
       string ema_used = "desconhecida";
-      if (pullback_ema9_ok && _pullback_ema9_m3.is_valid)
+      if (pullback_ema9_ok && _pullback_ema9_m3.validation_result)
          ema_used = "EMA9";
-      else if (pullback_ema21_ok && _pullback_ema21_m3.is_valid)
+      else if (pullback_ema21_ok && _pullback_ema21_m3.validation_result)
          ema_used = "EMA21";
 
       Print("   Entrada: Pullback válido detectado em ", ema_used, " M3");
@@ -1036,7 +1036,7 @@ void CEmasBuyBull::DoLog()
          Print("Distância 21-50: ", DoubleToString(_ema_data_M15.distance_ema_21_50_by_atr, 2),
                " ATR (min: ", DoubleToString(_ema_data_M15.min_distance_21_50_threshold, 2), ") ",
                _ema_data_M15.distance_21_50_ok ? "✓" : "❌");
-         Print("Resultado: ", _ema_data_M15.is_strong_trend ? "✅ TENDÊNCIA FORTE" : "❌ Tendência fraca");
+         Print("Resultado: ", _ema_data_M15.validation_result ? "✅ TENDÊNCIA FORTE" : "❌ Tendência fraca");
          Print("Habilitado: ", m_config.enable_strong_trend_m15 ? "SIM" : "NÃO");
          Print("");
       }
@@ -1060,7 +1060,7 @@ void CEmasBuyBull::DoLog()
          Print("Distância 21-50: ", DoubleToString(_ema_data_M3.distance_ema_21_50_by_atr, 2),
                " ATR (min: ", DoubleToString(_ema_data_M3.min_distance_21_50_threshold, 2), ") ",
                _ema_data_M3.distance_21_50_ok ? "✓" : "❌");
-         Print("Resultado: ", _ema_data_M3.is_strong_trend ? "✅ TENDÊNCIA FORTE" : "❌ Tendência fraca");
+         Print("Resultado: ", _ema_data_M3.validation_result ? "✅ TENDÊNCIA FORTE" : "❌ Tendência fraca");
          Print("Habilitado: ", m_config.enable_strong_trend_m3 ? "SIM" : "NÃO");
          Print("");
       }
@@ -1090,7 +1090,7 @@ void CEmasBuyBull::DoLog()
          Print("Última vela bullish: ", _bullish_momentum_data.last_candle_bullish ? "✓" : "❌",
                " (Open: ", DoubleToString(_bullish_momentum_data.last_open, _Digits),
                ", Close: ", DoubleToString(_bullish_momentum_data.last_close, _Digits), ")");
-         Print("Resultado: ", _bullish_momentum_data.has_momentum ? "✅ MOMENTUM CONFIRMADO" : "❌ Sem momentum");
+         Print("Resultado: ", _bullish_momentum_data.validation_result ? "✅ MOMENTUM CONFIRMADO" : "❌ Sem momentum");
          Print("Habilitado: ", m_config.enable_bullish_momentum ? "SIM" : "NÃO");
          Print("");
       }
@@ -1104,7 +1104,7 @@ void CEmasBuyBull::DoLog()
          Print("│ VOLATILITY ENVIRONMENT M15                                                  │");
          Print("└─────────────────────────────────────────────────────────────────────────────┘");
          Print("Timeframe: ", EnumToString(_volatility_env_M15.timeframe));
-         Print("ATR atual: ", DoubleToString(_volatility_env_M15.current_atr, 5));
+         Print("ATR atual: ", DoubleToString(_volatility_env_M15.atr_value, 5));
          Print("Lookback: ", _volatility_env_M15.lookback_periods, " períodos");
          Print("Períodos válidos: ", _volatility_env_M15.valid_periods, "/",
                _volatility_env_M15.lookback_periods, " ",
@@ -1114,7 +1114,7 @@ void CEmasBuyBull::DoLog()
                " (range: ", DoubleToString(_volatility_env_M15.min_volatility_ratio, 2),
                " - ", DoubleToString(_volatility_env_M15.max_volatility_ratio, 2), ") ",
                _volatility_env_M15.ratio_in_range ? "✓" : "❌");
-         Print("Resultado: ", _volatility_env_M15.is_good_environment ? "✅ AMBIENTE ADEQUADO" : "❌ Ambiente inadequado");
+         Print("Resultado: ", _volatility_env_M15.validation_result ? "✅ AMBIENTE ADEQUADO" : "❌ Ambiente inadequado");
          Print("Habilitado: ", m_config.enable_good_volatility ? "SIM" : "NÃO");
          Print("");
       }
@@ -1130,7 +1130,7 @@ void CEmasBuyBull::DoLog()
          Print("ADX Value: ", DoubleToString(SStrong_trend_ADX_m15.adx_value_tf, 2));
          Print("Range: ", DoubleToString(SStrong_trend_ADX_m15.config_min_value, 2),
                " - ", DoubleToString(SStrong_trend_ADX_m15.config_max_value, 2));
-         Print("Resultado: ", SStrong_trend_ADX_m15.isStrongTrendADX ? "✅ ADX OK" : "❌ ADX fora do range");
+         Print("Resultado: ", SStrong_trend_ADX_m15.validation_result ? "✅ ADX OK" : "❌ ADX fora do range");
          Print("Habilitado: ", m_config.enable_adx_filter ? "SIM" : "NÃO");
          Print("");
       }
@@ -1152,7 +1152,7 @@ void CEmasBuyBull::DoLog()
                " ATR (min: ", DoubleToString(_bullish_structure_M15.min_distance_threshold, 2), ") ",
                _bullish_structure_M15.distance_ok ? "✓" : "❌");
          Print("EMA50 inclinada: ", _bullish_structure_M15.ema50_trending_up ? "✓" : "❌");
-         Print("Resultado: ", _bullish_structure_M15.is_bullish_structure ? "✅ ESTRUTURA BULLISH" : "❌ Estrutura não bullish");
+         Print("Resultado: ", _bullish_structure_M15.validation_result ? "✅ ESTRUTURA BULLISH" : "❌ Estrutura não bullish");
          Print("Habilitado: ", m_config.enable_bullish_structure_m15 ? "SIM" : "NÃO");
          Print("");
       }
@@ -1174,7 +1174,7 @@ void CEmasBuyBull::DoLog()
                " ATR (min: ", DoubleToString(_bullish_structure_M3.min_distance_threshold, 2), ") ",
                _bullish_structure_M3.distance_ok ? "✓" : "❌");
          Print("EMA50 inclinada: ", _bullish_structure_M3.ema50_trending_up ? "✓" : "❌");
-         Print("Resultado: ", _bullish_structure_M3.is_bullish_structure ? "✅ ESTRUTURA BULLISH" : "❌ Estrutura não bullish");
+         Print("Resultado: ", _bullish_structure_M3.validation_result ? "✅ ESTRUTURA BULLISH" : "❌ Estrutura não bullish");
          Print("Habilitado: ", m_config.enable_bullish_structure_m3 ? "SIM" : "NÃO");
          Print("");
       }
@@ -1208,7 +1208,7 @@ void CEmasBuyBull::DoLog()
          {
             Print("  Sidewalk válido: ", _bollinger_filter_M3.lower_sidewalk_invalid ? "❌" : "✓");
          }
-         Print("Resultado: ", _bollinger_filter_M3.is_valid_structure ? "✅ ESTRUTURA VÁLIDA" : "❌ Estrutura inválida");
+         Print("Resultado: ", _bollinger_filter_M3.validation_result ? "✅ ESTRUTURA VÁLIDA" : "❌ Estrutura inválida");
          Print("Habilitado: ", m_config.enable_bollinger_filter_m3 ? "SIM" : "NÃO");
          Print("");
       }
@@ -1242,7 +1242,7 @@ void CEmasBuyBull::DoLog()
          {
             Print("  Sidewalk válido: ", _bollinger_filter_M15.lower_sidewalk_invalid ? "❌" : "✓");
          }
-         Print("Resultado: ", _bollinger_filter_M15.is_valid_structure ? "✅ ESTRUTURA VÁLIDA" : "❌ Estrutura inválida");
+         Print("Resultado: ", _bollinger_filter_M15.validation_result ? "✅ ESTRUTURA VÁLIDA" : "❌ Estrutura inválida");
          Print("Habilitado: ", m_config.enable_bollinger_filter_m15 ? "SIM" : "NÃO");
          Print("");
       }
@@ -1276,7 +1276,7 @@ void CEmasBuyBull::DoLog()
          {
             Print("  Sidewalk válido: ", _bollinger_filter_H1.lower_sidewalk_invalid ? "❌" : "✓");
          }
-         Print("Resultado: ", _bollinger_filter_H1.is_valid_structure ? "✅ ESTRUTURA VÁLIDA" : "❌ Estrutura inválida");
+         Print("Resultado: ", _bollinger_filter_H1.validation_result ? "✅ ESTRUTURA VÁLIDA" : "❌ Estrutura inválida");
          Print("Habilitado: ", m_config.enable_bollinger_filter_h1 ? "SIM" : "NÃO");
          Print("");
       }
@@ -1308,7 +1308,7 @@ void CEmasBuyBull::DoLog()
          Print("Suporte válido: ", _pullback_ema9_m3.valid_support_positions ? "✓" : "❌");
          Print("Penetração: ", DoubleToString(_pullback_ema9_m3.penetration, 5), " ",
                _pullback_ema9_m3.penetration <= _pullback_ema9_m3.max_penetration_below_ema ? "✓" : "❌");
-         Print("Resultado: ", _pullback_ema9_m3.is_valid ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");
+         Print("Resultado: ", _pullback_ema9_m3.validation_result ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");
          Print("Habilitado: ", m_config.enable_pullback_ema9 ? "SIM" : "NÃO");
          Print("");
       }
@@ -1341,7 +1341,7 @@ void CEmasBuyBull::DoLog()
          Print("Suporte válido: ", _pullback_ema21_m3.valid_support_positions ? "✓" : "❌");
          Print("Penetração: ", DoubleToString(_pullback_ema21_m3.penetration, 5), " ",
                _pullback_ema21_m3.penetration <= _pullback_ema21_m3.max_penetration_below_ema ? "✓" : "❌");
-         Print("Resultado: ", _pullback_ema21_m3.is_valid ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");
+         Print("Resultado: ", _pullback_ema21_m3.validation_result ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");
          Print("Habilitado: ", m_config.enable_pullback_ema21 ? "SIM" : "NÃO");
          Print("");
 
