@@ -95,6 +95,7 @@ public:
    double pullback_depth_buffer_atr;
    double pullback_max_penetration_atr;
    double pullback_improvement_factor;
+   double pullback_min_confirm_range_atr;
 
    // Authorized timeframes for signal generation
    ENUM_TIMEFRAMES authorized_timeframes[];
@@ -223,6 +224,7 @@ public:
       pullback_depth_buffer_atr = 0.5;
       pullback_max_penetration_atr = 1.5;
       pullback_improvement_factor = 1.15;
+      pullback_min_confirm_range_atr = 0.1;
 
       // Initialize validation flags to true by default
       enable_ema_alignment_m15 = true;

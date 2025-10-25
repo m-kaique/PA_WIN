@@ -324,132 +324,111 @@ SBullishMomentum CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m
 //+------------------------------------------------------------------+
 SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, double atr_value, TF_CTX *ctx, CMovingAverages *ma)
 {
-    SIsValidPullback data;
-    data.Reset();
-    data.validation_result = false;
+    // ------------------ Setup ------------------
+    const int CONFIRM_BAR = 1;   // vela 1: confirmação
+    const int SETUP_BAR   = 2;   // vela 2: pullback toca/penetra EMA
 
-    // ========================================================================
-    // VALIDAÇÃO INICIAL
-    // ========================================================================
-    if (ctx == NULL || ma == NULL || atr_value <= 0)
-    {
-       data.fail_message = "Parâmetros inválidos";
-       return data;
-    }
+    SIsValidPullback data; data.Reset(); data.validation_result = false;
+    if (ctx == NULL || ma == NULL || atr_value <= 0) { data.fail_message = "Parâmetros inválidos"; return data; }
 
-    // ========================================================================
-    // SETUP INICIAL - COLETA DE DADOS
-    // ========================================================================
     data.digits = (int)SymbolInfoInteger(m_current_symbol, SYMBOL_DIGITS);
-    data.point = SymbolInfoDouble(m_current_symbol, SYMBOL_POINT);
+    data.point  = SymbolInfoDouble(m_current_symbol, SYMBOL_POINT);
     data.pip_value = (data.digits == 3 || data.digits == 5) ? data.point * 10.0 : data.point;
+    if (data.pip_value <= 0) { data.fail_message = "Pip value inválido"; return data; }
 
-    if (data.pip_value <= 0)
-    {
-       data.fail_message = "Pip value inválido";
-       return data;
-    }
-
-    data.distance_price = position_info.distance * data.pip_value;
     data.timeframe = ctx.GetTimeFrame();
-    data.last_close = iClose(m_current_symbol, data.timeframe, 1);
-    data.last_low = iLow(m_current_symbol, data.timeframe, 1);
-    data.current_ma_value = ma.GetValue(1);
-    data.tf_name = EnumToString(data.timeframe);
+    data.tf_name   = EnumToString(data.timeframe);
 
-    // ========================================================================
-    // CRITÉRIO 2: Distância não pode ser excessiva (limite de profundidade)
-    // ========================================================================
+    // OHLC e EMA para as duas velas relevantes
+    const double close1 = iClose(m_current_symbol, data.timeframe, CONFIRM_BAR);
+    const double open1  = iOpen (m_current_symbol, data.timeframe, CONFIRM_BAR);
+    const double high1  = iHigh (m_current_symbol, data.timeframe, CONFIRM_BAR);
+    const double low1   = iLow  (m_current_symbol, data.timeframe, CONFIRM_BAR);
+    const double ema1   = ma.GetValue(CONFIRM_BAR);
+
+    const double close2 = iClose(m_current_symbol, data.timeframe, SETUP_BAR);
+    const double open2  = iOpen (m_current_symbol, data.timeframe, SETUP_BAR);
+    const double high2  = iHigh (m_current_symbol, data.timeframe, SETUP_BAR);
+    const double low2   = iLow  (m_current_symbol, data.timeframe, SETUP_BAR);
+    const double ema2   = ma.GetValue(SETUP_BAR);
+
+    // Distância do pullback (na vela 2) em unidades de preço
+    data.distance_price = MathAbs(close2 - ema2);
+
+    // ------------------ Critério 2: limite de profundidade (na vela 2) ------------------
     data.max_depth = (m_config.max_distance_atr + m_config.pullback_depth_buffer_atr) * atr_value;
+    if (data.distance_price > data.max_depth) { data.fail_message = "Distância excessiva"; return data; }
 
-    if (data.distance_price > data.max_depth)
-    {
-       data.fail_message = "Distância excessiva";
-       return data;
-    }
-
-    // ========================================================================
-    // CRITÉRIO 3: Validar que veio de distância ANTERIOR MAIOR
-    // ========================================================================
+    // ------------------ Critério 3: veio de distância ANTERIOR MAIOR ------------------
     data.was_further = false;
-    data.lookback_start = 2;
-    data.lookback_end = MathMin(m_config.max_duration_candles + 1, 10);
+    data.lookback_start = 3; // agora começamos antes da vela 2
+    data.lookback_end   = MathMin(m_config.max_duration_candles + 2, 11);
 
+    const double current_distance_atr = data.distance_price / atr_value;
     for (int i = data.lookback_start; i <= data.lookback_end; i++)
     {
-       double prev_close = iClose(m_current_symbol, data.timeframe, i);
-       double prev_ma = ma.GetValue(i);
-
-       if (prev_close > prev_ma)
-       {
-          double prev_distance = prev_close - prev_ma;
-          double prev_distance_atr = prev_distance / atr_value;
-          double current_distance_atr = data.distance_price / atr_value;
-
-          if (prev_distance_atr > current_distance_atr * m_config.pullback_improvement_factor)
-          {
-             data.was_further = true;
-             data.found_at_bar = i;
-             data.prev_distance_atr = prev_distance_atr;
-             data.improvement_ratio = prev_distance_atr / current_distance_atr;
-             data.improvement_factor = m_config.pullback_improvement_factor;
-             break;
-          }
-       }
+        const double prev_close = iClose(m_current_symbol, data.timeframe, i);
+        const double prev_ma    = ma.GetValue(i);
+        if (prev_close > prev_ma)
+        {
+            const double prev_distance_atr = (prev_close - prev_ma) / atr_value;
+            if (prev_distance_atr > current_distance_atr * m_config.pullback_improvement_factor)
+            {
+                data.was_further = true;
+                data.found_at_bar = i;
+                data.prev_distance_atr = prev_distance_atr;
+                data.improvement_ratio  = prev_distance_atr / current_distance_atr;
+                data.improvement_factor = m_config.pullback_improvement_factor;
+                break;
+            }
+        }
     }
+    if (!data.was_further) { data.fail_message = "Não veio de distância anterior maior"; return data; }
 
-    if (!data.was_further)
-    {
-       data.fail_message = "Não veio de distância anterior maior";
-       return data;
-    }
+    // ------------------ Critério 4: posição da vela 2 é compatível com suporte na EMA ------------------
+    // Em vez de usar position_info (que descreve a vela 1), avaliamos a geometria da vela 2:
+    const bool crosses_lower_shadow_2 = (low2 <= ema2 && MathMax(open2, close2) >= ema2);
+    const bool crosses_lower_body_2   = (MathMin(open2, close2) <= ema2 && MathMax(open2, close2) >= ema2);
+    const bool center_body_2          = crosses_lower_body_2; // equivalente simples; ajuste conforme seu enum
+    const bool upper_body_2           = (MathMin(open2, close2) >= ema2); // corpo acima, pavio pode tocar
 
-    // ========================================================================
-    // CRITÉRIO 4: Padrão de posição é razoável para pullback
-    // ========================================================================
-    data.invalid_position_for_pullback = (position_info.position == INDICATOR_CROSSES_UPPER_SHADOW ||
-                                          position_info.position == CANDLE_BELOW ||
-                                          position_info.position == CANDLE_COMPLETELY_BELOW ||
-                                          position_info.position == CANDLE_BELOW_WITH_DISTANCE ||
-                                          position_info.position == INDICATOR_CANDLE_POSITION_FAILED);
+    const bool valid_support_2 = (crosses_lower_shadow_2 || crosses_lower_body_2 || center_body_2 || upper_body_2);
+    if (!valid_support_2) { data.fail_message = "Padrão de suporte inválido (vela 2)"; return data; }
 
-    if (data.invalid_position_for_pullback)
-    {
-       data.fail_message = "Posição inválida para pullback";
-       return data;
-    }
-
-    // ========================================================================
-    // CRITÉRIO 4.5: Validar padrão específico de suporte na EMA
-    // ========================================================================
-    data.valid_support_positions = (position_info.position == INDICATOR_CROSSES_LOWER_SHADOW ||
-                                    position_info.position == INDICATOR_CROSSES_LOWER_BODY ||
-                                    position_info.position == INDICATOR_CROSSES_CENTER_BODY ||
-                                    position_info.position == INDICATOR_CROSSES_UPPER_BODY);
-
-    if (!data.valid_support_positions)
-    {
-       data.fail_message = "Padrão de suporte inválido";
-       return data;
-    }
-
-    // ========================================================================
-    // CRITÉRIO 5: Penetração abaixo da EMA não é excessiva
-    // ========================================================================
+    // ------------------ Critério 5: penetração abaixo da EMA na vela 2 não é excessiva ------------------
     data.max_penetration_below_ema = m_config.pullback_max_penetration_atr * atr_value;
-    data.penetration = MathMax(0, data.current_ma_value - data.last_low);
+    data.penetration = MathMax(0.0, ema2 - low2);
+    if (data.penetration > data.max_penetration_below_ema) { data.fail_message = "Penetração excessiva abaixo da EMA (vela 2)"; return data; }
 
-    if (data.penetration > data.max_penetration_below_ema)
+    // ------------------ Confirmação (vela 1) ------------------
+    // Sinais sugeridos (use qualquer combinação conforme seu setup):
+    // A) fechamento acima da EMA1
+    const bool close_above_ema1 = (close1 > ema1);
+    // B) candle 1 altista
+    const bool bullish_body1 = (close1 > open1);
+    // C) retomada de momentum: rompimento do topo da vela 2
+    const bool breaks_high2 = (high1 > high2);
+    // D) inclinação positiva da EMA
+    const bool ema_slope_up = (ema1 >= ema2);
+
+    // Regra padrão: precisa fechar acima da EMA OU romper o topo da vela 2; e idealmente corpo altista e slope ≥ 0
+    if (!( (close_above_ema1 || breaks_high2) && bullish_body1 && ema_slope_up ))
     {
-       data.fail_message = "Penetração excessiva abaixo da EMA";
-       return data;
+        data.fail_message = "Sem confirmação na vela 1";
+        return data;
     }
 
-    // ========================================================================
-    // VALIDAÇÃO FINAL - PULLBACK CONFIRMADO
-    // ========================================================================
+    // Opcional: filtro de volatilidade (evita confirmações fracas)
+    const double range1 = high1 - low1;
+    if (range1 < m_config.pullback_min_confirm_range_atr * atr_value)
+    {
+        data.fail_message = "Confirmação fraca (range < limiar)";
+        return data;
+    }
+
+    // ------------------ Resultado ------------------
     data.validation_result = true;
-    data.success_message = "Pullback válido confirmado";
+    data.success_message = "Pullback válido confirmado (setup=vela 2, confirmação=vela 1)";
     return data;
 }
 
@@ -1147,7 +1126,7 @@ void CEmasBuyBull::DoLog()
          Print("Sem pânico: ", _bullish_momentum_data.no_panic_selling ? "✓" : "❌");
          if (!_bullish_momentum_data.no_panic_selling)
          {
-            Print("  -> Pânico detectado na barra ", _bullish_momentum_data.panic_candle_index,
+            Print("  . Pânico detectado na barra ", _bullish_momentum_data.panic_candle_index,
                   " (shadow ratio: ", DoubleToString(_bullish_momentum_data.panic_lower_shadow_ratio, 3), ")");
          }
          Print("Última vela bullish: ", _bullish_momentum_data.last_candle_bullish ? "✓" : "❌",

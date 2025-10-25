@@ -268,6 +268,7 @@ CEmasBullBuyConfig *CStrategyConfigParser::ParseEmasBuyBullConfig(CJAVal *strate
         config.pullback_depth_buffer_atr = pullback["depth_buffer_atr"].ToDbl();
         config.pullback_max_penetration_atr = pullback["max_penetration_atr"].ToDbl();
         config.pullback_improvement_factor = pullback["improvement_factor"].ToDbl();
+        config.pullback_min_confirm_range_atr = pullback["min_confirm_range_atr"].ToDbl();
     }
 
     // Parse authorized timeframes
