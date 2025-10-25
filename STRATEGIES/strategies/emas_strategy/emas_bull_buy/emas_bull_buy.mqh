@@ -334,7 +334,8 @@ SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, dou
     data.digits = (int)SymbolInfoInteger(m_current_symbol, SYMBOL_DIGITS);
     data.point  = SymbolInfoDouble(m_current_symbol, SYMBOL_POINT);
     data.pip_value = (data.digits == 3 || data.digits == 5) ? data.point * 10.0 : data.point;
-    if (data.pip_value <= 0) { data.fail_message = "Pip value inválido"; return data; }
+    data.criterion1_ok = (data.pip_value > 0);
+    if (!data.criterion1_ok) { data.fail_message = "Pip value inválido"; return data; }
 
     data.timeframe = ctx.GetTimeFrame();
     data.tf_name   = EnumToString(data.timeframe);
@@ -357,7 +358,8 @@ SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, dou
 
     // ------------------ Critério 2: limite de profundidade (na vela 2) ------------------
     data.max_depth = (m_config.max_distance_atr + m_config.pullback_depth_buffer_atr) * atr_value;
-    if (data.distance_price > data.max_depth) { data.fail_message = "Distância excessiva"; return data; }
+    data.criterion2_ok = (data.distance_price <= data.max_depth);
+    if (!data.criterion2_ok) { data.fail_message = "Distância excessiva"; return data; }
 
     // ------------------ Critério 3: veio de distância ANTERIOR MAIOR ------------------
     data.was_further = false;
@@ -383,7 +385,8 @@ SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, dou
             }
         }
     }
-    if (!data.was_further) { data.fail_message = "Não veio de distância anterior maior"; return data; }
+    data.criterion3_ok = data.was_further;
+    if (!data.criterion3_ok) { data.fail_message = "Não veio de distância anterior maior"; return data; }
 
     // ------------------ Critério 4: posição da vela 2 é compatível com suporte na EMA ------------------
     // Em vez de usar position_info (que descreve a vela 1), avaliamos a geometria da vela 2:
@@ -392,13 +395,14 @@ SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, dou
     const bool center_body_2          = crosses_lower_body_2; // equivalente simples; ajuste conforme seu enum
     const bool upper_body_2           = (MathMin(open2, close2) >= ema2); // corpo acima, pavio pode tocar
 
-    const bool valid_support_2 = (crosses_lower_shadow_2 || crosses_lower_body_2 || center_body_2 || upper_body_2);
-    if (!valid_support_2) { data.fail_message = "Padrão de suporte inválido (vela 2)"; return data; }
+    data.criterion4_ok = (crosses_lower_shadow_2 || crosses_lower_body_2 || center_body_2 || upper_body_2);
+    if (!data.criterion4_ok) { data.fail_message = "Padrão de suporte inválido (vela 2)"; return data; }
 
     // ------------------ Critério 5: penetração abaixo da EMA na vela 2 não é excessiva ------------------
     data.max_penetration_below_ema = m_config.pullback_max_penetration_atr * atr_value;
     data.penetration = MathMax(0.0, ema2 - low2);
-    if (data.penetration > data.max_penetration_below_ema) { data.fail_message = "Penetração excessiva abaixo da EMA (vela 2)"; return data; }
+    data.criterion5_ok = (data.penetration <= data.max_penetration_below_ema);
+    if (!data.criterion5_ok) { data.fail_message = "Penetração excessiva abaixo da EMA (vela 2)"; return data; }
 
     // ------------------ Confirmação (vela 1) ------------------
     // Sinais sugeridos (use qualquer combinação conforme seu setup):
@@ -413,7 +417,8 @@ SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, dou
 
     // Regra padrão: precisa fechar acima da EMA OU romper o topo da vela 2; e idealmente corpo altista e slope ≥ 0
     data.confirmation_ok = (close_above_ema1 || breaks_high2) && bullish_body1 && ema_slope_up;
-    if (!data.confirmation_ok)
+    data.criterion6_ok = data.confirmation_ok;
+    if (!data.criterion6_ok)
     {
         data.fail_message = "Sem confirmação na vela 1";
         return data;
@@ -422,7 +427,8 @@ SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, dou
     // Opcional: filtro de volatilidade (evita confirmações fracas)
     const double range1 = high1 - low1;
     data.range_check_passed = (range1 >= m_config.pullback_min_confirm_range_atr * atr_value);
-    if (!data.range_check_passed)
+    data.criterion7_ok = data.range_check_passed;
+    if (!data.criterion7_ok)
     {
         data.fail_message = "Confirmação fraca (range < limiar)";
         return data;
@@ -1370,22 +1376,34 @@ void CEmasBuyBull::DoLog()
 
          // Critérios detalhados de validação
          Print("📋 CRITÉRIOS DE VALIDAÇÃO:");
-         Print("  1. Parâmetros válidos (Setup inicial): ", _pullback_ema9_m3.pip_value > 0 ? "✅ Sim" : "❌ Não");
-         Print("  2. Profundidade máxima (Vela 2, Limita retração): ",
-               _pullback_ema9_m3.distance_price <= _pullback_ema9_m3.max_depth ? "✅ OK" : "❌ Excessiva",
-               " (", DoubleToString(_pullback_ema9_m3.max_depth, 5), ")");
-         Print("  3. Veio de mais longe (Vela 2, Confirma pullback): ", _pullback_ema9_m3.was_further ? "✅ Sim" : "❌ Não");
-         if (_pullback_ema9_m3.was_further)
-         {
-            Print("     └─ Distância anterior: ", DoubleToString(_pullback_ema9_m3.prev_distance_atr, 2),
-                  " ATR (barra ", _pullback_ema9_m3.found_at_bar, ") | Melhoria: ", DoubleToString(_pullback_ema9_m3.improvement_ratio, 2), "x");
+         Print("  1. Parâmetros válidos (Setup inicial): ", _pullback_ema9_m3.criterion1_ok ? "✅ Sim" : "❌ Não");
+         if (_pullback_ema9_m3.criterion1_ok) {
+            Print("  2. Profundidade máxima (Vela 2, Limita retração): ",
+                  _pullback_ema9_m3.criterion2_ok ? "✅ OK" : "❌ Excessiva",
+                  " (", DoubleToString(_pullback_ema9_m3.max_depth, 5), ")");
          }
-         Print("  4. Padrão de suporte (Vela 2, Geometria válida): ", _pullback_ema9_m3.valid_support_positions ? "✅ Sim" : "❌ Não");
-         Print("  5. Penetração máxima (Vela 2, Controla risco): ",
-               _pullback_ema9_m3.penetration <= _pullback_ema9_m3.max_penetration_below_ema ? "✅ OK" : "❌ Excessiva",
-               " (", DoubleToString(_pullback_ema9_m3.penetration, 5), " ≤ ", DoubleToString(_pullback_ema9_m3.max_penetration_below_ema, 5), ")");
-         Print("  6. Confirmação retomada (Vela 1, Sinal entrada): ", _pullback_ema9_m3.confirmation_ok ? "✅ OK" : "❌ Falhou");
-         Print("  7. Range mínimo (Vela 1, Qualidade sinal): ", _pullback_ema9_m3.range_check_passed ? "✅ OK" : "❌ Falhou");
+         if (_pullback_ema9_m3.criterion1_ok && _pullback_ema9_m3.criterion2_ok) {
+            Print("  3. Veio de mais longe (Vela 2, Confirma pullback): ", _pullback_ema9_m3.criterion3_ok ? "✅ Sim" : "❌ Não");
+            if (_pullback_ema9_m3.criterion3_ok && _pullback_ema9_m3.was_further)
+            {
+               Print("     └─ Distância anterior: ", DoubleToString(_pullback_ema9_m3.prev_distance_atr, 2),
+                     " ATR (barra ", _pullback_ema9_m3.found_at_bar, ") | Melhoria: ", DoubleToString(_pullback_ema9_m3.improvement_ratio, 2), "x");
+            }
+         }
+         if (_pullback_ema9_m3.criterion1_ok && _pullback_ema9_m3.criterion2_ok && _pullback_ema9_m3.criterion3_ok) {
+            Print("  4. Padrão de suporte (Vela 2, Geometria válida): ", _pullback_ema9_m3.criterion4_ok ? "✅ Sim" : "❌ Não");
+         }
+         if (_pullback_ema9_m3.criterion1_ok && _pullback_ema9_m3.criterion2_ok && _pullback_ema9_m3.criterion3_ok && _pullback_ema9_m3.criterion4_ok) {
+            Print("  5. Penetração máxima (Vela 2, Controla risco): ",
+                  _pullback_ema9_m3.criterion5_ok ? "✅ OK" : "❌ Excessiva",
+                  " (", DoubleToString(_pullback_ema9_m3.penetration, 5), " ≤ ", DoubleToString(_pullback_ema9_m3.max_penetration_below_ema, 5), ")");
+         }
+         if (_pullback_ema9_m3.criterion1_ok && _pullback_ema9_m3.criterion2_ok && _pullback_ema9_m3.criterion3_ok && _pullback_ema9_m3.criterion4_ok && _pullback_ema9_m3.criterion5_ok) {
+            Print("  6. Confirmação retomada (Vela 1, Sinal entrada): ", _pullback_ema9_m3.criterion6_ok ? "✅ OK" : "❌ Falhou");
+         }
+         if (_pullback_ema9_m3.criterion1_ok && _pullback_ema9_m3.criterion2_ok && _pullback_ema9_m3.criterion3_ok && _pullback_ema9_m3.criterion4_ok && _pullback_ema9_m3.criterion5_ok && _pullback_ema9_m3.criterion6_ok) {
+            Print("  7. Range mínimo (Vela 1, Qualidade sinal): ", _pullback_ema9_m3.criterion7_ok ? "✅ OK" : "❌ Falhou");
+         }
 
          Print("");
          Print("Resultado: ", _pullback_ema9_m3.validation_result ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");
@@ -1414,22 +1432,34 @@ void CEmasBuyBull::DoLog()
 
          // Critérios detalhados de validação
          Print("📋 CRITÉRIOS DE VALIDAÇÃO:");
-         Print("  1. Parâmetros válidos (Setup inicial): ", _pullback_ema21_m3.pip_value > 0 ? "✅ Sim" : "❌ Não");
-         Print("  2. Profundidade máxima (Vela 2, Limita retração): ",
-               _pullback_ema21_m3.distance_price <= _pullback_ema21_m3.max_depth ? "✅ OK" : "❌ Excessiva",
-               " (", DoubleToString(_pullback_ema21_m3.max_depth, 5), ")");
-         Print("  3. Veio de mais longe (Vela 2, Confirma pullback): ", _pullback_ema21_m3.was_further ? "✅ Sim" : "❌ Não");
-         if (_pullback_ema21_m3.was_further)
-         {
-            Print("     └─ Distância anterior: ", DoubleToString(_pullback_ema21_m3.prev_distance_atr, 2),
-                  " ATR (barra ", _pullback_ema21_m3.found_at_bar, ") | Melhoria: ", DoubleToString(_pullback_ema21_m3.improvement_ratio, 2), "x");
+         Print("  1. Parâmetros válidos (Setup inicial): ", _pullback_ema21_m3.criterion1_ok ? "✅ Sim" : "❌ Não");
+         if (_pullback_ema21_m3.criterion1_ok) {
+            Print("  2. Profundidade máxima (Vela 2, Limita retração): ",
+                  _pullback_ema21_m3.criterion2_ok ? "✅ OK" : "❌ Excessiva",
+                  " (", DoubleToString(_pullback_ema21_m3.max_depth, 5), ")");
          }
-         Print("  4. Padrão de suporte (Vela 2, Geometria válida): ", _pullback_ema21_m3.valid_support_positions ? "✅ Sim" : "❌ Não");
-         Print("  5. Penetração máxima (Vela 2, Controla risco): ",
-               _pullback_ema21_m3.penetration <= _pullback_ema21_m3.max_penetration_below_ema ? "✅ OK" : "❌ Excessiva",
-               " (", DoubleToString(_pullback_ema21_m3.penetration, 5), " ≤ ", DoubleToString(_pullback_ema21_m3.max_penetration_below_ema, 5), ")");
-         Print("  6. Confirmação retomada (Vela 1, Sinal entrada): ", _pullback_ema21_m3.confirmation_ok ? "✅ OK" : "❌ Falhou");
-         Print("  7. Range mínimo (Vela 1, Qualidade sinal): ", _pullback_ema21_m3.range_check_passed ? "✅ OK" : "❌ Falhou");
+         if (_pullback_ema21_m3.criterion1_ok && _pullback_ema21_m3.criterion2_ok) {
+            Print("  3. Veio de mais longe (Vela 2, Confirma pullback): ", _pullback_ema21_m3.criterion3_ok ? "✅ Sim" : "❌ Não");
+            if (_pullback_ema21_m3.criterion3_ok && _pullback_ema21_m3.was_further)
+            {
+               Print("     └─ Distância anterior: ", DoubleToString(_pullback_ema21_m3.prev_distance_atr, 2),
+                     " ATR (barra ", _pullback_ema21_m3.found_at_bar, ") | Melhoria: ", DoubleToString(_pullback_ema21_m3.improvement_ratio, 2), "x");
+            }
+         }
+         if (_pullback_ema21_m3.criterion1_ok && _pullback_ema21_m3.criterion2_ok && _pullback_ema21_m3.criterion3_ok) {
+            Print("  4. Padrão de suporte (Vela 2, Geometria válida): ", _pullback_ema21_m3.criterion4_ok ? "✅ Sim" : "❌ Não");
+         }
+         if (_pullback_ema21_m3.criterion1_ok && _pullback_ema21_m3.criterion2_ok && _pullback_ema21_m3.criterion3_ok && _pullback_ema21_m3.criterion4_ok) {
+            Print("  5. Penetração máxima (Vela 2, Controla risco): ",
+                  _pullback_ema21_m3.criterion5_ok ? "✅ OK" : "❌ Excessiva",
+                  " (", DoubleToString(_pullback_ema21_m3.penetration, 5), " ≤ ", DoubleToString(_pullback_ema21_m3.max_penetration_below_ema, 5), ")");
+         }
+         if (_pullback_ema21_m3.criterion1_ok && _pullback_ema21_m3.criterion2_ok && _pullback_ema21_m3.criterion3_ok && _pullback_ema21_m3.criterion4_ok && _pullback_ema21_m3.criterion5_ok) {
+            Print("  6. Confirmação retomada (Vela 1, Sinal entrada): ", _pullback_ema21_m3.criterion6_ok ? "✅ OK" : "❌ Falhou");
+         }
+         if (_pullback_ema21_m3.criterion1_ok && _pullback_ema21_m3.criterion2_ok && _pullback_ema21_m3.criterion3_ok && _pullback_ema21_m3.criterion4_ok && _pullback_ema21_m3.criterion5_ok && _pullback_ema21_m3.criterion6_ok) {
+            Print("  7. Range mínimo (Vela 1, Qualidade sinal): ", _pullback_ema21_m3.criterion7_ok ? "✅ OK" : "❌ Falhou");
+         }
 
          Print("");
          Print("Resultado: ", _pullback_ema21_m3.validation_result ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");

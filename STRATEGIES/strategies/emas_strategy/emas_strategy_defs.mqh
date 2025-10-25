@@ -184,6 +184,15 @@ struct SIsValidPullback:SStratedyBassicData
      bool confirmation_ok;
      bool range_check_passed;
 
+     // Individual criterion flags for logging
+     bool criterion1_ok; // Parâmetros válidos
+     bool criterion2_ok; // Profundidade máxima
+     bool criterion3_ok; // Veio de mais longe
+     bool criterion4_ok; // Padrão de suporte
+     bool criterion5_ok; // Penetração máxima
+     bool criterion6_ok; // Confirmação retomada
+     bool criterion7_ok; // Range mínimo
+
      void Reset()
      {
         ResetBase();  // Reseta propriedades da base
@@ -208,6 +217,13 @@ struct SIsValidPullback:SStratedyBassicData
         improvement_ratio = 0.0;
         confirmation_ok = false;
         range_check_passed = false;
+        criterion1_ok = false;
+        criterion2_ok = false;
+        criterion3_ok = false;
+        criterion4_ok = false;
+        criterion5_ok = false;
+        criterion6_ok = false;
+        criterion7_ok = false;
         validation_result = true;
      }
 };
