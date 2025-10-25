@@ -208,6 +208,7 @@ SBullishMomentum CEmasBuyBull::HasBullishMomentum(TF_CTX *ctx_m15, TF_CTX *ctx_m
 {
    SBullishMomentum data;
    data.Reset();
+   data.has_momentum = false;
 
    // Validação dos contextos
    if (ctx_m15 == NULL || ctx_m3 == NULL)

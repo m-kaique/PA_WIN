@@ -1,4 +1,12 @@
-struct SStrongTrendEMAS
+// Common Data
+struct SStratedyBassicData{
+   string fail_message;
+};
+
+//+------------------------------------------------------------------+
+//| Estrutura para análise de Tendência Forte - EMAS                 |
+//+------------------------------------------------------------------+
+struct SStrongTrendEMAS:SStratedyBassicData
 {
    // Distâncias absolutas entre EMAs
    double distance_ema_9_21;
@@ -29,6 +37,7 @@ struct SStrongTrendEMAS
    // Método para resetar a estrutura
    void Reset()
    {
+      fail_message = "";
       distance_ema_9_21 = 0.0;
       distance_ema_21_50 = 0.0;
       distance_ema_9_50 = 0.0;
@@ -48,19 +57,10 @@ struct SStrongTrendEMAS
    }
 };
 
-struct SVolatilityEnv
-{
-   double avg_atr;
-   double volatility_ratio;
-   
-   void Reset()
-   {
-      avg_atr = 0.0;
-      volatility_ratio = 0.0;
-   }
-};
-
-struct SStrongTrendADX
+//+------------------------------------------------------------------+
+//| Estrutura para análise de ADX - Força de Tendência               |
+//+------------------------------------------------------------------+
+struct SStrongTrendADX:SStratedyBassicData
 {
    double adx_value_tf;
    double config_min_value;
@@ -69,6 +69,7 @@ struct SStrongTrendADX
    
    void Reset()
    {
+      fail_message = "";
       adx_value_tf = 0.0;
       config_min_value = 0.0;
       config_max_value = 0.0;
@@ -79,7 +80,7 @@ struct SStrongTrendADX
 //+------------------------------------------------------------------+
 //| Estrutura para análise de Bollinger Bands                        |
 //+------------------------------------------------------------------+
-struct SBollingerStructure
+struct SBollingerStructure:SStratedyBassicData
 {
    // Dados de entrada
    ENUM_TIMEFRAMES timeframe;
@@ -122,6 +123,7 @@ struct SBollingerStructure
    
    void Reset()
    {
+      fail_message = "";
       timeframe = PERIOD_CURRENT;
       upper_band_value = 0.0;
       lower_band_value = 0.0;
@@ -153,8 +155,10 @@ struct SBollingerStructure
    }
 };
 
-struct SIsValidPullback
+
+struct SIsValidPullback:SStratedyBassicData
 {
+   
    int digits;
    double point;
    double pip_value;
@@ -180,6 +184,7 @@ struct SIsValidPullback
    
    void Reset()
    {
+      fail_message = "";
       digits = 0;
       point = 0.0;
       pip_value = 0.0;
@@ -207,7 +212,7 @@ struct SIsValidPullback
 //+------------------------------------------------------------------+
 //| Estrutura para análise de momentum bullish                       |
 //+------------------------------------------------------------------+
-struct SBullishMomentum
+struct SBullishMomentum:SStratedyBassicData
 
 {
    // Dados de entrada
@@ -236,6 +241,7 @@ struct SBullishMomentum
    
    void Reset()
    {
+      fail_message = "";
       timeframe_m15 = PERIOD_CURRENT;
       timeframe_m3 = PERIOD_CURRENT;
       ema21_m15_value = 0.0;
@@ -256,7 +262,7 @@ struct SBullishMomentum
 //+------------------------------------------------------------------+
 //| Estrutura para análise de ambiente de volatilidade               |
 //+------------------------------------------------------------------+
-struct SVolatilityEnvironment
+struct SVolatilityEnvironment:SStratedyBassicData
 {
    // Dados de entrada
    ENUM_TIMEFRAMES timeframe;
@@ -280,6 +286,7 @@ struct SVolatilityEnvironment
    
    void Reset()
    {
+      fail_message = "";
       timeframe = PERIOD_CURRENT;
       current_atr = 0.0;
       lookback_periods = 0;
@@ -298,7 +305,7 @@ struct SVolatilityEnvironment
 //+------------------------------------------------------------------+
 //| Estrutura para análise de estrutura bullish                      |
 //+------------------------------------------------------------------+
-struct SBullishStructure
+struct SBullishStructure:SStratedyBassicData
 {
    // Dados de entrada
    ENUM_TIMEFRAMES timeframe;
@@ -323,6 +330,7 @@ struct SBullishStructure
    
    void Reset()
    {
+      fail_message = "";
       timeframe = PERIOD_CURRENT;
       current_close = 0.0;
       ema50_value = 0.0;
@@ -334,5 +342,20 @@ struct SBullishStructure
       distance_ok = false; 
       ema50_trending_up = false;
       is_bullish_structure = false;
+   }
+};
+
+//+------------------------------------------------------------------+
+//| DEPRECATED -- Still Needed in emas_bear_sell ---------------------
+//+------------------------------------------------------------------+
+struct SVolatilityEnv
+{
+   double avg_atr;
+   double volatility_ratio;
+   
+   void Reset()
+   {
+      avg_atr = 0.0;
+      volatility_ratio = 0.0;
    }
 };
