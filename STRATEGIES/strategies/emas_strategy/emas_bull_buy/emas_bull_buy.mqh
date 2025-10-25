@@ -412,7 +412,8 @@ SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, dou
     const bool ema_slope_up = (ema1 >= ema2);
 
     // Regra padrão: precisa fechar acima da EMA OU romper o topo da vela 2; e idealmente corpo altista e slope ≥ 0
-    if (!( (close_above_ema1 || breaks_high2) && bullish_body1 && ema_slope_up ))
+    data.confirmation_ok = (close_above_ema1 || breaks_high2) && bullish_body1 && ema_slope_up;
+    if (!data.confirmation_ok)
     {
         data.fail_message = "Sem confirmação na vela 1";
         return data;
@@ -420,7 +421,8 @@ SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, dou
 
     // Opcional: filtro de volatilidade (evita confirmações fracas)
     const double range1 = high1 - low1;
-    if (range1 < m_config.pullback_min_confirm_range_atr * atr_value)
+    data.range_check_passed = (range1 >= m_config.pullback_min_confirm_range_atr * atr_value);
+    if (!data.range_check_passed)
     {
         data.fail_message = "Confirmação fraca (range < limiar)";
         return data;
@@ -1382,8 +1384,8 @@ void CEmasBuyBull::DoLog()
          Print("  5. Penetração máxima (Vela 2, Controla risco): ",
                _pullback_ema9_m3.penetration <= _pullback_ema9_m3.max_penetration_below_ema ? "✅ OK" : "❌ Excessiva",
                " (", DoubleToString(_pullback_ema9_m3.penetration, 5), " ≤ ", DoubleToString(_pullback_ema9_m3.max_penetration_below_ema, 5), ")");
-         Print("  6. Confirmação retomada (Vela 1, Sinal entrada): ✅ Sempre válido (última vela)");
-         Print("  7. Range mínimo (Vela 1, Qualidade sinal): 🔧 Opcional (implementado)");
+         Print("  6. Confirmação retomada (Vela 1, Sinal entrada): ", _pullback_ema9_m3.confirmation_ok ? "✅ OK" : "❌ Falhou");
+         Print("  7. Range mínimo (Vela 1, Qualidade sinal): ", _pullback_ema9_m3.range_check_passed ? "✅ OK" : "❌ Falhou");
 
          Print("");
          Print("Resultado: ", _pullback_ema9_m3.validation_result ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");
@@ -1426,8 +1428,8 @@ void CEmasBuyBull::DoLog()
          Print("  5. Penetração máxima (Vela 2, Controla risco): ",
                _pullback_ema21_m3.penetration <= _pullback_ema21_m3.max_penetration_below_ema ? "✅ OK" : "❌ Excessiva",
                " (", DoubleToString(_pullback_ema21_m3.penetration, 5), " ≤ ", DoubleToString(_pullback_ema21_m3.max_penetration_below_ema, 5), ")");
-         Print("  6. Confirmação retomada (Vela 1, Sinal entrada): ✅ Sempre válido (última vela)");
-         Print("  7. Range mínimo (Vela 1, Qualidade sinal): 🔧 Opcional (implementado)");
+         Print("  6. Confirmação retomada (Vela 1, Sinal entrada): ", _pullback_ema21_m3.confirmation_ok ? "✅ OK" : "❌ Falhou");
+         Print("  7. Range mínimo (Vela 1, Qualidade sinal): ", _pullback_ema21_m3.range_check_passed ? "✅ OK" : "❌ Falhou");
 
          Print("");
          Print("Resultado: ", _pullback_ema21_m3.validation_result ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");

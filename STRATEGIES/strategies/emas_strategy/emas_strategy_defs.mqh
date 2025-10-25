@@ -181,6 +181,8 @@ struct SIsValidPullback:SStratedyBassicData
      double prev_distance_atr;
      double improvement_factor;
      double improvement_ratio;
+     bool confirmation_ok;
+     bool range_check_passed;
 
      void Reset()
      {
@@ -204,6 +206,8 @@ struct SIsValidPullback:SStratedyBassicData
         prev_distance_atr = 0.0;
         improvement_factor = 0.0;
         improvement_ratio = 0.0;
+        confirmation_ok = false;
+        range_check_passed = false;
         validation_result = true;
      }
 };
