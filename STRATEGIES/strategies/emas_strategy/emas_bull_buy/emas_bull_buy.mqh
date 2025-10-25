@@ -1092,6 +1092,10 @@ void CEmasBuyBull::DoLog()
                " ATR (min: ", DoubleToString(_ema_data_M15.min_distance_21_50_threshold, 2), ") ",
                _ema_data_M15.distance_21_50_ok ? "✓" : "❌");
          Print("Resultado: ", _ema_data_M15.validation_result ? "✅ TENDÊNCIA FORTE" : "❌ Tendência fraca");
+         if (_ema_data_M15.fail_message != "")
+            Print("Fail Message: ", _ema_data_M15.fail_message);
+         if (_ema_data_M15.success_message != "")
+            Print("Success Message: ", _ema_data_M15.success_message);
          Print("Habilitado: ", m_config.enable_strong_trend_m15 ? "SIM" : "NÃO");
          Print("");
       }
@@ -1116,6 +1120,10 @@ void CEmasBuyBull::DoLog()
                " ATR (min: ", DoubleToString(_ema_data_M3.min_distance_21_50_threshold, 2), ") ",
                _ema_data_M3.distance_21_50_ok ? "✓" : "❌");
          Print("Resultado: ", _ema_data_M3.validation_result ? "✅ TENDÊNCIA FORTE" : "❌ Tendência fraca");
+         if (_ema_data_M3.fail_message != "")
+            Print("Fail Message: ", _ema_data_M3.fail_message);
+         if (_ema_data_M3.success_message != "")
+            Print("Success Message: ", _ema_data_M3.success_message);
          Print("Habilitado: ", m_config.enable_strong_trend_m3 ? "SIM" : "NÃO");
          Print("");
       }
@@ -1146,6 +1154,10 @@ void CEmasBuyBull::DoLog()
                " (Open: ", DoubleToString(_bullish_momentum_data.last_open, _Digits),
                ", Close: ", DoubleToString(_bullish_momentum_data.last_close, _Digits), ")");
          Print("Resultado: ", _bullish_momentum_data.validation_result ? "✅ MOMENTUM CONFIRMADO" : "❌ Sem momentum");
+         if (_bullish_momentum_data.fail_message != "")
+            Print("Fail Message: ", _bullish_momentum_data.fail_message);
+         if (_bullish_momentum_data.success_message != "")
+            Print("Success Message: ", _bullish_momentum_data.success_message);
          Print("Habilitado: ", m_config.enable_bullish_momentum ? "SIM" : "NÃO");
          Print("");
       }
@@ -1170,6 +1182,10 @@ void CEmasBuyBull::DoLog()
                " - ", DoubleToString(_volatility_env_M15.max_volatility_ratio, 2), ") ",
                _volatility_env_M15.ratio_in_range ? "✓" : "❌");
          Print("Resultado: ", _volatility_env_M15.validation_result ? "✅ AMBIENTE ADEQUADO" : "❌ Ambiente inadequado");
+         if (_volatility_env_M15.fail_message != "")
+            Print("Fail Message: ", _volatility_env_M15.fail_message);
+         if (_volatility_env_M15.success_message != "")
+            Print("Success Message: ", _volatility_env_M15.success_message);
          Print("Habilitado: ", m_config.enable_good_volatility ? "SIM" : "NÃO");
          Print("");
       }
@@ -1187,6 +1203,7 @@ void CEmasBuyBull::DoLog()
                " - ", DoubleToString(SStrong_trend_ADX_m15.config_max_value, 2));
          Print("Resultado: ", SStrong_trend_ADX_m15.validation_result ? "✅ ADX OK" : "❌ ADX fora do range");
          Print("Habilitado: ", m_config.enable_adx_filter ? "SIM" : "NÃO");
+         Print("");
          Print("");
       }
 
@@ -1208,6 +1225,10 @@ void CEmasBuyBull::DoLog()
                _bullish_structure_M15.distance_ok ? "✓" : "❌");
          Print("EMA50 inclinada: ", _bullish_structure_M15.ema50_trending_up ? "✓" : "❌");
          Print("Resultado: ", _bullish_structure_M15.validation_result ? "✅ ESTRUTURA BULLISH" : "❌ Estrutura não bullish");
+         if (_bullish_structure_M15.fail_message != "")
+            Print("Fail Message: ", _bullish_structure_M15.fail_message);
+         if (_bullish_structure_M15.success_message != "")
+            Print("Success Message: ", _bullish_structure_M15.success_message);
          Print("Habilitado: ", m_config.enable_bullish_structure_m15 ? "SIM" : "NÃO");
          Print("");
       }
@@ -1230,6 +1251,10 @@ void CEmasBuyBull::DoLog()
                _bullish_structure_M3.distance_ok ? "✓" : "❌");
          Print("EMA50 inclinada: ", _bullish_structure_M3.ema50_trending_up ? "✓" : "❌");
          Print("Resultado: ", _bullish_structure_M3.validation_result ? "✅ ESTRUTURA BULLISH" : "❌ Estrutura não bullish");
+         if (_bullish_structure_M3.fail_message != "")
+            Print("Fail Message: ", _bullish_structure_M3.fail_message);
+         if (_bullish_structure_M3.success_message != "")
+            Print("Success Message: ", _bullish_structure_M3.success_message);
          Print("Habilitado: ", m_config.enable_bullish_structure_m3 ? "SIM" : "NÃO");
          Print("");
       }
@@ -1264,6 +1289,10 @@ void CEmasBuyBull::DoLog()
             Print("  Sidewalk válido: ", _bollinger_filter_M3.lower_sidewalk_invalid ? "❌" : "✓");
          }
          Print("Resultado: ", _bollinger_filter_M3.validation_result ? "✅ ESTRUTURA VÁLIDA" : "❌ Estrutura inválida");
+         if (_bollinger_filter_M3.fail_message != "")
+            Print("Fail Message: ", _bollinger_filter_M3.fail_message);
+         if (_bollinger_filter_M3.success_message != "")
+            Print("Success Message: ", _bollinger_filter_M3.success_message);
          Print("Habilitado: ", m_config.enable_bollinger_filter_m3 ? "SIM" : "NÃO");
          Print("");
       }
@@ -1298,6 +1327,10 @@ void CEmasBuyBull::DoLog()
             Print("  Sidewalk válido: ", _bollinger_filter_M15.lower_sidewalk_invalid ? "❌" : "✓");
          }
          Print("Resultado: ", _bollinger_filter_M15.validation_result ? "✅ ESTRUTURA VÁLIDA" : "❌ Estrutura inválida");
+         if (_bollinger_filter_M15.fail_message != "")
+            Print("Fail Message: ", _bollinger_filter_M15.fail_message);
+         if (_bollinger_filter_M15.success_message != "")
+            Print("Success Message: ", _bollinger_filter_M15.success_message);
          Print("Habilitado: ", m_config.enable_bollinger_filter_m15 ? "SIM" : "NÃO");
          Print("");
       }
@@ -1332,6 +1365,10 @@ void CEmasBuyBull::DoLog()
             Print("  Sidewalk válido: ", _bollinger_filter_H1.lower_sidewalk_invalid ? "❌" : "✓");
          }
          Print("Resultado: ", _bollinger_filter_H1.validation_result ? "✅ ESTRUTURA VÁLIDA" : "❌ Estrutura inválida");
+         if (_bollinger_filter_H1.fail_message != "")
+            Print("Fail Message: ", _bollinger_filter_H1.fail_message);
+         if (_bollinger_filter_H1.success_message != "")
+            Print("Success Message: ", _bollinger_filter_H1.success_message);
          Print("Habilitado: ", m_config.enable_bollinger_filter_h1 ? "SIM" : "NÃO");
          Print("");
       }
@@ -1364,6 +1401,10 @@ void CEmasBuyBull::DoLog()
          Print("Penetração: ", DoubleToString(_pullback_ema9_m3.penetration, 5), " ",
                _pullback_ema9_m3.penetration <= _pullback_ema9_m3.max_penetration_below_ema ? "✓" : "❌");
          Print("Resultado: ", _pullback_ema9_m3.validation_result ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");
+         if (_pullback_ema9_m3.fail_message != "")
+            Print("Fail Message: ", _pullback_ema9_m3.fail_message);
+         if (_pullback_ema9_m3.success_message != "")
+            Print("Success Message: ", _pullback_ema9_m3.success_message);
          Print("Habilitado: ", m_config.enable_pullback_ema9 ? "SIM" : "NÃO");
          Print("");
       }
@@ -1397,6 +1438,10 @@ void CEmasBuyBull::DoLog()
          Print("Penetração: ", DoubleToString(_pullback_ema21_m3.penetration, 5), " ",
                _pullback_ema21_m3.penetration <= _pullback_ema21_m3.max_penetration_below_ema ? "✓" : "❌");
          Print("Resultado: ", _pullback_ema21_m3.validation_result ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");
+         if (_pullback_ema21_m3.fail_message != "")
+            Print("Fail Message: ", _pullback_ema21_m3.fail_message);
+         if (_pullback_ema21_m3.success_message != "")
+            Print("Success Message: ", _pullback_ema21_m3.success_message);
          Print("Habilitado: ", m_config.enable_pullback_ema21 ? "SIM" : "NÃO");
          Print("");
 
