@@ -602,13 +602,6 @@
                   "enable_bollinger_filter_m3": true,
                   "enable_bollinger_filter_m15": true,
                   "enable_bollinger_filter_h1": false,
-                  "enable_bandwidth_stats_filter": false,
-                  "block_on_bandwidth_contraction": false,
-                  "boll_bandwidth_percentile_narrow": 25.0,
-                  "boll_bandwidth_zscore_narrow": -0.5,
-                  "boll_bandwidth_min_slope_linear": 0.0,
-                  "boll_bandwidth_min_slope_diff": 0.0,
-                  "boll_bandwidth_min_slope_derivative": 0.0,
                   "bollinger_filter_m3_settings": {
                      "min_width": 500,
                      "max_width": 3000,
@@ -654,12 +647,13 @@
                   "pullback": {
                      "depth_buffer_atr": 0.5,
                      "max_penetration_atr": 1.5,
-                     "improvement_factor": 1.15
+                     "improvement_factor": 1.15,
+                     "min_confirm_range_atr": 0.3
                   },
                   "authorized_timeframes": [
                      "M3"
                   ],
-                  "operating_hours": ["09:30-11:30"]
+                  "operating_hours": ["09:30-10:30", "13:30-17:00"]
                }
             ]
          },
