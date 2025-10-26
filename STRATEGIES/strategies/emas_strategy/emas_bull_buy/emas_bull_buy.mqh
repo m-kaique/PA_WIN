@@ -1362,7 +1362,7 @@ void CEmasBuyBull::DoLog()
       // ========================================================================
       // BOLLINGER H1
       // ========================================================================
-      if (true)
+      if (!true)
       {
          Print("┌─────────────────────────────────────────────────────────────────────────────┐");
          Print("│ BOLLINGER FILTER H1                                                         │");
@@ -1441,9 +1441,7 @@ void CEmasBuyBull::DoLog()
          if (_pullback_ema9_m3.criterion1_ok && _pullback_ema9_m3.criterion2_ok && _pullback_ema9_m3.criterion3_ok && _pullback_ema9_m3.criterion4_ok && _pullback_ema9_m3.criterion5_ok && _pullback_ema9_m3.criterion6_ok) {
             Print("  7. Range mínimo (Vela 1, Qualidade sinal): ", _pullback_ema9_m3.criterion7_ok ? "✅ OK" : "❌ Falhou");
          }
-
-         // NOVO: Log do critério 8
-         if (_pullback_ema9_m3.ema_spread_check_enabled) {
+         if (_pullback_ema9_m3.criterion1_ok && _pullback_ema9_m3.criterion2_ok && _pullback_ema9_m3.criterion3_ok && _pullback_ema9_m3.criterion4_ok && _pullback_ema9_m3.criterion5_ok && _pullback_ema9_m3.criterion6_ok && _pullback_ema9_m3.criterion7_ok) {
             Print("  8. Spread EMA9-EMA21 (Vela 2, Evita sobreextensão): ",
                   _pullback_ema9_m3.criterion8_ok ? "✅ OK" : "❌ Excessivo",
                   " (", DoubleToString(_pullback_ema9_m3.ema_spread_atr, 2),
@@ -1507,9 +1505,7 @@ void CEmasBuyBull::DoLog()
          if (_pullback_ema21_m3.criterion1_ok && _pullback_ema21_m3.criterion2_ok && _pullback_ema21_m3.criterion3_ok && _pullback_ema21_m3.criterion4_ok && _pullback_ema21_m3.criterion5_ok && _pullback_ema21_m3.criterion6_ok) {
             Print("  7. Range mínimo (Vela 1, Qualidade sinal): ", _pullback_ema21_m3.criterion7_ok ? "✅ OK" : "❌ Falhou");
          }
-
-         // NOVO: Log do critério 8
-         if (_pullback_ema21_m3.ema_spread_check_enabled) {
+         if (m_config.pullback_require_ema21_agreement && _pullback_ema21_m3.criterion1_ok && _pullback_ema21_m3.criterion2_ok && _pullback_ema21_m3.criterion3_ok && _pullback_ema21_m3.criterion4_ok && _pullback_ema21_m3.criterion5_ok && _pullback_ema21_m3.criterion6_ok && _pullback_ema21_m3.criterion7_ok) {
             Print("  8. Spread EMA9-EMA21 (Vela 2, Evita sobreextensão): ",
                   _pullback_ema21_m3.criterion8_ok ? "✅ OK" : "❌ Excessivo",
                   " (", DoubleToString(_pullback_ema21_m3.ema_spread_atr, 2),

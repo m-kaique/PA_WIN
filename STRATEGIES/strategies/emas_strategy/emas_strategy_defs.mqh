@@ -192,6 +192,7 @@ struct SIsValidPullback:SStratedyBassicData
      bool criterion5_ok; // Penetração máxima
      bool criterion6_ok; // Confirmação retomada
      bool criterion7_ok; // Range mínimo
+     bool criterion8_ok; // Spread EMA9-EMA21
 
      // NOVO: Validação cruzada EMA9-EMA21 (adicionar após criterion7_ok)
      bool ema_spread_check_enabled;
@@ -200,7 +201,7 @@ struct SIsValidPullback:SStratedyBassicData
      double ema_spread_atr;
      double max_allowed_spread_atr;
      bool ema_spread_ok;
-     bool criterion8_ok; // Novo critério
+     // criterion8_ok is already defined above
 
      void Reset()
      {
