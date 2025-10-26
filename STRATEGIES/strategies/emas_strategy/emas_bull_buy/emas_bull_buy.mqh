@@ -434,8 +434,45 @@ SIsValidPullback CEmasBuyBull::IsValidPullback(SPositionInfo &position_info, dou
         return data;
     }
 
+    // ------------------ NOVO: Critério 8 - Validação Cruzada EMA9-EMA21 ------------------
+    data.ema_spread_check_enabled = m_config.pullback_require_ema21_agreement;
+    data.max_allowed_spread_atr = m_config.max_ema9_ema21_spread_atr;
+
+    if (data.ema_spread_check_enabled) {
+        // Obter EMA9 e EMA21
+        CMovingAverages *ema9 = ctx.GetIndicator("ema9");
+        CMovingAverages *ema21 = ctx.GetIndicator("ema21");
+
+        if (ema9 == NULL || ema21 == NULL) {
+            data.criterion8_ok = false;
+            data.fail_message = "Indicadores EMA9/EMA21 ausentes para validação cruzada";
+            return data;
+        }
+
+        // Calcular spread na vela de setup (vela 2)
+        data.ema9_value_at_setup = ema9.GetValue(SETUP_BAR);
+        data.ema21_value_at_setup = ema21.GetValue(SETUP_BAR);
+
+        double spread_price = MathAbs(data.ema21_value_at_setup - data.ema9_value_at_setup);
+        data.ema_spread_atr = spread_price / atr_value;
+
+        data.ema_spread_ok = (data.ema_spread_atr <= data.max_allowed_spread_atr);
+        data.criterion8_ok = data.ema_spread_ok;
+
+        if (!data.criterion8_ok) {
+            data.fail_message = "Spread EMA9-EMA21 excessivo: " + DoubleToString(data.ema_spread_atr, 2) +
+                               " ATR (max: " + DoubleToString(data.max_allowed_spread_atr, 2) + ")";
+            return data;
+        }
+    } else {
+        data.criterion8_ok = true; // Desabilitado, passa automaticamente
+    }
+
     // ------------------ Resultado ------------------
-    data.validation_result = true;
+    data.validation_result = data.criterion1_ok && data.criterion2_ok &&
+                            data.criterion3_ok && data.criterion4_ok &&
+                            data.criterion5_ok && data.criterion6_ok &&
+                            data.criterion7_ok && data.criterion8_ok;
     data.success_message = "Pullback válido confirmado (setup=vela 2, confirmação=vela 1)";
     return data;
 }
@@ -1405,6 +1442,16 @@ void CEmasBuyBull::DoLog()
             Print("  7. Range mínimo (Vela 1, Qualidade sinal): ", _pullback_ema9_m3.criterion7_ok ? "✅ OK" : "❌ Falhou");
          }
 
+         // NOVO: Log do critério 8
+         if (_pullback_ema9_m3.ema_spread_check_enabled) {
+            Print("  8. Spread EMA9-EMA21 (Vela 2, Evita sobreextensão): ",
+                  _pullback_ema9_m3.criterion8_ok ? "✅ OK" : "❌ Excessivo",
+                  " (", DoubleToString(_pullback_ema9_m3.ema_spread_atr, 2),
+                  " ≤ ", DoubleToString(_pullback_ema9_m3.max_allowed_spread_atr, 2), " ATR)");
+            Print("     └─ EMA9: ", DoubleToString(_pullback_ema9_m3.ema9_value_at_setup, _Digits),
+                  " | EMA21: ", DoubleToString(_pullback_ema9_m3.ema21_value_at_setup, _Digits));
+         }
+
          Print("");
          Print("Resultado: ", _pullback_ema9_m3.validation_result ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");
          if (_pullback_ema9_m3.fail_message != "")
@@ -1459,6 +1506,16 @@ void CEmasBuyBull::DoLog()
          }
          if (_pullback_ema21_m3.criterion1_ok && _pullback_ema21_m3.criterion2_ok && _pullback_ema21_m3.criterion3_ok && _pullback_ema21_m3.criterion4_ok && _pullback_ema21_m3.criterion5_ok && _pullback_ema21_m3.criterion6_ok) {
             Print("  7. Range mínimo (Vela 1, Qualidade sinal): ", _pullback_ema21_m3.criterion7_ok ? "✅ OK" : "❌ Falhou");
+         }
+
+         // NOVO: Log do critério 8
+         if (_pullback_ema21_m3.ema_spread_check_enabled) {
+            Print("  8. Spread EMA9-EMA21 (Vela 2, Evita sobreextensão): ",
+                  _pullback_ema21_m3.criterion8_ok ? "✅ OK" : "❌ Excessivo",
+                  " (", DoubleToString(_pullback_ema21_m3.ema_spread_atr, 2),
+                  " ≤ ", DoubleToString(_pullback_ema21_m3.max_allowed_spread_atr, 2), " ATR)");
+            Print("     └─ EMA9: ", DoubleToString(_pullback_ema21_m3.ema9_value_at_setup, _Digits),
+                  " | EMA21: ", DoubleToString(_pullback_ema21_m3.ema21_value_at_setup, _Digits));
          }
 
          Print("");

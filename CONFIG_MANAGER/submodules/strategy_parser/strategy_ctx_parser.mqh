@@ -269,6 +269,15 @@ CEmasBullBuyConfig *CStrategyConfigParser::ParseEmasBuyBullConfig(CJAVal *strate
         config.pullback_max_penetration_atr = pullback["max_penetration_atr"].ToDbl();
         config.pullback_improvement_factor = pullback["improvement_factor"].ToDbl();
         config.pullback_min_confirm_range_atr = pullback["min_confirm_range_atr"].ToDbl();
+
+        // NOVO: Carregar configuração de validação cruzada do JSON (dentro do objeto pullback)
+        if (pullback.HasKey("require_ema21_agreement")) {
+            config.pullback_require_ema21_agreement = pullback["require_ema21_agreement"].ToBool();
+        }
+
+        if (pullback.HasKey("max_ema9_ema21_spread_atr")) {
+            config.max_ema9_ema21_spread_atr = pullback["max_ema9_ema21_spread_atr"].ToDbl();
+        }
     }
 
     // Parse authorized timeframes

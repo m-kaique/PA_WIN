@@ -193,6 +193,15 @@ struct SIsValidPullback:SStratedyBassicData
      bool criterion6_ok; // Confirmação retomada
      bool criterion7_ok; // Range mínimo
 
+     // NOVO: Validação cruzada EMA9-EMA21 (adicionar após criterion7_ok)
+     bool ema_spread_check_enabled;
+     double ema9_value_at_setup;
+     double ema21_value_at_setup;
+     double ema_spread_atr;
+     double max_allowed_spread_atr;
+     bool ema_spread_ok;
+     bool criterion8_ok; // Novo critério
+
      void Reset()
      {
         ResetBase();  // Reseta propriedades da base
@@ -224,6 +233,16 @@ struct SIsValidPullback:SStratedyBassicData
         criterion5_ok = false;
         criterion6_ok = false;
         criterion7_ok = false;
+
+        // NOVO: Reset dos campos de validação cruzada
+        ema_spread_check_enabled = false;
+        ema9_value_at_setup = 0.0;
+        ema21_value_at_setup = 0.0;
+        ema_spread_atr = 0.0;
+        max_allowed_spread_atr = 0.0;
+        ema_spread_ok = true;
+        criterion8_ok = false;
+
         validation_result = true;
      }
 };
