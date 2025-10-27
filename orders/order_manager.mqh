@@ -376,9 +376,10 @@ SOrderExecutionResult COrderManager::OpenMarketOrder(ENUM_ORDER_TYPE order_type,
 bool COrderManager::HasOpenPositions() const
 {
    int positions = PositionsTotal();
-   for (int i = positions - 1; i >= 0; i--)
+   int index;
+   for (index = positions - 1; index >= 0; index--)
    {
-      if (!PositionSelectByIndex(i))
+      if (!PositionSelectByIndex(index))
          continue;
 
       string symbol = PositionGetString(POSITION_SYMBOL);
