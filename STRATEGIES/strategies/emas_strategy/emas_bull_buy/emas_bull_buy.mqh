@@ -1086,6 +1086,10 @@ bool CEmasBuyBull::ValidateSignal(const SStrategySignal &signal)
 //+------------------------------------------------------------------+
 //| Método especial para log completo de debug da estratégia         |
 //+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//| Método especial para log completo de debug da estratégia         |
+//| VERSÃO ENRIQUECIDA com métricas adicionais                       |
+//+------------------------------------------------------------------+
 void CEmasBuyBull::DoLog()
 {
    if (true)
@@ -1094,6 +1098,9 @@ void CEmasBuyBull::DoLog()
       Print("==================== EMA BULL BUY STRATEGY - DEBUG LOG =======================");
       Print("================================================================================");
       Print("Símbolo: ", m_symbol, " | Timestamp: ", TimeToString(TimeCurrent(), TIME_DATE | TIME_MINUTES));
+      Print("Spread Atual: ", SymbolInfoInteger(m_symbol, SYMBOL_SPREAD), " points");
+      Print("Bid: ", DoubleToString(SymbolInfoDouble(m_symbol, SYMBOL_BID), _Digits),
+            " | Ask: ", DoubleToString(SymbolInfoDouble(m_symbol, SYMBOL_ASK), _Digits));
       Print("");
 
       // ========================================================================
@@ -1109,13 +1116,48 @@ void CEmasBuyBull::DoLog()
                " | EMA21: ", DoubleToString(_ema_data_M15.ema21_value, _Digits),
                " | EMA50: ", DoubleToString(_ema_data_M15.ema50_value, _Digits));
          Print("ATR: ", DoubleToString(_ema_data_M15.atr_value, 5));
+         
+         // NOVO: Calcular % de separação entre EMAs
+         double sep_9_21_pct = (_ema_data_M15.ema21_value != 0) ? 
+            ((_ema_data_M15.ema9_value - _ema_data_M15.ema21_value) / _ema_data_M15.ema21_value * 100.0) : 0.0;
+         double sep_21_50_pct = (_ema_data_M15.ema50_value != 0) ? 
+            ((_ema_data_M15.ema21_value - _ema_data_M15.ema50_value) / _ema_data_M15.ema50_value * 100.0) : 0.0;
+         
          Print("Distância 9-21: ", DoubleToString(_ema_data_M15.distance_ema_9_21_by_atr, 2),
-               " ATR (min: ", DoubleToString(_ema_data_M15.min_distance_9_21_threshold, 2), ") ",
-               _ema_data_M15.distance_9_21_ok ? "✓" : "❌");
+               " ATR (", DoubleToString(sep_9_21_pct, 2), "%) ",
+               "(min: ", DoubleToString(_ema_data_M15.min_distance_9_21_threshold, 2), ") ",
+               _ema_data_M15.distance_9_21_ok ? "✓" : "✗");
          Print("Distância 21-50: ", DoubleToString(_ema_data_M15.distance_ema_21_50_by_atr, 2),
-               " ATR (min: ", DoubleToString(_ema_data_M15.min_distance_21_50_threshold, 2), ") ",
-               _ema_data_M15.distance_21_50_ok ? "✓" : "❌");
-         Print("Resultado: ", _ema_data_M15.validation_result ? "✅ TENDÊNCIA FORTE" : "❌ Tendência fraca");
+               " ATR (", DoubleToString(sep_21_50_pct, 2), "%) ",
+               "(min: ", DoubleToString(_ema_data_M15.min_distance_21_50_threshold, 2), ") ",
+               _ema_data_M15.distance_21_50_ok ? "✓" : "✗");
+         
+         // NOVO: Distância total 9-50 (força geral do trend)
+         Print("Distância Total 9-50: ", DoubleToString(_ema_data_M15.distance_ema_9_50_by_atr, 2), " ATR");
+         
+         // NOVO: Obter slopes das EMAs para contexto adicional
+         TF_CTX *ctx_m15 = m_context_provider.GetContext(m_symbol, PERIOD_M15);
+         if (ctx_m15 != NULL) {
+            CMovingAverages *ema9_m15 = ctx_m15.GetIndicator("ema9");
+            CMovingAverages *ema21_m15 = ctx_m15.GetIndicator("ema21");
+            CMovingAverages *ema50_m15 = ctx_m15.GetIndicator("ema50");
+            
+            if (ema9_m15 != NULL && ema21_m15 != NULL && ema50_m15 != NULL) {
+               SSlopeValidation slope9 = ema9_m15.GetSlopeValidation(_ema_data_M15.atr_value, COPY_MIDDLE);
+               SSlopeValidation slope21 = ema21_m15.GetSlopeValidation(_ema_data_M15.atr_value, COPY_MIDDLE);
+               SSlopeValidation slope50 = ema50_m15.GetSlopeValidation(_ema_data_M15.atr_value, COPY_MIDDLE);
+               
+               Print("Inclinações:");
+               Print("  EMA9  - Bullish: ", slope9.bullish_count, "/3 | Bearish: ", slope9.bearish_count, 
+                     "/3 | Side: ", slope9.side_count, "/3 | LR: ", DoubleToString(slope9.linear_regression.slope_value, 3));
+               Print("  EMA21 - Bullish: ", slope21.bullish_count, "/3 | Bearish: ", slope21.bearish_count, 
+                     "/3 | Side: ", slope21.side_count, "/3 | LR: ", DoubleToString(slope21.linear_regression.slope_value, 3));
+               Print("  EMA50 - Bullish: ", slope50.bullish_count, "/3 | Bearish: ", slope50.bearish_count, 
+                     "/3 | Side: ", slope50.side_count, "/3 | LR: ", DoubleToString(slope50.linear_regression.slope_value, 3));
+            }
+         }
+         
+         Print("Resultado: ", _ema_data_M15.validation_result ? "✅ TENDÊNCIA FORTE" : "✗ Tendência fraca");
          if (_ema_data_M15.fail_message != "")
             Print("Fail Message: ", _ema_data_M15.fail_message);
          if (_ema_data_M15.success_message != "")
@@ -1137,13 +1179,47 @@ void CEmasBuyBull::DoLog()
                " | EMA21: ", DoubleToString(_ema_data_M3.ema21_value, _Digits),
                " | EMA50: ", DoubleToString(_ema_data_M3.ema50_value, _Digits));
          Print("ATR: ", DoubleToString(_ema_data_M3.atr_value, 5));
+         
+         // NOVO: % de separação
+         double sep_9_21_pct = (_ema_data_M3.ema21_value != 0) ? 
+            ((_ema_data_M3.ema9_value - _ema_data_M3.ema21_value) / _ema_data_M3.ema21_value * 100.0) : 0.0;
+         double sep_21_50_pct = (_ema_data_M3.ema50_value != 0) ? 
+            ((_ema_data_M3.ema21_value - _ema_data_M3.ema50_value) / _ema_data_M3.ema50_value * 100.0) : 0.0;
+         
          Print("Distância 9-21: ", DoubleToString(_ema_data_M3.distance_ema_9_21_by_atr, 2),
-               " ATR (min: ", DoubleToString(_ema_data_M3.min_distance_9_21_threshold, 2), ") ",
-               _ema_data_M3.distance_9_21_ok ? "✓" : "❌");
+               " ATR (", DoubleToString(sep_9_21_pct, 2), "%) ",
+               "(min: ", DoubleToString(_ema_data_M3.min_distance_9_21_threshold, 2), ") ",
+               _ema_data_M3.distance_9_21_ok ? "✓" : "✗");
          Print("Distância 21-50: ", DoubleToString(_ema_data_M3.distance_ema_21_50_by_atr, 2),
-               " ATR (min: ", DoubleToString(_ema_data_M3.min_distance_21_50_threshold, 2), ") ",
-               _ema_data_M3.distance_21_50_ok ? "✓" : "❌");
-         Print("Resultado: ", _ema_data_M3.validation_result ? "✅ TENDÊNCIA FORTE" : "❌ Tendência fraca");
+               " ATR (", DoubleToString(sep_21_50_pct, 2), "%) ",
+               "(min: ", DoubleToString(_ema_data_M3.min_distance_21_50_threshold, 2), ") ",
+               _ema_data_M3.distance_21_50_ok ? "✓" : "✗");
+         
+         Print("Distância Total 9-50: ", DoubleToString(_ema_data_M3.distance_ema_9_50_by_atr, 2), " ATR");
+         
+         // NOVO: Slopes M3
+         TF_CTX *ctx_m3 = m_context_provider.GetContext(m_symbol, PERIOD_M3);
+         if (ctx_m3 != NULL) {
+            CMovingAverages *ema9_m3 = ctx_m3.GetIndicator("ema9");
+            CMovingAverages *ema21_m3 = ctx_m3.GetIndicator("ema21");
+            CMovingAverages *ema50_m3 = ctx_m3.GetIndicator("ema50");
+            
+            if (ema9_m3 != NULL && ema21_m3 != NULL && ema50_m3 != NULL) {
+               SSlopeValidation slope9 = ema9_m3.GetSlopeValidation(_ema_data_M3.atr_value, COPY_MIDDLE);
+               SSlopeValidation slope21 = ema21_m3.GetSlopeValidation(_ema_data_M3.atr_value, COPY_MIDDLE);
+               SSlopeValidation slope50 = ema50_m3.GetSlopeValidation(_ema_data_M3.atr_value, COPY_MIDDLE);
+               
+               Print("Inclinações:");
+               Print("  EMA9  - Bullish: ", slope9.bullish_count, "/3 | Bearish: ", slope9.bearish_count, 
+                     "/3 | Side: ", slope9.side_count, "/3 | LR: ", DoubleToString(slope9.linear_regression.slope_value, 3));
+               Print("  EMA21 - Bullish: ", slope21.bullish_count, "/3 | Bearish: ", slope21.bearish_count, 
+                     "/3 | Side: ", slope21.side_count, "/3 | LR: ", DoubleToString(slope21.linear_regression.slope_value, 3));
+               Print("  EMA50 - Bullish: ", slope50.bullish_count, "/3 | Bearish: ", slope50.bearish_count, 
+                     "/3 | Side: ", slope50.side_count, "/3 | LR: ", DoubleToString(slope50.linear_regression.slope_value, 3));
+            }
+         }
+         
+         Print("Resultado: ", _ema_data_M3.validation_result ? "✅ TENDÊNCIA FORTE" : "✗ Tendência fraca");
          if (_ema_data_M3.fail_message != "")
             Print("Fail Message: ", _ema_data_M3.fail_message);
          if (_ema_data_M3.success_message != "")
@@ -1167,17 +1243,30 @@ void CEmasBuyBull::DoLog()
          Print("Candles acima EMA21: ", _bullish_momentum_data.candles_above_ema21,
                "/", _bullish_momentum_data.lookback_candles,
                " (min: ", _bullish_momentum_data.min_candles_required, ") ",
-               _bullish_momentum_data.price_above_ema21 ? "✓" : "❌");
-         Print("Sem pânico: ", _bullish_momentum_data.no_panic_selling ? "✓" : "❌");
+               _bullish_momentum_data.price_above_ema21 ? "✓" : "✗");
+         
+         // NOVO: % de candles acima da EMA21
+         double pct_above = (_bullish_momentum_data.lookback_candles > 0) ? 
+            ((double)_bullish_momentum_data.candles_above_ema21 / _bullish_momentum_data.lookback_candles * 100.0) : 0.0;
+         Print("  └─ Percentual acima: ", DoubleToString(pct_above, 1), "%");
+         
+         Print("Sem pânico: ", _bullish_momentum_data.no_panic_selling ? "✓" : "✗");
          if (!_bullish_momentum_data.no_panic_selling)
          {
-            Print("  . Pânico detectado na barra ", _bullish_momentum_data.panic_candle_index,
+            Print("  └─ Pânico detectado na barra ", _bullish_momentum_data.panic_candle_index,
                   " (shadow ratio: ", DoubleToString(_bullish_momentum_data.panic_lower_shadow_ratio, 3), ")");
          }
-         Print("Última vela bullish: ", _bullish_momentum_data.last_candle_bullish ? "✓" : "❌",
+         
+         Print("Última vela bullish: ", _bullish_momentum_data.last_candle_bullish ? "✓" : "✗",
                " (Open: ", DoubleToString(_bullish_momentum_data.last_open, _Digits),
                ", Close: ", DoubleToString(_bullish_momentum_data.last_close, _Digits), ")");
-         Print("Resultado: ", _bullish_momentum_data.validation_result ? "✅ MOMENTUM CONFIRMADO" : "❌ Sem momentum");
+         
+         // NOVO: Tamanho do corpo da última vela
+         double body_size = MathAbs(_bullish_momentum_data.last_close - _bullish_momentum_data.last_open);
+         double body_size_atr = (_ema_data_M3.atr_value > 0) ? body_size / _ema_data_M3.atr_value : 0.0;
+         Print("  └─ Tamanho do corpo: ", DoubleToString(body_size_atr, 2), " ATR");
+         
+         Print("Resultado: ", _bullish_momentum_data.validation_result ? "✅ MOMENTUM CONFIRMADO" : "✗ Sem momentum");
          if (_bullish_momentum_data.fail_message != "")
             Print("Fail Message: ", _bullish_momentum_data.fail_message);
          if (_bullish_momentum_data.success_message != "")
@@ -1199,13 +1288,25 @@ void CEmasBuyBull::DoLog()
          Print("Lookback: ", _volatility_env_M15.lookback_periods, " períodos");
          Print("Períodos válidos: ", _volatility_env_M15.valid_periods, "/",
                _volatility_env_M15.lookback_periods, " ",
-               _volatility_env_M15.has_valid_data ? "✓" : "❌");
+               _volatility_env_M15.has_valid_data ? "✓" : "✗");
          Print("ATR médio: ", DoubleToString(_volatility_env_M15.avg_atr, 5));
          Print("Ratio: ", DoubleToString(_volatility_env_M15.volatility_ratio, 3),
                " (range: ", DoubleToString(_volatility_env_M15.min_volatility_ratio, 2),
                " - ", DoubleToString(_volatility_env_M15.max_volatility_ratio, 2), ") ",
-               _volatility_env_M15.ratio_in_range ? "✓" : "❌");
-         Print("Resultado: ", _volatility_env_M15.validation_result ? "✅ AMBIENTE ADEQUADO" : "❌ Ambiente inadequado");
+               _volatility_env_M15.ratio_in_range ? "✓" : "✗");
+         
+         // NOVO: Classificação de volatilidade
+         string vol_class = "NORMAL";
+         if (_volatility_env_M15.volatility_ratio < 0.7) vol_class = "BAIXA";
+         else if (_volatility_env_M15.volatility_ratio > 1.3) vol_class = "ALTA";
+         Print("  └─ Classificação: ", vol_class);
+         
+         // NOVO: Variação % do ATR em relação à média
+         double var_pct = (_volatility_env_M15.avg_atr > 0) ? 
+            ((_volatility_env_M15.atr_value - _volatility_env_M15.avg_atr) / _volatility_env_M15.avg_atr * 100.0) : 0.0;
+         Print("  └─ Variação: ", DoubleToString(var_pct, 1), "% em relação à média");
+         
+         Print("Resultado: ", _volatility_env_M15.validation_result ? "✅ AMBIENTE ADEQUADO" : "✗ Ambiente inadequado");
          if (_volatility_env_M15.fail_message != "")
             Print("Fail Message: ", _volatility_env_M15.fail_message);
          if (_volatility_env_M15.success_message != "")
@@ -1225,9 +1326,31 @@ void CEmasBuyBull::DoLog()
          Print("ADX Value: ", DoubleToString(SStrong_trend_ADX_m15.adx_value_tf, 2));
          Print("Range: ", DoubleToString(SStrong_trend_ADX_m15.config_min_value, 2),
                " - ", DoubleToString(SStrong_trend_ADX_m15.config_max_value, 2));
-         Print("Resultado: ", SStrong_trend_ADX_m15.validation_result ? "✅ ADX OK" : "❌ ADX fora do range");
+         
+         // NOVO: Classificação de força da tendência por ADX
+         string adx_strength = "INDEFINIDO";
+         if (SStrong_trend_ADX_m15.adx_value_tf < 20) adx_strength = "FRACO/LATERAL";
+         else if (SStrong_trend_ADX_m15.adx_value_tf < 25) adx_strength = "MODERADO";
+         else if (SStrong_trend_ADX_m15.adx_value_tf < 40) adx_strength = "FORTE";
+         else if (SStrong_trend_ADX_m15.adx_value_tf < 60) adx_strength = "MUITO FORTE";
+         else adx_strength = "EXTREMO";
+         Print("  └─ Força da tendência: ", adx_strength);
+         
+         // NOVO: Obter DI+ e DI- se disponível
+         TF_CTX *ctx_m15 = m_context_provider.GetContext(m_symbol, PERIOD_M15);
+         if (ctx_m15 != NULL) {
+            CADX *adx = ctx_m15.GetIndicator("ADX15");
+            if (adx != NULL) {
+               double di_plus = adx.GetPlusDI(1);
+               double di_minus = adx.GetMinusDI(1);
+               Print("  └─ DI+: ", DoubleToString(di_plus, 2), 
+                     " | DI-: ", DoubleToString(di_minus, 2),
+                     " | Diferença: ", DoubleToString(di_plus - di_minus, 2));
+            }
+         }
+         
+         Print("Resultado: ", SStrong_trend_ADX_m15.validation_result ? "✅ ADX OK" : "✗ ADX fora do range");
          Print("Habilitado: ", m_config.enable_adx_filter ? "SIM" : "NÃO");
-         Print("");
          Print("");
       }
 
@@ -1243,12 +1366,19 @@ void CEmasBuyBull::DoLog()
          Print("Preço: ", DoubleToString(_bullish_structure_M15.current_close, _Digits),
                " | EMA50: ", DoubleToString(_bullish_structure_M15.ema50_value, _Digits));
          Print("ATR: ", DoubleToString(_bullish_structure_M15.atr_value, 5));
-         Print("Preço > EMA50: ", _bullish_structure_M15.price_above_ema50 ? "✓" : "❌");
+         Print("Preço > EMA50: ", _bullish_structure_M15.price_above_ema50 ? "✓" : "✗");
          Print("Distância: ", DoubleToString(_bullish_structure_M15.distance_to_ema50_atr, 2),
                " ATR (min: ", DoubleToString(_bullish_structure_M15.min_distance_threshold, 2), ") ",
-               _bullish_structure_M15.distance_ok ? "✓" : "❌");
-         Print("EMA50 inclinada: ", _bullish_structure_M15.ema50_trending_up ? "✓" : "❌");
-         Print("Resultado: ", _bullish_structure_M15.validation_result ? "✅ ESTRUTURA BULLISH" : "❌ Estrutura não bullish");
+               _bullish_structure_M15.distance_ok ? "✓" : "✗");
+         
+         // NOVO: % de distância em relação à EMA50
+         double dist_pct = (_bullish_structure_M15.ema50_value != 0) ? 
+            (_bullish_structure_M15.distance_to_ema50 / _bullish_structure_M15.ema50_value * 100.0) : 0.0;
+         Print("  └─ Percentual de distância: ", DoubleToString(dist_pct, 2), "%");
+         
+         Print("EMA50 inclinada: ", _bullish_structure_M15.ema50_trending_up ? "✓" : "✗");
+         
+         Print("Resultado: ", _bullish_structure_M15.validation_result ? "✅ ESTRUTURA BULLISH" : "✗ Estrutura não bullish");
          if (_bullish_structure_M15.fail_message != "")
             Print("Fail Message: ", _bullish_structure_M15.fail_message);
          if (_bullish_structure_M15.success_message != "")
@@ -1269,12 +1399,19 @@ void CEmasBuyBull::DoLog()
          Print("Preço: ", DoubleToString(_bullish_structure_M3.current_close, _Digits),
                " | EMA50: ", DoubleToString(_bullish_structure_M3.ema50_value, _Digits));
          Print("ATR: ", DoubleToString(_bullish_structure_M3.atr_value, 5));
-         Print("Preço > EMA50: ", _bullish_structure_M3.price_above_ema50 ? "✓" : "❌");
+         Print("Preço > EMA50: ", _bullish_structure_M3.price_above_ema50 ? "✓" : "✗");
          Print("Distância: ", DoubleToString(_bullish_structure_M3.distance_to_ema50_atr, 2),
                " ATR (min: ", DoubleToString(_bullish_structure_M3.min_distance_threshold, 2), ") ",
-               _bullish_structure_M3.distance_ok ? "✓" : "❌");
-         Print("EMA50 inclinada: ", _bullish_structure_M3.ema50_trending_up ? "✓" : "❌");
-         Print("Resultado: ", _bullish_structure_M3.validation_result ? "✅ ESTRUTURA BULLISH" : "❌ Estrutura não bullish");
+               _bullish_structure_M3.distance_ok ? "✓" : "✗");
+         
+         // NOVO: % de distância
+         double dist_pct = (_bullish_structure_M3.ema50_value != 0) ? 
+            (_bullish_structure_M3.distance_to_ema50 / _bullish_structure_M3.ema50_value * 100.0) : 0.0;
+         Print("  └─ Percentual de distância: ", DoubleToString(dist_pct, 2), "%");
+         
+         Print("EMA50 inclinada: ", _bullish_structure_M3.ema50_trending_up ? "✓" : "✗");
+         
+         Print("Resultado: ", _bullish_structure_M3.validation_result ? "✅ ESTRUTURA BULLISH" : "✗ Estrutura não bullish");
          if (_bullish_structure_M3.fail_message != "")
             Print("Fail Message: ", _bullish_structure_M3.fail_message);
          if (_bullish_structure_M3.success_message != "")
@@ -1297,22 +1434,47 @@ void CEmasBuyBull::DoLog()
          Print("Largura: ", DoubleToString(_bollinger_filter_M3.boll_width, 5),
                " (range: ", DoubleToString(_bollinger_filter_M3.valid_min_width, 5),
                " - ", DoubleToString(_bollinger_filter_M3.valid_max_width, 5), ") ",
-               _bollinger_filter_M3.width_in_range ? "✓" : "❌");
+               _bollinger_filter_M3.width_in_range ? "✓" : "✗");
          Print("ATR: ", DoubleToString(_bollinger_filter_M3.atr_value, 5));
-         Print("Em contração: ", _bollinger_filter_M3.is_contracting ? "❌" : "✓");
+         
+         // NOVO: Largura normalizada por ATR
+         double width_atr = (_bollinger_filter_M3.atr_value > 0) ? 
+            _bollinger_filter_M3.boll_width / _bollinger_filter_M3.atr_value : 0.0;
+         Print("  └─ Largura normalizada: ", DoubleToString(width_atr, 2), " ATR");
+         
+         // NOVO: Posição do preço nas bandas
+         TF_CTX *ctx_m3 = m_context_provider.GetContext(m_symbol, PERIOD_M3);
+         if (ctx_m3 != NULL) {
+            double close = iClose(m_symbol, PERIOD_M3, 1);
+            double band_range = _bollinger_filter_M3.upper_band_value - _bollinger_filter_M3.lower_band_value;
+            if (band_range > 0) {
+               double price_position = (close - _bollinger_filter_M3.lower_band_value) / band_range * 100.0;
+               Print("  └─ Posição do preço nas bandas: ", DoubleToString(price_position, 1), "%");
+            }
+         }
+         
+         Print("Em contração: ", _bollinger_filter_M3.is_contracting ? "✗" : "✓");
          Print("Banda Superior:");
          Print("  Sidewalk: ", _bollinger_filter_M3.upper_is_sidewalk ? "sim" : "não");
          if (_bollinger_filter_M3.upper_is_sidewalk)
          {
-            Print("  Micro inclinação OK: ", _bollinger_filter_M3.upper_micro_ok ? "✓" : "❌");
+            Print("  Micro inclinação OK: ", _bollinger_filter_M3.upper_micro_ok ? "✓" : "✗");
+            Print("    └─ LR: ", _bollinger_filter_M3.upper_lr_ok ? "✓" : "✗",
+                  " | DD: ", _bollinger_filter_M3.upper_dd_ok ? "✓" : "✗",
+                  " | SD: ", _bollinger_filter_M3.upper_sd_ok ? "✓" : "✗");
          }
          Print("Banda Inferior:");
          Print("  Sidewalk: ", _bollinger_filter_M3.lower_is_sidewalk ? "sim" : "não");
          if (_bollinger_filter_M3.lower_is_sidewalk)
          {
-            Print("  Sidewalk válido: ", _bollinger_filter_M3.lower_sidewalk_invalid ? "❌" : "✓");
+            Print("  Sidewalk válido: ", _bollinger_filter_M3.lower_sidewalk_invalid ? "✗" : "✓");
+            if (_bollinger_filter_M3.lower_sidewalk_invalid) {
+               Print("    └─ LR invalid: ", _bollinger_filter_M3.lower_lr_invalid ? "sim" : "não",
+                     " | DD invalid: ", _bollinger_filter_M3.lower_dd_invalid ? "sim" : "não",
+                     " | SD invalid: ", _bollinger_filter_M3.lower_sd_invalid ? "sim" : "não");
+            }
          }
-         Print("Resultado: ", _bollinger_filter_M3.validation_result ? "✅ ESTRUTURA VÁLIDA" : "❌ Estrutura inválida");
+         Print("Resultado: ", _bollinger_filter_M3.validation_result ? "✅ ESTRUTURA VÁLIDA" : "✗ Estrutura inválida");
          if (_bollinger_filter_M3.fail_message != "")
             Print("Fail Message: ", _bollinger_filter_M3.fail_message);
          if (_bollinger_filter_M3.success_message != "")
@@ -1335,22 +1497,47 @@ void CEmasBuyBull::DoLog()
          Print("Largura: ", DoubleToString(_bollinger_filter_M15.boll_width, 5),
                " (range: ", DoubleToString(_bollinger_filter_M15.valid_min_width, 5),
                " - ", DoubleToString(_bollinger_filter_M15.valid_max_width, 5), ") ",
-               _bollinger_filter_M15.width_in_range ? "✓" : "❌");
+               _bollinger_filter_M15.width_in_range ? "✓" : "✗");
          Print("ATR: ", DoubleToString(_bollinger_filter_M15.atr_value, 5));
-         Print("Em contração: ", _bollinger_filter_M15.is_contracting ? "❌" : "✓");
+         
+         // NOVO: Largura normalizada
+         double width_atr = (_bollinger_filter_M15.atr_value > 0) ? 
+            _bollinger_filter_M15.boll_width / _bollinger_filter_M15.atr_value : 0.0;
+         Print("  └─ Largura normalizada: ", DoubleToString(width_atr, 2), " ATR");
+         
+         // NOVO: Posição do preço
+         TF_CTX *ctx_m15 = m_context_provider.GetContext(m_symbol, PERIOD_M15);
+         if (ctx_m15 != NULL) {
+            double close = iClose(m_symbol, PERIOD_M15, 1);
+            double band_range = _bollinger_filter_M15.upper_band_value - _bollinger_filter_M15.lower_band_value;
+            if (band_range > 0) {
+               double price_position = (close - _bollinger_filter_M15.lower_band_value) / band_range * 100.0;
+               Print("  └─ Posição do preço nas bandas: ", DoubleToString(price_position, 1), "%");
+            }
+         }
+         
+         Print("Em contração: ", _bollinger_filter_M15.is_contracting ? "✗" : "✓");
          Print("Banda Superior:");
          Print("  Sidewalk: ", _bollinger_filter_M15.upper_is_sidewalk ? "sim" : "não");
          if (_bollinger_filter_M15.upper_is_sidewalk)
          {
-            Print("  Micro inclinação OK: ", _bollinger_filter_M15.upper_micro_ok ? "✓" : "❌");
+            Print("  Micro inclinação OK: ", _bollinger_filter_M15.upper_micro_ok ? "✓" : "✗");
+            Print("    └─ LR: ", _bollinger_filter_M15.upper_lr_ok ? "✓" : "✗",
+                  " | DD: ", _bollinger_filter_M15.upper_dd_ok ? "✓" : "✗",
+                  " | SD: ", _bollinger_filter_M15.upper_sd_ok ? "✓" : "✗");
          }
          Print("Banda Inferior:");
          Print("  Sidewalk: ", _bollinger_filter_M15.lower_is_sidewalk ? "sim" : "não");
          if (_bollinger_filter_M15.lower_is_sidewalk)
          {
-            Print("  Sidewalk válido: ", _bollinger_filter_M15.lower_sidewalk_invalid ? "❌" : "✓");
+            Print("  Sidewalk válido: ", _bollinger_filter_M15.lower_sidewalk_invalid ? "✗" : "✓");
+            if (_bollinger_filter_M15.lower_sidewalk_invalid) {
+               Print("    └─ LR invalid: ", _bollinger_filter_M15.lower_lr_invalid ? "sim" : "não",
+                     " | DD invalid: ", _bollinger_filter_M15.lower_dd_invalid ? "sim" : "não",
+                     " | SD invalid: ", _bollinger_filter_M15.lower_sd_invalid ? "sim" : "não");
+            }
          }
-         Print("Resultado: ", _bollinger_filter_M15.validation_result ? "✅ ESTRUTURA VÁLIDA" : "❌ Estrutura inválida");
+         Print("Resultado: ", _bollinger_filter_M15.validation_result ? "✅ ESTRUTURA VÁLIDA" : "✗ Estrutura inválida");
          if (_bollinger_filter_M15.fail_message != "")
             Print("Fail Message: ", _bollinger_filter_M15.fail_message);
          if (_bollinger_filter_M15.success_message != "")
@@ -1362,7 +1549,7 @@ void CEmasBuyBull::DoLog()
       // ========================================================================
       // BOLLINGER H1
       // ========================================================================
-      if (!true)
+      if (m_config.enable_bollinger_filter_h1)  // Só mostra se habilitado
       {
          Print("┌─────────────────────────────────────────────────────────────────────────────┐");
          Print("│ BOLLINGER FILTER H1                                                         │");
@@ -1373,27 +1560,42 @@ void CEmasBuyBull::DoLog()
          Print("Largura: ", DoubleToString(_bollinger_filter_H1.boll_width, 5),
                " (range: ", DoubleToString(_bollinger_filter_H1.valid_min_width, 5),
                " - ", DoubleToString(_bollinger_filter_H1.valid_max_width, 5), ") ",
-               _bollinger_filter_H1.width_in_range ? "✓" : "❌");
+               _bollinger_filter_H1.width_in_range ? "✓" : "✗");
          Print("ATR: ", DoubleToString(_bollinger_filter_H1.atr_value, 5));
-         Print("Em contração: ", _bollinger_filter_H1.is_contracting ? "❌" : "✓");
+         
+         double width_atr = (_bollinger_filter_H1.atr_value > 0) ? 
+            _bollinger_filter_H1.boll_width / _bollinger_filter_H1.atr_value : 0.0;
+         Print("  └─ Largura normalizada: ", DoubleToString(width_atr, 2), " ATR");
+         
+         TF_CTX *ctx_h1 = m_context_provider.GetContext(m_symbol, PERIOD_H1);
+         if (ctx_h1 != NULL) {
+            double close = iClose(m_symbol, PERIOD_H1, 1);
+            double band_range = _bollinger_filter_H1.upper_band_value - _bollinger_filter_H1.lower_band_value;
+            if (band_range > 0) {
+               double price_position = (close - _bollinger_filter_H1.lower_band_value) / band_range * 100.0;
+               Print("  └─ Posição do preço nas bandas: ", DoubleToString(price_position, 1), "%");
+            }
+         }
+         
+         Print("Em contração: ", _bollinger_filter_H1.is_contracting ? "✗" : "✓");
          Print("Banda Superior:");
          Print("  Sidewalk: ", _bollinger_filter_H1.upper_is_sidewalk ? "sim" : "não");
          if (_bollinger_filter_H1.upper_is_sidewalk)
          {
-            Print("  Micro inclinação OK: ", _bollinger_filter_H1.upper_micro_ok ? "✓" : "❌");
+            Print("  Micro inclinação OK: ", _bollinger_filter_H1.upper_micro_ok ? "✓" : "✗");
          }
          Print("Banda Inferior:");
          Print("  Sidewalk: ", _bollinger_filter_H1.lower_is_sidewalk ? "sim" : "não");
          if (_bollinger_filter_H1.lower_is_sidewalk)
          {
-            Print("  Sidewalk válido: ", _bollinger_filter_H1.lower_sidewalk_invalid ? "❌" : "✓");
+            Print("  Sidewalk válido: ", _bollinger_filter_H1.lower_sidewalk_invalid ? "✗" : "✓");
          }
-         Print("Resultado: ", _bollinger_filter_H1.validation_result ? "✅ ESTRUTURA VÁLIDA" : "❌ Estrutura inválida");
+         Print("Resultado: ", _bollinger_filter_H1.validation_result ? "✅ ESTRUTURA VÁLIDA" : "✗ Estrutura inválida");
          if (_bollinger_filter_H1.fail_message != "")
             Print("Fail Message: ", _bollinger_filter_H1.fail_message);
          if (_bollinger_filter_H1.success_message != "")
             Print("Success Message: ", _bollinger_filter_H1.success_message);
-         Print("Habilitado: ", m_config.enable_bollinger_filter_h1 ? "SIM" : "NÃO");
+         Print("Habilitado: SIM");
          Print("");
       }
 
@@ -1409,49 +1611,89 @@ void CEmasBuyBull::DoLog()
          Print("Preço: ", DoubleToString(_pullback_ema9_m3.last_close, _Digits),
                " | EMA: ", DoubleToString(_pullback_ema9_m3.current_ma_value, _Digits));
          Print("Distância atual: ", DoubleToString(_pullback_ema9_m3.distance_price, 5));
+         
+         // NOVO: Distância normalizada
+         double dist_atr = (_ema_data_M3.atr_value > 0) ? 
+            _pullback_ema9_m3.distance_price / _ema_data_M3.atr_value : 0.0;
+         Print("  └─ Distância normalizada: ", DoubleToString(dist_atr, 2), " ATR");
          Print("");
 
          // Critérios detalhados de validação
          Print("📋 CRITÉRIOS DE VALIDAÇÃO:");
-         Print("  1. Parâmetros válidos (Setup inicial): ", _pullback_ema9_m3.criterion1_ok ? "✅ Sim" : "❌ Não");
+         Print("  1. Parâmetros válidos (Setup inicial): ", _pullback_ema9_m3.criterion1_ok ? "✅ Sim" : "✗ Não");
          if (_pullback_ema9_m3.criterion1_ok) {
             Print("  2. Profundidade máxima (Vela 2, Limita retração): ",
-                  _pullback_ema9_m3.criterion2_ok ? "✅ OK" : "❌ Excessiva",
+                  _pullback_ema9_m3.criterion2_ok ? "✅ OK" : "✗ Excessiva",
                   " (", DoubleToString(_pullback_ema9_m3.max_depth, 5), ")");
          }
          if (_pullback_ema9_m3.criterion1_ok && _pullback_ema9_m3.criterion2_ok) {
-            Print("  3. Veio de mais longe (Vela 2, Confirma pullback): ", _pullback_ema9_m3.criterion3_ok ? "✅ Sim" : "❌ Não");
+            Print("  3. Veio de mais longe (Vela 2, Confirma pullback): ", _pullback_ema9_m3.criterion3_ok ? "✅ Sim" : "✗ Não");
             if (_pullback_ema9_m3.criterion3_ok && _pullback_ema9_m3.was_further)
             {
                Print("     └─ Distância anterior: ", DoubleToString(_pullback_ema9_m3.prev_distance_atr, 2),
-                     " ATR (barra ", _pullback_ema9_m3.found_at_bar, ") | Melhoria: ", DoubleToString(_pullback_ema9_m3.improvement_ratio, 2), "x");
+                     " ATR (barra ", _pullback_ema9_m3.found_at_bar, ") | Melhoria: ", 
+                     DoubleToString(_pullback_ema9_m3.improvement_ratio, 2), "x");
+               
+               // NOVO: Mostrar faixa de busca
+               Print("     └─ Faixa de busca: barras ", _pullback_ema9_m3.lookback_start, 
+                     " a ", _pullback_ema9_m3.lookback_end);
             }
          }
          if (_pullback_ema9_m3.criterion1_ok && _pullback_ema9_m3.criterion2_ok && _pullback_ema9_m3.criterion3_ok) {
-            Print("  4. Padrão de suporte (Vela 2, Geometria válida): ", _pullback_ema9_m3.criterion4_ok ? "✅ Sim" : "❌ Não");
+            Print("  4. Padrão de suporte (Vela 2, Geometria válida): ", _pullback_ema9_m3.criterion4_ok ? "✅ Sim" : "✗ Não");
          }
          if (_pullback_ema9_m3.criterion1_ok && _pullback_ema9_m3.criterion2_ok && _pullback_ema9_m3.criterion3_ok && _pullback_ema9_m3.criterion4_ok) {
             Print("  5. Penetração máxima (Vela 2, Controla risco): ",
-                  _pullback_ema9_m3.criterion5_ok ? "✅ OK" : "❌ Excessiva",
-                  " (", DoubleToString(_pullback_ema9_m3.penetration, 5), " ≤ ", DoubleToString(_pullback_ema9_m3.max_penetration_below_ema, 5), ")");
+                  _pullback_ema9_m3.criterion5_ok ? "✅ OK" : "✗ Excessiva",
+                  " (", DoubleToString(_pullback_ema9_m3.penetration, 5), " ≤ ", 
+                  DoubleToString(_pullback_ema9_m3.max_penetration_below_ema, 5), ")");
+            
+            // NOVO: % de penetração
+            if (_pullback_ema9_m3.max_penetration_below_ema > 0) {
+               double pen_pct = (_pullback_ema9_m3.penetration / _pullback_ema9_m3.max_penetration_below_ema) * 100.0;
+               Print("     └─ Utilização do limite: ", DoubleToString(pen_pct, 1), "%");
+            }
          }
          if (_pullback_ema9_m3.criterion1_ok && _pullback_ema9_m3.criterion2_ok && _pullback_ema9_m3.criterion3_ok && _pullback_ema9_m3.criterion4_ok && _pullback_ema9_m3.criterion5_ok) {
-            Print("  6. Confirmação retomada (Vela 1, Sinal entrada): ", _pullback_ema9_m3.criterion6_ok ? "✅ OK" : "❌ Falhou");
+            Print("  6. Confirmação retomada (Vela 1, Sinal entrada): ", _pullback_ema9_m3.criterion6_ok ? "✅ OK" : "✗ Falhou");
          }
          if (_pullback_ema9_m3.criterion1_ok && _pullback_ema9_m3.criterion2_ok && _pullback_ema9_m3.criterion3_ok && _pullback_ema9_m3.criterion4_ok && _pullback_ema9_m3.criterion5_ok && _pullback_ema9_m3.criterion6_ok) {
-            Print("  7. Range mínimo (Vela 1, Qualidade sinal): ", _pullback_ema9_m3.criterion7_ok ? "✅ OK" : "❌ Falhou");
+            Print("  7. Range mínimo (Vela 1, Qualidade sinal): ", _pullback_ema9_m3.criterion7_ok ? "✅ OK" : "✗ Falhou");
          }
-         if (_pullback_ema9_m3.criterion1_ok && _pullback_ema9_m3.criterion2_ok && _pullback_ema9_m3.criterion3_ok && _pullback_ema9_m3.criterion4_ok && _pullback_ema9_m3.criterion5_ok && _pullback_ema9_m3.criterion6_ok && _pullback_ema9_m3.criterion7_ok) {
+         if (_pullback_ema9_m3.ema_spread_check_enabled && _pullback_ema9_m3.criterion1_ok && _pullback_ema9_m3.criterion2_ok && _pullback_ema9_m3.criterion3_ok && _pullback_ema9_m3.criterion4_ok && _pullback_ema9_m3.criterion5_ok && _pullback_ema9_m3.criterion6_ok && _pullback_ema9_m3.criterion7_ok) {
             Print("  8. Spread EMA9-EMA21 (Vela 2, Evita sobreextensão): ",
-                  _pullback_ema9_m3.criterion8_ok ? "✅ OK" : "❌ Excessivo",
+                  _pullback_ema9_m3.criterion8_ok ? "✅ OK" : "✗ Excessivo",
                   " (", DoubleToString(_pullback_ema9_m3.ema_spread_atr, 2),
                   " ≤ ", DoubleToString(_pullback_ema9_m3.max_allowed_spread_atr, 2), " ATR)");
             Print("     └─ EMA9: ", DoubleToString(_pullback_ema9_m3.ema9_value_at_setup, _Digits),
                   " | EMA21: ", DoubleToString(_pullback_ema9_m3.ema21_value_at_setup, _Digits));
+            
+            // NOVO: % de utilização do spread permitido
+            if (_pullback_ema9_m3.max_allowed_spread_atr > 0) {
+               double spread_pct = (_pullback_ema9_m3.ema_spread_atr / _pullback_ema9_m3.max_allowed_spread_atr) * 100.0;
+               Print("     └─ Utilização do limite: ", DoubleToString(spread_pct, 1), "%");
+            }
          }
 
          Print("");
-         Print("Resultado: ", _pullback_ema9_m3.validation_result ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");
+         
+         // NOVO: Score de qualidade do pullback (0-8 ou 0-7)
+         int max_criteria = _pullback_ema9_m3.ema_spread_check_enabled ? 8 : 7;
+         int passed_criteria = 0;
+         if (_pullback_ema9_m3.criterion1_ok) passed_criteria++;
+         if (_pullback_ema9_m3.criterion2_ok) passed_criteria++;
+         if (_pullback_ema9_m3.criterion3_ok) passed_criteria++;
+         if (_pullback_ema9_m3.criterion4_ok) passed_criteria++;
+         if (_pullback_ema9_m3.criterion5_ok) passed_criteria++;
+         if (_pullback_ema9_m3.criterion6_ok) passed_criteria++;
+         if (_pullback_ema9_m3.criterion7_ok) passed_criteria++;
+         if (_pullback_ema9_m3.ema_spread_check_enabled && _pullback_ema9_m3.criterion8_ok) passed_criteria++;
+         
+         double quality_score = ((double)passed_criteria / max_criteria) * 100.0;
+         Print("Score de Qualidade: ", passed_criteria, "/", max_criteria, 
+               " (", DoubleToString(quality_score, 1), "%)");
+         
+         Print("Resultado: ", _pullback_ema9_m3.validation_result ? "✅ PULLBACK VÁLIDO" : "✗ Pullback inválido");
          if (_pullback_ema9_m3.fail_message != "")
             Print("Fail Message: ", _pullback_ema9_m3.fail_message);
          if (_pullback_ema9_m3.success_message != "")
@@ -1465,7 +1707,6 @@ void CEmasBuyBull::DoLog()
       // ========================================================================
       if (true)
       {
-
          Print("┌─────────────────────────────────────────────────────────────────────────────┐");
          Print("│ PULLBACK EMA21 M3                                                           │");
          Print("└─────────────────────────────────────────────────────────────────────────────┘");
@@ -1473,63 +1714,316 @@ void CEmasBuyBull::DoLog()
          Print("Preço: ", DoubleToString(_pullback_ema21_m3.last_close, _Digits),
                " | EMA: ", DoubleToString(_pullback_ema21_m3.current_ma_value, _Digits));
          Print("Distância atual: ", DoubleToString(_pullback_ema21_m3.distance_price, 5));
+         
+         // NOVO: Distância normalizada
+         double dist_atr = (_ema_data_M3.atr_value > 0) ? 
+            _pullback_ema21_m3.distance_price / _ema_data_M3.atr_value : 0.0;
+         Print("  └─ Distância normalizada: ", DoubleToString(dist_atr, 2), " ATR");
          Print("");
 
          // Critérios detalhados de validação
          Print("📋 CRITÉRIOS DE VALIDAÇÃO:");
-         Print("  1. Parâmetros válidos (Setup inicial): ", _pullback_ema21_m3.criterion1_ok ? "✅ Sim" : "❌ Não");
+         Print("  1. Parâmetros válidos (Setup inicial): ", _pullback_ema21_m3.criterion1_ok ? "✅ Sim" : "✗ Não");
          if (_pullback_ema21_m3.criterion1_ok) {
             Print("  2. Profundidade máxima (Vela 2, Limita retração): ",
-                  _pullback_ema21_m3.criterion2_ok ? "✅ OK" : "❌ Excessiva",
+                  _pullback_ema21_m3.criterion2_ok ? "✅ OK" : "✗ Excessiva",
                   " (", DoubleToString(_pullback_ema21_m3.max_depth, 5), ")");
          }
          if (_pullback_ema21_m3.criterion1_ok && _pullback_ema21_m3.criterion2_ok) {
-            Print("  3. Veio de mais longe (Vela 2, Confirma pullback): ", _pullback_ema21_m3.criterion3_ok ? "✅ Sim" : "❌ Não");
+            Print("  3. Veio de mais longe (Vela 2, Confirma pullback): ", _pullback_ema21_m3.criterion3_ok ? "✅ Sim" : "✗ Não");
             if (_pullback_ema21_m3.criterion3_ok && _pullback_ema21_m3.was_further)
             {
                Print("     └─ Distância anterior: ", DoubleToString(_pullback_ema21_m3.prev_distance_atr, 2),
-                     " ATR (barra ", _pullback_ema21_m3.found_at_bar, ") | Melhoria: ", DoubleToString(_pullback_ema21_m3.improvement_ratio, 2), "x");
+                     " ATR (barra ", _pullback_ema21_m3.found_at_bar, ") | Melhoria: ", 
+                     DoubleToString(_pullback_ema21_m3.improvement_ratio, 2), "x");
+               Print("     └─ Faixa de busca: barras ", _pullback_ema21_m3.lookback_start, 
+                     " a ", _pullback_ema21_m3.lookback_end);
             }
          }
          if (_pullback_ema21_m3.criterion1_ok && _pullback_ema21_m3.criterion2_ok && _pullback_ema21_m3.criterion3_ok) {
-            Print("  4. Padrão de suporte (Vela 2, Geometria válida): ", _pullback_ema21_m3.criterion4_ok ? "✅ Sim" : "❌ Não");
+            Print("  4. Padrão de suporte (Vela 2, Geometria válida): ", _pullback_ema21_m3.criterion4_ok ? "✅ Sim" : "✗ Não");
          }
          if (_pullback_ema21_m3.criterion1_ok && _pullback_ema21_m3.criterion2_ok && _pullback_ema21_m3.criterion3_ok && _pullback_ema21_m3.criterion4_ok) {
             Print("  5. Penetração máxima (Vela 2, Controla risco): ",
-                  _pullback_ema21_m3.criterion5_ok ? "✅ OK" : "❌ Excessiva",
-                  " (", DoubleToString(_pullback_ema21_m3.penetration, 5), " ≤ ", DoubleToString(_pullback_ema21_m3.max_penetration_below_ema, 5), ")");
+                  _pullback_ema21_m3.criterion5_ok ? "✅ OK" : "✗ Excessiva",
+                  " (", DoubleToString(_pullback_ema21_m3.penetration, 5), " ≤ ", 
+                  DoubleToString(_pullback_ema21_m3.max_penetration_below_ema, 5), ")");
+            
+            if (_pullback_ema21_m3.max_penetration_below_ema > 0) {
+               double pen_pct = (_pullback_ema21_m3.penetration / _pullback_ema21_m3.max_penetration_below_ema) * 100.0;
+               Print("     └─ Utilização do limite: ", DoubleToString(pen_pct, 1), "%");
+            }
          }
          if (_pullback_ema21_m3.criterion1_ok && _pullback_ema21_m3.criterion2_ok && _pullback_ema21_m3.criterion3_ok && _pullback_ema21_m3.criterion4_ok && _pullback_ema21_m3.criterion5_ok) {
-            Print("  6. Confirmação retomada (Vela 1, Sinal entrada): ", _pullback_ema21_m3.criterion6_ok ? "✅ OK" : "❌ Falhou");
+            Print("  6. Confirmação retomada (Vela 1, Sinal entrada): ", _pullback_ema21_m3.criterion6_ok ? "✅ OK" : "✗ Falhou");
          }
          if (_pullback_ema21_m3.criterion1_ok && _pullback_ema21_m3.criterion2_ok && _pullback_ema21_m3.criterion3_ok && _pullback_ema21_m3.criterion4_ok && _pullback_ema21_m3.criterion5_ok && _pullback_ema21_m3.criterion6_ok) {
-            Print("  7. Range mínimo (Vela 1, Qualidade sinal): ", _pullback_ema21_m3.criterion7_ok ? "✅ OK" : "❌ Falhou");
+            Print("  7. Range mínimo (Vela 1, Qualidade sinal): ", _pullback_ema21_m3.criterion7_ok ? "✅ OK" : "✗ Falhou");
          }
-         if (m_config.pullback_require_ema21_agreement && _pullback_ema21_m3.criterion1_ok && _pullback_ema21_m3.criterion2_ok && _pullback_ema21_m3.criterion3_ok && _pullback_ema21_m3.criterion4_ok && _pullback_ema21_m3.criterion5_ok && _pullback_ema21_m3.criterion6_ok && _pullback_ema21_m3.criterion7_ok) {
+         if (_pullback_ema21_m3.ema_spread_check_enabled && _pullback_ema21_m3.criterion1_ok && _pullback_ema21_m3.criterion2_ok && _pullback_ema21_m3.criterion3_ok && _pullback_ema21_m3.criterion4_ok && _pullback_ema21_m3.criterion5_ok && _pullback_ema21_m3.criterion6_ok && _pullback_ema21_m3.criterion7_ok) {
             Print("  8. Spread EMA9-EMA21 (Vela 2, Evita sobreextensão): ",
-                  _pullback_ema21_m3.criterion8_ok ? "✅ OK" : "❌ Excessivo",
+                  _pullback_ema21_m3.criterion8_ok ? "✅ OK" : "✗ Excessivo",
                   " (", DoubleToString(_pullback_ema21_m3.ema_spread_atr, 2),
                   " ≤ ", DoubleToString(_pullback_ema21_m3.max_allowed_spread_atr, 2), " ATR)");
             Print("     └─ EMA9: ", DoubleToString(_pullback_ema21_m3.ema9_value_at_setup, _Digits),
                   " | EMA21: ", DoubleToString(_pullback_ema21_m3.ema21_value_at_setup, _Digits));
+            
+            if (_pullback_ema21_m3.max_allowed_spread_atr > 0) {
+               double spread_pct = (_pullback_ema21_m3.ema_spread_atr / _pullback_ema21_m3.max_allowed_spread_atr) * 100.0;
+               Print("     └─ Utilização do limite: ", DoubleToString(spread_pct, 1), "%");
+            }
          }
 
          Print("");
-         Print("Resultado: ", _pullback_ema21_m3.validation_result ? "✅ PULLBACK VÁLIDO" : "❌ Pullback inválido");
+         
+         // NOVO: Score de qualidade
+         int max_criteria = _pullback_ema21_m3.ema_spread_check_enabled ? 8 : 7;
+         int passed_criteria = 0;
+         if (_pullback_ema21_m3.criterion1_ok) passed_criteria++;
+         if (_pullback_ema21_m3.criterion2_ok) passed_criteria++;
+         if (_pullback_ema21_m3.criterion3_ok) passed_criteria++;
+         if (_pullback_ema21_m3.criterion4_ok) passed_criteria++;
+         if (_pullback_ema21_m3.criterion5_ok) passed_criteria++;
+         if (_pullback_ema21_m3.criterion6_ok) passed_criteria++;
+         if (_pullback_ema21_m3.criterion7_ok) passed_criteria++;
+         if (_pullback_ema21_m3.ema_spread_check_enabled && _pullback_ema21_m3.criterion8_ok) passed_criteria++;
+         
+         double quality_score = ((double)passed_criteria / max_criteria) * 100.0;
+         Print("Score de Qualidade: ", passed_criteria, "/", max_criteria, 
+               " (", DoubleToString(quality_score, 1), "%)");
+         
+         Print("Resultado: ", _pullback_ema21_m3.validation_result ? "✅ PULLBACK VÁLIDO" : "✗ Pullback inválido");
          if (_pullback_ema21_m3.fail_message != "")
             Print("Fail Message: ", _pullback_ema21_m3.fail_message);
          if (_pullback_ema21_m3.success_message != "")
             Print("Success Message: ", _pullback_ema21_m3.success_message);
          Print("Habilitado: ", m_config.enable_pullback_ema21 ? "SIM" : "NÃO");
          Print("");
-
-         Print("================================================================================");
-         Print("========================== END OF DEBUG LOG ===================================");
-         Print("================================================================================");
       }
+
+      // ========================================================================
+      // RESUMO FINAL DA ESTRATÉGIA
+      // ========================================================================
+      Print("┌─────────────────────────────────────────────────────────────────────────────┐");
+      Print("│ RESUMO FINAL - DECISÃO DE ENTRADA                                          │");
+      Print("└─────────────────────────────────────────────────────────────────────────────┘");
+      
+      // Validar todos os filtros
+      bool ema_alignment_m15_ok = true;
+      bool ema_alignment_m3_ok = true;
+      
+      TF_CTX *ctx_m15 = m_context_provider.GetContext(m_symbol, PERIOD_M15);
+      TF_CTX *ctx_m3 = m_context_provider.GetContext(m_symbol, PERIOD_M3);
+      
+      if (m_config.enable_ema_alignment_m15 && ctx_m15 != NULL) {
+         CMovingAverages *ema9_m15 = ctx_m15.GetIndicator("ema9");
+         CMovingAverages *ema21_m15 = ctx_m15.GetIndicator("ema21");
+         CMovingAverages *ema50_m15 = ctx_m15.GetIndicator("ema50");
+         if (ema9_m15 != NULL && ema21_m15 != NULL && ema50_m15 != NULL) {
+            double ema9_val = ema9_m15.GetValue(1);
+            double ema21_val = ema21_m15.GetValue(1);
+            double ema50_val = ema50_m15.GetValue(1);
+            ema_alignment_m15_ok = (ema9_val > ema21_val && ema21_val > ema50_val);
+         }
+      } else if (!m_config.enable_ema_alignment_m15) {
+         ema_alignment_m15_ok = true;
+      }
+      
+      if (m_config.enable_ema_alignment_m3 && ctx_m3 != NULL) {
+         CMovingAverages *ema9_m3 = ctx_m3.GetIndicator("ema9");
+         CMovingAverages *ema21_m3 = ctx_m3.GetIndicator("ema21");
+         CMovingAverages *ema50_m3 = ctx_m3.GetIndicator("ema50");
+         if (ema9_m3 != NULL && ema21_m3 != NULL && ema50_m3 != NULL) {
+            double ema9_val = ema9_m3.GetValue(1);
+            double ema21_val = ema21_m3.GetValue(1);
+            double ema50_val = ema50_m3.GetValue(1);
+            ema_alignment_m3_ok = (ema9_val > ema21_val && ema21_val > ema50_val);
+         }
+      } else if (!m_config.enable_ema_alignment_m3) {
+         ema_alignment_m3_ok = true;
+      }
+      
+      bool strong_trend_m15 = m_config.enable_strong_trend_m15 ? _ema_data_M15.validation_result : true;
+      bool strong_trend_m3 = m_config.enable_strong_trend_m3 ? _ema_data_M3.validation_result : true;
+      bool bullish_momentum = m_config.enable_bullish_momentum ? _bullish_momentum_data.validation_result : true;
+      bool good_volatility = m_config.enable_good_volatility ? _volatility_env_M15.validation_result : true;
+      bool bullish_structure_m15 = m_config.enable_bullish_structure_m15 ? _bullish_structure_M15.validation_result : true;
+      bool bullish_structure_m3 = m_config.enable_bullish_structure_m3 ? _bullish_structure_M3.validation_result : true;
+      bool strong_trend_adx = m_config.enable_adx_filter ? SStrong_trend_ADX_m15.validation_result : true;
+      bool is_bollinger_valid_m3 = m_config.enable_bollinger_filter_m3 ? _bollinger_filter_M3.validation_result : true;
+      bool is_bollinger_valid_m15 = m_config.enable_bollinger_filter_m15 ? _bollinger_filter_M15.validation_result : true;
+      bool is_bollinger_valid_h1 = m_config.enable_bollinger_filter_h1 ? _bollinger_filter_H1.validation_result : true;
+      
+      bool pullback_ema9_ok = m_config.enable_pullback_ema9 ? _pullback_ema9_m3.validation_result : false;
+      bool pullback_ema21_ok = m_config.enable_pullback_ema21 ? _pullback_ema21_m3.validation_result : false;
+      
+      bool filtros_ok = ema_alignment_m15_ok && ema_alignment_m3_ok &&
+                        strong_trend_m15 && strong_trend_m3 &&
+                        bullish_momentum &&
+                        good_volatility &&
+                        bullish_structure_m15 && bullish_structure_m3 &&
+                        strong_trend_adx && 
+                        is_bollinger_valid_m3 && is_bollinger_valid_m15 && is_bollinger_valid_h1;
+      
+      bool entrada_setup_ok = pullback_ema9_ok || pullback_ema21_ok;
+      bool entrada_valida = filtros_ok && entrada_setup_ok;
+      
+      // Exibir status de cada filtro
+      Print("╔═════════════════════════════════════════════════════════════════════════════╗");
+      Print("║ FILTROS DE CONTEXTO                                                         ║");
+      Print("╠═════════════════════════════════════════════════════════════════════════════╣");
+      Print("║ 1. Alinhamento EMAs M15    : ", ema_alignment_m15_ok ? "✅ OK      " : "✗ FALHOU  ", " │ Enabled: ", m_config.enable_ema_alignment_m15 ? "YES" : "NO ", " ║");
+      Print("║ 2. Alinhamento EMAs M3     : ", ema_alignment_m3_ok ? "✅ OK      " : "✗ FALHOU  ", " │ Enabled: ", m_config.enable_ema_alignment_m3 ? "YES" : "NO ", " ║");
+      Print("║ 3. Tendência Forte M15     : ", strong_trend_m15 ? "✅ OK      " : "✗ FALHOU  ", " │ Enabled: ", m_config.enable_strong_trend_m15 ? "YES" : "NO ", " ║");
+      Print("║ 4. Tendência Forte M3      : ", strong_trend_m3 ? "✅ OK      " : "✗ FALHOU  ", " │ Enabled: ", m_config.enable_strong_trend_m3 ? "YES" : "NO ", " ║");
+      Print("║ 5. Momentum Bullish        : ", bullish_momentum ? "✅ OK      " : "✗ FALHOU  ", " │ Enabled: ", m_config.enable_bullish_momentum ? "YES" : "NO ", " ║");
+      Print("║ 6. Volatilidade Adequada   : ", good_volatility ? "✅ OK      " : "✗ FALHOU  ", " │ Enabled: ", m_config.enable_good_volatility ? "YES" : "NO ", " ║");
+      Print("║ 7. Estrutura Bullish M15   : ", bullish_structure_m15 ? "✅ OK      " : "✗ FALHOU  ", " │ Enabled: ", m_config.enable_bullish_structure_m15 ? "YES" : "NO ", " ║");
+      Print("║ 8. Estrutura Bullish M3    : ", bullish_structure_m3 ? "✅ OK      " : "✗ FALHOU  ", " │ Enabled: ", m_config.enable_bullish_structure_m3 ? "YES" : "NO ", " ║");
+      Print("║ 9. ADX Filter M15          : ", strong_trend_adx ? "✅ OK      " : "✗ FALHOU  ", " │ Enabled: ", m_config.enable_adx_filter ? "YES" : "NO ", " ║");
+      Print("║10. Bollinger Filter M3     : ", is_bollinger_valid_m3 ? "✅ OK      " : "✗ FALHOU  ", " │ Enabled: ", m_config.enable_bollinger_filter_m3 ? "YES" : "NO ", " ║");
+      Print("║11. Bollinger Filter M15    : ", is_bollinger_valid_m15 ? "✅ OK      " : "✗ FALHOU  ", " │ Enabled: ", m_config.enable_bollinger_filter_m15 ? "YES" : "NO ", " ║");
+      Print("║12. Bollinger Filter H1     : ", is_bollinger_valid_h1 ? "✅ OK      " : "✗ FALHOU  ", " │ Enabled: ", m_config.enable_bollinger_filter_h1 ? "YES" : "NO ", " ║");
+      Print("╠═════════════════════════════════════════════════════════════════════════════╣");
+      Print("║ STATUS FILTROS: ", filtros_ok ? "✅ TODOS OK                                             " : "✗ ALGUM FILTRO FALHOU                                  ", " ║");
+      Print("╚═════════════════════════════════════════════════════════════════════════════╝");
+      Print("");
+      
+      Print("╔═════════════════════════════════════════════════════════════════════════════╗");
+      Print("║ SETUP DE ENTRADA (PULLBACK)                                                 ║");
+      Print("╠═════════════════════════════════════════════════════════════════════════════╣");
+      Print("║ Pullback EMA9 M3           : ", pullback_ema9_ok ? "✅ OK      " : "✗ FALHOU  ", " │ Enabled: ", m_config.enable_pullback_ema9 ? "YES" : "NO ", " ║");
+      Print("║ Pullback EMA21 M3          : ", pullback_ema21_ok ? "✅ OK      " : "✗ FALHOU  ", " │ Enabled: ", m_config.enable_pullback_ema21 ? "YES" : "NO ", " ║");
+      Print("╠═════════════════════════════════════════════════════════════════════════════╣");
+      Print("║ STATUS SETUP: ", entrada_setup_ok ? "✅ PELO MENOS UM PULLBACK VÁLIDO                       " : "✗ NENHUM PULLBACK VÁLIDO                               ", " ║");
+      Print("╚═════════════════════════════════════════════════════════════════════════════╝");
+      Print("");
+      
+      // NOVO: Contadores de filtros
+      int total_filters = 12;
+      int passed_filters = 0;
+      if (ema_alignment_m15_ok) passed_filters++;
+      if (ema_alignment_m3_ok) passed_filters++;
+      if (strong_trend_m15) passed_filters++;
+      if (strong_trend_m3) passed_filters++;
+      if (bullish_momentum) passed_filters++;
+      if (good_volatility) passed_filters++;
+      if (bullish_structure_m15) passed_filters++;
+      if (bullish_structure_m3) passed_filters++;
+      if (strong_trend_adx) passed_filters++;
+      if (is_bollinger_valid_m3) passed_filters++;
+      if (is_bollinger_valid_m15) passed_filters++;
+      if (is_bollinger_valid_h1) passed_filters++;
+      
+      double filter_pass_rate = ((double)passed_filters / total_filters) * 100.0;
+      
+      Print("╔═════════════════════════════════════════════════════════════════════════════╗");
+      Print("║ ESTATÍSTICAS                                                                ║");
+      Print("╠═════════════════════════════════════════════════════════════════════════════╣");
+      Print("║ Filtros Aprovados          : ", passed_filters, "/", total_filters, " (", DoubleToString(filter_pass_rate, 1), "%)                              ║");
+      
+      // NOVO: Calcular risk/reward ratio
+      if (entrada_valida) {
+         double entry_price = SymbolInfoDouble(m_symbol, SYMBOL_ASK);
+         double sl_price = CalculateStopLoss(entry_price);
+         double tp_price = CalculateTakeProfit(entry_price, sl_price);
+         double risk = entry_price - sl_price;
+         double reward = tp_price - entry_price;
+         double rr_ratio = (risk > 0) ? reward / risk : 0.0;
+         
+         Print("║ Entry Price                : ", DoubleToString(entry_price, _Digits), "                                       ║");
+         Print("║ Stop Loss                  : ", DoubleToString(sl_price, _Digits), " (Risk: ", DoubleToString(risk, _Digits), ")              ║");
+         Print("║ Take Profit                : ", DoubleToString(tp_price, _Digits), " (Reward: ", DoubleToString(reward, _Digits), ")           ║");
+         Print("║ Risk/Reward Ratio          : 1:", DoubleToString(rr_ratio, 2), "                                          ║");
+         
+         // NOVO: Tamanho do lote e risco em moeda
+         double lot_size = CalculateLotSize();
+         double tick_value = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_VALUE);
+         double tick_size = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_SIZE);
+         double risk_money = 0.0;
+         if (tick_size > 0) {
+            risk_money = (risk / tick_size) * tick_value * lot_size;
+         }
+         
+         Print("║ Lot Size                   : ", DoubleToString(lot_size, 2), "                                            ║");
+         Print("║ Risk Amount                : $", DoubleToString(risk_money, 2), "                                         ║");
+         Print("║ Potential Profit           : $", DoubleToString(risk_money * rr_ratio, 2), "                                      ║");
+         
+         // NOVO: Verificar margem disponível
+         double margin_required = 0;
+         if (OrderCalcMargin(ORDER_TYPE_BUY, m_symbol, lot_size, entry_price, margin_required)) {
+            double free_margin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
+            double margin_usage = (free_margin > 0) ? (margin_required / free_margin) * 100.0 : 0.0;
+            Print("║ Margin Required            : $", DoubleToString(margin_required, 2), " (", DoubleToString(margin_usage, 1), "% of free)              ║");
+         }
+      }
+      
+      Print("╠═════════════════════════════════════════════════════════════════════════════╣");
+      
+      // Decisão final
+      if (entrada_valida) {
+         Print("║                                                                             ║");
+         Print("║                     🎯 DECISÃO: ENTRADA AUTORIZADA 🎯                      ║");
+         Print("║                                                                             ║");
+         string entry_ema = "INDEFINIDA";
+         if (pullback_ema9_ok && _pullback_ema9_m3.validation_result) {
+            entry_ema = "EMA9";
+         } else if (pullback_ema21_ok && _pullback_ema21_m3.validation_result) {
+            entry_ema = "EMA21";
+         }
+         Print("║ Setup de Entrada           : Pullback em ", entry_ema, " (M3)                            ║");
+         Print("║ Qualidade do Sinal         : ALTA                                          ║");
+      } else {
+         Print("║                                                                             ║");
+         Print("║                      ⛔ DECISÃO: ENTRADA NEGADA ⛔                         ║");
+         Print("║                                                                             ║");
+         
+         // Identificar motivo da rejeição
+         string rejection_reason = "INDEFINIDO";
+         if (!filtros_ok) {
+            rejection_reason = "FILTROS DE CONTEXTO NÃO APROVADOS";
+            
+            // Detalhar qual filtro falhou
+            if (!ema_alignment_m15_ok) rejection_reason = "Alinhamento EMAs M15";
+            else if (!ema_alignment_m3_ok) rejection_reason = "Alinhamento EMAs M3";
+            else if (!strong_trend_m15) rejection_reason = "Tendência Forte M15";
+            else if (!strong_trend_m3) rejection_reason = "Tendência Forte M3";
+            else if (!bullish_momentum) rejection_reason = "Momentum Bullish";
+            else if (!good_volatility) rejection_reason = "Volatilidade";
+            else if (!bullish_structure_m15) rejection_reason = "Estrutura Bullish M15";
+            else if (!bullish_structure_m3) rejection_reason = "Estrutura Bullish M3";
+            else if (!strong_trend_adx) rejection_reason = "ADX Filter";
+            else if (!is_bollinger_valid_m3) rejection_reason = "Bollinger M3";
+            else if (!is_bollinger_valid_m15) rejection_reason = "Bollinger M15";
+            else if (!is_bollinger_valid_h1) rejection_reason = "Bollinger H1";
+         } else if (!entrada_setup_ok) {
+            rejection_reason = "NENHUM PULLBACK VÁLIDO DETECTADO";
+         }
+         
+         Print("║ Motivo da Rejeição         : ", rejection_reason, "                     ║");
+      }
+      
+      Print("╚═════════════════════════════════════════════════════════════════════════════╝");
+      Print("");
+      
+      // NOVO: Informações de tempo
+      Print("╔═════════════════════════════════════════════════════════════════════════════╗");
+      Print("║ INFORMAÇÕES DE TEMPO                                                        ║");
+      Print("╠═════════════════════════════════════════════════════════════════════════════╣");
+      Print("║ Timestamp                  : ", TimeToString(TimeCurrent(), TIME_DATE|TIME_MINUTES|TIME_SECONDS), "                          ║");
+      
+      // Verificar horário de operação
+      bool within_hours = m_config.IsWithinOperatingHours();
+      Print("║ Horário de Operação        : ", within_hours ? "✅ DENTRO DO HORÁRIO" : "✗ FORA DO HORÁRIO", "                              ║");
+      
+      Print("╚═════════════════════════════════════════════════════════════════════════════╝");
+      
+      Print("");
+      Print("================================================================================");
+      Print("========================== END OF DEBUG LOG ===================================");
+      Print("================================================================================");
    }
 }
-
 //+------------------------------------------------------------------+
 //| Implementação específica da verificação de horário de operação  |
 //+------------------------------------------------------------------+
