@@ -25,6 +25,12 @@ enum ENUM_TRAILING_MODE
     TRAILING_PERCENTAGE
 };
 
+enum ENUM_VOLUME_MODE
+{
+    VOLUME_FIXED = 0,   // usa fixed_volume_lots
+    VOLUME_RISK  = 1    // (opcional) calcular por risco no futuro
+};
+
 //+------------------------------------------------------------------+
 //| Structure for order position information                         |
 //+------------------------------------------------------------------+
@@ -50,6 +56,11 @@ struct SOrderPositionInfo
     ENUM_TRAILING_MODE trailing_mode;
     double trailing_distance;
 
+    // Parciais
+    bool partials_closed[3];
+    bool enable_partials_local;
+    double initial_volume;
+
     void Reset()
     {
         strategy_name = "";
@@ -71,7 +82,21 @@ struct SOrderPositionInfo
         trailing_enabled = false;
         trailing_mode = TRAILING_NONE;
         trailing_distance = 0.0;
+
+        // Parciais
+        ArrayFill(partials_closed, 0, 3, false);
+        enable_partials_local = false;
+        initial_volume = 0.0;
     }
+};
+
+//+------------------------------------------------------------------+
+//| Structure for partial order configuration                        |
+//+------------------------------------------------------------------+
+struct SOrderPartial
+{
+    double percent;       // % do volume total (0–100)
+    int target_points;    // alvo em pontos a partir da entrada
 };
 
 //+------------------------------------------------------------------+
@@ -83,6 +108,10 @@ struct SOrderConfig
     // Campos obrigatórios em pontos:
     double stop_loss_points;          // SL sempre em pontos
     double take_profit_points;        // TP em pontos (0 = sem TP)
+
+    ENUM_VOLUME_MODE volume_mode;     // NOVO
+    double fixed_volume_lots;         // NOVO
+
     bool   enable_breakeven;
     bool   enable_trailing_stop;
     ENUM_TRAILING_MODE trailing_mode;
@@ -92,13 +121,37 @@ struct SOrderConfig
     double minimum_improvement_points;      // histerese do trailing
     double trailing_start_buffer_points;    // buffer pós-BE p/ iniciar trailing
 
+    // Parciais
+    bool enable_partials;
+    int  min_lots_for_partials;           // >=2
+    bool scale_up_to_enable_partials;     // se true, força N lotes
+    SOrderPartial partials[3];  // até 3 parciais
+    int partial_count;
+
+    // Trailing avançado
+    int m_be_trigger_pts;                 // lucro mínimo p/ ativar BE
+    int m_be_offset_pts;                  // BE deixa margem p/ spread e custos
+    int m_trail_cooldown_sec;             // espera após BE ou parcial
+    int m_trail_offset_pts;               // só trail se gap ≥ X pts
+    int m_trail_step_pts;                 // só move SL se avanço ≥ X pts
+
+    // Chandelier + Swing
+    int m_atr_period;                     // período ATR
+    double m_atr_mult;                   // multiplicador ATR
+    int m_swing_lookback;                // lookback para swings
+
     void Reset()
     {
+        // Risco ainda disponível se quiser usar depois
         risk_percent                   = 1.0;
 
-        // 100% em PONTOS
+        // 100% em PONTOS (sem pips)
         stop_loss_points               = 250.0;
         take_profit_points             = 0.0;    // SEM TP
+
+        // Volume manual por padrão
+        volume_mode                    = VOLUME_FIXED;
+        fixed_volume_lots              = 10.0;    // defina aqui o volume desejado
 
         enable_breakeven               = true;
         enable_trailing_stop           = true;
@@ -106,12 +159,34 @@ struct SOrderConfig
 
         // Defaults acordados
         breakeven_trigger_points       = 100.0;  // aciona BE ao ganhar 100
-        breakeven_level_points         = 80.0;   // trava +80 após BE
-        trailing_distance_points       = 100.0;  // distância do SL ao preço
+        breakeven_level_points         = 150.0;   // trava +80 após BE
+        trailing_distance_points       = 250.0;  // distância do SL ao preço
 
         // Histerese e buffer em pontos
         minimum_improvement_points     = 0.5 * trailing_distance_points; // 50
         trailing_start_buffer_points   = 0.5 * trailing_distance_points; // 50
+
+        // Parciais
+        enable_partials                = true;
+        min_lots_for_partials          = 2;
+        scale_up_to_enable_partials    = false;  // mantém risco se false
+        partial_count                  = 2;
+        partials[0].percent            = 0.5;   // 50% em +150 pts
+        partials[0].target_points      = 150;
+        partials[1].percent            = 0.5;   // 50% em +300 pts
+        partials[1].target_points      = 300;
+
+        // Trailing avançado
+        m_be_trigger_pts               = 250;   // lucro mínimo p/ ativar BE
+        m_be_offset_pts                = 30;    // BE deixa margem p/ spread e custos
+        m_trail_cooldown_sec           = 25;    // espera após BE ou parcial
+        m_trail_offset_pts             = 260;   // só trail se gap ≥ 260 pts
+        m_trail_step_pts               = 80;    // só move SL se avanço ≥ 80 pts
+
+        // Chandelier + Swing
+        m_atr_period                   = 14;
+        m_atr_mult                     = 1.2;
+        m_swing_lookback               = 14;
     }
 };
 

@@ -18,6 +18,9 @@ private:
     // Configuration
     SOrderConfig m_default_config;
 
+    // Temporary storage for partials config
+    bool m_enable_partials_local;
+
     // Risk management sequencing
     int m_min_position_age_seconds;
 
@@ -30,8 +33,21 @@ private:
     bool CalculateOrderParameters(const SStrategySignal &signal, string symbol, double &lot_size, double &stop_loss, double &take_profit);
     void ApplyBreakeven(SOrderPositionInfo &position);
     void ApplyTrailingStop(SOrderPositionInfo &position);
+    void CheckPartials(SOrderPositionInfo &position);
     double GetCurrentPrice(string symbol, ENUM_ORDER_DIRECTION direction);
     bool ModifyPositionStopLoss(ulong ticket, double new_stop_loss);
+    bool PositionClosePartial(ulong ticket, double volume);
+
+    // Utility functions for SL validation
+    double MinDistPts(string symbol);
+    double ToTick(string symbol, double price);
+    bool BuildValidSL(string symbol, bool is_buy, double &sl_target);
+
+    // Advanced trailing functions
+    double CalculateATR(string symbol, int period, int shift = 0);
+    double CalculateSwingHigh(string symbol, int lookback, int shift = 0);
+    double CalculateSwingLow(string symbol, int lookback, int shift = 0);
+    double CalculateChandelierSL(string symbol, bool is_buy, int atr_period, double atr_mult, int swing_lookback);
 
 public:
     COrderManager(int max_positions = 10);
@@ -163,13 +179,23 @@ bool COrderManager::UpdatePositions()
         else if (m_positions[i].breakeven_level != 0.0 && m_positions[i].trailing_enabled)
         {
             ApplyTrailingStop(m_positions[i]);
-            
+
             if (!PositionSelectByTicket(m_positions[i].ticket))
             {
                 Print("Position ", m_positions[i].ticket, " closed after trailing stop. Removing from tracking.");
                 RemovePosition(i);
                 continue;
             }
+        }
+
+        // Verificar parciais
+        CheckPartials(m_positions[i]);
+
+        if (!PositionSelectByTicket(m_positions[i].ticket))
+        {
+            Print("Position ", m_positions[i].ticket, " closed after partial close. Removing from tracking.");
+            RemovePosition(i);
+            continue;
         }
     }
 
@@ -403,6 +429,10 @@ bool COrderManager::OpenMarketOrder(const SStrategySignal &signal, string strate
     position_info.trailing_mode = m_default_config.trailing_mode;
     position_info.trailing_distance = m_default_config.trailing_distance_points;
 
+    // Parciais
+    position_info.enable_partials_local = m_enable_partials_local;
+    position_info.initial_volume = lot_size;
+
     double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
     int sl_points = (int)(MathAbs(actual_entry - actual_sl) / point);
     int tp_points = (actual_tp > 0) ? (int)(MathAbs(actual_tp - actual_entry) / point) : 0;
@@ -431,89 +461,75 @@ bool COrderManager::OpenMarketOrder(const SStrategySignal &signal, string strate
 //+------------------------------------------------------------------+
 bool COrderManager::CalculateOrderParameters(const SStrategySignal &signal, string symbol, double &lot_size, double &stop_loss, double &take_profit)
 {
-    double min_volume = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
-    double max_volume = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
-    double volume_step = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
+    const double min_volume  = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
+    const double max_volume  = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
+    const double vol_step    = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
+    const double point       = SymbolInfoDouble(symbol, SYMBOL_POINT);
+    const int    digits      = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
 
-    // Volume fixo - 1 contrato
-    lot_size = min_volume;
-    lot_size = MathFloor(lot_size / volume_step) * volume_step;
-    lot_size = MathMax(min_volume, MathMin(lot_size, max_volume));
+    // --------- VOLUME (manual pelo SOrderConfig) ----------
+    double vol = min_volume; // fallback
+    if (m_default_config.volume_mode == VOLUME_FIXED && m_default_config.fixed_volume_lots > 0.0)
+        vol = m_default_config.fixed_volume_lots;
 
-    const double point     = SymbolInfoDouble(symbol, SYMBOL_POINT);
-    const int    digits    = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+    // normalizar para step/min/max
+    vol = MathFloor(vol / vol_step) * vol_step;
+    vol = MathMax(min_volume, MathMin(vol, max_volume));
+    lot_size = vol;
+
+    // Gate de parciais
+    bool enable_partials_local = m_default_config.enable_partials;
+    int lots = (int)lot_size;
+    if (enable_partials_local && lots < m_default_config.min_lots_for_partials){
+        if (m_default_config.scale_up_to_enable_partials)
+            lots = m_default_config.min_lots_for_partials;  // aumenta lotes (aceita maior risco)
+        else
+            enable_partials_local = false;                  // desabilita parciais neste trade
+    }
+
+    // Store for later use in OpenMarketOrder
+    m_enable_partials_local = enable_partials_local;
+
     const double tick_size = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
     const long   stops_lvl = SymbolInfoInteger(symbol, SYMBOL_TRADE_STOPS_LEVEL);
     const long   freeze_lv = SymbolInfoInteger(symbol, SYMBOL_TRADE_FREEZE_LEVEL);
 
-    // SL sempre em pontos
-    double sl_price = (signal.type == SIGNAL_BUY)
-        ? signal.entry_price - m_default_config.stop_loss_points * point
-        : signal.entry_price + m_default_config.stop_loss_points * point;
+    // --------- STOP/TP em PONTOS ----------
+    const double sl_dist = m_default_config.stop_loss_points * point;
 
-    // snap para o múltiplo de tick
-    if(tick_size > 0.0) sl_price = MathRound(sl_price / tick_size) * tick_size;
-    sl_price = NormalizeDouble(sl_price, digits);
+    if (signal.type == SIGNAL_BUY)
+        stop_loss = signal.entry_price - sl_dist;
+    else
+        stop_loss = signal.entry_price + sl_dist;
 
-    // Se houver TP > 0, calcula e valida
-    double tp_price = 0.0;
-    if(m_default_config.take_profit_points > 0.0)
+    // TP opcional (0 = sem TP → trailing apenas)
+    if (m_default_config.take_profit_points > 0.0)
     {
-        tp_price = (signal.type == SIGNAL_BUY)
-                 ? signal.entry_price + m_default_config.take_profit_points * point
-                 : signal.entry_price - m_default_config.take_profit_points * point;
-        // snap para o múltiplo de tick
-        if(tick_size > 0.0) tp_price = MathRound(tp_price / tick_size) * tick_size;
-        tp_price = NormalizeDouble(tp_price, digits);
+        const double tp_dist = m_default_config.take_profit_points * point;
+        take_profit = (signal.type == SIGNAL_BUY)
+                      ? signal.entry_price + tp_dist
+                      : signal.entry_price - tp_dist;
     }
-
-    // valida distância mínima exigida
-    double min_dist = (double)stops_lvl * point;
-    double ask = SymbolInfoDouble(symbol, SYMBOL_ASK);
-    double bid = SymbolInfoDouble(symbol, SYMBOL_BID);
-
-    // BUY: SL < bid - min_dist ; TP > ask + min_dist
-    if(signal.type == SIGNAL_BUY)
-    {
-        if(sl_price >= bid - min_dist)
-        {
-            sl_price = bid - min_dist;
-            if(tick_size > 0.0) sl_price = MathRound(sl_price / tick_size) * tick_size;
-            sl_price = NormalizeDouble(sl_price, digits);
-        }
-        if(tp_price > 0.0 && tp_price <= ask + min_dist)
-        {
-            // afasta o TP…
-            tp_price = ask + min_dist;
-            if(tick_size > 0.0) tp_price = MathRound(tp_price / tick_size) * tick_size;
-            tp_price = NormalizeDouble(tp_price, digits);
-        }
-    }
-    // SELL: SL > ask + min_dist ; TP < bid - min_dist
     else
     {
-        if(sl_price <= ask + min_dist)
-        {
-            sl_price = ask + min_dist;
-            if(tick_size > 0.0) sl_price = MathRound(sl_price / tick_size) * tick_size;
-            sl_price = NormalizeDouble(sl_price, digits);
-        }
-        if(tp_price > 0.0 && tp_price >= bid - min_dist)
-        {
-            // afasta…
-            tp_price = bid - min_dist;
-            if(tick_size > 0.0) tp_price = MathRound(tp_price / tick_size) * tick_size;
-            tp_price = NormalizeDouble(tp_price, digits);
-        }
+        take_profit = 0.0;
     }
 
-    stop_loss = sl_price;
-    take_profit = tp_price;
-
-    // Log para diagnóstico
-    PrintFormat("Order params: entry=%.0f sl=%.0f tp=%s stops_level=%ld freeze_level=%ld tick_size=%.0f",
-                signal.entry_price, sl_price, (tp_price>0?DoubleToString(tp_price,0):"0"),
-                stops_lvl, freeze_lv, tick_size);
+    // Logs úteis
+    const int sl_pts = (int)(m_default_config.stop_loss_points);
+    if (take_profit > 0.0)
+    {
+        const int tp_pts = (int)(m_default_config.take_profit_points);
+        Print("Order params: Vol=", lot_size, " Entry=", signal.entry_price,
+              " SL=", stop_loss, " (", sl_pts, " pts)",
+              " TP=", take_profit, " (", tp_pts, " pts)");
+    }
+    else
+    {
+        Print("Order params: Vol=", lot_size, " Entry=", signal.entry_price,
+              " SL=", stop_loss, " (", sl_pts, " pts)",
+              " TP=SEM (Trailing apenas)");
+    }
 
     return true;
 }
@@ -541,25 +557,215 @@ void COrderManager::ApplyBreakeven(SOrderPositionInfo &position)
 
     // Aciona BE ao atingir gatilho
     if (m_default_config.enable_breakeven &&
-        profit_pts >= m_default_config.breakeven_trigger_points)
+        profit_pts >= m_default_config.m_be_trigger_pts)
     {
         double new_sl = (position.order_type == ORDER_BUY)
-            ? position.entry_price + m_default_config.breakeven_level_points * point
-            : position.entry_price - m_default_config.breakeven_level_points * point;
+            ? position.entry_price + m_default_config.m_be_offset_pts * point
+            : position.entry_price - m_default_config.m_be_offset_pts * point;
 
         // Só eleva (BUY) / só abaixa (SELL)
         if ((position.order_type == ORDER_BUY && (position.stop_loss == 0 || new_sl > position.stop_loss)) ||
             (position.order_type == ORDER_SELL && (position.stop_loss == 0 || new_sl < position.stop_loss)))
         {
-            if (ModifyPositionStopLoss(position.ticket, new_sl))
+            bool is_buy = (position.order_type == ORDER_BUY);
+            if (BuildValidSL(position.symbol, is_buy, new_sl))
             {
-                position.stop_loss = new_sl;
-                position.breakeven_level = new_sl;
-                Print("✓ Breakeven aplicado: Ticket=", position.ticket,
-                      " NovoSL=", new_sl, " (+", (int)profit_pts, " pts)");
+                if (ModifyPositionStopLoss(position.ticket, new_sl))
+                {
+                    position.stop_loss = new_sl;
+                    position.breakeven_level = new_sl;
+                    Print("✓ Breakeven aplicado: Ticket=", position.ticket,
+                          " NovoSL=", new_sl, " (+", (int)profit_pts, " pts)");
+                }
+            }
+            else
+            {
+                Print("⚠ Breakeven cancelado - SL inválido: Ticket=", position.ticket,
+                      " SL=", new_sl, " Profit=", (int)profit_pts, " pts");
             }
         }
     }
+}
+
+//+------------------------------------------------------------------+
+//| Check partial closes                                              |
+//+------------------------------------------------------------------+
+void COrderManager::CheckPartials(SOrderPositionInfo &position)
+{
+    if(!position.enable_partials_local) return;
+    int remaining = (int)position.lot_size; // WIN: inteiro
+
+    if (!PositionSelectByTicket(position.ticket))
+        return;
+
+    double point = SymbolInfoDouble(position.symbol, SYMBOL_POINT);
+    int profit_pts = (position.order_type == ORDER_BUY)
+        ? (int)((position.current_price - position.entry_price)/point)
+        : (int)((position.entry_price - position.current_price)/point);
+
+    for(int i=0; i<m_default_config.partial_count; i++){
+        if(position.partials_closed[i]) continue;
+        SOrderPartial p = m_default_config.partials[i];
+        if(p.percent<=0 || p.target_points<=0) continue;
+
+        if(profit_pts >= p.target_points){
+            int close_lots = (int)MathRound((double)position.initial_volume * (p.percent>1? p.percent/100.0 : p.percent));
+            close_lots = MathMax(1, MathMin(close_lots, remaining-1)); // nunca zera tudo aqui
+            if(close_lots <= 0) continue;
+
+            if(PositionClosePartial(position.ticket, close_lots)){
+                position.lot_size -= close_lots;
+                remaining -= close_lots;
+                position.partials_closed[i] = true;
+                PrintFormat("✓ Parcial %d: fechou %d lotes @ +%d pts (restam %d)",
+                            i+1, close_lots, p.target_points, remaining);
+                if(remaining<=1) break; // sem mais parciais úteis
+            }
+        }
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Position close partial                                            |
+//+------------------------------------------------------------------+
+bool COrderManager::PositionClosePartial(ulong ticket, double volume)
+{
+    if (!PositionSelectByTicket(ticket))
+        return false;
+
+    string symbol = PositionGetString(POSITION_SYMBOL);
+    long type = PositionGetInteger(POSITION_TYPE);
+    double price = (type == POSITION_TYPE_BUY)
+        ? SymbolInfoDouble(symbol, SYMBOL_BID)
+        : SymbolInfoDouble(symbol, SYMBOL_ASK);
+
+    MqlTradeRequest req = {};
+    MqlTradeResult res = {};
+
+    req.action = TRADE_ACTION_DEAL;
+    req.symbol = symbol;
+    req.volume = volume; // WIN: volume em lotes inteiros
+    req.type = (type == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
+    req.price = price;
+    req.deviation = 10;
+    req.comment = "Partial Close";
+
+    if (!OrderSend(req, res))
+    {
+        PrintFormat("Partial close failed: %d", _LastError);
+        return false;
+    }
+
+    return (res.retcode == TRADE_RETCODE_DONE);
+}
+
+//+------------------------------------------------------------------+
+//| Utility functions for SL validation                              |
+//+------------------------------------------------------------------+
+double COrderManager::MinDistPts(string symbol)
+{
+    int stops_lvl = (int)SymbolInfoInteger(symbol, SYMBOL_TRADE_STOPS_LEVEL);
+    int freeze_lvl = (int)SymbolInfoInteger(symbol, SYMBOL_TRADE_FREEZE_LEVEL);
+    return (double)MathMax(stops_lvl, freeze_lvl);
+}
+
+double COrderManager::ToTick(string symbol, double price)
+{
+    double tick_size = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+    return MathRound(price / tick_size) * tick_size;
+}
+
+bool COrderManager::BuildValidSL(string symbol, bool is_buy, double &sl_target)
+{
+    double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
+    double tick_size = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+    int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+
+    double bid = SymbolInfoDouble(symbol, SYMBOL_BID);
+    double ask = SymbolInfoDouble(symbol, SYMBOL_ASK);
+    double min_dist = MinDistPts(symbol) * point;
+
+    if(is_buy)
+    {
+        double max_sl = bid - min_dist;
+        if(sl_target >= max_sl)
+            sl_target = max_sl - tick_size;
+    }
+    else
+    {
+        double min_sl = ask + min_dist;
+        if(sl_target <= min_sl)
+            sl_target = min_sl + tick_size;
+    }
+
+    sl_target = ToTick(symbol, NormalizeDouble(sl_target, digits));
+
+    if(is_buy)  return (sl_target < bid - min_dist);
+    else        return (sl_target > ask + min_dist);
+}
+
+//+------------------------------------------------------------------+
+//| Advanced trailing calculations                                   |
+//+------------------------------------------------------------------+
+double COrderManager::CalculateATR(string symbol, int period, int shift = 0)
+{
+    double atr_values[];
+    ArraySetAsSeries(atr_values, true);
+
+    if(CopyBuffer(iATR(symbol, PERIOD_CURRENT, period), 0, shift, 1, atr_values) <= 0)
+        return 0.0;
+
+    return atr_values[0];
+}
+
+double COrderManager::CalculateSwingHigh(string symbol, int lookback, int shift = 0)
+{
+    double highs[];
+    ArraySetAsSeries(highs, true);
+
+    if(CopyHigh(symbol, PERIOD_CURRENT, shift, lookback, highs) <= 0)
+        return 0.0;
+
+    double swing_high = highs[0];
+    for(int i = 1; i < lookback; i++)
+        swing_high = MathMax(swing_high, highs[i]);
+
+    return swing_high;
+}
+
+double COrderManager::CalculateSwingLow(string symbol, int lookback, int shift = 0)
+{
+    double lows[];
+    ArraySetAsSeries(lows, true);
+
+    if(CopyLow(symbol, PERIOD_CURRENT, shift, lookback, lows) <= 0)
+        return 0.0;
+
+    double swing_low = lows[0];
+    for(int i = 1; i < lookback; i++)
+        swing_low = MathMin(swing_low, lows[i]);
+
+    return swing_low;
+}
+
+double COrderManager::CalculateChandelierSL(string symbol, bool is_buy, int atr_period, double atr_mult, int swing_lookback)
+{
+    double atr = CalculateATR(symbol, atr_period);
+    if(atr <= 0) return 0.0;
+
+    double chandelier_sl;
+    if(is_buy)
+    {
+        double swing_high = CalculateSwingHigh(symbol, swing_lookback);
+        chandelier_sl = swing_high - (atr * atr_mult);
+    }
+    else
+    {
+        double swing_low = CalculateSwingLow(symbol, swing_lookback);
+        chandelier_sl = swing_low + (atr * atr_mult);
+    }
+
+    return chandelier_sl;
 }
 
 //+------------------------------------------------------------------+
@@ -577,68 +783,74 @@ void COrderManager::ApplyTrailingStop(SOrderPositionInfo &position)
 
     if (m_default_config.enable_trailing_stop && m_default_config.trailing_mode == TRAILING_FIXED)
     {
-        // Exige BE acionado + buffer pós-BE
+        // Cooldown após BE ou parcial
+        datetime last_action = MathMax(position.breakeven_level > 0 ? position.last_update : 0,
+                                      position.partials_closed[0] || position.partials_closed[1] || position.partials_closed[2] ? position.last_update : 0);
+
+        if(last_action > 0 && (TimeCurrent() - last_action) < m_default_config.m_trail_cooldown_sec)
+            return; // ainda em cooldown
+
+        // Exige gap mínimo para iniciar trailing
         double profit_pts = (position.order_type == ORDER_BUY)
             ? (position.current_price - position.entry_price) / point
             : (position.entry_price - position.current_price) / point;
 
-        double start_pts = m_default_config.breakeven_trigger_points
-                         + m_default_config.trailing_start_buffer_points; // ex.: 150
+        if (profit_pts < m_default_config.m_trail_offset_pts)
+            return; // gap insuficiente
 
-        if (profit_pts < start_pts)
-            return; // ainda não traila
+        // Trailing elástico: Chandelier + Swing
+        bool is_buy = (position.order_type == ORDER_BUY);
+        double chandelier_sl = CalculateChandelierSL(position.symbol, is_buy,
+                                                    m_default_config.m_atr_period,
+                                                    m_default_config.m_atr_mult,
+                                                    m_default_config.m_swing_lookback);
 
-        // Nível alvo do SL pelo trailing
-        double trail_sl = (position.order_type == ORDER_BUY)
-            ? (position.current_price - m_default_config.trailing_distance_points * point)
-            : (position.current_price + m_default_config.trailing_distance_points * point);
-
-        // Histerese (step mínimo) em pontos
-        double min_imp = m_default_config.minimum_improvement_points * point;
+        if(chandelier_sl <= 0) return; // erro no cálculo
 
         // Piso do BE: nunca permitir que o trailing reduza abaixo do BE travado
         double be_floor = (position.order_type == ORDER_BUY)
-            ? (position.entry_price + m_default_config.breakeven_level_points * point)
-            : (position.entry_price - m_default_config.breakeven_level_points * point);
+            ? (position.entry_price + m_default_config.m_be_offset_pts * point)
+            : (position.entry_price - m_default_config.m_be_offset_pts * point);
 
-        if (position.order_type == ORDER_BUY)
+        // Aplicar piso
+        if(position.order_type == ORDER_BUY)
+            chandelier_sl = MathMax(chandelier_sl, be_floor);
+        else
+            chandelier_sl = MathMin(chandelier_sl, be_floor);
+
+        // Histerese: só move se avanço ≥ m_trail_step_pts
+        double min_step = m_default_config.m_trail_step_pts * point;
+        bool should_move = false;
+
+        if(position.order_type == ORDER_BUY)
         {
-            trail_sl = MathMax(trail_sl, be_floor);
-            if (position.stop_loss == 0 || trail_sl > position.stop_loss + min_imp)
-            {
-                double tick_size = SymbolInfoDouble(position.symbol, SYMBOL_TRADE_TICK_SIZE);
-                int digits = (int)SymbolInfoInteger(position.symbol, SYMBOL_DIGITS);
-                trail_sl = NormalizeDouble(MathRound(trail_sl / tick_size) * tick_size, digits);
+            if(position.stop_loss == 0 || chandelier_sl > position.stop_loss + min_step)
+                should_move = true;
+        }
+        else
+        {
+            if(position.stop_loss == 0 || chandelier_sl < position.stop_loss - min_step)
+                should_move = true;
+        }
 
-                if (ModifyPositionStopLoss(position.ticket, trail_sl))
+        if(should_move)
+        {
+            if (BuildValidSL(position.symbol, is_buy, chandelier_sl))
+            {
+                if (ModifyPositionStopLoss(position.ticket, chandelier_sl))
                 {
-                    position.stop_loss = trail_sl;
-                    position.trailing_stop_level = trail_sl;
-                    Print("✓ Trailing: Ticket=", position.ticket,
-                          " NovoSL=", trail_sl,
-                          " Dist=", (int)((position.current_price - trail_sl) / point), " pts",
+                    position.stop_loss = chandelier_sl;
+                    position.trailing_stop_level = chandelier_sl;
+                    Print("✓ Trailing Elástico: Ticket=", position.ticket,
+                          " NovoSL=", chandelier_sl,
+                          " Chandelier=", chandelier_sl,
                           " Lucro=", (int)profit_pts, " pts");
                 }
             }
-        }
-        else // SELL
-        {
-            trail_sl = MathMin(trail_sl, be_floor);
-            if (position.stop_loss == 0 || trail_sl < position.stop_loss - min_imp)
+            else
             {
-                double tick_size = SymbolInfoDouble(position.symbol, SYMBOL_TRADE_TICK_SIZE);
-                int digits = (int)SymbolInfoInteger(position.symbol, SYMBOL_DIGITS);
-                trail_sl = NormalizeDouble(MathRound(trail_sl / tick_size) * tick_size, digits);
-
-                if (ModifyPositionStopLoss(position.ticket, trail_sl))
-                {
-                    position.stop_loss = trail_sl;
-                    position.trailing_stop_level = trail_sl;
-                    Print("✓ Trailing: Ticket=", position.ticket,
-                          " NovoSL=", trail_sl,
-                          " Dist=", (int)((trail_sl - position.current_price) / point), " pts",
-                          " Lucro=", (int)profit_pts, " pts");
-                }
+                Print("⚠ Trailing cancelado - SL inválido: Ticket=", position.ticket,
+                      " Chandelier=", chandelier_sl, " Profit=", (int)profit_pts, " pts");
             }
         }
     }
@@ -688,7 +900,16 @@ bool COrderManager::ModifyPositionStopLoss(ulong ticket, double new_stop_loss)
 
     if (result.retcode != TRADE_RETCODE_DONE)
     {
+        // Detailed logging for debugging
+        double bid = SymbolInfoDouble(symbol, SYMBOL_BID);
+        double ask = SymbolInfoDouble(symbol, SYMBOL_ASK);
+        int stops_lvl = (int)SymbolInfoInteger(symbol, SYMBOL_TRADE_STOPS_LEVEL);
+        int freeze_lvl = (int)SymbolInfoInteger(symbol, SYMBOL_TRADE_FREEZE_LEVEL);
+        double tick_size = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+
         Print("ModifyPositionStopLoss: Failed with retcode ", result.retcode, " for ticket ", ticket);
+        Print("  Debug Info: Bid=", bid, " Ask=", ask, " StopsLevel=", stops_lvl,
+              " FreezeLevel=", freeze_lvl, " TickSize=", tick_size, " SL_Target=", new_stop_loss);
         return false;
     }
 
