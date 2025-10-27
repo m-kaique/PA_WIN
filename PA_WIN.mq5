@@ -12,9 +12,13 @@
 #include "config_manager/config_manager.mqh"
 #include "provider/provider.mqh"
 #include "utils/tester_qol.mqh"
+#include "ORDER_MANAGER/order_manager.mqh"
 
 // Gerenciador de configuração
 CConfigManager *g_config_manager;
+
+// Gerenciador de ordens
+COrderManager *g_order_manager;
 
 // Parâmetros de entrada
 input string JsonConfigFile = "config.json"; // Nome do arquivo JSON
@@ -37,6 +41,27 @@ int OnInit()
    if (g_config_manager == NULL)
    {
       Print("ERRO: Falha ao criar ConfigManager");
+      return INIT_FAILED;
+   }
+
+   // Criar gerenciador de ordens
+   g_order_manager = new COrderManager();
+   if (g_order_manager == NULL)
+   {
+      Print("ERRO: Falha ao criar OrderManager");
+      delete g_config_manager;
+      g_config_manager = NULL;
+      return INIT_FAILED;
+   }
+
+   // Inicializar gerenciador de ordens
+   if (!g_order_manager.Init())
+   {
+      Print("ERRO: Falha ao inicializar OrderManager");
+      delete g_order_manager;
+      g_order_manager = NULL;
+      delete g_config_manager;
+      g_config_manager = NULL;
       return INIT_FAILED;
    }
 
@@ -145,6 +170,14 @@ void OnDeinit(const int reason)
    Print("=== INICIANDO DEINICIALIZAÇÃO ===");
    Print("Motivo: ", reason);
 
+   // Limpar gerenciador de ordens
+   if (g_order_manager != NULL)
+   {
+      Print("Limpando OrderManager...");
+      delete g_order_manager;
+      g_order_manager = NULL;
+   }
+
    // Limpar gerenciador de configuração
    if (g_config_manager != NULL)
    {
@@ -197,16 +230,24 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick()
 {
+    // Verificar se os gerenciadores estão inicializados
+    if (g_config_manager == NULL || !g_config_manager.IsInitialized())
+    {
+       Print("ERRO: ConfigManager não está inicializado");
+       return;
+    }
 
-   // Verificar se o gerenciador está inicializado
-   if (g_config_manager == NULL || !g_config_manager.IsInitialized())
-   {
-      Print("ERRO: ConfigManager não está inicializado");
-      return;
-   }
+    if (g_order_manager == NULL)
+    {
+       Print("ERRO: OrderManager não está inicializado");
+       return;
+    }
 
-   // Executar lógica apenas em novos candles
-   ExecuteOnNewBar();
+    // Executar lógica apenas em novos candles
+    ExecuteOnNewBar();
+
+    // Atualizar posições (breakeven, trailing stop)
+    g_order_manager.UpdatePositions();
 }
 
 //+------------------------------------------------------------------+
@@ -271,10 +312,31 @@ void UpdateSymbolContexts(string symbol)
                {
                   if (strategies[k] != NULL && strategies[k].IsTimeframeAuthorizedPublic(tf))
                   {
-                     strategies[k].ShowLog();
+                     // strategies[k].ShowLog();
 
                      ENUM_STRATEGY_STATE state = strategies[k].GetState();
-                     if (state != STRATEGY_IDLE)
+                     if (state == STRATEGY_SIGNAL_FOUND)
+                     {
+                        // Process signal through order manager
+                        SStrategySignal signal = strategies[k].GetLastSignal();
+                        if (g_order_manager.ProcessSignal(signal, strategies[k].GetName(), symbol, tf))
+                        {
+                           strategies[k].SetState(STRATEGY_POSITION_OPEN);
+                        }
+                        else
+                        {
+                           strategies[k].SetState(STRATEGY_IDLE);
+                        }
+                     }
+                     else if (state == STRATEGY_POSITION_OPEN)
+                     {
+                        // Check if position is still active
+                        if (!g_order_manager.HasActivePosition(strategies[k].GetName()))
+                        {
+                           strategies[k].SetState(STRATEGY_IDLE);
+                        }
+                     }
+                     else if (state != STRATEGY_IDLE)
                      {
                         strategies[k].SetState(STRATEGY_IDLE);
                      }
