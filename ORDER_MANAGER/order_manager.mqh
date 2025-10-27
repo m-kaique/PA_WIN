@@ -420,7 +420,7 @@ bool COrderManager::OpenMarketOrder(const SStrategySignal &signal, string strate
     else
         Print("  Take Profit: SEM TP - Trailing apenas");
     Print("  Breakeven: ", (position_info.breakeven_enabled ? "ATIVO (100 pts)" : "INATIVO"));
-    Print("  Trailing: ", (position_info.trailing_enabled ? "ATIVO (20 pts)" : "INATIVO"));
+    Print("  Trailing: ", (position_info.trailing_enabled ? "ATIVO (" + IntegerToString((int)m_default_config.trailing_distance_points) + " pts)" : "INATIVO"));
     Print("══════════════════════════════════════");
 
     return true;
@@ -434,56 +434,86 @@ bool COrderManager::CalculateOrderParameters(const SStrategySignal &signal, stri
     double min_volume = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
     double max_volume = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
     double volume_step = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
-    
+
     // Volume fixo - 1 contrato
     lot_size = min_volume;
     lot_size = MathFloor(lot_size / volume_step) * volume_step;
     lot_size = MathMax(min_volume, MathMin(lot_size, max_volume));
 
-    double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
-    double tick_size = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
-    int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
-    
-    // Distância do SL em pontos
-    double stop_loss_distance = m_default_config.stop_loss_pips * point * 10;
-    
-    // Calcular Stop Loss
-    if (signal.type == SIGNAL_BUY)
+    const double point     = SymbolInfoDouble(symbol, SYMBOL_POINT);
+    const int    digits    = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+    const double tick_size = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+    const long   stops_lvl = SymbolInfoInteger(symbol, SYMBOL_TRADE_STOPS_LEVEL);
+    const long   freeze_lv = SymbolInfoInteger(symbol, SYMBOL_TRADE_FREEZE_LEVEL);
+
+    // SL sempre em pontos
+    double sl_price = (signal.type == SIGNAL_BUY)
+        ? signal.entry_price - m_default_config.stop_loss_points * point
+        : signal.entry_price + m_default_config.stop_loss_points * point;
+
+    // snap para o múltiplo de tick
+    if(tick_size > 0.0) sl_price = MathRound(sl_price / tick_size) * tick_size;
+    sl_price = NormalizeDouble(sl_price, digits);
+
+    // Se houver TP > 0, calcula e valida
+    double tp_price = 0.0;
+    if(m_default_config.take_profit_points > 0.0)
     {
-        stop_loss = signal.entry_price - stop_loss_distance;
+        tp_price = (signal.type == SIGNAL_BUY)
+                 ? signal.entry_price + m_default_config.take_profit_points * point
+                 : signal.entry_price - m_default_config.take_profit_points * point;
+        // snap para o múltiplo de tick
+        if(tick_size > 0.0) tp_price = MathRound(tp_price / tick_size) * tick_size;
+        tp_price = NormalizeDouble(tp_price, digits);
     }
+
+    // valida distância mínima exigida
+    double min_dist = (double)stops_lvl * point;
+    double ask = SymbolInfoDouble(symbol, SYMBOL_ASK);
+    double bid = SymbolInfoDouble(symbol, SYMBOL_BID);
+
+    // BUY: SL < bid - min_dist ; TP > ask + min_dist
+    if(signal.type == SIGNAL_BUY)
+    {
+        if(sl_price >= bid - min_dist)
+        {
+            sl_price = bid - min_dist;
+            if(tick_size > 0.0) sl_price = MathRound(sl_price / tick_size) * tick_size;
+            sl_price = NormalizeDouble(sl_price, digits);
+        }
+        if(tp_price > 0.0 && tp_price <= ask + min_dist)
+        {
+            // afasta o TP…
+            tp_price = ask + min_dist;
+            if(tick_size > 0.0) tp_price = MathRound(tp_price / tick_size) * tick_size;
+            tp_price = NormalizeDouble(tp_price, digits);
+        }
+    }
+    // SELL: SL > ask + min_dist ; TP < bid - min_dist
     else
     {
-        stop_loss = signal.entry_price + stop_loss_distance;
+        if(sl_price <= ask + min_dist)
+        {
+            sl_price = ask + min_dist;
+            if(tick_size > 0.0) sl_price = MathRound(sl_price / tick_size) * tick_size;
+            sl_price = NormalizeDouble(sl_price, digits);
+        }
+        if(tp_price > 0.0 && tp_price >= bid - min_dist)
+        {
+            // afasta…
+            tp_price = bid - min_dist;
+            if(tick_size > 0.0) tp_price = MathRound(tp_price / tick_size) * tick_size;
+            tp_price = NormalizeDouble(tp_price, digits);
+        }
     }
-    
-    // Normalizar SL ao tick size
-    stop_loss = NormalizeDouble(MathRound(stop_loss / tick_size) * tick_size, digits);
-    
-    // Take Profit: se for 0, não define TP (deixa rolar com trailing)
-    if (m_default_config.take_profit_points > 0)
-    {
-        double take_profit_distance = m_default_config.take_profit_points * point;
-        
-        if (signal.type == SIGNAL_BUY)
-            take_profit = signal.entry_price + take_profit_distance;
-        else
-            take_profit = signal.entry_price - take_profit_distance;
-            
-        take_profit = NormalizeDouble(MathRound(take_profit / tick_size) * tick_size, digits);
-        
-        Print("Order params: Vol=", lot_size, " Entry=", signal.entry_price, 
-              " SL=", stop_loss, " (", (int)(stop_loss_distance/point), " pts)",
-              " TP=", take_profit, " (", (int)(MathAbs(take_profit - signal.entry_price)/point), " pts)");
-    }
-    else
-    {
-        take_profit = 0.0; // SEM TP - deixa rolar com trailing
-        
-        Print("Order params: Vol=", lot_size, " Entry=", signal.entry_price, 
-              " SL=", stop_loss, " (", (int)(stop_loss_distance/point), " pts)",
-              " TP=SEM (Trailing apenas)");
-    }
+
+    stop_loss = sl_price;
+    take_profit = tp_price;
+
+    // Log para diagnóstico
+    PrintFormat("Order params: entry=%.0f sl=%.0f tp=%s stops_level=%ld freeze_level=%ld tick_size=%.0f",
+                signal.entry_price, sl_price, (tp_price>0?DoubleToString(tp_price,0):"0"),
+                stops_lvl, freeze_lv, tick_size);
 
     return true;
 }
@@ -502,49 +532,32 @@ void COrderManager::ApplyBreakeven(SOrderPositionInfo &position)
     if (!PositionSelectByTicket(position.ticket))
         return;
 
-    double current_price = position.current_price;
-    double entry_price = position.entry_price;
-    double current_stop = position.stop_loss;
-    
     double point = SymbolInfoDouble(position.symbol, SYMBOL_POINT);
-    
-    double breakeven_trigger = m_default_config.breakeven_trigger_points * point;
-    double breakeven_level = m_default_config.breakeven_level_points * point;
 
-    double new_stop_loss = 0.0;
-    double profit_points = 0.0;
+    // Lucro atual em pontos
+    double profit_pts = (position.order_type == ORDER_BUY)
+        ? (position.current_price - position.entry_price) / point
+        : (position.entry_price - position.current_price) / point;
 
-    if (position.order_type == ORDER_BUY)
+    // Aciona BE ao atingir gatilho
+    if (m_default_config.enable_breakeven &&
+        profit_pts >= m_default_config.breakeven_trigger_points)
     {
-        profit_points = (current_price - entry_price) / point;
-        
-        if (profit_points >= m_default_config.breakeven_trigger_points && 
-            current_stop < entry_price + breakeven_level)
-        {
-            new_stop_loss = entry_price + breakeven_level;
-            Print("BUY - Lucro: ", (int)profit_points, " pts. Movendo para breakeven.");
-        }
-    }
-    else
-    {
-        profit_points = (entry_price - current_price) / point;
-        
-        if (profit_points >= m_default_config.breakeven_trigger_points && 
-            current_stop > entry_price - breakeven_level)
-        {
-            new_stop_loss = entry_price - breakeven_level;
-            Print("SELL - Lucro: ", (int)profit_points, " pts. Movendo para breakeven.");
-        }
-    }
+        double new_sl = (position.order_type == ORDER_BUY)
+            ? position.entry_price + m_default_config.breakeven_level_points * point
+            : position.entry_price - m_default_config.breakeven_level_points * point;
 
-    if (new_stop_loss != 0.0 && new_stop_loss != current_stop)
-    {
-        if (ModifyPositionStopLoss(position.ticket, new_stop_loss))
+        // Só eleva (BUY) / só abaixa (SELL)
+        if ((position.order_type == ORDER_BUY && (position.stop_loss == 0 || new_sl > position.stop_loss)) ||
+            (position.order_type == ORDER_SELL && (position.stop_loss == 0 || new_sl < position.stop_loss)))
         {
-            position.stop_loss = new_stop_loss;
-            position.breakeven_level = new_stop_loss;
-            Print("✓ Breakeven aplicado: Ticket=", position.ticket, 
-                  " NovoSL=", new_stop_loss, " (+", (int)profit_points, " pts)");
+            if (ModifyPositionStopLoss(position.ticket, new_sl))
+            {
+                position.stop_loss = new_sl;
+                position.breakeven_level = new_sl;
+                Print("✓ Breakeven aplicado: Ticket=", position.ticket,
+                      " NovoSL=", new_sl, " (+", (int)profit_pts, " pts)");
+            }
         }
     }
 }
@@ -560,63 +573,73 @@ void COrderManager::ApplyTrailingStop(SOrderPositionInfo &position)
     if (!PositionSelectByTicket(position.ticket))
         return;
 
-    double current_price = position.current_price;
-    double current_stop = position.stop_loss;
     double point = SymbolInfoDouble(position.symbol, SYMBOL_POINT);
-    
-    // Distância fixa de 20 pontos
-    double trail_distance = m_default_config.trailing_distance_points * point;
 
-    double new_stop_loss = 0.0;
-    double profit_points = 0.0;
-
-    if (position.order_type == ORDER_BUY)
+    if (m_default_config.enable_trailing_stop && m_default_config.trailing_mode == TRAILING_FIXED)
     {
-        profit_points = (current_price - position.entry_price) / point;
-        double trail_level = current_price - trail_distance;
-        
-        // CORREÇÃO: só move se o novo stop for pelo menos X pontos melhor que o atual
-        // Isso evita saltos grandes logo após o breakeven
-        double minimum_improvement = 10.0 * point; // Melhoria mínima de 10 pontos
-        
-        if (trail_level > (current_stop + minimum_improvement))
+        // Exige BE acionado + buffer pós-BE
+        double profit_pts = (position.order_type == ORDER_BUY)
+            ? (position.current_price - position.entry_price) / point
+            : (position.entry_price - position.current_price) / point;
+
+        double start_pts = m_default_config.breakeven_trigger_points
+                         + m_default_config.trailing_start_buffer_points; // ex.: 150
+
+        if (profit_pts < start_pts)
+            return; // ainda não traila
+
+        // Nível alvo do SL pelo trailing
+        double trail_sl = (position.order_type == ORDER_BUY)
+            ? (position.current_price - m_default_config.trailing_distance_points * point)
+            : (position.current_price + m_default_config.trailing_distance_points * point);
+
+        // Histerese (step mínimo) em pontos
+        double min_imp = m_default_config.minimum_improvement_points * point;
+
+        // Piso do BE: nunca permitir que o trailing reduza abaixo do BE travado
+        double be_floor = (position.order_type == ORDER_BUY)
+            ? (position.entry_price + m_default_config.breakeven_level_points * point)
+            : (position.entry_price - m_default_config.breakeven_level_points * point);
+
+        if (position.order_type == ORDER_BUY)
         {
-            new_stop_loss = trail_level;
+            trail_sl = MathMax(trail_sl, be_floor);
+            if (position.stop_loss == 0 || trail_sl > position.stop_loss + min_imp)
+            {
+                double tick_size = SymbolInfoDouble(position.symbol, SYMBOL_TRADE_TICK_SIZE);
+                int digits = (int)SymbolInfoInteger(position.symbol, SYMBOL_DIGITS);
+                trail_sl = NormalizeDouble(MathRound(trail_sl / tick_size) * tick_size, digits);
+
+                if (ModifyPositionStopLoss(position.ticket, trail_sl))
+                {
+                    position.stop_loss = trail_sl;
+                    position.trailing_stop_level = trail_sl;
+                    Print("✓ Trailing: Ticket=", position.ticket,
+                          " NovoSL=", trail_sl,
+                          " Dist=", (int)((position.current_price - trail_sl) / point), " pts",
+                          " Lucro=", (int)profit_pts, " pts");
+                }
+            }
         }
-    }
-    else
-    {
-        profit_points = (position.entry_price - current_price) / point;
-        double trail_level = current_price + trail_distance;
-        
-        double minimum_improvement = 10.0 * point;
-        
-        if (trail_level < (current_stop - minimum_improvement))
+        else // SELL
         {
-            new_stop_loss = trail_level;
-        }
-    }
+            trail_sl = MathMin(trail_sl, be_floor);
+            if (position.stop_loss == 0 || trail_sl < position.stop_loss - min_imp)
+            {
+                double tick_size = SymbolInfoDouble(position.symbol, SYMBOL_TRADE_TICK_SIZE);
+                int digits = (int)SymbolInfoInteger(position.symbol, SYMBOL_DIGITS);
+                trail_sl = NormalizeDouble(MathRound(trail_sl / tick_size) * tick_size, digits);
 
-    if (new_stop_loss != 0.0 && new_stop_loss != current_stop)
-    {
-        double tick_size = SymbolInfoDouble(position.symbol, SYMBOL_TRADE_TICK_SIZE);
-        int digits = (int)SymbolInfoInteger(position.symbol, SYMBOL_DIGITS);
-        new_stop_loss = NormalizeDouble(MathRound(new_stop_loss / tick_size) * tick_size, digits);
-        
-        if (ModifyPositionStopLoss(position.ticket, new_stop_loss))
-        {
-            double stop_distance = 0.0;
-            if (position.order_type == ORDER_BUY)
-                stop_distance = (current_price - new_stop_loss) / point;
-            else
-                stop_distance = (new_stop_loss - current_price) / point;
-                
-            position.stop_loss = new_stop_loss;
-            position.trailing_stop_level = new_stop_loss;
-            Print("✓ Trailing: Ticket=", position.ticket, 
-                  " NovoSL=", new_stop_loss, 
-                  " Dist=", (int)stop_distance, " pts",
-                  " Lucro=", (int)profit_points, " pts");
+                if (ModifyPositionStopLoss(position.ticket, trail_sl))
+                {
+                    position.stop_loss = trail_sl;
+                    position.trailing_stop_level = trail_sl;
+                    Print("✓ Trailing: Ticket=", position.ticket,
+                          " NovoSL=", trail_sl,
+                          " Dist=", (int)((trail_sl - position.current_price) / point), " pts",
+                          " Lucro=", (int)profit_pts, " pts");
+                }
+            }
         }
     }
 }

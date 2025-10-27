@@ -80,26 +80,38 @@ struct SOrderPositionInfo
 struct SOrderConfig
 {
     double risk_percent;
-    double stop_loss_pips;
-    double take_profit_points;        // TP em pontos absolutos
-    bool enable_breakeven;
-    bool enable_trailing_stop;
+    // Campos obrigatórios em pontos:
+    double stop_loss_points;          // SL sempre em pontos
+    double take_profit_points;        // TP em pontos (0 = sem TP)
+    bool   enable_breakeven;
+    bool   enable_trailing_stop;
     ENUM_TRAILING_MODE trailing_mode;
-    double trailing_distance_points;  // Trailing em pontos
-    double breakeven_trigger_points;  // Trigger do BE em pontos
-    double breakeven_level_points;    // Nível do BE em pontos
+    double breakeven_trigger_points;  // quando lucro >= X, aplicar BE
+    double breakeven_level_points;    // quanto travar a favor após BE
+    double trailing_distance_points;  // distância fixa do preço
+    double minimum_improvement_points;      // histerese do trailing
+    double trailing_start_buffer_points;    // buffer pós-BE p/ iniciar trailing
 
     void Reset()
     {
-        risk_percent = 1.0;
-        stop_loss_pips = 25.0;           // SL em 25 pips (250 pontos)
-        take_profit_points = 0.0;        // SEM TP - deixa rolar com trailing
-        enable_breakeven = true;
-        enable_trailing_stop = true;
-        trailing_mode = TRAILING_FIXED;
-        trailing_distance_points = 250.0; // Trailing a cada 20 pontos
-        breakeven_trigger_points = 100.0; // Trigger aos 100 pontos de lucro
-        breakeven_level_points = 5.0;    // Move SL para +5 pontos
+        risk_percent                   = 1.0;
+
+        // 100% em PONTOS
+        stop_loss_points               = 250.0;
+        take_profit_points             = 0.0;    // SEM TP
+
+        enable_breakeven               = true;
+        enable_trailing_stop           = true;
+        trailing_mode                  = TRAILING_FIXED;
+
+        // Defaults acordados
+        breakeven_trigger_points       = 100.0;  // aciona BE ao ganhar 100
+        breakeven_level_points         = 80.0;   // trava +80 após BE
+        trailing_distance_points       = 100.0;  // distância do SL ao preço
+
+        // Histerese e buffer em pontos
+        minimum_improvement_points     = 0.5 * trailing_distance_points; // 50
+        trailing_start_buffer_points   = 0.5 * trailing_distance_points; // 50
     }
 };
 
