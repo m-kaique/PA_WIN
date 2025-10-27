@@ -72,6 +72,7 @@ protected:
    virtual SStrategySignal CheckForSignal() override;
    virtual bool ValidateSignal(const SStrategySignal &signal) override;
    virtual void DoLog() override;
+   virtual void ConfigureOrderSettings(SOrderManagerSettings &settings) override;
 
 public:
    CEmasBuyBull(IContextProvider *context_provider = NULL);
@@ -2038,6 +2039,36 @@ bool CEmasBuyBull::DoOperatingHoursCheck()
 CStrategyConfig *CEmasBuyBull::GetStrategyConfig()
 {
    return &m_config;
+}
+
+void CEmasBuyBull::ConfigureOrderSettings(SOrderManagerSettings &settings)
+{
+   CStrategyBase::ConfigureOrderSettings(settings);
+
+   string symbol = (m_current_symbol != "") ? m_current_symbol : m_symbol;
+   int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+   double pip_factor = (digits == 3 || digits == 5) ? 10.0 : 1.0;
+
+   settings.risk_percent = m_config.risk_percent;
+   settings.min_stop_loss_points = MathMax(10.0, m_config.stop_loss_pips * pip_factor);
+   settings.max_stop_loss_points = settings.min_stop_loss_points * 4.0;
+   settings.break_even_trigger_points = settings.min_stop_loss_points;
+   settings.break_even_offset_points = pip_factor * 5.0;
+   settings.enable_break_even = true;
+   settings.enable_trailing_stop = true;
+   settings.atr_period = 14;
+   settings.atr_multiplier = 2.0;
+   settings.atr_timeframe = PERIOD_M15;
+   settings.enable_partial_closes = true;
+   settings.max_total_risk_percent = MathMax(settings.risk_percent * 3.0, settings.risk_percent + 1.0);
+   settings.minimum_partial_volume = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
+
+   ArrayResize(settings.partial_close_levels_points, 2);
+   ArrayResize(settings.partial_close_percents, 2);
+   settings.partial_close_levels_points[0] = settings.min_stop_loss_points;
+   settings.partial_close_levels_points[1] = settings.min_stop_loss_points * 2.0;
+   settings.partial_close_percents[0] = 0.5;
+   settings.partial_close_percents[1] = 0.25;
 }
 
 #endif
