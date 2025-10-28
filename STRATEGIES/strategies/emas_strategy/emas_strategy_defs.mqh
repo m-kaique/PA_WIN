@@ -92,70 +92,93 @@ struct SStrongTrendADX:SStratedyBassicData
 //+------------------------------------------------------------------+
 struct SBollingerStructure:SStratedyBassicData
 {
-    // Dados de entrada
-    double upper_band_value;
-    double lower_band_value;
-    double boll_width;
+     // Dados de entrada
+     double upper_band_value;
+     double lower_band_value;
+     double boll_width;
 
-    // Configuração de largura
-    double valid_min_width;
-    double valid_max_width;
-    bool width_in_range;
+     // Configuração de largura
+     double valid_min_width;
+     double valid_max_width;
+     bool width_in_range;
 
-    bool contracting_upper;
-    bool contracting_lower;
-    bool is_contracting;
+     bool contracting_upper;
+     bool contracting_lower;
+     bool is_contracting;
 
-    // Micro inclinação banda superior
-    double upper_lr_min;
-    double upper_dd_min;
-    double upper_sd_min;
-    bool upper_is_sidewalk;
-    bool upper_lr_ok;
-    bool upper_dd_ok;
-    bool upper_sd_ok;
-    bool upper_micro_ok;
+     // Micro inclinação banda superior
+     double upper_lr_min;
+     double upper_dd_min;
+     double upper_sd_min;
+     bool upper_is_sidewalk;
+     bool upper_lr_ok;
+     bool upper_dd_ok;
+     bool upper_sd_ok;
+     bool upper_micro_ok;
 
-    // Validação banda inferior
-    double lower_lr_abs_max;
-    double lower_dd_abs_max;
-    double lower_sd_abs_max;
-    bool lower_is_sidewalk;
-    bool lower_lr_invalid;
-    bool lower_dd_invalid;
-    bool lower_sd_invalid;
-    bool lower_sidewalk_invalid;
+     // Validação banda inferior
+     double lower_lr_abs_max;
+     double lower_dd_abs_max;
+     double lower_sd_abs_max;
+     bool lower_is_sidewalk;
+     bool lower_lr_invalid;
+     bool lower_dd_invalid;
+     bool lower_sd_invalid;
+     bool lower_sidewalk_invalid;
 
-    void Reset()
-    {
-       ResetBase();  // Reseta propriedades da base
-       upper_band_value = 0.0;
-       lower_band_value = 0.0;
-       boll_width = 0.0;
-       valid_min_width = 0.0;
-       valid_max_width = 0.0;
-       width_in_range = false;
-       contracting_upper = false;
-       contracting_lower = false;
-       is_contracting = false;
-       upper_lr_min = 0.0;
-       upper_dd_min = 0.0;
-       upper_sd_min = 0.0;
-       upper_is_sidewalk = false;
-       upper_lr_ok = false;
-       upper_dd_ok = false;
-       upper_sd_ok = false;
-       upper_micro_ok = false;
-       lower_lr_abs_max = 0.0;
-       lower_dd_abs_max = 0.0;
-       lower_sd_abs_max = 0.0;
-       lower_is_sidewalk = false;
-       lower_lr_invalid = false;
-       lower_dd_invalid = false;
-       lower_sd_invalid = false;
-       lower_sidewalk_invalid = false;
-       validation_result = width_in_range && !is_contracting && upper_micro_ok && !lower_sidewalk_invalid;
-    }
+     // NOVO: Valores dos slopes das bandas
+     double upper_simple_difference_slope;
+     double upper_discrete_derivative_slope;
+     double upper_linear_regression_slope;
+     double middle_simple_difference_slope;
+     double middle_discrete_derivative_slope;
+     double middle_linear_regression_slope;
+     double lower_simple_difference_slope;
+     double lower_discrete_derivative_slope;
+     double lower_linear_regression_slope;
+
+     void Reset()
+     {
+        ResetBase();  // Reseta propriedades da base
+        upper_band_value = 0.0;
+        lower_band_value = 0.0;
+        boll_width = 0.0;
+        valid_min_width = 0.0;
+        valid_max_width = 0.0;
+        width_in_range = false;
+        contracting_upper = false;
+        contracting_lower = false;
+        is_contracting = false;
+        upper_lr_min = 0.0;
+        upper_dd_min = 0.0;
+        upper_sd_min = 0.0;
+        upper_is_sidewalk = false;
+        upper_lr_ok = false;
+        upper_dd_ok = false;
+        upper_sd_ok = false;
+        upper_micro_ok = false;
+        lower_lr_abs_max = 0.0;
+        lower_dd_abs_max = 0.0;
+        lower_sd_abs_max = 0.0;
+        lower_is_sidewalk = false;
+        lower_lr_invalid = false;
+        lower_dd_invalid = false;
+        lower_sd_invalid = false;
+        lower_sidewalk_invalid = false;
+
+        // NOVO: Reset dos slopes
+        upper_simple_difference_slope = 0.0;
+        upper_discrete_derivative_slope = 0.0;
+        upper_linear_regression_slope = 0.0;
+        middle_simple_difference_slope = 0.0;
+        middle_discrete_derivative_slope = 0.0;
+        middle_linear_regression_slope = 0.0;
+        lower_simple_difference_slope = 0.0;
+        lower_discrete_derivative_slope = 0.0;
+        lower_linear_regression_slope = 0.0;
+
+        validation_result = width_in_range && !is_contracting && upper_micro_ok && !lower_sidewalk_invalid;
+     }
 };
 
 

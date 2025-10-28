@@ -751,6 +751,17 @@ SBollingerStructure CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
     SSlopeValidation slope_middle = boll_ind.GetSlopeValidation(data.atr_value, COPY_MIDDLE);
     SSlopeValidation slope_lower = boll_ind.GetSlopeValidation(data.atr_value, COPY_LOWER);
 
+    // NOVO: Armazenar valores dos slopes na estrutura
+    data.upper_simple_difference_slope = slope_upper.simple_difference.slope_value;
+    data.upper_discrete_derivative_slope = slope_upper.discrete_derivative.slope_value;
+    data.upper_linear_regression_slope = slope_upper.linear_regression.slope_value;
+    data.middle_simple_difference_slope = slope_middle.simple_difference.slope_value;
+    data.middle_discrete_derivative_slope = slope_middle.discrete_derivative.slope_value;
+    data.middle_linear_regression_slope = slope_middle.linear_regression.slope_value;
+    data.lower_simple_difference_slope = slope_lower.simple_difference.slope_value;
+    data.lower_discrete_derivative_slope = slope_lower.discrete_derivative.slope_value;
+    data.lower_linear_regression_slope = slope_lower.linear_regression.slope_value;
+
     // ========================================================================
     // CRITÉRIO 2: Não pode estar em contração
     // ========================================================================
@@ -1474,6 +1485,34 @@ void CEmasBuyBull::DoLog()
                      " | SD invalid: ", _bollinger_filter_M3.lower_sd_invalid ? "sim" : "não");
             }
          }
+
+         // NOVO: Exibir valores das bandas e seus slopes
+         Print("Valores das Bandas e Inclinações:");
+         Print("  Banda Superior (", DoubleToString(_bollinger_filter_M3.upper_band_value, _Digits), "):");
+         Print("    └─ Simple Difference: ", DoubleToString(_bollinger_filter_M3.upper_simple_difference_slope, 6),
+               " (min: ", DoubleToString(_bollinger_filter_M3.upper_sd_min, 6), ") ",
+               _bollinger_filter_M3.upper_sd_ok ? "✓" : "✗");
+         Print("    └─ Discrete Derivative: ", DoubleToString(_bollinger_filter_M3.upper_discrete_derivative_slope, 6),
+               " (min: ", DoubleToString(_bollinger_filter_M3.upper_dd_min, 6), ") ",
+               _bollinger_filter_M3.upper_dd_ok ? "✓" : "✗");
+         Print("    └─ Linear Regression: ", DoubleToString(_bollinger_filter_M3.upper_linear_regression_slope, 6),
+               " (min: ", DoubleToString(_bollinger_filter_M3.upper_lr_min, 6), ") ",
+               _bollinger_filter_M3.upper_lr_ok ? "✓" : "✗");
+         Print("  Banda Média (", DoubleToString((_bollinger_filter_M3.upper_band_value + _bollinger_filter_M3.lower_band_value) / 2.0, _Digits), "):");
+         Print("    └─ Simple Difference: ", DoubleToString(_bollinger_filter_M3.middle_simple_difference_slope, 6));
+         Print("    └─ Discrete Derivative: ", DoubleToString(_bollinger_filter_M3.middle_discrete_derivative_slope, 6));
+         Print("    └─ Linear Regression: ", DoubleToString(_bollinger_filter_M3.middle_linear_regression_slope, 6));
+         Print("  Banda Inferior (", DoubleToString(_bollinger_filter_M3.lower_band_value, _Digits), "):");
+         Print("    └─ Simple Difference: ", DoubleToString(_bollinger_filter_M3.lower_simple_difference_slope, 6),
+               " (max abs: ", DoubleToString(_bollinger_filter_M3.lower_sd_abs_max, 6), ") ",
+               !_bollinger_filter_M3.lower_sd_invalid ? "✓" : "✗");
+         Print("    └─ Discrete Derivative: ", DoubleToString(_bollinger_filter_M3.lower_discrete_derivative_slope, 6),
+               " (max abs: ", DoubleToString(_bollinger_filter_M3.lower_dd_abs_max, 6), ") ",
+               !_bollinger_filter_M3.lower_dd_invalid ? "✓" : "✗");
+         Print("    └─ Linear Regression: ", DoubleToString(_bollinger_filter_M3.lower_linear_regression_slope, 6),
+               " (max abs: ", DoubleToString(_bollinger_filter_M3.lower_lr_abs_max, 6), ") ",
+               !_bollinger_filter_M3.lower_lr_invalid ? "✓" : "✗");
+
          Print("Resultado: ", _bollinger_filter_M3.validation_result ? "✅ ESTRUTURA VÁLIDA" : "✗ Estrutura inválida");
          if (_bollinger_filter_M3.fail_message != "")
             Print("Fail Message: ", _bollinger_filter_M3.fail_message);
@@ -1537,6 +1576,34 @@ void CEmasBuyBull::DoLog()
                      " | SD invalid: ", _bollinger_filter_M15.lower_sd_invalid ? "sim" : "não");
             }
          }
+
+         // NOVO: Exibir valores das bandas e seus slopes
+         Print("Valores das Bandas e Inclinações:");
+         Print("  Banda Superior (", DoubleToString(_bollinger_filter_M15.upper_band_value, _Digits), "):");
+         Print("    └─ Simple Difference: ", DoubleToString(_bollinger_filter_M15.upper_simple_difference_slope, 6),
+               " (min: ", DoubleToString(_bollinger_filter_M15.upper_sd_min, 6), ") ",
+               _bollinger_filter_M15.upper_sd_ok ? "✓" : "✗");
+         Print("    └─ Discrete Derivative: ", DoubleToString(_bollinger_filter_M15.upper_discrete_derivative_slope, 6),
+               " (min: ", DoubleToString(_bollinger_filter_M15.upper_dd_min, 6), ") ",
+               _bollinger_filter_M15.upper_dd_ok ? "✓" : "✗");
+         Print("    └─ Linear Regression: ", DoubleToString(_bollinger_filter_M15.upper_linear_regression_slope, 6),
+               " (min: ", DoubleToString(_bollinger_filter_M15.upper_lr_min, 6), ") ",
+               _bollinger_filter_M15.upper_lr_ok ? "✓" : "✗");
+         Print("  Banda Média (", DoubleToString((_bollinger_filter_M15.upper_band_value + _bollinger_filter_M15.lower_band_value) / 2.0, _Digits), "):");
+         Print("    └─ Simple Difference: ", DoubleToString(_bollinger_filter_M15.middle_simple_difference_slope, 6));
+         Print("    └─ Discrete Derivative: ", DoubleToString(_bollinger_filter_M15.middle_discrete_derivative_slope, 6));
+         Print("    └─ Linear Regression: ", DoubleToString(_bollinger_filter_M15.middle_linear_regression_slope, 6));
+         Print("  Banda Inferior (", DoubleToString(_bollinger_filter_M15.lower_band_value, _Digits), "):");
+         Print("    └─ Simple Difference: ", DoubleToString(_bollinger_filter_M15.lower_simple_difference_slope, 6),
+               " (max abs: ", DoubleToString(_bollinger_filter_M15.lower_sd_abs_max, 6), ") ",
+               !_bollinger_filter_M15.lower_sd_invalid ? "✓" : "✗");
+         Print("    └─ Discrete Derivative: ", DoubleToString(_bollinger_filter_M15.lower_discrete_derivative_slope, 6),
+               " (max abs: ", DoubleToString(_bollinger_filter_M15.lower_dd_abs_max, 6), ") ",
+               !_bollinger_filter_M15.lower_dd_invalid ? "✓" : "✗");
+         Print("    └─ Linear Regression: ", DoubleToString(_bollinger_filter_M15.lower_linear_regression_slope, 6),
+               " (max abs: ", DoubleToString(_bollinger_filter_M15.lower_lr_abs_max, 6), ") ",
+               !_bollinger_filter_M15.lower_lr_invalid ? "✓" : "✗");
+
          Print("Resultado: ", _bollinger_filter_M15.validation_result ? "✅ ESTRUTURA VÁLIDA" : "✗ Estrutura inválida");
          if (_bollinger_filter_M15.fail_message != "")
             Print("Fail Message: ", _bollinger_filter_M15.fail_message);
@@ -1590,6 +1657,34 @@ void CEmasBuyBull::DoLog()
          {
             Print("  Sidewalk válido: ", _bollinger_filter_H1.lower_sidewalk_invalid ? "✗" : "✓");
          }
+
+         // NOVO: Exibir valores das bandas e seus slopes
+         Print("Valores das Bandas e Inclinações:");
+         Print("  Banda Superior (", DoubleToString(_bollinger_filter_H1.upper_band_value, _Digits), "):");
+         Print("    └─ Simple Difference: ", DoubleToString(_bollinger_filter_H1.upper_simple_difference_slope, 6),
+               " (min: ", DoubleToString(_bollinger_filter_H1.upper_sd_min, 6), ") ",
+               _bollinger_filter_H1.upper_sd_ok ? "✓" : "✗");
+         Print("    └─ Discrete Derivative: ", DoubleToString(_bollinger_filter_H1.upper_discrete_derivative_slope, 6),
+               " (min: ", DoubleToString(_bollinger_filter_H1.upper_dd_min, 6), ") ",
+               _bollinger_filter_H1.upper_dd_ok ? "✓" : "✗");
+         Print("    └─ Linear Regression: ", DoubleToString(_bollinger_filter_H1.upper_linear_regression_slope, 6),
+               " (min: ", DoubleToString(_bollinger_filter_H1.upper_lr_min, 6), ") ",
+               _bollinger_filter_H1.upper_lr_ok ? "✓" : "✗");
+         Print("  Banda Média (", DoubleToString((_bollinger_filter_H1.upper_band_value + _bollinger_filter_H1.lower_band_value) / 2.0, _Digits), "):");
+         Print("    └─ Simple Difference: ", DoubleToString(_bollinger_filter_H1.middle_simple_difference_slope, 6));
+         Print("    └─ Discrete Derivative: ", DoubleToString(_bollinger_filter_H1.middle_discrete_derivative_slope, 6));
+         Print("    └─ Linear Regression: ", DoubleToString(_bollinger_filter_H1.middle_linear_regression_slope, 6));
+         Print("  Banda Inferior (", DoubleToString(_bollinger_filter_H1.lower_band_value, _Digits), "):");
+         Print("    └─ Simple Difference: ", DoubleToString(_bollinger_filter_H1.lower_simple_difference_slope, 6),
+               " (max abs: ", DoubleToString(_bollinger_filter_H1.lower_sd_abs_max, 6), ") ",
+               !_bollinger_filter_H1.lower_sd_invalid ? "✓" : "✗");
+         Print("    └─ Discrete Derivative: ", DoubleToString(_bollinger_filter_H1.lower_discrete_derivative_slope, 6),
+               " (max abs: ", DoubleToString(_bollinger_filter_H1.lower_dd_abs_max, 6), ") ",
+               !_bollinger_filter_H1.lower_dd_invalid ? "✓" : "✗");
+         Print("    └─ Linear Regression: ", DoubleToString(_bollinger_filter_H1.lower_linear_regression_slope, 6),
+               " (max abs: ", DoubleToString(_bollinger_filter_H1.lower_lr_abs_max, 6), ") ",
+               !_bollinger_filter_H1.lower_lr_invalid ? "✓" : "✗");
+
          Print("Resultado: ", _bollinger_filter_H1.validation_result ? "✅ ESTRUTURA VÁLIDA" : "✗ Estrutura inválida");
          if (_bollinger_filter_H1.fail_message != "")
             Print("Fail Message: ", _bollinger_filter_H1.fail_message);
