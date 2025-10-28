@@ -165,10 +165,11 @@ bool COrderManager::UpdatePositions()
             continue;
         }
 
+        // Sempre aplicar breakeven se habilitado e ainda não acionado
         if (m_positions[i].breakeven_enabled && m_positions[i].breakeven_level == 0.0)
         {
             ApplyBreakeven(m_positions[i]);
-            
+
             if (!PositionSelectByTicket(m_positions[i].ticket))
             {
                 Print("Position ", m_positions[i].ticket, " closed after breakeven. Removing from tracking.");
@@ -176,7 +177,9 @@ bool COrderManager::UpdatePositions()
                 continue;
             }
         }
-        else if (m_positions[i].breakeven_level != 0.0 && m_positions[i].trailing_enabled)
+
+        // Sempre aplicar trailing se habilitado (independente do breakeven)
+        if (m_positions[i].trailing_enabled)
         {
             ApplyTrailingStop(m_positions[i]);
 
@@ -574,6 +577,8 @@ void COrderManager::ApplyBreakeven(SOrderPositionInfo &position)
                 {
                     position.stop_loss = new_sl;
                     position.breakeven_level = new_sl;
+                    position.trailed_once = false; // reset trailing state
+                    position.last_trail_time = TimeCurrent();
                     Print("✓ Breakeven aplicado: Ticket=", position.ticket,
                           " NovoSL=", new_sl, " (+", (int)profit_pts, " pts)");
                 }
@@ -617,11 +622,23 @@ void COrderManager::CheckPartials(SOrderPositionInfo &position)
                 position.lot_size -= close_lots;
                 remaining -= close_lots;
                 position.partials_closed[i] = true;
+                position.last_update = TimeCurrent(); // update timestamp for cooldown
                 PrintFormat("✓ Parcial %d: fechou %d lotes @ +%d pts (restam %d)",
                             i+1, close_lots, p.target_points, remaining);
                 if(remaining<=1) break; // sem mais parciais úteis
             }
         }
+    }
+
+    // FIX: NUNCA desligar trailing no último lote
+    if (PositionSelectByTicket(position.ticket))
+    {
+        const double vol = PositionGetDouble(POSITION_VOLUME);
+        const double vol_min = SymbolInfoDouble(position.symbol, SYMBOL_VOLUME_MIN);
+
+        // Se restou 1 volume (ou volume mínimo), trailing continua habilitado
+        if (vol <= vol_min + 1e-8)
+            position.trailing_enabled = true; // garantir
     }
 }
 
@@ -769,7 +786,7 @@ double COrderManager::CalculateChandelierSL(string symbol, bool is_buy, int atr_
 }
 
 //+------------------------------------------------------------------+
-//| Apply trailing stop - VERSÃO CORRIGIDA                          |
+//| Apply trailing stop - VERSÃO CORRIGIDA COM FIX PARA ÚLTIMA PARCIAL |
 //+------------------------------------------------------------------+
 void COrderManager::ApplyTrailingStop(SOrderPositionInfo &position)
 {
@@ -783,75 +800,157 @@ void COrderManager::ApplyTrailingStop(SOrderPositionInfo &position)
 
     if (m_default_config.enable_trailing_stop && m_default_config.trailing_mode == TRAILING_FIXED)
     {
-        // Cooldown após BE ou parcial
-        datetime last_action = MathMax(position.breakeven_level > 0 ? position.last_update : 0,
-                                      position.partials_closed[0] || position.partials_closed[1] || position.partials_closed[2] ? position.last_update : 0);
+        // FIX: gating simples independente de parciais
+        const string symbol = position.symbol;
+        const bool is_buy = (position.order_type == ORDER_BUY);
+        const double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
 
-        if(last_action > 0 && (TimeCurrent() - last_action) < m_default_config.m_trail_cooldown_sec)
-            return; // ainda em cooldown
+        // Verificar se é a última parcial (volume mínimo)
+        const double vol = PositionGetDouble(POSITION_VOLUME);
+        const double vol_min = SymbolInfoDouble(position.symbol, SYMBOL_VOLUME_MIN);
+        const bool is_last_partial = (vol <= vol_min + 1e-8);
 
-        // Exige gap mínimo para iniciar trailing
-        double profit_pts = (position.order_type == ORDER_BUY)
-            ? (position.current_price - position.entry_price) / point
-            : (position.entry_price - position.current_price) / point;
-
-        if (profit_pts < m_default_config.m_trail_offset_pts)
-            return; // gap insuficiente
-
-        // Trailing elástico: Chandelier + Swing
-        bool is_buy = (position.order_type == ORDER_BUY);
-        double chandelier_sl = CalculateChandelierSL(position.symbol, is_buy,
-                                                    m_default_config.m_atr_period,
-                                                    m_default_config.m_atr_mult,
-                                                    m_default_config.m_swing_lookback);
-
-        if(chandelier_sl <= 0) return; // erro no cálculo
-
-        // Piso do BE: nunca permitir que o trailing reduza abaixo do BE travado
-        double be_floor = (position.order_type == ORDER_BUY)
-            ? (position.entry_price + m_default_config.m_be_offset_pts * point)
-            : (position.entry_price - m_default_config.m_be_offset_pts * point);
-
-        // Aplicar piso
-        if(position.order_type == ORDER_BUY)
-            chandelier_sl = MathMax(chandelier_sl, be_floor);
-        else
-            chandelier_sl = MathMin(chandelier_sl, be_floor);
-
-        // Histerese: só move se avanço ≥ m_trail_step_pts
-        double min_step = m_default_config.m_trail_step_pts * point;
-        bool should_move = false;
-
-        if(position.order_type == ORDER_BUY)
+        // DEBUG: Log do estado atual (só uma vez por minuto para não poluir)
+        static datetime last_debug_time = 0;
+        if (TimeCurrent() - last_debug_time >= 60)
         {
-            if(position.stop_loss == 0 || chandelier_sl > position.stop_loss + min_step)
-                should_move = true;
+            PrintFormat("TRAILING DEBUG: Ticket=%llu, Vol=%.2f, VolMin=%.2f, IsLastPartial=%s, BE_Level=%.5f",
+                        position.ticket, vol, vol_min, is_last_partial ? "TRUE" : "FALSE", position.breakeven_level);
+            last_debug_time = TimeCurrent();
+        }
+
+        // Opcional: buffer de início pós-BE (só para parciais intermediárias)
+        if (!is_last_partial && m_default_config.enable_breakeven && position.breakeven_level > 0)
+        {
+            const double price = is_buy ? SymbolInfoDouble(symbol, SYMBOL_BID)
+                                        : SymbolInfoDouble(symbol, SYMBOL_ASK);
+            const double profit_pts = (is_buy ? price - position.breakeven_level
+                                              : position.breakeven_level - price) / point;
+            if (profit_pts < m_default_config.trailing_start_buffer_points)
+            {
+                PrintFormat("TRAILING DEBUG: Buffer BE não atingido (%.0f < %.0f pts)", profit_pts, m_default_config.trailing_start_buffer_points);
+                return;
+            }
+        }
+
+        // Cooldown configurável baseado no último evento
+        int cooldown_seconds = 0;
+
+        // Determinar qual cooldown usar baseado no último evento
+        if (position.last_update > position.last_trail_time)
+        {
+            // Último evento foi uma atualização geral (possivelmente parcial)
+            cooldown_seconds = m_default_config.m_cooldown_after_partial_sec;
+        }
+        else if (position.breakeven_level > 0 && position.last_trail_time == 0)
+        {
+            // Breakeven foi acionado mas trailing ainda não
+            cooldown_seconds = m_default_config.m_cooldown_after_be_sec;
         }
         else
         {
-            if(position.stop_loss == 0 || chandelier_sl < position.stop_loss - min_step)
-                should_move = true;
+            // Cooldown geral do trailing
+            cooldown_seconds = m_default_config.m_trail_cooldown_sec;
         }
 
-        if(should_move)
+        if (cooldown_seconds > 0 &&
+            (TimeCurrent() - position.last_trail_attempt) < cooldown_seconds)
         {
-            if (BuildValidSL(position.symbol, is_buy, chandelier_sl))
+            PrintFormat("TRAILING DEBUG: Cooldown ativo (%d seg restantes, tipo: %s)",
+                        cooldown_seconds - (TimeCurrent() - position.last_trail_attempt),
+                        cooldown_seconds == m_default_config.m_cooldown_after_partial_sec ? "após parcial" :
+                        cooldown_seconds == m_default_config.m_cooldown_after_be_sec ? "após BE" : "geral");
+            position.last_trail_attempt = TimeCurrent(); // atualizar tentativa mesmo no cooldown
+            return;
+        }
+
+        // FIX: cálculo do SL sem depender de parciais
+        double new_sl;
+
+        if (is_last_partial)
+        {
+            // ÚLTIMA PARCIAL: manter trailing DINÂMICO (Chandelier)
+            double chandelier_sl = CalculateChandelierSL(symbol, is_buy,
+                                                        m_default_config.m_atr_period,
+                                                        m_default_config.m_atr_mult,
+                                                        m_default_config.m_swing_lookback);
+
+            PrintFormat("TRAILING DEBUG: Chandelier SL calculado = %.5f", chandelier_sl);
+            if(chandelier_sl <= 0)
             {
-                if (ModifyPositionStopLoss(position.ticket, chandelier_sl))
-                {
-                    position.stop_loss = chandelier_sl;
-                    position.trailing_stop_level = chandelier_sl;
-                    Print("✓ Trailing Elástico: Ticket=", position.ticket,
-                          " NovoSL=", chandelier_sl,
-                          " Chandelier=", chandelier_sl,
-                          " Lucro=", (int)profit_pts, " pts");
-                }
+                Print("TRAILING DEBUG: Chandelier SL inválido, abortando");
+                return; // erro no cálculo
             }
-            else
+            new_sl = chandelier_sl;
+        }
+        else
+        {
+            // PARCIAIS INTERMEDIÁRIAS: trailing FIXO (distância fixa)
+            const double price = is_buy ? SymbolInfoDouble(symbol, SYMBOL_BID)
+                                        : SymbolInfoDouble(symbol, SYMBOL_ASK);
+            const double dist = m_default_config.trailing_distance_points * point;
+            new_sl = is_buy ? (price - dist) : (price + dist);
+            PrintFormat("TRAILING DEBUG: Trailing fixo calculado = %.5f (preço=%.5f, dist=%.0f pts)", new_sl, price, m_default_config.trailing_distance_points);
+        }
+
+        // Piso no BE se houver
+        if (position.breakeven_level > 0)
+            new_sl = is_buy ? MathMax(new_sl, position.breakeven_level)
+                            : MathMin(new_sl, position.breakeven_level);
+
+        // Histerese: só move se melhorar ao menos X pontos
+        double current_sl = PositionGetDouble(POSITION_SL);
+        PrintFormat("TRAILING DEBUG: Current SL = %.5f, New SL = %.5f", current_sl, new_sl);
+
+        if (current_sl > 0)
+        {
+            const double min_imp = m_default_config.minimum_improvement_points * point;
+            bool should_move = true;
+
+            if (is_buy && new_sl <= current_sl + min_imp)
             {
-                Print("⚠ Trailing cancelado - SL inválido: Ticket=", position.ticket,
-                      " Chandelier=", chandelier_sl, " Profit=", (int)profit_pts, " pts");
+                PrintFormat("TRAILING DEBUG: Histerese BUY não atingida (%.5f <= %.5f + %.5f)", new_sl, current_sl, min_imp);
+                should_move = false;
             }
+            if (!is_buy && new_sl >= current_sl - min_imp)
+            {
+                PrintFormat("TRAILING DEBUG: Histerese SELL não atingida (%.5f >= %.5f - %.5f)", new_sl, current_sl, min_imp);
+                should_move = false;
+            }
+
+            if (!should_move) return;
+        }
+
+        // Normaliza SL e aplica
+        PrintFormat("TRAILING DEBUG: Tentando aplicar SL = %.5f", new_sl);
+        if (!BuildValidSL(symbol, is_buy, new_sl))
+        {
+            Print("TRAILING DEBUG: BuildValidSL falhou");
+            return;
+        }
+
+        if (ModifyPositionStopLoss(position.ticket, new_sl))
+        {
+            position.stop_loss = new_sl;
+            position.trailing_stop_level = new_sl;
+            position.trailed_once = true;
+            position.last_trail_time = TimeCurrent();
+            position.last_update = TimeCurrent();
+            position.last_trail_attempt = TimeCurrent(); // sucesso = reset cooldown
+
+            double profit_pts = (position.order_type == ORDER_BUY)
+                ? (position.current_price - position.entry_price) / point
+                : (position.entry_price - position.current_price) / point;
+
+            string trail_type = is_last_partial ? "Dinâmico (Última Parcial)" : "Fixo (Intermediária)";
+            Print("✓ Trailing ", trail_type, ": Ticket=", position.ticket,
+                  " NovoSL=", new_sl,
+                  " Lucro=", (int)profit_pts, " pts");
+        }
+        else
+        {
+            Print("TRAILING DEBUG: ModifyPositionStopLoss falhou");
+            position.last_trail_attempt = TimeCurrent(); // falha = ainda conta para cooldown
         }
     }
 }

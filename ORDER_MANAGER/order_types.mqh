@@ -61,6 +61,11 @@ struct SOrderPositionInfo
     bool enable_partials_local;
     double initial_volume;
 
+    // Trailing state machine
+    bool trailed_once;
+    datetime last_trail_time;
+    datetime last_trail_attempt; // para cooldown independente
+
     void Reset()
     {
         strategy_name = "";
@@ -87,6 +92,11 @@ struct SOrderPositionInfo
         ArrayFill(partials_closed, 0, 3, false);
         enable_partials_local = false;
         initial_volume = 0.0;
+
+        // Trailing state
+        trailed_once = false;
+        last_trail_time = 0;
+        last_trail_attempt = 0;
     }
 };
 
@@ -131,7 +141,9 @@ struct SOrderConfig
     // Trailing avançado
     int m_be_trigger_pts;                 // lucro mínimo p/ ativar BE
     int m_be_offset_pts;                  // BE deixa margem p/ spread e custos
-    int m_trail_cooldown_sec;             // espera após BE ou parcial
+    int m_trail_cooldown_sec;             // cooldown geral do trailing
+    int m_cooldown_after_partial_sec;     // cooldown específico após parcial
+    int m_cooldown_after_be_sec;          // cooldown específico após breakeven
     int m_trail_offset_pts;               // só trail se gap ≥ X pts
     int m_trail_step_pts;                 // só move SL se avanço ≥ X pts
 
@@ -179,15 +191,42 @@ struct SOrderConfig
         // Trailing avançado
         m_be_trigger_pts               = 250;   // lucro mínimo p/ ativar BE
         m_be_offset_pts                = 30;    // BE deixa margem p/ spread e custos
-        m_trail_cooldown_sec           = 25;    // espera após BE ou parcial
+        m_trail_cooldown_sec           = 25;    // cooldown geral do trailing
+        m_cooldown_after_partial_sec   = 25;    // cooldown após parcial
+        m_cooldown_after_be_sec        = 0;     // cooldown após breakeven (0 = imediato)
         m_trail_offset_pts             = 260;   // só trail se gap ≥ 260 pts
-        m_trail_step_pts               = 80;    // só move SL se avanço ≥ 80 pts
+        m_trail_step_pts               = 40;    // só move SL se avanço ≥ 40 pts
 
         // Chandelier + Swing
         m_atr_period                   = 14;
         m_atr_mult                     = 1.2;
         m_swing_lookback               = 14;
     }
+};
+
+// -------- Trailing Config --------
+struct TrailingConfig {
+  int fixed_points;
+  int fixed_points_last;
+  int atr_period;
+  double atr_mult;
+  int swing_lookback;
+  int cooldown_sec;
+  int min_imp_points;
+  bool start_buffer_enabled;
+  int  start_buffer_points;
+
+  void Reset() {
+    fixed_points = 200;
+    fixed_points_last = 180;
+    atr_period = 14;
+    atr_mult = 3.0;
+    swing_lookback = 1;
+    cooldown_sec = 25;
+    min_imp_points = 10;
+    start_buffer_enabled = false;
+    start_buffer_points = 0;
+  }
 };
 
 #endif // __ORDER_TYPES_MQH__
