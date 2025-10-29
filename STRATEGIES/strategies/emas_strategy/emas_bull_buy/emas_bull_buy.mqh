@@ -795,12 +795,16 @@ SBollingerStructure CEmasBuyBull::BollingerHasValidStructure(TF_CTX *ctx)
 
     if (data.lower_is_sidewalk)
     {
-       data.lower_lr_invalid = (slope_lower.linear_regression.slope_value > data.lower_lr_abs_max ||
-                                slope_lower.linear_regression.slope_value < -data.lower_lr_abs_max);
-       data.lower_dd_invalid = (slope_lower.discrete_derivative.slope_value > data.lower_dd_abs_max ||
-                                slope_lower.discrete_derivative.slope_value < -data.lower_dd_abs_max);
-       data.lower_sd_invalid = (slope_lower.simple_difference.slope_value > data.lower_sd_abs_max ||
-                                slope_lower.simple_difference.slope_value < -data.lower_sd_abs_max);
+       data.lower_lr_invalid = (slope_lower.linear_regression.slope_value < data.lower_lr_abs_max &&
+                                slope_lower.linear_regression.slope_value > -data.lower_lr_abs_max);
+
+
+       data.lower_dd_invalid = (slope_lower.discrete_derivative.slope_value < data.lower_dd_abs_max &&
+                                slope_lower.discrete_derivative.slope_value > -data.lower_dd_abs_max);
+
+
+       data.lower_sd_invalid = (slope_lower.simple_difference.slope_value < data.lower_sd_abs_max &&
+                                slope_lower.simple_difference.slope_value > -data.lower_sd_abs_max);
 
        data.lower_sidewalk_invalid = data.lower_lr_invalid || data.lower_dd_invalid || data.lower_sd_invalid;
 
