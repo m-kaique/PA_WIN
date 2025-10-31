@@ -15,6 +15,7 @@
 #include "../../../interfaces/icontext_provider.mqh"
 #include "../../../interfaces/inetwork_client.mqh"
 #include "../../../provider/provider.mqh"
+#include "../../../orders/order_manager.mqh"
 
 //+------------------------------------------------------------------+
 //| Enumerações para estados de estratégia                          |
@@ -78,12 +79,31 @@ protected:
      INetworkClient *m_network_client;
      string m_current_symbol;
      ENUM_TIMEFRAMES m_current_timeframe;
+     COrderManager m_order_manager;
+
+     int GenerateMagicNumberFromName() const
+     {
+         int magic = 0;
+         int len = StringLen(m_name);
+         for (int i = 0; i < len; i++)
+         {
+             magic = (magic * 31) + (int)StringGetCharacter(m_name, i);
+         }
+         if (magic == 0)
+             magic = (int)GetTickCount();
+         return (int)MathAbs((double)magic);
+     }
 
    // Métodos virtuais puros que devem ser implementados pelas classes derivadas
    virtual bool DoInit() = 0;
    virtual bool DoUpdate() = 0;
    virtual SStrategySignal CheckForSignal() = 0;
    virtual bool ValidateSignal(const SStrategySignal &signal) = 0;
+   virtual void ConfigureOrderSettings(SOrderManagerSettings &settings)
+   {
+      // Configuração padrão pode ser sobrescrita pelas estratégias derivadas
+      settings.magic_number = GenerateMagicNumberFromName();
+   }
 
    // Método para enviar sinal ao servidor
    virtual void SendSignalToServer();
@@ -163,11 +183,16 @@ public:
    void SetEnabled(bool enabled) { m_enabled = enabled; }
    void SetState(ENUM_STRATEGY_STATE state) { m_state = state; }
    void SetContextProvider(IContextProvider *context_provider) { m_context_provider = context_provider; }
-   void SetNetworkClient(INetworkClient *network_client) { m_network_client = network_client; }
+   void SetNetworkClient(INetworkClient *network_client)
+   {
+       m_network_client = network_client;
+       m_order_manager.SetNetworkClient(network_client);
+   }
 
    // Métodos de utilidade
    bool HasValidSignal() const { return m_last_signal.is_valid; }
    void ClearSignal() { m_last_signal.Reset(); }
+   COrderManager &GetOrderManager() { return m_order_manager; }
 
    // Método para exibir log de debug (chama método virtual DoLog)
    void ShowLog()
@@ -222,6 +247,7 @@ CStrategyBase::CStrategyBase()
      m_context_provider = NULL;
      m_network_client = NULL;
      m_current_symbol = "";
+     m_current_timeframe = PERIOD_CURRENT;
 }
 
 //+------------------------------------------------------------------+
@@ -247,12 +273,19 @@ bool CStrategyBase::Init(string name, const CStrategyConfig &config)
       return true; // Não é erro, apenas desabilitada
    }
 
+   m_order_manager.SetStrategyName(m_name);
+   m_order_manager.SetNetworkClient(m_network_client);
+
    // Chamar inicialização específica da estratégia derivada
    if (!DoInit())
    {
       Print("ERRO: Falha na inicialização específica da estratégia ", m_name);
       return false;
    }
+
+   SOrderManagerSettings settings;
+   ConfigureOrderSettings(settings);
+   m_order_manager.Configure(settings);
 
    m_initialized = true;
    m_state = STRATEGY_IDLE;
@@ -283,6 +316,11 @@ bool CStrategyBase::Update(string symbol, ENUM_TIMEFRAMES timeframe)
 
     m_last_update = TimeCurrent();
 
+    // Atualizar símbolo e timeframe atuais no gerenciador de ordens
+    string active_symbol = (m_current_symbol != "") ? m_current_symbol : Symbol();
+    m_order_manager.SetSymbol(active_symbol);
+    m_order_manager.SetStrategyName(m_name);
+
     // Chamar atualização específica da estratégia derivada
     if (!DoUpdate())
     {
@@ -311,11 +349,45 @@ bool CStrategyBase::Update(string symbol, ENUM_TIMEFRAMES timeframe)
                 EnumToString(signal.type), " @ ", DoubleToString(signal.entry_price, _Digits));
 
           SendSignalToServer();
+
+          ENUM_ORDER_TYPE order_type = ORDER_TYPE_BUY;
+          if (signal.type == SIGNAL_SELL)
+             order_type = ORDER_TYPE_SELL;
+
+          double stop_loss = signal.stop_loss;
+          double take_profit = signal.take_profit;
+          string comment = signal.comment;
+
+          if (stop_loss <= 0)
+          {
+              double point = SymbolInfoDouble(active_symbol, SYMBOL_POINT);
+              double sl_points =  m_order_manager.GetSettings().min_stop_loss_points * point;
+              stop_loss = (signal.type == SIGNAL_BUY) ? signal.entry_price - sl_points : signal.entry_price + sl_points;
+          }
+
+          SOrderExecutionResult execution = m_order_manager.OpenMarketOrder(order_type, stop_loss, take_profit, comment, signal.lot_size);
+          if (execution.success)
+          {
+             m_state = STRATEGY_POSITION_OPEN;
+             Print("Ordem aberta pela estratégia ", m_name, " ticket ", execution.ticket, " volume ", DoubleToString(execution.volume, 2));
+          }
+          else
+          {
+             Print("Falha ao abrir ordem: ", execution.message);
+          }
        }
     }
     else if (m_state == STRATEGY_IDLE && !IsTimeframeAuthorized(m_current_timeframe))
     {
        Print("AVISO: Estratégia ", m_name, " não está autorizada para timeframe ", EnumToString(m_current_timeframe));
+    }
+
+    m_order_manager.UpdateOpenPositions(m_current_timeframe);
+
+    if (m_state == STRATEGY_POSITION_OPEN && !m_order_manager.HasOpenPositions())
+    {
+        m_state = STRATEGY_IDLE;
+        ClearSignal();
     }
 
     return true;
